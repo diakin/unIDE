@@ -64,6 +64,9 @@ function EdWideText(const AText: string): WideString;
 // Текст редактора (CP_ACP) для подписей и подсказок LCL: под FPC - UTF-8,
 // в Delphi 7 - как есть
 function EdUiText(const AText: string): string;
+// Обратно: текст из элемента LCL (UTF-8 под FPC) - в кодировку редактора
+// (CP_ACP); в Delphi 7 - как есть
+function EdFromUiText(const AText: string): string;
 
 implementation
 
@@ -130,6 +133,15 @@ function EdUiText(const AText: string): string;
 begin
   {$IFDEF FPC}
   Result := UTF8Encode(EdWideText(AText));
+  {$ELSE}
+  Result := AText;
+  {$ENDIF}
+end;
+
+function EdFromUiText(const AText: string): string;
+begin
+  {$IFDEF FPC}
+  Result := EdAnsiText(UTF8Decode(AText));
   {$ELSE}
   Result := AText;
   {$ENDIF}

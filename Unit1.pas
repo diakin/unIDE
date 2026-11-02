@@ -21356,23 +21356,27 @@ begin
 end;
 
 // Кладёт строку в начало истории комбобокса, убирая дубликат
+// Str - образец в кодировке редактора (EdFromUiText(cmbFind.Text), текст
+// выделения); в список и поле - текстом интерфейса (EdUiText)
 procedure TForm1.AddHistory(Cmb: TUiComboBox; const Str: string);
 var
   Idx: Integer;
+  UiStr: string;
 begin
   if (Cmb = nil) or (Str = '') then
     Exit;
+  UiStr := EdUiText(Str);
 
-  Idx := Cmb.Items.IndexOf(Str);
+  Idx := Cmb.Items.IndexOf(UiStr);
   if Idx >= 0 then
     Cmb.Items.Delete(Idx);
-  Cmb.Items.Insert(0, Str);
+  Cmb.Items.Insert(0, UiStr);
 
   while Cmb.Items.Count > 20 do
     Cmb.Items.Delete(Cmb.Items.Count - 1);
 
   // Text сбрасывается при правке Items, поэтому возвращаем его на место
-  Cmb.Text := Str;
+  Cmb.Text := UiStr;
 end;
 
 procedure TForm1.GotoLine(LineIdx: Integer);
@@ -21465,7 +21469,7 @@ var
   Str: string;
   FoundPos, StartFrom: Integer;
 begin
-  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  Str := EdFromUiText(cmbFind.Text); // без Trim: образец должен совпадать с введённым дословно
   if Str = '' then
     Exit;
   AddHistory(cmbFind, Str);
@@ -21485,7 +21489,7 @@ begin
 
   if FoundPos < 0 then
   begin
-    StatusBar1.SimpleText := 'Не найдено: ' + Str;
+    StatusBar1.SimpleText := 'Не найдено: ' + EdUiText(Str);
     StatusBar1.SimplePanel := True;
     Exit;
   end;
@@ -21509,7 +21513,7 @@ var
   Str: string;
   FoundPos, Best, Limit: Integer;
 begin
-  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  Str := EdFromUiText(cmbFind.Text); // без Trim: образец должен совпадать с введённым дословно
   if Str = '' then
     Exit;
   AddHistory(cmbFind, Str);
@@ -21525,7 +21529,7 @@ begin
 
   if Best < 0 then
   begin
-    StatusBar1.SimpleText := 'Выше ничего не найдено: ' + Str;
+    StatusBar1.SimpleText := 'Выше ничего не найдено: ' + EdUiText(Str);
     StatusBar1.SimplePanel := True;
     Exit;
   end;
@@ -21553,17 +21557,17 @@ var
   Str, RestStr: string;
   SelPos, Num: Integer;
 begin
-  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  Str := EdFromUiText(cmbFind.Text); // без Trim: образец должен совпадать с введённым дословно
   if Str = '' then
     Exit;
-  RestStr := cmbReplace.Text;
+  RestStr := EdFromUiText(cmbReplace.Text);
 
   AddHistory(cmbFind, Str);
   AddHistory(cmbReplace, RestStr);
   // Текст замены попадает и в историю поиска: после замены его часто
   // требуется найти
   AddHistory(cmbFind, RestStr);
-  cmbFind.Text := Str; // но в поле оставляем сам образец
+  cmbFind.Text := EdUiText(Str); // но в поле оставляем сам образец
 
   Num := 0;
   SelPos := RichEdit1.SelStart;
@@ -21581,7 +21585,7 @@ begin
     EdApi.ScrollCaret;
     CenterCaretLine;
 
-    case MessageDlg('11014:Заменить это вхождение?' + #13#10#13#10 + Str + '  ->  ' + RestStr,
+    case MessageDlg('11014:Заменить это вхождение?' + #13#10#13#10 + EdUiText(Str) + '  ->  ' + EdUiText(RestStr),
                     mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
       mrYes:
       begin
@@ -21745,16 +21749,16 @@ var
   end;
 
 begin
-  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  Str := EdFromUiText(cmbFind.Text); // без Trim: образец должен совпадать с введённым дословно
   if Str = '' then
     Exit;
-  RestStr := cmbReplace.Text;
+  RestStr := EdFromUiText(cmbReplace.Text);
 
   AddHistory(cmbFind, Str);
   AddHistory(cmbReplace, RestStr);
 
   if MessageDlg('11212:Заменить ВСЕ вхождения во всём файле?' + #13#10#13#10 +
-                Str + '  ->  ' + RestStr + #13#10#13#10 +
+                EdUiText(Str) + '  ->  ' + EdUiText(RestStr) + #13#10#13#10 +
   'Откатить можно будет через Edit - Отменить массовую замену.',
                 mtWarning, [mbYes, mbNo], 0) <> mrYes then
     Exit;
@@ -22061,7 +22065,7 @@ var
   Pattern: string;
 begin
   Result := False;
-  Pattern := cmbFind.Text; // без Trim: образец - как введён
+  Pattern := EdFromUiText(cmbFind.Text); // без Trim: образец - как введён
   if Pattern = '' then
     Exit;
   AddHistory(cmbFind, Pattern);
@@ -22145,7 +22149,7 @@ var
   Pattern: string;
   RowIdx: Integer;
 begin
-  Pattern := cmbFind.Text;
+  Pattern := EdFromUiText(cmbFind.Text);
   if Pattern = '' then
     Exit;
   if FFifRunning then
@@ -22222,7 +22226,7 @@ var
   RowIdx, LaterIdx, Done, Skipped, Shift, LineNo, FileDone, Saved: Integer;
   CurOpenedHere: Boolean;
 begin
-  Pattern := cmbFind.Text;
+  Pattern := EdFromUiText(cmbFind.Text);
   if Pattern = '' then
     Exit;
   if FFifRunning then
@@ -22230,7 +22234,7 @@ begin
     FFifAbort := True;
     Exit;
   end;
-  Replacement := cmbReplace.Text;
+  Replacement := EdFromUiText(cmbReplace.Text);
   AddHistory(cmbReplace, Replacement);
   if not SearchToList then
     Exit;
@@ -22274,7 +22278,7 @@ begin
     case MessageDlg('Заменить это вхождение?' + #13#10 +
                     ExtractFileName(FileName) + ', строка ' +
                     IntToStr(LineNo + 1) + #13#10#13#10 +
-                    Pattern + '  ->  ' + Replacement,
+                    EdUiText(Pattern) + '  ->  ' + EdUiText(Replacement),
                     mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
       mrYes:
       begin
@@ -22522,7 +22526,7 @@ var
     Failed: Integer;
   SavedUtf8, SavedBom, FileUtf8, FileBom: Boolean;
 begin
-  Pattern := cmbFind.Text;
+  Pattern := EdFromUiText(cmbFind.Text);
   if Pattern = '' then
     Exit;
   if FFifRunning then
@@ -22530,7 +22534,7 @@ begin
     FFifAbort := True;
     Exit;
   end;
-  Replacement := cmbReplace.Text;
+  Replacement := EdFromUiText(cmbReplace.Text);
   AddHistory(cmbReplace, Replacement);
   if not SearchToList then
     Exit;
@@ -22557,7 +22561,7 @@ begin
 
     Question := Format('Заменить все вхождения: %d в %d файлах?',
                        [Total, Files.Count]) + #13#10#13#10 +
-                Pattern + '  ->  ' + Replacement;
+                EdUiText(Pattern) + '  ->  ' + EdUiText(Replacement);
     if FilesOnDisk > 0 then
       Question := Question + #13#10#13#10 +
         Format('Не открыты в редакторе: %d - они будут перезаписаны на диске.',
@@ -23153,7 +23157,7 @@ begin
         Cnv.Brush.Style := bsClear;
         if ACol = 1 then
           Cnv.TextOut(Rect.Left + 3, Rect.Top + 1, FMatchRows[Idx].FileName +
-                      '      ' + FMatchRows[Idx].Text);
+                      '      ' + EdUiText(FMatchRows[Idx].Text));
         Cnv.Brush.Style := bsSolid;
         Exit;
       end;
@@ -23231,7 +23235,7 @@ begin
     if FMatchPattern = '' then
     begin
       Cnv.Brush.Style := bsClear;
-      Cnv.TextOut(PosX, Rect.Top + 1, Str);
+      Cnv.TextOut(PosX, Rect.Top + 1, EdUiText(Str));
       Cnv.Brush.Style := bsSolid;
       Exit;
     end;
@@ -23250,9 +23254,9 @@ begin
       begin
         Part := Copy(Str, CharPos, QuotePos - CharPos);
         Cnv.Brush.Style := bsClear;
-        Cnv.TextOut(PosX, Rect.Top + 1, Part);
+        Cnv.TextOut(PosX, Rect.Top + 1, EdUiText(Part));
         Cnv.Brush.Style := bsSolid;
-        Inc(PosX, Cnv.TextWidth(Part));
+        Inc(PosX, Cnv.TextWidth(EdUiText(Part)));
       end;
 
       // Найденный кусок - своим спокойным цветом (Match.HitBG,
@@ -23260,8 +23264,8 @@ begin
       Part := Copy(Str, QuotePos, Length(FMatchPattern));
       Cnv.Brush.Color := UiColor('Match.HitBG');
       Cnv.Font.Color := UiColor('Match.HitText');
-      Cnv.TextOut(PosX, Rect.Top + 1, Part);
-      Inc(PosX, Cnv.TextWidth(Part));
+      Cnv.TextOut(PosX, Rect.Top + 1, EdUiText(Part));
+      Inc(PosX, Cnv.TextWidth(EdUiText(Part)));
 
       if Selected then
       begin
@@ -23281,7 +23285,7 @@ begin
     begin
       Part := Copy(Str, CharPos, Length(Str) - CharPos + 1);
       Cnv.Brush.Style := bsClear;
-      Cnv.TextOut(PosX, Rect.Top + 1, Part);
+      Cnv.TextOut(PosX, Rect.Top + 1, EdUiText(Part));
       Cnv.Brush.Style := bsSolid;
     end;
 
@@ -23445,7 +23449,7 @@ var
   Str: string;
   Num: Integer;
 begin
-  Str := cmbFind.Text; // без Trim: образец должен совпадать с введённым дословно
+  Str := EdFromUiText(cmbFind.Text); // без Trim: образец должен совпадать с введённым дословно
   if Str = '' then
     Exit;
   AddHistory(cmbFind, Str);
@@ -24174,7 +24178,7 @@ begin
   Dlg := TDlgFifDisk(FFifDlg);
   FFifListAborted := False;
 
-  Pattern := cmbFind.Text; // без Trim: образец - как введён
+  Pattern := EdFromUiText(cmbFind.Text); // без Trim: образец - как введён
   // Искать файл: образец не нужен, ищутся имена по маскам
   if FFifFileMode then
     Pattern := ''
@@ -80464,7 +80468,7 @@ begin
     SelTxt := SelTextHead(255);
     if (SelTxt <> '') and (Pos(#13, SelTxt) = 0) and (Pos(#10, SelTxt) = 0) then
     begin
-      cmbFind.Text := SelTxt;
+      cmbFind.Text := EdUiText(SelTxt);
       // В режиме перехода по строке образец - номер; выделенный текст
       // ищем обычным поиском
       if cmbMode.ItemIndex = 2 then
