@@ -50856,6 +50856,17 @@ begin
         if (SV = '') or (Copy(SV, 1, 2) = '''(') or
            (DsgNormValue(SV) = DsgNormValue(RV)) then
           Continue;
+        {$IFDEF FPC}
+        // LCL меняет значения сама, без кода формы: Anchors пишет и при
+        // alClient (хранит, если не равно AnchorAlign[Align]), цвет по
+        // умолчанию у неё clDefault или ParentColor, а смена Font.Color
+        // темой сбрасывает ParentFont - и в снимок попадает весь шрифт.
+        // Если в .dfm свойства нет, такое расхождение - не код.
+        if (DfmNode.PropN.IndexOf(Nm) < 0) and
+           ((Nm = 'Anchors') or (Nm = 'Color') or
+            (Copy(Nm, 1, 5) = 'Font.')) then
+          Continue;
+        {$ENDIF}
         // В .dfm цвет по умолчанию, а при работе его заменила тема IDE
         // (UiPaintColors) - это не код. Свой цвет, записанный в .dfm, тема
         // не меняет, так что правка в инспекторе при работе останется.
