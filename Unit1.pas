@@ -3847,6 +3847,7 @@ type
     function  LazExeOf(const ALpi: string): string;
     function  LazUnitPathOf(const ALpi: string): string;
     function  CompileLazarus: Boolean;
+    procedure LazRefreshPrep(const ASrcDir: string);
     function  FpcExe(var AProblem: string): string;
     function  FpcSetting(const AKey: string): string;
     function  FpcBuildSetting(const APrjKey, AIdeKey: string): string;
@@ -55483,6 +55484,60 @@ end;
 // В .lpi есть пакеты (RequiredPackages: LCL и др.). Пути к их модулям
 // знает только lazbuild: fpc.exe с путями из .lpi их не найдёт
 // (Can't find unit Interfaces)
+// Папка проекта Delphi, из которой LazPrep сделал копию с этим .lpi:
+// <папка>\laz\lazarus\<имя>.lpi или <папка>\laz\<имя>.lpi, и в <папка> есть
+// .dpr. '' - .lpi не из такой копии
+function LazPrepSourceOf(const ALpi: string): string;
+var
+  Dir: string;
+  DprRec: TSearchRec;
+  Level: Integer;
+begin
+  Result := '';
+  Dir := ExcludeTrailingPathDelimiter(ExtractFilePath(ALpi));
+  for Level := 1 to 2 do
+  begin
+    if CompareText(ExtractFileName(Dir), 'laz') = 0 then
+    begin
+      Dir := ExtractFilePath(Dir);
+      if FindFirst(Dir + '*.dpr', faAnyFile, DprRec) = 0 then
+      begin
+        FindClose(DprRec);
+        Result := Dir;
+      end;
+      Exit;
+    end;
+    Dir := ExcludeTrailingPathDelimiter(ExtractFilePath(Dir));
+  end;
+end;
+
+// Перед сборкой Lazarus - копия laz\ заново из исходников Delphi (как
+// Utils > Lazarus: prepare sources): иначе собиралась бы прежняя версия,
+// если после git pull копию не обновили. Переводятся только изменённые
+// файлы
+procedure TForm1.LazRefreshPrep(const ASrcDir: string);
+var
+  Report: TStringList;
+  Stats: TLazPrepStats;
+  StartTick: Cardinal;
+  LineIdx: Integer;
+begin
+  StartTick := GetTickCount;
+  Report := TStringList.Create;
+  try
+    LazPrepSources(ASrcDir, ASrcDir + 'laz' + PathDelim, Report, Stats);
+    if Stats.Failed > 0 then
+      for LineIdx := 0 to Report.Count - 1 do
+        LogComp('  ' + Report[LineIdx]);
+    LogComp(Format('Lazarus: копия laz\ обновлена из %s - переведено %d, ' +
+                   'скопировано %d, без изменений %d, ошибок %d (%d мс)',
+                   [ASrcDir, Stats.Converted, Stats.Copied, Stats.Unchanged,
+                    Stats.Failed, GetTickCount - StartTick]));
+  finally
+    Report.Free;
+  end;
+end;
+
 function LpiNeedsPackages(const ALpi: string): Boolean;
 var
   LpiText: TStringList;
@@ -55762,7 +55817,7 @@ end;
 function TForm1.CompileLazarus: Boolean;
 var
   Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName, Src, FpcFile: string;
-  Cpu, TargetOs: string;
+  Cpu, TargetOs, PrepSrc, BuildSrc: string;
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount: Integer;
   StartTick: Cardinal;
@@ -55806,6 +55861,9 @@ begin
     'цель проекта unIDE (Project Properties)');
     Exit;
   end;
+  PrepSrc := LazPrepSourceOf(Lpi);
+  if PrepSrc <> '' then
+    LazRefreshPrep(PrepSrc);
   // Поле fpc.exe задано - сборка им напрямую, lazbuild не нужен. Кроме
   // .lpi с пакетами (LCL): их собирает lazbuild с этим fpc.exe
   // (--compiler), если lazbuild найден
@@ -55921,6 +55979,19 @@ begin
       LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - StartTick, Exe]))
     else
       LogComp(Format('--- Готово, %d мс', [GetTickCount - StartTick]));
+    // Из какой версии исходников собран exe - <exe>.build.txt рядом с ним
+    // (заголовок окна, как у сборки Delphi). Для копии laz\ - по папке
+    // исходников Delphi
+    if Exe <> '' then
+    begin
+      if PrepSrc <> '' then
+        BuildSrc := PrepSrc
+      else
+        BuildSrc := Lpi;
+      if GitWriteBuildInfo(Exe, BuildSrc) then
+        LogComp('--- Исходники: ' + GitBuildInfoShort(Exe) + ' (' +
+                ExtractFileName(GitBuildInfoFile(Exe)) + ')');
+    end;
     Exit;
   end;
   LogComp(Format('--- Сборка не прошла: код завершения lazbuild %d, ' +
