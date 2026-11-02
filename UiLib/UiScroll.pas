@@ -741,6 +741,12 @@ const
 type
   // Доступ к защищённым RowCount, ColCount, FixedRows, FixedCols таблицы
   TUiGridAcc = class(TCustomGrid);
+  {$IFDEF FPC}
+  // Дерево LCL рисуется самим LCL: прокрутка - ScrolledTop/ScrolledLeft
+  // (в пикселях, как и его полосы), сообщения дерева Windows (TVM_*) оно
+  // не понимает
+  TUiTreeAcc = class(TCustomTreeView);
+  {$ENDIF}
 
   TUiScrollTicker = class(TObject)
   public
@@ -1214,6 +1220,9 @@ begin
   end
   else if FCtl is TCustomTreeView then
   begin
+    {$IFDEF FPC}
+    TUiTreeAcc(FCtl).ScrolledTop := FBar.Position;
+    {$ELSE}
     // Дерево: полоса считает в видимых строках. Первым видимым ставится
     // узел с этим номером среди раскрытых (TVGN_FIRSTVISIBLE). WM_VSCROLL
     // с SB_THUMBPOSITION дерево не слушает: позицию оно берёт у своей
@@ -1230,6 +1239,7 @@ begin
     end;
     if Hnd <> 0 then
       SendMessage(FCtl.Handle, TVM_SELECTITEM_, TVGN_FIRSTVISIBLE_, Hnd);
+    {$ENDIF}
   end
   else if FCtl is TCustomMemo then
   begin
@@ -1286,9 +1296,13 @@ begin
       SendMessage(FCtl.Handle, LVM_SCROLL_, FHBar.Position - SI.nPos, 0);
   end
   else if FCtl is TCustomTreeView then
+    {$IFDEF FPC}
+    TUiTreeAcc(FCtl).ScrolledLeft := FHBar.Position
+    {$ELSE}
     // Дерево: SB_THUMBPOSITION по вертикали оно не слушает (см. BarChange),
     // по горизонтали не проверено - едем шагами по строке
     ScrollStepTo(FCtl.Handle, SB_HORZ, WM_HSCROLL, FHBar.Position)
+    {$ENDIF}
   else
   begin
     SendMessage(FCtl.Handle, WM_HSCROLL,

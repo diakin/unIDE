@@ -46779,6 +46779,11 @@ procedure TForm1.ObjTreeDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
                                  State: TCustomDrawState;
                                  var DefaultDraw: Boolean);
 begin
+  {$IFDEF FPC}
+  // LCL перед этим событием цвет шрифта холста не ставит (был чёрный на
+  // тёмном фоне); в Delphi 7 он уже цвет шрифта дерева
+  Sender.Canvas.Font.Color := TUiTreeView(Sender).Font.Color;
+  {$ENDIF}
   // Красный - сломанный компонент: в .dfm нет имени или в коде нет ни
   // имени, ни переменной, то есть найти его негде.
   // Синий - выровненный: сам он цел, но место и размер ему задаёт
