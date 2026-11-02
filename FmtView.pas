@@ -51,8 +51,8 @@ interface
 uses
   {$IFDEF FPC} LCLIntf, {$ENDIF} // AllocateHWnd: в FPC у Classes её нет
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
-  ComCtrls, Menus, Forms, Variants, ComObj, Registry,
-  {$IFDEF FPC} WebBrowserLcl, RichMemo, {$ELSE} SHDocVw, {$ENDIF}
+  ComCtrls, Menus, Forms, Variants, {$IFDEF MSWINDOWS} ComObj, {$ENDIF} Registry,
+  {$IFDEF FPC} WebBrowserLcl, {$IFDEF MSWINDOWS} RichMemo, {$ENDIF} {$ELSE} SHDocVw, {$ENDIF}
   IniFiles, MdHtml, ProcRun;
 
 type
@@ -139,8 +139,9 @@ type
 
   // RichEdit 4.1 (msftedit.dll, RICHEDIT50W); нет его - RichEdit 2.0/3.0
   // В сборке Lazarus - TRichMemo (пакет richmemo): окно RichEdit, те же
-  // сообщения EM_* через Handle
-  TRtfViewEdit = class({$IFDEF FPC}TRichMemo{$ELSE}TRichEdit{$ENDIF})
+  // сообщения EM_* через Handle. Под Linux окна RichEdit нет: простой
+  // TMemo, RTF показывается исходным текстом
+  TRtfViewEdit = class({$IFDEF FPC}{$IFDEF MSWINDOWS}TRichMemo{$ELSE}TMemo{$ENDIF}{$ELSE}TRichEdit{$ENDIF})
 {$IFNDEF FPC}
   protected
     procedure CreateParams(var Params: TCreateParams); override;
@@ -1543,7 +1544,11 @@ begin
   else
     StreamFormat := SF_TEXT_;
   // ReadOnly на загрузку не влияет: EM_STREAMIN - программная запись
+  {$IFDEF MSWINDOWS}
   SendMessage(FEdit.Handle, EM_STREAMIN_, StreamFormat, LPARAM(@Stream));
+  {$ELSE}
+  FEdit.Text := ABytes;
+  {$ENDIF}
   Result := Stream.Error = 0;
   if not Result then
     FLastError := 'RichEdit не загрузил текст (код ' +

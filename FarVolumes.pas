@@ -151,22 +151,22 @@ type
 
 function FvMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
-  external 'kernel32.dll' name 'MultiByteToWideChar';
+  external {$IFDEF UNIX}name 'unidewin_MultiByteToWideChar'{$ELSE}'kernel32.dll' name 'MultiByteToWideChar'{$ENDIF};
 function FvCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ACreation, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
-  external 'kernel32.dll' name 'CreateFileW';
+  external {$IFDEF UNIX}name 'unidewin_CreateFileW'{$ELSE}'kernel32.dll' name 'CreateFileW'{$ENDIF};
 function FvDeviceIoControl(ADevice: THandle; ACode: DWORD; AInBuffer: Pointer;
   AInSize: DWORD; AOutBuffer: Pointer; AOutSize: DWORD; var AReturned: DWORD;
   AOverlapped: Pointer): BOOL; stdcall;
-  external 'kernel32.dll' name 'DeviceIoControl';
+  external {$IFDEF UNIX}name 'unidewin_DeviceIoControl'{$ELSE}'kernel32.dll' name 'DeviceIoControl'{$ENDIF};
 function FvGetVolumeInfo(ARoot, AVolumeName: PWideChar; AVolumeNameSize: DWORD;
   ASerial, AMaxComponent, AFlags: PDWORD; AFileSystem: PWideChar;
   AFileSystemSize: DWORD): BOOL; stdcall;
-  external 'kernel32.dll' name 'GetVolumeInformationW';
+  external {$IFDEF UNIX}name 'unidewin_GetVolumeInformationW'{$ELSE}'kernel32.dll' name 'GetVolumeInformationW'{$ENDIF};
 function FvDiskFree(ADir: PWideChar; AFreeAvail, ATotalBytes,
   ATotalFree: PInt64): BOOL; stdcall;
-  external 'kernel32.dll' name 'GetDiskFreeSpaceExW';
+  external {$IFDEF UNIX}name 'unidewin_GetDiskFreeSpaceExW'{$ELSE}'kernel32.dll' name 'GetDiskFreeSpaceExW'{$ENDIF};
 
 // ---------------------------------------------------------------------------
 

@@ -19,6 +19,21 @@ unit Wv2View;
 
 interface
 
+{$IFDEF UNIX}
+// Под Linux WebView2 нет: тот же интерфейс, Wv2Start отвечает отказом
+uses
+  SysUtils, Forms;
+
+const
+  Wv2DownloadUrl =
+    'https://developer.microsoft.com/microsoft-edge/webview2/consumer/';
+
+type
+  TWv2Form = class(TForm)
+  public
+    procedure ShowFile(const AFileName: string);
+  end;
+{$ELSE}
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms, ExtCtrls,
   StdCtrls, Registry,
@@ -65,6 +80,8 @@ type
     procedure ShowFile(const AFileName: string);
   end;
 
+{$ENDIF}
+
 // Загрузчик WebView2: создать и запустить (асинхронно). False - не вышло,
 // причина в AError; ARuntimeMissing - не установлен WebView2 Runtime
 function Wv2Start(out AError: string; out ARuntimeMissing: Boolean): Boolean;
@@ -83,6 +100,43 @@ procedure Wv2Shutdown;
 
 implementation
 
+{$IFDEF UNIX}
+const
+  Wv2NoLinux = 'WebView2 есть только под Windows';
+
+procedure TWv2Form.ShowFile(const AFileName: string);
+begin
+end;
+
+function Wv2Start(out AError: string; out ARuntimeMissing: Boolean): Boolean;
+begin
+  AError := Wv2NoLinux;
+  ARuntimeMissing := False;
+  Result := False;
+end;
+
+function Wv2RuntimeVersion: string;
+begin
+  Result := '';
+end;
+
+function Wv2ShowFile(const AFileName: string; out AError: string;
+  out ARuntimeMissing: Boolean): TWv2Form;
+begin
+  AError := Wv2NoLinux;
+  ARuntimeMissing := False;
+  Result := nil;
+end;
+
+function Wv2FileUrl(const AFileName: string): WideString;
+begin
+  Result := 'file://' + UTF8Decode(AFileName);
+end;
+
+procedure Wv2Shutdown;
+begin
+end;
+{$ELSE}
 var
   GWv2Form: TWv2Form;
 
@@ -529,6 +583,8 @@ begin
     GlobalWebView2Loader := nil;
   end;
 end;
+
+{$ENDIF}
 
 initialization
 

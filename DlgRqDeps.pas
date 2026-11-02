@@ -981,6 +981,7 @@ var
   SysTime: TSystemTime;
   FileSize: Int64;
 
+  {$IFDEF MSWINDOWS}
   function TimeText(const AStamp: TFileTime): string;
   begin
     Result := '';
@@ -988,6 +989,7 @@ var
        FileTimeToSystemTime(LocalTime, SysTime) then
       Result := FormatDateTime('dd.mm.yyyy hh:nn', SystemTimeToDateTime(SysTime));
   end;
+  {$ENDIF}
 
 begin
   ASize := '';
@@ -997,11 +999,18 @@ begin
   if not Result then
     Exit;
   try
+    {$IFDEF MSWINDOWS}
     FileSize := Int64(SR.FindData.nFileSizeHigh) shl 32 +
                 SR.FindData.nFileSizeLow;
     ASize := FormatFloat('#,##0', FileSize);
     ACreated := TimeText(SR.FindData.ftCreationTime);
     AWritten := TimeText(SR.FindData.ftLastWriteTime);
+    {$ELSE}
+    // Linux: времени создания у файла нет
+    FileSize := SR.Size;
+    ASize := FormatFloat('#,##0', FileSize);
+    AWritten := FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(SR.Time));
+    {$ENDIF}
   finally
     FindClose(SR);
   end;

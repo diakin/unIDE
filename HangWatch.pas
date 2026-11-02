@@ -91,7 +91,7 @@ var
 implementation
 
 // В Windows.pas Delphi 7 её нет; в user32 - с Windows 2000
-function IsHungAppWindow(Wnd: HWND): BOOL; stdcall; external user32;
+function IsHungAppWindow(Wnd: HWND): BOOL; stdcall; external {$IFDEF UNIX}name 'unidewin_IsHungAppWindow'{$ELSE}user32{$ENDIF};
 
 const
   // В Windows.pas Delphi 7 прав доступа к потоку нет - значения из WinNT.h
@@ -192,7 +192,7 @@ type
   TCrashFilter = function(AInfo: PCrashPointers): Longint; stdcall;
 
 function CrashSetFilter(AFilter: Pointer): Pointer; stdcall;
-  external kernel32 name 'SetUnhandledExceptionFilter';
+  external {$IFDEF UNIX}name 'unidewin_SetUnhandledExceptionFilter'{$ELSE}kernel32 name 'SetUnhandledExceptionFilter'{$ENDIF};
 
 // ---------------------------------------------------------------------------
 

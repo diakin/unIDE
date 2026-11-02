@@ -130,14 +130,14 @@ type
 // W-функции - свои объявления (одинаково в Delphi 7 и Free Pascal)
 function TabDrawText(ADC: HDC; AText: PWideChar; ACount: Integer;
   var ARect: TRect; AFormat: UINT): Integer; stdcall;
-  external 'user32.dll' name 'DrawTextW';
+  external {$IFDEF UNIX}name 'unidewin_DrawTextW'{$ELSE}'user32.dll' name 'DrawTextW'{$ENDIF};
 function TabTextExtent(ADC: HDC; AText: PWideChar; ACount: Integer;
   var ASize: TTabSize): BOOL; stdcall;
-  external 'gdi32.dll' name 'GetTextExtentPoint32W';
+  external {$IFDEF UNIX}name 'unidewin_GetTextExtentPoint32W'{$ELSE}'gdi32.dll' name 'GetTextExtentPoint32W'{$ENDIF};
 function TabFileAttr(AFileName: PWideChar): DWORD; stdcall;
-  external 'kernel32.dll' name 'GetFileAttributesW';
+  external {$IFDEF UNIX}name 'unidewin_GetFileAttributesW'{$ELSE}'kernel32.dll' name 'GetFileAttributesW'{$ENDIF};
 function TabTrackMouseEvent(var AEvent: TTabTrackMouse): BOOL; stdcall;
-  external 'user32.dll' name 'TrackMouseEvent';
+  external {$IFDEF UNIX}name 'unidewin_TrackMouseEvent'{$ELSE}'user32.dll' name 'TrackMouseEvent'{$ENDIF};
 
 const
   TabTmeLeave = $00000002;

@@ -150,32 +150,32 @@ type
 
 function FfFindFirst(AFileName: PWideChar;
   var AFindData: TFarWin32FindDataW): THandle; stdcall;
-  external 'kernel32.dll' name 'FindFirstFileW';
+  external {$IFDEF UNIX}name 'unidewin_FindFirstFileW'{$ELSE}'kernel32.dll' name 'FindFirstFileW'{$ENDIF};
 function FfFindNext(AFindHandle: THandle;
   var AFindData: TFarWin32FindDataW): BOOL; stdcall;
-  external 'kernel32.dll' name 'FindNextFileW';
+  external {$IFDEF UNIX}name 'unidewin_FindNextFileW'{$ELSE}'kernel32.dll' name 'FindNextFileW'{$ENDIF};
 function FfFindClose(AFindHandle: THandle): BOOL; stdcall;
-  external 'kernel32.dll' name 'FindClose';
+  external {$IFDEF UNIX}name 'unidewin_FindClose'{$ELSE}'kernel32.dll' name 'FindClose'{$ENDIF};
 function FfCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ACreation, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
-  external 'kernel32.dll' name 'CreateFileW';
+  external {$IFDEF UNIX}name 'unidewin_CreateFileW'{$ELSE}'kernel32.dll' name 'CreateFileW'{$ENDIF};
 function FfReadFile(AFile: THandle; ABuffer: Pointer; AToRead: DWORD;
   var ARead: DWORD; AOverlapped: Pointer): BOOL; stdcall;
-  external 'kernel32.dll' name 'ReadFile';
+  external {$IFDEF UNIX}name 'unidewin_ReadFile'{$ELSE}'kernel32.dll' name 'ReadFile'{$ENDIF};
 function FfWideToMulti(ACodePage: UINT; AFlags: DWORD; AWide: PWideChar;
   AWideLen: Integer; AMulti: PAnsiChar; AMultiLen: Integer;
   ADefault: PAnsiChar; AUsedDefault: Pointer): Integer; stdcall;
-  external 'kernel32.dll' name 'WideCharToMultiByte';
+  external {$IFDEF UNIX}name 'unidewin_WideCharToMultiByte'{$ELSE}'kernel32.dll' name 'WideCharToMultiByte'{$ENDIF};
 function FfMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
-  external 'kernel32.dll' name 'MultiByteToWideChar';
+  external {$IFDEF UNIX}name 'unidewin_MultiByteToWideChar'{$ELSE}'kernel32.dll' name 'MultiByteToWideChar'{$ENDIF};
 function FfCharLower(AText: PWideChar): PWideChar; stdcall;
-  external 'user32.dll' name 'CharLowerW';
+  external {$IFDEF UNIX}name 'unidewin_CharLowerW'{$ELSE}'user32.dll' name 'CharLowerW'{$ENDIF};
 function FfCharUpper(AText: PWideChar): PWideChar; stdcall;
-  external 'user32.dll' name 'CharUpperW';
+  external {$IFDEF UNIX}name 'unidewin_CharUpperW'{$ELSE}'user32.dll' name 'CharUpperW'{$ENDIF};
 function FfIsAlphaNum(AChar: WideChar): BOOL; stdcall;
-  external 'user32.dll' name 'IsCharAlphaNumericW';
+  external {$IFDEF UNIX}name 'unidewin_IsCharAlphaNumericW'{$ELSE}'user32.dll' name 'IsCharAlphaNumericW'{$ENDIF};
 
 // ---------------------------------------------------------------------------
 //  Маски

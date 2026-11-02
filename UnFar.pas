@@ -1252,42 +1252,42 @@ type
 // описаны в Windows.pas Delphi 7
 function FarFindFirst(AFileName: PWideChar;
   var AFindData: TFarFindData): THandle; stdcall;
-  external 'kernel32.dll' name 'FindFirstFileW';
+  external {$IFDEF UNIX}name 'unidewin_FindFirstFileW'{$ELSE}'kernel32.dll' name 'FindFirstFileW'{$ENDIF};
 function FarFindNext(AFindHandle: THandle;
   var AFindData: TFarFindData): BOOL; stdcall;
-  external 'kernel32.dll' name 'FindNextFileW';
+  external {$IFDEF UNIX}name 'unidewin_FindNextFileW'{$ELSE}'kernel32.dll' name 'FindNextFileW'{$ENDIF};
 function FarGetAttributes(AFileName: PWideChar): DWORD; stdcall;
-  external 'kernel32.dll' name 'GetFileAttributesW';
+  external {$IFDEF UNIX}name 'unidewin_GetFileAttributesW'{$ELSE}'kernel32.dll' name 'GetFileAttributesW'{$ENDIF};
 function FarDiskFree(ADir: PWideChar; AFreeAvail, ATotalBytes,
   ATotalFree: TFarInt64Ptr): BOOL; stdcall;
-  external 'kernel32.dll' name 'GetDiskFreeSpaceExW';
+  external {$IFDEF UNIX}name 'unidewin_GetDiskFreeSpaceExW'{$ELSE}'kernel32.dll' name 'GetDiskFreeSpaceExW'{$ENDIF};
 function FarCompareStr(ALocale: LCID; AFlags: DWORD; AStr1: PWideChar;
   ALen1: Integer; AStr2: PWideChar; ALen2: Integer): Integer; stdcall;
-  external 'kernel32.dll' name 'CompareStringW';
+  external {$IFDEF UNIX}name 'unidewin_CompareStringW'{$ELSE}'kernel32.dll' name 'CompareStringW'{$ENDIF};
 function FarWideToMulti(ACodePage: UINT; AFlags: DWORD; AWide: PWideChar;
   AWideLen: Integer; AMulti: PAnsiChar; AMultiLen: Integer;
   ADefaultChar: PAnsiChar; var AUsedDefault: BOOL): Integer; stdcall;
-  external 'kernel32.dll' name 'WideCharToMultiByte';
+  external {$IFDEF UNIX}name 'unidewin_WideCharToMultiByte'{$ELSE}'kernel32.dll' name 'WideCharToMultiByte'{$ENDIF};
 function FarExtTextOut(ADC: HDC; AX, AY: Integer; AOptions: UINT;
   ARect: PRect; AStr: PWideChar; ACount: UINT; ADx: PInteger): BOOL; stdcall;
-  external 'gdi32.dll' name 'ExtTextOutW';
+  external {$IFDEF UNIX}name 'unidewin_ExtTextOutW'{$ELSE}'gdi32.dll' name 'ExtTextOutW'{$ENDIF};
 function FarAddFontResourceEx(AFileName: PAnsiChar; AFlags: DWORD;
   AReserved: Pointer): Integer; stdcall;
-  external 'gdi32.dll' name 'AddFontResourceExA';
+  external {$IFDEF UNIX}name 'unidewin_AddFontResourceExA'{$ELSE}'gdi32.dll' name 'AddFontResourceExA'{$ENDIF};
 function FarMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
-  external 'kernel32.dll' name 'MultiByteToWideChar';
+  external {$IFDEF UNIX}name 'unidewin_MultiByteToWideChar'{$ELSE}'kernel32.dll' name 'MultiByteToWideChar'{$ENDIF};
 function FarCreateDir(APath: PWideChar; ASecurity: Pointer): BOOL; stdcall;
-  external 'kernel32.dll' name 'CreateDirectoryW';
+  external {$IFDEF UNIX}name 'unidewin_CreateDirectoryW'{$ELSE}'kernel32.dll' name 'CreateDirectoryW'{$ENDIF};
 function FarShFileOperation(var AOp: TFarShFileOp): Integer; stdcall;
-  external 'shell32.dll' name 'SHFileOperationW';
+  external {$IFDEF UNIX}name 'unidewin_SHFileOperationW'{$ELSE}'shell32.dll' name 'SHFileOperationW'{$ENDIF};
 function FarMessageBox(AWnd: HWND; AText, ACaption: PWideChar;
-  AType: UINT): Integer; stdcall; external 'user32.dll' name 'MessageBoxW';
+  AType: UINT): Integer; stdcall; external {$IFDEF UNIX}name 'unidewin_MessageBoxW'{$ELSE}'user32.dll' name 'MessageBoxW'{$ENDIF};
 function FarGetAncestor(AWnd: HWND; AFlags: UINT): HWND; stdcall;
-  external 'user32.dll' name 'GetAncestor';
+  external {$IFDEF UNIX}name 'unidewin_GetAncestor'{$ELSE}'user32.dll' name 'GetAncestor'{$ENDIF};
 // Указатели, а не const: так одинаково в Delphi 7 и Free Pascal
 function FarCompareFileTime(AFirst, ASecond: PFileTime): Longint; stdcall;
-  external 'kernel32.dll' name 'CompareFileTime';
+  external {$IFDEF UNIX}name 'unidewin_CompareFileTime'{$ELSE}'kernel32.dll' name 'CompareFileTime'{$ENDIF};
 
 // Сравнение времён файлов (-1, 0, 1); параметры - копии, их адреса - для
 // CompareFileTime
@@ -1298,41 +1298,41 @@ end;
 
 function FarFindFirstChange(APath: PWideChar; AWatchSubtree: BOOL;
   AFilter: DWORD): THandle; stdcall;
-  external 'kernel32.dll' name 'FindFirstChangeNotificationW';
+  external {$IFDEF UNIX}name 'unidewin_FindFirstChangeNotificationW'{$ELSE}'kernel32.dll' name 'FindFirstChangeNotificationW'{$ENDIF};
 function FarFindNextChange(AHandle: THandle): BOOL; stdcall;
-  external 'kernel32.dll' name 'FindNextChangeNotification';
+  external {$IFDEF UNIX}name 'unidewin_FindNextChangeNotification'{$ELSE}'kernel32.dll' name 'FindNextChangeNotification'{$ENDIF};
 function FarFindCloseChange(AHandle: THandle): BOOL; stdcall;
-  external 'kernel32.dll' name 'FindCloseChangeNotification';
+  external {$IFDEF UNIX}name 'unidewin_FindCloseChangeNotification'{$ELSE}'kernel32.dll' name 'FindCloseChangeNotification'{$ENDIF};
 function FarGetDriveType(ARoot: PWideChar): UINT; stdcall;
-  external 'kernel32.dll' name 'GetDriveTypeW';
+  external {$IFDEF UNIX}name 'unidewin_GetDriveTypeW'{$ELSE}'kernel32.dll' name 'GetDriveTypeW'{$ENDIF};
 function FarGetVolumeInfo(ARoot, AVolumeName: PWideChar; AVolumeNameSize: DWORD;
   ASerial, AMaxComponent, AFsFlags: Pointer; AFsName: PWideChar;
   AFsNameSize: DWORD): BOOL; stdcall;
-  external 'kernel32.dll' name 'GetVolumeInformationW';
+  external {$IFDEF UNIX}name 'unidewin_GetVolumeInformationW'{$ELSE}'kernel32.dll' name 'GetVolumeInformationW'{$ENDIF};
 function FarSetErrorMode(AMode: UINT): UINT; stdcall;
-  external 'kernel32.dll' name 'SetErrorMode';
+  external {$IFDEF UNIX}name 'unidewin_SetErrorMode'{$ELSE}'kernel32.dll' name 'SetErrorMode'{$ENDIF};
 function FarGetShortPath(ALongPath, AShortPath: PWideChar;
   ABufferLen: DWORD): DWORD; stdcall;
-  external 'kernel32.dll' name 'GetShortPathNameW';
+  external {$IFDEF UNIX}name 'unidewin_GetShortPathNameW'{$ELSE}'kernel32.dll' name 'GetShortPathNameW'{$ENDIF};
 // Командная строка
 function FarGetEnvVar(AName, ABuffer: PWideChar; ASize: DWORD): DWORD;
-  stdcall; external 'kernel32.dll' name 'GetEnvironmentVariableW';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_GetEnvironmentVariableW'{$ELSE}'kernel32.dll' name 'GetEnvironmentVariableW'{$ENDIF};
 function FarGetFullPath(AFileName: PWideChar; ABufferLen: DWORD;
   ABuffer: PWideChar; AFilePart: Pointer): DWORD; stdcall;
-  external 'kernel32.dll' name 'GetFullPathNameW';
+  external {$IFDEF UNIX}name 'unidewin_GetFullPathNameW'{$ELSE}'kernel32.dll' name 'GetFullPathNameW'{$ENDIF};
 function FarGetTempPath(ABufferLen: DWORD; ABuffer: PWideChar): DWORD;
-  stdcall; external 'kernel32.dll' name 'GetTempPathW';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_GetTempPathW'{$ELSE}'kernel32.dll' name 'GetTempPathW'{$ENDIF};
 function FarShellExecute(AWnd: HWND; AOperation, AFile, AParameters,
   ADirectory: PWideChar; AShowCmd: Integer): THandle; stdcall;
-  external 'shell32.dll' name 'ShellExecuteW';
+  external {$IFDEF UNIX}name 'unidewin_ShellExecuteW'{$ELSE}'shell32.dll' name 'ShellExecuteW'{$ENDIF};
 function FarCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ADisposition, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
-  external 'kernel32.dll' name 'CreateFileW';
+  external {$IFDEF UNIX}name 'unidewin_CreateFileW'{$ELSE}'kernel32.dll' name 'CreateFileW'{$ENDIF};
 function FarMoveFileEx(AExisting, ANew: PWideChar; AFlags: DWORD): BOOL;
-  stdcall; external 'kernel32.dll' name 'MoveFileExW';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_MoveFileExW'{$ELSE}'kernel32.dll' name 'MoveFileExW'{$ENDIF};
 function FarDeleteFile(AFileName: PWideChar): BOOL; stdcall;
-  external 'kernel32.dll' name 'DeleteFileW';
+  external {$IFDEF UNIX}name 'unidewin_DeleteFileW'{$ELSE}'kernel32.dll' name 'DeleteFileW'{$ENDIF};
 
 var
   FarFontTried: Boolean = False;
@@ -2306,20 +2306,20 @@ const
   FarOfnNoChangeDir = $0008;
 
 function FarChooseColorW(var AChoose: TFarChooseColor): BOOL; stdcall;
-  external 'comdlg32.dll' name 'ChooseColorW';
+  external {$IFDEF UNIX}name 'unidewin_ChooseColorW'{$ELSE}'comdlg32.dll' name 'ChooseColorW'{$ENDIF};
 function FarGetOpenFileNameW(var AOpen: TFarOpenFileName): BOOL; stdcall;
-  external 'comdlg32.dll' name 'GetOpenFileNameW';
+  external {$IFDEF UNIX}name 'unidewin_GetOpenFileNameW'{$ELSE}'comdlg32.dll' name 'GetOpenFileNameW'{$ENDIF};
 function FarEnumChildWindows(AParent: HWND; AFunc: Pointer;
-  AParam: LPARAM): BOOL; stdcall; external 'user32.dll' name 'EnumChildWindows';
+  AParam: LPARAM): BOOL; stdcall; external {$IFDEF UNIX}name 'unidewin_EnumChildWindows'{$ELSE}'user32.dll' name 'EnumChildWindows'{$ENDIF};
 function FarGetClassNameW(AWnd: HWND; AName: PWideChar;
-  AMax: Integer): Integer; stdcall; external 'user32.dll' name 'GetClassNameW';
+  AMax: Integer): Integer; stdcall; external {$IFDEF UNIX}name 'unidewin_GetClassNameW'{$ELSE}'user32.dll' name 'GetClassNameW'{$ENDIF};
 function FarGetWindowTextW(AWnd: HWND; AText: PWideChar;
-  AMax: Integer): Integer; stdcall; external 'user32.dll' name 'GetWindowTextW';
+  AMax: Integer): Integer; stdcall; external {$IFDEF UNIX}name 'unidewin_GetWindowTextW'{$ELSE}'user32.dll' name 'GetWindowTextW'{$ENDIF};
 function FarSetWindowTextW(AWnd: HWND; AText: PWideChar): BOOL; stdcall;
-  external 'user32.dll' name 'SetWindowTextW';
+  external {$IFDEF UNIX}name 'unidewin_SetWindowTextW'{$ELSE}'user32.dll' name 'SetWindowTextW'{$ENDIF};
 function FarDrawTextW(ADC: HDC; AText: PWideChar; ACount: Integer;
   ARect: PRect; AFormat: UINT): Integer; stdcall;
-  external 'user32.dll' name 'DrawTextW';
+  external {$IFDEF UNIX}name 'unidewin_DrawTextW'{$ELSE}'user32.dll' name 'DrawTextW'{$ENDIF};
 
 var
   // Цвета окна выбора цвета (на время ChooseColor)

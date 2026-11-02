@@ -209,7 +209,7 @@ uses
 function UiAlphaBlend(ADestDC: HDC; ADestX, ADestY, ADestW, ADestH: Integer;
   ASrcDC: HDC; ASrcX, ASrcY, ASrcW, ASrcH: Integer;
   ABlend: TBlendFunction): BOOL; stdcall;
-  external 'msimg32.dll' name 'AlphaBlend';
+  external {$IFDEF UNIX}name 'unidewin_AlphaBlend'{$ELSE}'msimg32.dll' name 'AlphaBlend'{$ENDIF};
 {$ENDIF}
 
 const

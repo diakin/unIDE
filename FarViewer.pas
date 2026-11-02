@@ -156,12 +156,12 @@ const
 function VwCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ACreation, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
-  external 'kernel32.dll' name 'CreateFileW';
+  external {$IFDEF UNIX}name 'unidewin_CreateFileW'{$ELSE}'kernel32.dll' name 'CreateFileW'{$ENDIF};
 function VwMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
-  external 'kernel32.dll' name 'MultiByteToWideChar';
+  external {$IFDEF UNIX}name 'unidewin_MultiByteToWideChar'{$ELSE}'kernel32.dll' name 'MultiByteToWideChar'{$ENDIF};
 function VwCharLowerBuff(AText: PWideChar; ALength: DWORD): DWORD; stdcall;
-  external 'user32.dll' name 'CharLowerBuffW';
+  external {$IFDEF UNIX}name 'unidewin_CharLowerBuffW'{$ELSE}'user32.dll' name 'CharLowerBuffW'{$ENDIF};
 
 var
   // Строчные буквы для поиска без учёта регистра (строится один раз)

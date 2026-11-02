@@ -1,0 +1,26 @@
+unIDE: сборка под Linux (gtk2), этап 3.1 плана переноса
+
+Модули-заменители WinAPI (только для Linux, в путях режима Linux64 в
+lazarus/SyntaxHLClaude.lpi). Модули unIDE свои uses не меняют.
+
+  windows.pas, messages.pas  - объявления из FPC RTL (rtl/win/wininc),
+                               копии в wininc/*.inc
+  richedit, commctrl, shellapi, activex, wininet .pas
+                             - из FPC packages/winunits-base
+  winimpl.pas                - реализация используемых вызовов WinAPI:
+                               через LCLIntf (написано руками) и
+                               заглушки winimpl_auto.inc (ноль / пусто)
+
+Все вызовы WinAPI (и свои external 'x.dll' в модулях unIDE под
+{$IFDEF UNIX}) ведут на символы unidewin_<Имя>. Компоновка умная
+(-CX -XX): нужны только символы, которые программа вызывает.
+
+Пересоздать объявления (FPC 3.2.2, лицензия LGPL с исключением для
+статической компоновки):
+  python3 genwin.py <путь к исходникам FPC>
+
+Новые вызовы WinAPI в коде: компоновщик пишет undefined reference to
+`unidewin_X'. Список таких строк - в файл, затем
+  python3 genimpl.py <файл со списком> <папка исходников unIDE (UTF-8, laz)>
+дописывает заглушки в winimpl_auto.inc. Нужное поведение - руками в
+winimpl.pas (там функция не попадёт в заглушки).

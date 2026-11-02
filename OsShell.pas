@@ -91,9 +91,9 @@ type
   end;
 
 function ShellFileOperationW(var AOp: TShellFileOpW): Integer; stdcall;
-  external 'shell32.dll' name 'SHFileOperationW';
+  external {$IFDEF UNIX}name 'unidewin_SHFileOperationW'{$ELSE}'shell32.dll' name 'SHFileOperationW'{$ENDIF};
 function ShellGetFileAttributesW(AName: PWideChar): DWORD; stdcall;
-  external 'kernel32.dll' name 'GetFileAttributesW';
+  external {$IFDEF UNIX}name 'unidewin_GetFileAttributesW'{$ELSE}'kernel32.dll' name 'GetFileAttributesW'{$ENDIF};
 
 function OpenCode(AOwner: THandle; const AFile, AParams, ADir: string): Integer;
 var

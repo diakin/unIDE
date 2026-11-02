@@ -102,19 +102,19 @@ type
 
 function CryptAcquireContext(var phProv: HCRYPTPROV; pszContainer,
   pszProvider: PChar; dwProvType, dwFlags: DWORD): BOOL; stdcall;
-  external advapi32 name 'CryptAcquireContextA';
+  external {$IFDEF UNIX}name 'unidewin_CryptAcquireContextA'{$ELSE}advapi32 name 'CryptAcquireContextA'{$ENDIF};
 function CryptReleaseContext(hProv: HCRYPTPROV; dwFlags: DWORD): BOOL;
-  stdcall; external advapi32 name 'CryptReleaseContext';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_CryptReleaseContext'{$ELSE}advapi32 name 'CryptReleaseContext'{$ENDIF};
 function CryptCreateHash(hProv: HCRYPTPROV; Algid: Cardinal; hKey: Cardinal;
   dwFlags: DWORD; var phHash: HCRYPTHASH): BOOL; stdcall;
-  external advapi32 name 'CryptCreateHash';
+  external {$IFDEF UNIX}name 'unidewin_CryptCreateHash'{$ELSE}advapi32 name 'CryptCreateHash'{$ENDIF};
 function CryptHashData(hHash: HCRYPTHASH; pbData: Pointer; dwDataLen,
-  dwFlags: DWORD): BOOL; stdcall; external advapi32 name 'CryptHashData';
+  dwFlags: DWORD): BOOL; stdcall; external {$IFDEF UNIX}name 'unidewin_CryptHashData'{$ELSE}advapi32 name 'CryptHashData'{$ENDIF};
 function CryptGetHashParam(hHash: HCRYPTHASH; dwParam: DWORD; pbData: Pointer;
   var pdwDataLen: DWORD; dwFlags: DWORD): BOOL; stdcall;
-  external advapi32 name 'CryptGetHashParam';
+  external {$IFDEF UNIX}name 'unidewin_CryptGetHashParam'{$ELSE}advapi32 name 'CryptGetHashParam'{$ENDIF};
 function CryptDestroyHash(hHash: HCRYPTHASH): BOOL; stdcall;
-  external advapi32 name 'CryptDestroyHash';
+  external {$IFDEF UNIX}name 'unidewin_CryptDestroyHash'{$ELSE}advapi32 name 'CryptDestroyHash'{$ENDIF};
 
 const
   RosBEAppPathKey = 'Software\Microsoft\Windows\CurrentVersion\App Paths\' +

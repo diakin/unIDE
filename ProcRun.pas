@@ -129,9 +129,9 @@ function ProcCreateProcessW(AAppName, ACmdLine: PWideChar;
   AProcAttr, AThreadAttr: Pointer; AInherit: BOOL; AFlags: DWORD;
   AEnv: Pointer; ADir: PWideChar; var AStartup: TStartupInfo;
   var AInfo: TProcessInformation): BOOL; stdcall;
-  external 'kernel32.dll' name 'CreateProcessW';
+  external {$IFDEF UNIX}name 'unidewin_CreateProcessW'{$ELSE}'kernel32.dll' name 'CreateProcessW'{$ENDIF};
 function ProcSetHandleInfo(AHandle: THandle; AMask, AFlags: DWORD): BOOL;
-  stdcall; external 'kernel32.dll' name 'SetHandleInformation';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_SetHandleInformation'{$ELSE}'kernel32.dll' name 'SetHandleInformation'{$ENDIF};
 
 const
   ProcHandleFlagInherit = 1;

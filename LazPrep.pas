@@ -492,7 +492,9 @@ begin
         // Вставки - только ASCII: литерал этого модуля в Delphi-сборке в
         // CP1251, в Lazarus-сборке в UTF-8, а .lpr пишется в UTF-8
         Lines.Insert(LineIdx + 1, '  Interfaces, // LCL widgetset (added by LazPrep)');
-        Inc(LineIdx, 2);
+        // Linux: потоки RTL - модулем cthreads, первым в uses
+        Lines.Insert(LineIdx + 1, '  {$IFDEF UNIX} cthreads, {$ENDIF} // threads (added by LazPrep)');
+        Inc(LineIdx, 3);
         Continue;
       end;
       if InUses then

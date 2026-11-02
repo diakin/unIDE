@@ -142,10 +142,10 @@ type
 
 function TrackedGetAttrEx(AName: PWideChar; ALevel: Integer;
   var AData: TTrackedAttrData): BOOL; stdcall;
-  external 'kernel32.dll' name 'GetFileAttributesExW';
+  external {$IFDEF UNIX}name 'unidewin_GetFileAttributesExW'{$ELSE}'kernel32.dll' name 'GetFileAttributesExW'{$ENDIF};
 function TrackedCreateFileW(AName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ACreation, AFlags: DWORD; ATemplate: THandle): THandle;
-  stdcall; external 'kernel32.dll' name 'CreateFileW';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_CreateFileW'{$ELSE}'kernel32.dll' name 'CreateFileW'{$ENDIF};
 {$ENDIF}
 
 function TrackedInfo(const APath: WideString): TTrackedFileInfo;

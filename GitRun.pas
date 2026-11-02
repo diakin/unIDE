@@ -118,16 +118,16 @@ const
   GitPipeSize = 1048576;   // буфер трубы вывода git (CreatePipe)
 
 function GitGetEnvStrings: PWideChar; stdcall;
-  external 'kernel32.dll' name 'GetEnvironmentStringsW';
+  external {$IFDEF UNIX}name 'unidewin_GetEnvironmentStringsW'{$ELSE}'kernel32.dll' name 'GetEnvironmentStringsW'{$ENDIF};
 function GitFreeEnvStrings(AEnv: PWideChar): BOOL; stdcall;
-  external 'kernel32.dll' name 'FreeEnvironmentStringsW';
+  external {$IFDEF UNIX}name 'unidewin_FreeEnvironmentStringsW'{$ELSE}'kernel32.dll' name 'FreeEnvironmentStringsW'{$ENDIF};
 function GitMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
-  external 'kernel32.dll' name 'MultiByteToWideChar';
+  external {$IFDEF UNIX}name 'unidewin_MultiByteToWideChar'{$ELSE}'kernel32.dll' name 'MultiByteToWideChar'{$ENDIF};
 function GitWideToMulti(ACodePage: UINT; AFlags: DWORD; AWide: PWideChar;
   AWideLen: Integer; AMulti: PAnsiChar; AMultiLen: Integer;
   ADefault: PAnsiChar; AUsedDefault: Pointer): Integer; stdcall;
-  external 'kernel32.dll' name 'WideCharToMultiByte';
+  external {$IFDEF UNIX}name 'unidewin_WideCharToMultiByte'{$ELSE}'kernel32.dll' name 'WideCharToMultiByte'{$ENDIF};
 
 const
   GitCpUtf8 = 65001;

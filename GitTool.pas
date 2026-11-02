@@ -105,22 +105,22 @@ const
 
 function GitRegOpenKeyEx(AKey: HKEY; ASubKey: PWideChar; AOptions: DWORD;
   ADesired: DWORD; var AResult: HKEY): LongInt; stdcall;
-  external 'advapi32.dll' name 'RegOpenKeyExW';
+  external {$IFDEF UNIX}name 'unidewin_RegOpenKeyExW'{$ELSE}'advapi32.dll' name 'RegOpenKeyExW'{$ENDIF};
 function GitRegQueryValueEx(AKey: HKEY; AValueName: PWideChar;
   AReserved: Pointer; AType: PDWORD; AData: Pointer;
   ADataSize: PDWORD): LongInt; stdcall;
-  external 'advapi32.dll' name 'RegQueryValueExW';
+  external {$IFDEF UNIX}name 'unidewin_RegQueryValueExW'{$ELSE}'advapi32.dll' name 'RegQueryValueExW'{$ENDIF};
 function GitRegCloseKey(AKey: HKEY): LongInt; stdcall;
-  external 'advapi32.dll' name 'RegCloseKey';
+  external {$IFDEF UNIX}name 'unidewin_RegCloseKey'{$ELSE}'advapi32.dll' name 'RegCloseKey'{$ENDIF};
 function GitGetFileVersionInfoSize(AFileName: PWideChar;
   var AHandle: DWORD): DWORD; stdcall;
-  external 'version.dll' name 'GetFileVersionInfoSizeW';
+  external {$IFDEF UNIX}name 'unidewin_GetFileVersionInfoSizeW'{$ELSE}'version.dll' name 'GetFileVersionInfoSizeW'{$ENDIF};
 function GitGetFileVersionInfo(AFileName: PWideChar; AHandle, ASize: DWORD;
   AData: Pointer): BOOL; stdcall;
-  external 'version.dll' name 'GetFileVersionInfoW';
+  external {$IFDEF UNIX}name 'unidewin_GetFileVersionInfoW'{$ELSE}'version.dll' name 'GetFileVersionInfoW'{$ENDIF};
 function GitVerQueryValue(ABlock: Pointer; ASubBlock: PWideChar;
   var ABuffer: Pointer; var ALength: UINT): BOOL; stdcall;
-  external 'version.dll' name 'VerQueryValueW';
+  external {$IFDEF UNIX}name 'unidewin_VerQueryValueW'{$ELSE}'version.dll' name 'VerQueryValueW'{$ENDIF};
 
 type
   // VS_FIXEDFILEINFO
@@ -134,7 +134,7 @@ type
   PGitFixedFileInfo = ^TGitFixedFileInfo;
 function GitGetEnv(AName: PWideChar; ABuffer: PWideChar;
   ASize: DWORD): DWORD; stdcall;
-  external 'kernel32.dll' name 'GetEnvironmentVariableW';
+  external {$IFDEF UNIX}name 'unidewin_GetEnvironmentVariableW'{$ELSE}'kernel32.dll' name 'GetEnvironmentVariableW'{$ENDIF};
 
 function GitAppDir: WideString;
 begin

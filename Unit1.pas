@@ -6,7 +6,7 @@ uses
   Windows, Messages, SysUtils, Variants, Classes, Graphics, Controls, Forms,
   Dialogs, StdCtrls, ComCtrls, StrUtils, Menus, ExtCtrls, RichEdit, {$IFNDEF FPC} ColorGrd, {$ENDIF}
   Buttons, IniFiles, IniCp, ShellAPI, CheckLst, Grids, Clipbrd, FileCtrl,
-  {$IFDEF FPC} FileCtrlLcl, LCLProc, RichMemo, AppMsgHook, {$ENDIF}
+  {$IFDEF FPC} FileCtrlLcl, LCLProc, {$IFDEF MSWINDOWS} RichMemo, {$ENDIF} AppMsgHook, {$ENDIF}
   FormDesigner,   // визуальный конструктор форм
   DsgClasses,     // классы палитры для конструктора и инспектора
   DsgPalette,     // окно палитры компонентов
@@ -4671,13 +4671,13 @@ const
   // Объявляем сами, чтобы не зависеть от того, есть ли функция в Windows.pas D7.
 function GetTextExtentExPointApi(DC: HDC; Str: PChar; Count, MaxExtent: Integer;
                                  Fit: PInteger; Dx: PInteger; var Size: TSize): BOOL; stdcall;
-external 'gdi32.dll' name 'GetTextExtentExPointA';
+external {$IFDEF UNIX}name 'unidewin_GetTextExtentExPointA'{$ELSE}'gdi32.dll' name 'GetTextExtentExPointA'{$ENDIF};
 
 // Экранные координаты пункта главного меню. Нужны, чтобы поставить окно
 // прямо под нужным пунктом, имитируя раскрытие меню.
 function GetMenuItemRectApi(Wnd: HWND; Menu: HMENU; Item: UINT;
                             var ItemRect: TRect): BOOL; stdcall;
-external 'user32.dll' name 'GetMenuItemRect';
+external {$IFDEF UNIX}name 'unidewin_GetMenuItemRect'{$ELSE}'user32.dll' name 'GetMenuItemRect'{$ENDIF};
 // clPurple = $00D700D7;  // Фиолетовый цвет
 
 // Перехват уведомлений на уровне формы
@@ -7270,7 +7270,7 @@ begin
 
   BgKey := '';
   FgKey := '';
-  if Ctrl is {$IFDEF FPC}TCustomRichMemo{$ELSE}TCustomRichEdit{$ENDIF} then
+  if Ctrl is {$IFDEF FPC}{$IFDEF MSWINDOWS}TCustomRichMemo{$ELSE}TRtfViewEdit{$ENDIF}{$ELSE}TCustomRichEdit{$ENDIF} then
     BgKey := 'Ide.LogBG'
   else if (Ctrl is TCustomTreeView) or (Ctrl is TCustomListView) or
           (Ctrl is TCustomListBox) or (Ctrl is TCustomGrid) then
@@ -71734,9 +71734,13 @@ var
   begin
     if FindFirst(AFile, faAnyFile, SR) = 0 then
     begin
+      {$IFDEF MSWINDOWS}
       Result := IntToHex(SR.FindData.ftLastWriteTime.dwHighDateTime, 8) +
         IntToHex(SR.FindData.ftLastWriteTime.dwLowDateTime, 8) + ':' +
         IntToStr(SR.Size);
+      {$ELSE}
+      Result := IntToHex(SR.Time, 16) + ':' + IntToStr(SR.Size);
+      {$ENDIF}
       FindClose(SR);
     end
     else

@@ -303,7 +303,7 @@ end;
 // Своё описание: есть ли InSendMessageEx в Windows.pas Delphi 7 - не
 // проверено, а в user32 она с Windows 2000
 function InSendMessageExApi(lpReserved: Pointer): DWORD; stdcall;
-  external user32 name 'InSendMessageEx';
+  external {$IFDEF UNIX}name 'unidewin_InSendMessageEx'{$ELSE}user32 name 'InSendMessageEx'{$ENDIF};
 
 function MsgShortName(AMsgId: Cardinal): string;
 begin

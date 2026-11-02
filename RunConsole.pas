@@ -79,21 +79,21 @@ type
   TAttachConsole = function(APid: DWORD): BOOL; stdcall;
 
 function RcCreateJobObject(lpJobAttributes: Pointer; lpName: PChar): THandle;
-  stdcall; external kernel32 name 'CreateJobObjectA';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_CreateJobObjectA'{$ELSE}kernel32 name 'CreateJobObjectA'{$ENDIF};
 function RcAssignProcessToJobObject(hJob, hProcess: THandle): BOOL;
-  stdcall; external kernel32 name 'AssignProcessToJobObject';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_AssignProcessToJobObject'{$ELSE}kernel32 name 'AssignProcessToJobObject'{$ENDIF};
 function RcTerminateJobObject(hJob: THandle; uExitCode: UINT): BOOL;
-  stdcall; external kernel32 name 'TerminateJobObject';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_TerminateJobObject'{$ELSE}kernel32 name 'TerminateJobObject'{$ENDIF};
 function RcQueryInformationJobObject(hJob: THandle; JobInfoClass: Integer;
   lpJobInfo: Pointer; cbJobInfoLength: DWORD; lpReturnLength: PDWORD): BOOL;
-  stdcall; external kernel32 name 'QueryInformationJobObject';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_QueryInformationJobObject'{$ELSE}kernel32 name 'QueryInformationJobObject'{$ENDIF};
 
 // В Windows.pas Delphi 7 параметр буфера у ReadConsoleOutputCharacterW -
 // PAnsiChar, а функция пишет UTF-16: своё объявление с PWideChar
 function RcReadConsoleOutputCharacterW(hConsoleOutput: THandle;
   lpCharacter: PWideChar; nLength: DWORD; dwReadCoord: TCoord;
   var lpNumberOfCharsRead: DWORD): BOOL;
-  stdcall; external kernel32 name 'ReadConsoleOutputCharacterW';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_ReadConsoleOutputCharacterW'{$ELSE}kernel32 name 'ReadConsoleOutputCharacterW'{$ENDIF};
 
 var
   AttachConsoleFn: TAttachConsole = nil;

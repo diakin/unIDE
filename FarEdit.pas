@@ -154,25 +154,25 @@ var
 
 function EdMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
-  external 'kernel32.dll' name 'MultiByteToWideChar';
+  external {$IFDEF UNIX}name 'unidewin_MultiByteToWideChar'{$ELSE}'kernel32.dll' name 'MultiByteToWideChar'{$ENDIF};
 function EdWideToMulti(ACodePage: UINT; AFlags: DWORD; AWide: PWideChar;
   AWideLen: Integer; AMulti: PAnsiChar; AMultiLen: Integer;
   ADefault: PAnsiChar; AUsedDefault: Pointer): Integer; stdcall;
-  external 'kernel32.dll' name 'WideCharToMultiByte';
+  external {$IFDEF UNIX}name 'unidewin_WideCharToMultiByte'{$ELSE}'kernel32.dll' name 'WideCharToMultiByte'{$ENDIF};
 function EdCreateFile(AFileName: PWideChar; AAccess, AShare: DWORD;
   ASecurity: Pointer; ACreation, AFlags: DWORD;
   ATemplate: THandle): THandle; stdcall;
-  external 'kernel32.dll' name 'CreateFileW';
+  external {$IFDEF UNIX}name 'unidewin_CreateFileW'{$ELSE}'kernel32.dll' name 'CreateFileW'{$ENDIF};
 function EdOpenClipboard(AWnd: HWND): BOOL; stdcall;
-  external 'user32.dll' name 'OpenClipboard';
+  external {$IFDEF UNIX}name 'unidewin_OpenClipboard'{$ELSE}'user32.dll' name 'OpenClipboard'{$ENDIF};
 function EdCloseClipboard: BOOL; stdcall;
-  external 'user32.dll' name 'CloseClipboard';
+  external {$IFDEF UNIX}name 'unidewin_CloseClipboard'{$ELSE}'user32.dll' name 'CloseClipboard'{$ENDIF};
 function EdGetClipboardData(AFormat: UINT): THandle; stdcall;
-  external 'user32.dll' name 'GetClipboardData';
+  external {$IFDEF UNIX}name 'unidewin_GetClipboardData'{$ELSE}'user32.dll' name 'GetClipboardData'{$ENDIF};
 function EdGlobalLock(AMem: THandle): Pointer; stdcall;
-  external 'kernel32.dll' name 'GlobalLock';
+  external {$IFDEF UNIX}name 'unidewin_GlobalLock'{$ELSE}'kernel32.dll' name 'GlobalLock'{$ENDIF};
 function EdGlobalUnlock(AMem: THandle): BOOL; stdcall;
-  external 'kernel32.dll' name 'GlobalUnlock';
+  external {$IFDEF UNIX}name 'unidewin_GlobalUnlock'{$ELSE}'kernel32.dll' name 'GlobalUnlock'{$ENDIF};
 
 function FarEditEncodingName(AEncoding: TFarEditEncoding): string;
 begin

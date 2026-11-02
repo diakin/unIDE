@@ -77,37 +77,37 @@ const
 
 function GhInternetOpen(AAgent: PWideChar; AAccessType: DWORD;
   AProxy, AProxyBypass: PWideChar; AFlags: DWORD): Pointer; stdcall;
-  external 'wininet.dll' name 'InternetOpenW';
+  external {$IFDEF UNIX}name 'unidewin_InternetOpenW'{$ELSE}'wininet.dll' name 'InternetOpenW'{$ENDIF};
 function GhInternetOpenUrl(ASession: Pointer; AUrl: PWideChar;
   AHeaders: PWideChar; AHeadersLength: DWORD; AFlags: DWORD;
   AContext: DWORD): Pointer; stdcall;
-  external 'wininet.dll' name 'InternetOpenUrlW';
+  external {$IFDEF UNIX}name 'unidewin_InternetOpenUrlW'{$ELSE}'wininet.dll' name 'InternetOpenUrlW'{$ENDIF};
 function GhInternetReadFile(AFile: Pointer; ABuffer: Pointer;
   AToRead: DWORD; var ARead: DWORD): BOOL; stdcall;
-  external 'wininet.dll' name 'InternetReadFile';
+  external {$IFDEF UNIX}name 'unidewin_InternetReadFile'{$ELSE}'wininet.dll' name 'InternetReadFile'{$ENDIF};
 function GhInternetCloseHandle(AHandle: Pointer): BOOL; stdcall;
-  external 'wininet.dll' name 'InternetCloseHandle';
+  external {$IFDEF UNIX}name 'unidewin_InternetCloseHandle'{$ELSE}'wininet.dll' name 'InternetCloseHandle'{$ENDIF};
 function GhInternetSetOption(AHandle: Pointer; AOption: DWORD;
   ABuffer: Pointer; ABufferLength: DWORD): BOOL; stdcall;
-  external 'wininet.dll' name 'InternetSetOptionW';
+  external {$IFDEF UNIX}name 'unidewin_InternetSetOptionW'{$ELSE}'wininet.dll' name 'InternetSetOptionW'{$ENDIF};
 function GhHttpQueryInfo(ARequest: Pointer; AInfoLevel: DWORD;
   ABuffer: Pointer; var ABufferLength: DWORD; var AIndex: DWORD): BOOL;
-  stdcall; external 'wininet.dll' name 'HttpQueryInfoW';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_HttpQueryInfoW'{$ELSE}'wininet.dll' name 'HttpQueryInfoW'{$ENDIF};
 function GhInternetConnect(ASession: Pointer; AServer: PWideChar;
   APort: Word; AUser, APassword: PWideChar; AService, AFlags: DWORD;
   AContext: DWORD): Pointer; stdcall;
-  external 'wininet.dll' name 'InternetConnectW';
+  external {$IFDEF UNIX}name 'unidewin_InternetConnectW'{$ELSE}'wininet.dll' name 'InternetConnectW'{$ENDIF};
 function GhHttpOpenRequest(AConnect: Pointer; AVerb, AObject,
   AVersion, AReferrer: PWideChar; AAcceptTypes: Pointer; AFlags: DWORD;
   AContext: DWORD): Pointer; stdcall;
-  external 'wininet.dll' name 'HttpOpenRequestW';
+  external {$IFDEF UNIX}name 'unidewin_HttpOpenRequestW'{$ELSE}'wininet.dll' name 'HttpOpenRequestW'{$ENDIF};
 function GhHttpSendRequest(ARequest: Pointer; AHeaders: PWideChar;
   AHeadersLength: DWORD; AOptional: Pointer; AOptionalLength: DWORD): BOOL;
-  stdcall; external 'wininet.dll' name 'HttpSendRequestW';
+  stdcall; external {$IFDEF UNIX}name 'unidewin_HttpSendRequestW'{$ELSE}'wininet.dll' name 'HttpSendRequestW'{$ENDIF};
 
 function GhMultiToWide(ACodePage: UINT; AFlags: DWORD; AMulti: PAnsiChar;
   AMultiLen: Integer; AWide: PWideChar; AWideLen: Integer): Integer; stdcall;
-  external 'kernel32.dll' name 'MultiByteToWideChar';
+  external {$IFDEF UNIX}name 'unidewin_MultiByteToWideChar'{$ELSE}'kernel32.dll' name 'MultiByteToWideChar'{$ENDIF};
 
 function GhFromUtf8(const AText: string): WideString;
 var

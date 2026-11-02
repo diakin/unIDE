@@ -348,9 +348,9 @@ const
   DbgCtxInteger = $00010002;  // WOW64_CONTEXT_INTEGER
 
 function DbgGetContext(AThread: THandle; var ACtx: TDbgContext): BOOL; stdcall;
-  external kernel32 name 'Wow64GetThreadContext';
+  external {$IFDEF UNIX}name 'unidewin_Wow64GetThreadContext'{$ELSE}kernel32 name 'Wow64GetThreadContext'{$ENDIF};
 function DbgSetContext(AThread: THandle; const ACtx: TDbgContext): BOOL; stdcall;
-  external kernel32 name 'Wow64SetThreadContext';
+  external {$IFDEF UNIX}name 'unidewin_Wow64SetThreadContext'{$ELSE}kernel32 name 'Wow64SetThreadContext'{$ENDIF};
 {$ELSE}
 type
   TDbgContext = TContext;
@@ -471,22 +471,22 @@ type
 
 function DbgWaitForDebugEvent(var AEvent: TDbgDebugEvent;
   AMilliseconds: DWORD): BOOL; stdcall;
-  external kernel32 name 'WaitForDebugEvent';
+  external {$IFDEF UNIX}name 'unidewin_WaitForDebugEvent'{$ELSE}kernel32 name 'WaitForDebugEvent'{$ENDIF};
 function DbgContinueDebugEvent(AProcessId, AThreadId,
   AStatus: DWORD): BOOL; stdcall;
-  external kernel32 name 'ContinueDebugEvent';
+  external {$IFDEF UNIX}name 'unidewin_ContinueDebugEvent'{$ELSE}kernel32 name 'ContinueDebugEvent'{$ENDIF};
 function DbgReadMemory(AProcess: THandle; AAddress: Pointer;
   ABuffer: Pointer; ASize: DWORD; var ADone: DWORD): BOOL; stdcall;
-  external kernel32 name 'ReadProcessMemory';
+  external {$IFDEF UNIX}name 'unidewin_ReadProcessMemory'{$ELSE}kernel32 name 'ReadProcessMemory'{$ENDIF};
 function DbgWriteMemory(AProcess: THandle; AAddress: Pointer;
   ABuffer: Pointer; ASize: DWORD; var ADone: DWORD): BOOL; stdcall;
-  external kernel32 name 'WriteProcessMemory';
+  external {$IFDEF UNIX}name 'unidewin_WriteProcessMemory'{$ELSE}kernel32 name 'WriteProcessMemory'{$ENDIF};
 function DbgVirtualProtectEx(AProcess: THandle; AAddress: Pointer;
   ASize, ANewProtect: DWORD; var AOldProtect: DWORD): BOOL; stdcall;
-  external kernel32 name 'VirtualProtectEx';
+  external {$IFDEF UNIX}name 'unidewin_VirtualProtectEx'{$ELSE}kernel32 name 'VirtualProtectEx'{$ENDIF};
 function DbgFlushInstructionCache(AProcess: THandle; AAddress: Pointer;
   ASize: DWORD): BOOL; stdcall;
-  external kernel32 name 'FlushInstructionCache';
+  external {$IFDEF UNIX}name 'unidewin_FlushInstructionCache'{$ELSE}kernel32 name 'FlushInstructionCache'{$ENDIF};
 
 // ---------------------------------------------------------------------------
 //  TDbgLineMap
