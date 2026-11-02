@@ -170,7 +170,9 @@ type
     function RowLength(ARow: Integer): Integer;
     procedure ExtendToMouse;
     procedure ScrollTimerTick(Sender: TObject);
-    {$IFNDEF FPC}
+    {$IFDEF FPC}
+    procedure CNKeyDown(var Message: TLMKeyDown); message CN_KEYDOWN;
+    {$ELSE}
     procedure CNKeyDown(var Message: TWMKeyDown); message CN_KEYDOWN;
     {$ENDIF}
     {$IFDEF FPC}
@@ -1069,7 +1071,26 @@ begin
   inherited;
 end;
 
-{$IFNDEF FPC}
+{$IFDEF FPC}
+// В LCL CN_KEYDOWN проверяет ярлыки меню (своего, формы, Application), и
+// оттуда же (DoKeyDownBeforeInterface) вызывается KeyDown: Ctrl+A, Ctrl+C
+// уходили пунктам главного меню. Свои клавиши - сразу в KeyDown, мимо
+// ярлыков
+procedure TEdView.CNKeyDown(var Message: TLMKeyDown);
+var
+  KeyCode: Word;
+begin
+  if FEditor.OwnsKey(Message.CharCode, KeyDataToShiftState(Message.KeyData)) then
+  begin
+    KeyCode := Message.CharCode;
+    KeyDown(KeyCode, KeyDataToShiftState(Message.KeyData));
+    Message.CharCode := KeyCode;
+    Message.Result := 1;
+    Exit;
+  end;
+  inherited;
+end;
+{$ELSE}
 procedure TEdView.CNKeyDown(var Message: TWMKeyDown);
 begin
   // Свои клавиши - мимо ярлыков меню: сообщение уходит в KeyDown

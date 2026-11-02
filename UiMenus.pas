@@ -396,7 +396,9 @@ var
   {$ENDIF}
 begin
   Result := -1;
-  Local := ScreenToClient(AScreen);
+  // Через Windows: LCL не знает места окна (см. LevelAt)
+  Local := AScreen;
+  Windows.ScreenToClient(Handle, Local);
   {$IFDEF FPC}
   // Ширина - от окна: LCL размер окна не знает (см. Paint)
   Windows.GetClientRect(Handle, Client);
@@ -694,6 +696,7 @@ var
   Win: TUiMenuWindow;
   Item: TMenuItem;
   Origin: TPoint;
+  WinRect: TRect;
 begin
   Win := TUiMenuWindow(Levels[ALevel]);
   if Win.Selected < 0 then
@@ -702,10 +705,13 @@ begin
   if not Item.Enabled or (Item.Count = 0) then
     Exit;
   CloseAfter(ALevel);
-  Origin := Win.ClientToScreen(Point(Win.RowLeft[Win.Selected] + Win.ColWidth,
-                                     Win.RowTop[Win.Selected]));
+  // Через Windows: LCL не знает места окна меню (см. LevelAt)
+  Origin := Point(Win.RowLeft[Win.Selected] + Win.ColWidth,
+                  Win.RowTop[Win.Selected]);
+  Windows.ClientToScreen(Win.Handle, Origin);
+  Windows.GetWindowRect(Win.Handle, WinRect);
   OpenLevel(Item, Origin.X, Origin.Y - 3,
-            Win.Left + Win.RowLeft[Win.Selected], ASelectFirst);
+            WinRect.Left + Win.RowLeft[Win.Selected], ASelectFirst);
 end;
 
 // Меню другого пункта строки меню
@@ -736,12 +742,16 @@ function TUiMenuTracker.LevelAt(const AScreen: TPoint): Integer;
 var
   Index: Integer;
   Win: TUiMenuWindow;
+  WinRect: TRect;
 begin
   Result := -1;
   for Index := Levels.Count - 1 downto 0 do
   begin
     Win := TUiMenuWindow(Levels[Index]);
-    if PtInRect(Win.BoundsRect, AScreen) then
+    // Место окна - у Windows: его ставит SetWindowPos (OpenLevel), и LCL
+    // о нём не знает (BoundsRect - 0, 0, 0, 0)
+    Windows.GetWindowRect(Win.Handle, WinRect);
+    if PtInRect(WinRect, AScreen) then
     begin
       Result := Index;
       Exit;
