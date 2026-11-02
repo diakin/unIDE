@@ -7887,6 +7887,24 @@ begin
   SplitRefresh(-1);
 end;
 
+// Гарнитура редактора. Под Linux шрифтов Windows (Consolas, Source Code Pro,
+// Courier New) может не быть, а замена по умолчанию - не моноширинная:
+// тогда - DejaVu Sans Mono или общий 'Monospace' (fontconfig)
+function EditorFontName(const AName: string): string;
+begin
+  Result := AName;
+  {$IFDEF UNIX}
+  if Screen.Fonts.IndexOf(AName) >= 0 then
+    Exit;
+  if Screen.Fonts.IndexOf('DejaVu Sans Mono') >= 0 then
+    Result := 'DejaVu Sans Mono'
+  else if Screen.Fonts.IndexOf('Liberation Mono') >= 0 then
+    Result := 'Liberation Mono'
+  else
+    Result := 'Monospace';
+  {$ENDIF}
+end;
+
 procedure TForm1.LoadSettings;
 var
   Ini: TIniFile;
@@ -7933,8 +7951,8 @@ begin
     // Modified запоминаем по той же причине, что и в ApplyEditorLook:
     // присваивание шрифта переписывает форматирование всего текста.
     WasMod := RichEdit1.Modified;
-    RichEdit1.Font.Name := Ini.ReadString('Editor', 'FontName',
-                                          RichEdit1.Font.Name);
+    RichEdit1.Font.Name := EditorFontName(Ini.ReadString('Editor', 'FontName',
+                                          RichEdit1.Font.Name));
     RichEdit1.Font.Size := Ini.ReadInteger('Editor', 'FontSize',
                                            RichEdit1.Font.Size);
 
@@ -26369,6 +26387,26 @@ begin
   // rsPattern - размеры меняются, когда кнопку отпустили
   Splitter1.ResizeStyle := rsPattern;
   Split.ResizeStyle := rsPattern;
+  {$ENDIF}
+  {$IFDEF UNIX}
+  // Linux: пункты, которые работают только под Windows, скрыты (этап 3.1
+  // плана): ReactOS (QEMU, Rufus, RosBE - инструменты Windows), установка
+  // пакета Delphi 7 (dcc32 - через Wine, этап 4.3), unIDE FAR (файловые
+  // функции Windows)
+  RosMenu.Visible := False;
+  mInstallPkg.Visible := False;
+  // mUtilsSep1, mFar - в .dfm без полей формы
+  if FindComponent('mUtilsSep1') is TMenuItem then
+    TMenuItem(FindComponent('mUtilsSep1')).Visible := False;
+  if FindComponent('mFar') is TMenuItem then
+    with TMenuItem(FindComponent('mFar')) do
+    begin
+      Visible := False;
+      Enabled := False;
+      ShortCut := 0;
+    end;
+  FFarColorsItem.Visible := False;
+  FFarPaletteItem.Visible := False;
   {$ENDIF}
 
   pnlPaletteIn.DoubleBuffered := True;

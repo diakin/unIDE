@@ -57,6 +57,17 @@ type
     FTabHook: TObject;            // подмена окна ярлычков (UiTabHookAttach)
     procedure HookInner;
     {$ENDIF}
+    {$IFDEF UNIX}
+    // Linux (gtk2): ярлычки рисуются и раскладываются здесь, вложенный
+    // элемент вкладок LCL скрыт (его ярлычки gtk не показывал)
+  private
+    FOwnRects: array of TRect;
+    FMeasure: TBitmap;
+    FChangeFired: Boolean;
+    procedure OwnLayout;
+    procedure OwnPaint(ADC: HDC);
+    procedure OwnHideInner;
+    {$ENDIF}
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
@@ -64,9 +75,17 @@ type
   protected
     procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure CreateParams(var Params: TCreateParams); override;
+    {$IFDEF UNIX}
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
+      PosX, PosY: Integer); override;
+    procedure Change; override;
+    {$ENDIF}
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
+    {$IFDEF UNIX}
+    function IndexOfTabAt(X, Y: Integer): Integer; overload; override;
+    {$ENDIF}
     {$IFDEF FPC}
     // В LCL ярлычки TTabControl - у вложенного элемента вкладок, а свой
     // TabRect у TTabControl возвращает пустой прямоугольник. Здесь - место
@@ -604,8 +623,152 @@ begin
   {$IFDEF FPC}
   UiTabHookFree(FTabHook);
   {$ENDIF}
+  {$IFDEF UNIX}
+  FMeasure.Free;
+  {$ENDIF}
   inherited Destroy;
 end;
+
+{$IFDEF UNIX}
+// Ярлычки по ширине подписей; MultiLine - перенос в следующий ряд
+procedure TUiTabControl.OwnLayout;
+const
+  TabPadX = 16;
+  TabPadY = 6;
+var
+  TabIdx, PosX, PosY, TabW, RowH, MaxW: Integer;
+begin
+  if FMeasure = nil then
+    FMeasure := TBitmap.Create;
+  FMeasure.Canvas.Font := Font;
+  RowH := FMeasure.Canvas.TextHeight('Wg') + TabPadY;
+  MaxW := ClientWidth - 2;
+  SetLength(FOwnRects, Tabs.Count);
+  PosX := 2;
+  PosY := 2;
+  for TabIdx := 0 to Tabs.Count - 1 do
+  begin
+    TabW := FMeasure.Canvas.TextWidth(Tabs[TabIdx]) + TabPadX;
+    if MultiLine and (PosX > 2) and (PosX + TabW > MaxW) then
+    begin
+      PosX := 2;
+      Inc(PosY, RowH);
+    end;
+    FOwnRects[TabIdx] := Rect(PosX, PosY, PosX + TabW, PosY + RowH);
+    Inc(PosX, TabW);
+  end;
+end;
+
+procedure TUiTabControl.OwnHideInner;
+var
+  CtlIdx: Integer;
+begin
+  for CtlIdx := 0 to ControlCount - 1 do
+    if (Controls[CtlIdx] is TCustomTabControl) and Controls[CtlIdx].Visible then
+      Controls[CtlIdx].Visible := False;
+end;
+
+procedure TUiTabControl.OwnPaint(ADC: HDC);
+var
+  Cv: TCanvas;
+  TabIdx, Active: Integer;
+  Box: TRect;
+  Str: string;
+  DIS: TDrawItemStruct;
+begin
+  OwnLayout;
+  Active := TabIndex;
+  Cv := TCanvas.Create;
+  try
+    Cv.Handle := ADC;
+    Cv.Brush.Style := bsSolid;
+    Cv.Brush.Color := UiThemeColorFor(Self, 'Window.BG');
+    Cv.FillRect(ClientRect);
+    Cv.Font := Font;
+    for TabIdx := 0 to High(FOwnRects) do
+    begin
+      Box := FOwnRects[TabIdx];
+      if TabIdx = Active then
+        Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.ActiveBG')
+      else if TabIdx = FHot then
+        Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.HotBG')
+      else
+        Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.BG');
+      Cv.FillRect(Box);
+      Cv.Brush.Color := UiThemeColorFor(Self, 'Tab.Border');
+      Cv.FrameRect(Box);
+      if OwnerDraw then
+      begin
+        FillChar(DIS, SizeOf(DIS), 0);
+        DIS.CtlType := ODT_TAB;
+        DIS.itemID := TabIdx;
+        DIS.itemAction := ODA_DRAWENTIRE;
+        if TabIdx = Active then
+          DIS.itemState := ODS_SELECTED;
+        DIS.hwndItem := Handle;
+        DIS.hDC := ADC;
+        DIS.rcItem := Box;
+        InflateRect(DIS.rcItem, -1, -1);
+        Perform(CN_DRAWITEM, 0, LPARAM(@DIS));
+        Continue;
+      end;
+      Str := Tabs[TabIdx];
+      if Enabled then
+        Cv.Font.Color := UiThemeColorFor(Self, 'Tab.Text')
+      else
+        Cv.Font.Color := UiThemeColorFor(Self, 'OffText');
+      Cv.Brush.Style := bsClear;
+      Cv.TextRect(Box, Box.Left + 8, Box.Top + 3, Str);
+      Cv.Brush.Style := bsSolid;
+    end;
+  finally
+    Cv.Handle := 0;
+    Cv.Free;
+  end;
+end;
+
+function TUiTabControl.IndexOfTabAt(X, Y: Integer): Integer;
+var
+  TabIdx: Integer;
+begin
+  Result := -1;
+  OwnLayout;
+  for TabIdx := 0 to High(FOwnRects) do
+    if PtInRect(FOwnRects[TabIdx], Point(X, Y)) then
+    begin
+      Result := TabIdx;
+      Exit;
+    end;
+end;
+
+procedure TUiTabControl.Change;
+begin
+  FChangeFired := True;
+  inherited Change;
+end;
+
+// Щелчок по ярлычку: OnChanging, затем выбор (OnChange - от LCL при смене
+// TabIndex вложенного элемента; если его не было - здесь)
+procedure TUiTabControl.MouseDown(Button: TMouseButton; Shift: TShiftState;
+  PosX, PosY: Integer);
+var
+  TabIdx: Integer;
+begin
+  if Button = mbLeft then
+  begin
+    TabIdx := IndexOfTabAt(PosX, PosY);
+    if (TabIdx >= 0) and (TabIdx <> TabIndex) and CanChange then
+    begin
+      FChangeFired := False;
+      TabIndex := TabIdx;
+      if not FChangeFired then
+        Change;
+      Invalidate;
+    end;
+  end;
+  inherited MouseDown(Button, Shift, PosX, PosY);
+end;
+{$ENDIF}
 
 {$IFDEF FPC}
 procedure TUiTabControl.HookInner;
@@ -629,6 +792,14 @@ var
   CtlIdx: Integer;
   Inner: TCustomTabControl;
 begin
+  {$IFDEF UNIX}
+  OwnLayout;
+  if (Index >= 0) and (Index <= High(FOwnRects)) then
+    Result := FOwnRects[Index]
+  else
+    Result := Rect(0, 0, 0, 0);
+  Exit;
+  {$ENDIF}
   Result := inherited TabRect(Index);
   if not IsRectEmpty(Result) then
     Exit;
@@ -667,6 +838,13 @@ var
   DC: HDC;
 {$ENDIF}
 begin
+  {$IFDEF UNIX}
+  OwnHideInner;
+  if Message.DC <> 0 then
+    OwnPaint(Message.DC);
+  Message.Result := 0;
+  Exit;
+  {$ENDIF}
   {$IFDEF FPC}
   HookInner;
   // В LCL ярлычки рисует вложенный элемент вкладок, а сам TTabControl
@@ -702,7 +880,11 @@ var
   HeightPx: Integer;
 begin
   inherited MouseMove(Shift, PosX, PosY);
+  {$IFDEF UNIX}
+  HeightPx := IndexOfTabAt(PosX, PosY);
+  {$ELSE}
   HeightPx := UiTabAt(Self, PosX, PosY);
+  {$ENDIF}
   if HeightPx <> FHot then
   begin
     FHot := HeightPx;
