@@ -77,6 +77,22 @@ type
 
 implementation
 
+{$IFDEF FPC}
+type
+  // Доступ к Color родителя
+  TUiGroupParentAcc = class(TControl);
+
+// Фон рамки: с ParentBackground - цвет родителя (как фон, который в
+// Delphi 7 рисует тема Windows), иначе свой Color
+function GroupBackColor(AGroup: TUiGroupBox): TColor;
+begin
+  if AGroup.ParentBackground and (AGroup.Parent <> nil) then
+    Result := TUiGroupParentAcc(AGroup.Parent).Color
+  else
+    Result := AGroup.Color;
+end;
+{$ENDIF}
+
 constructor TUiGroupBox.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
@@ -149,6 +165,13 @@ begin
   begin
     Font := Self.Font;
     HeightPx := TextHeight('0');
+    {$IFDEF FPC}
+    // LCL не рисует фон родителя под TCustomControl с ParentBackground:
+    // строка подписи над детьми оставалась цвета Color (clBtnFace)
+    Brush.Style := bsSolid;
+    Brush.Color := GroupBackColor(Self);
+    FillRect(Rect(0, 0, Self.Width, Self.Height));
+    {$ENDIF}
 
     RectVal := Rect(0, HeightPx div 2 - 1, Self.Width, Self.Height);
     Brush.Style := bsSolid;
@@ -167,7 +190,11 @@ begin
       UiDrawText(Handle, PChar(Str), Length(Str), RectVal, Flags or DT_CALCRECT);
       if UseRightToLeftAlignment then
         OffsetRect(RectVal, -(RectVal.Right - RectVal.Left), 0);
+      {$IFDEF FPC}
+      Brush.Color := GroupBackColor(Self);
+      {$ELSE}
       Brush.Color := Self.Color;
+      {$ENDIF}
       if Self.Enabled then
         Font.Color := UiThemeColorFor(Self, 'Group.Text')
       else
