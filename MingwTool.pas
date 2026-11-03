@@ -21,7 +21,13 @@ unit MingwTool;
 //    bin\i686-w64-mingw32-g++.exe (32-битные), g++.exe без приставки нет.
 //    Имя папки - по обычной раскладке архивов xPack, сам архив отсюда не
 //    открывался: не та раскладка - установка скажет, что нет CheckFile;
-//  - после установки Unit1 запускает g++ --version и пишет ответ в журнал.
+//  - после установки Unit1 запускает g++ --version и пишет ответ в журнал;
+//  - UCRT для Windows 7 x64 (нет ucrtbase.dll): Unit1 скачивает
+//    Windows6.1-KB2999226-x64.msu с download.microsoft.com (страница
+//    microsoft.com/download/details.aspx?id=49093, около 1 МБ) в
+//    tools\ucrt и запускает wusa.exe (права администратора, запрос UAC).
+//    Размер и SHA-256 не записаны: файл подписан Microsoft, подпись
+//    проверяет сам wusa. Windows 8 / 8.1 без UCRT - только ссылка в журнал.
 // ---------------------------------------------------------------------------
 
 interface
@@ -37,6 +43,11 @@ const
   MingwGpp32Name = 'i686-w64-mingw32-g++.exe';
   MingwInfoFile = 'unide_mingw.txt';
   MingwSite = 'https://xpack-dev-tools.github.io/mingw-w64-gcc-xpack/';
+  MingwUcrtKb = 'KB2999226';
+  MingwUcrtFile = 'Windows6.1-KB2999226-x64.msu';
+  MingwUcrtUrl = 'https://download.microsoft.com/download/1/1/5/' +
+    '11565a9a-ea09-4f0a-a57e-520d5d138140/Windows6.1-KB2999226-x64.msu';
+  MingwUcrtPage = 'https://support.microsoft.com/kb/2999226';
 
 type
   TMingwPackage = record
@@ -61,6 +72,13 @@ function MingwHasUcrt: Boolean;
 // AReason <> '' - с оговоркой (нет UCRT)
 function MingwChoosePackage(const AOs: TSzOsInfo;
   var APackage: TMingwPackage; var AReason: string): Boolean;
+// UCRT (KB2999226) для этой Windows скачивается и ставится unIDE: только
+// Windows 7 x64 (6.1)
+function MingwUcrtAutoFits(const AOs: TSzOsInfo): Boolean;
+// <папка exe>\tools\ucrt\ (нет записи - в профиль); '' - никуда
+function MingwUcrtTargetDir: WideString;
+// План загрузки .msu (не распаковывается)
+function MingwUcrtPlan: TSzPlan;
 // Адрес файла выпуска: GitHub и зеркало на SourceForge
 function MingwUrl(const AFileName: string): string;
 function MingwUrl2(const AFileName: string): string;
@@ -180,6 +198,47 @@ begin
       'system32). GCC из xPack без него, скорее всего, не запустится: ' +
       'поставьте обновление KB2999226 (или распространяемый пакет ' +
       'Visual C++ 2015 и новее)';
+end;
+
+function MingwUcrtAutoFits(const AOs: TSzOsInfo): Boolean;
+begin
+  Result := AOs.IsNT and AOs.Is64 and (AOs.Major = 6) and (AOs.Minor = 1);
+end;
+
+function MingwUcrtTargetDir: WideString;
+begin
+  Result := SzToolsAppDir + 'ucrt\';
+  if MingwCanPlace(Result) then
+    Exit;
+  Result := SzToolsUserDir;
+  if Result <> '' then
+  begin
+    Result := Result + 'ucrt\';
+    if MingwCanPlace(Result) then
+      Exit;
+  end;
+  Result := '';
+end;
+
+function MingwUcrtPlan: TSzPlan;
+begin
+  Result.Title := 'Universal C Runtime (' + MingwUcrtKb + ')';
+  SetLength(Result.Files, 1);
+  Result.Files[0].Url1 := MingwUcrtUrl;
+  Result.Files[0].Url2 := '';
+  Result.Files[0].FileName := MingwUcrtFile;
+  Result.Files[0].Size := -1035000;
+  Result.Files[0].Sha256 := '';
+  Result.Extractor := '';
+  Result.Archive := -1;          // не распаковывать: .msu как есть
+  Result.ExtractNames := '';
+  Result.ExtractSubDir := '';
+  Result.MoveNames := MingwUcrtFile;
+  Result.CheckFile := MingwUcrtFile;
+  Result.InfoFile := 'unide_ucrt.txt';
+  Result.InfoText := MingwUcrtFile + ' скачан unIDE ' +
+    FormatDateTime('yyyy-mm-dd hh:nn', Now) + #13#10 + MingwUcrtUrl + #13#10 +
+    'Ставится wusa.exe; подпись Microsoft проверяет wusa.' + #13#10;
 end;
 
 function MingwUrl(const AFileName: string): string;

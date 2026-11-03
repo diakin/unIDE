@@ -3367,6 +3367,7 @@ type
     // MinGW-w64 (MingwTool): свой g++ в tools\mingw, меню Arduino
     function  MingwEnsure(AAsk: Boolean): string;
     function  MingwCheckRun(const AGpp: string): Boolean;
+    function  MingwInstallUcrt: Boolean;
     procedure MingwInstallClick(Sender: TObject);
     // Git: панель на месте палитры (режим ReactOS), меню Repository и Branch
     function  GitExePath(AOffer: Boolean): string;
@@ -70723,7 +70724,7 @@ var
   OsInfo: TSzOsInfo;
   Package: TMingwPackage;
   Target, SevenZip, Note, ErrText, Reason: string;
-  Need7Zip: Boolean;
+  Need7Zip, NeedUcrt: Boolean;
   Stage7Zip, StageMingw: Integer;
 begin
   Result := string(MingwLocalGpp);
@@ -70740,6 +70741,10 @@ begin
     LogComp('MinGW-w64: ' + Reason);
     Exit;
   end;
+  // Windows 7 x64 без UCRT: KB2999226 скачает и запустит unIDE
+  NeedUcrt := not MingwHasUcrt and MingwUcrtAutoFits(OsInfo);
+  if NeedUcrt then
+    Reason := '';
   if Reason <> '' then
     LogComp('MinGW-w64: ' + Reason);
   Target := string(MingwChooseTargetDir);
@@ -70757,6 +70762,11 @@ begin
             'распаковывается архив MinGW.';
   if Reason <> '' then
     Note := Note + #13#10#13#10'Внимание: ' + Reason + '.';
+  if NeedUcrt then
+    Note := Note + #13#10#13#10'В Windows нет Universal C Runtime: после ' +
+            'компилятора будет скачано обновление Microsoft ' + MingwUcrtKb +
+            ' (около 1 МБ) и запущена его установка (wusa.exe, нужны права ' +
+            'администратора, возможна перезагрузка).';
   if MessageDlg('9835:Своего компилятора MinGW-w64 unIDE нет.'#13#10#13#10 +
                 'Скачать GCC ' + MingwVersion + ' (' + MingwRuntime + ', ' +
                 Package.Arch + ', около ' +
@@ -70802,6 +70812,8 @@ begin
     else
     begin
       LogComp('MinGW-w64 GCC ' + MingwVersion + ': ' + Result);
+      if NeedUcrt then
+        MingwInstallUcrt;
       MingwCheckRun(Result);
     end;
   finally
@@ -70821,6 +70833,7 @@ end;
 procedure TForm1.MingwInstallClick(Sender: TObject);
 var
   Gpp: string;
+  OsInfo: TSzOsInfo;
 begin
   if FBusyDepth > 0 then
     Exit;
@@ -70832,10 +70845,107 @@ begin
             MingwInstalledInfo(Gpp) + '). Поставить заново - удалить ' +
             'папку ' + ExtractFilePath(ExcludeTrailingPathDelimiter(
             ExtractFilePath(Gpp))) + ', затем Install MinGW-w64');
+    if not MingwHasUcrt then
+    begin
+      SzGetOsInfo(OsInfo);
+      if MingwUcrtAutoFits(OsInfo) then
+      begin
+        if MessageDlg('9836:В Windows нет Universal C Runtime - без него ' +
+                      'GCC из xPack, скорее всего, не запустится.'#13#10#13#10 +
+                      'Скачать обновление Microsoft ' + MingwUcrtKb +
+                      ' (около 1 МБ) и запустить его установку? Нужны ' +
+                      'права администратора, возможна перезагрузка.',
+                      mtConfirmation, [mbOK, mbCancel], 0) = mrOk then
+          MingwInstallUcrt;
+      end
+      else
+        LogComp('MinGW: в Windows нет Universal C Runtime (ucrtbase.dll); ' +
+                'обновление для этой Windows - ' + MingwUcrtPage);
+    end;
     MingwCheckRun(Gpp);
     Exit;
   end;
   MingwEnsure(True);
+end;
+
+// UCRT для Windows 7 x64: скачать KB2999226 (.msu) в tools\ucrt, если его
+// там нет, и запустить wusa.exe (запрос UAC), дождаться конца. True -
+// после этого ucrtbase.dll есть
+function TForm1.MingwInstallUcrt: Boolean;
+var
+  Target, Msu, ErrText, Wusa, Params: string;
+  ExecInfo: TShellExecuteInfo;
+  ExitCode: DWORD;
+  WinDir: array[0..MAX_PATH] of Char;
+begin
+  Result := MingwHasUcrt;
+  if Result then
+    Exit;
+  ShowCompLog;
+  Target := string(MingwUcrtTargetDir);
+  if Target = '' then
+  begin
+    LogComp('UCRT: нет папки для загрузки - в tools\ucrt не записать');
+    Exit;
+  end;
+  Msu := IncludeTrailingPathDelimiter(Target) + MingwUcrtFile;
+  if not FileExists(Msu) then
+  begin
+    LogComp('UCRT: скачивание ' + MingwUcrtUrl);
+    BusyBegin('Загрузка ' + MingwUcrtKb);
+    try
+      if not SzInstallPlanSync(Target, MingwUcrtPlan, RosInstallProgress,
+                               ErrText) then
+      begin
+        LogComp('UCRT: не скачан - ' + ErrText + '. Страница обновления: ' +
+                MingwUcrtPage);
+        Exit;
+      end;
+    finally
+      BusyEnd('Загрузка ' + MingwUcrtKb, FileExists(Msu));
+    end;
+  end;
+  // unIDE 32-битный: system32 для него - SysWOW64, а 64-битный пакет
+  // ставит 64-битный wusa (папка Sysnative)
+  GetWindowsDirectory(WinDir, MAX_PATH);
+  Wusa := IncludeTrailingPathDelimiter(string(WinDir)) + 'Sysnative\wusa.exe';
+  if not FileExists(Wusa) then
+    Wusa := 'wusa.exe';
+  Params := '"' + Msu + '"';
+  LogComp('UCRT: установка ' + Wusa + ' ' + Params + ' - подтвердите запрос ' +
+          'прав администратора');
+  FillChar(ExecInfo, SizeOf(ExecInfo), 0);
+  ExecInfo.cbSize := SizeOf(ExecInfo);
+  ExecInfo.fMask := SEE_MASK_NOCLOSEPROCESS;
+  ExecInfo.Wnd := Handle;
+  ExecInfo.lpVerb := 'open';
+  ExecInfo.lpFile := PChar(Wusa);
+  ExecInfo.lpParameters := PChar(Params);
+  ExecInfo.nShow := SW_SHOWNORMAL;
+  if not ShellExecuteEx(@ExecInfo) then
+  begin
+    LogComp('UCRT: wusa не запущен - ' + SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  BusyBegin('Установка ' + MingwUcrtKb);
+  try
+    while WaitForSingleObject(ExecInfo.hProcess, 100) = WAIT_TIMEOUT do
+      Application.ProcessMessages;
+    ExitCode := 0;
+    GetExitCodeProcess(ExecInfo.hProcess, ExitCode);
+    CloseHandle(ExecInfo.hProcess);
+  finally
+    BusyEnd('Установка ' + MingwUcrtKb, MingwHasUcrt);
+  end;
+  Result := MingwHasUcrt;
+  // wusa: 3010 - установлено, нужна перезагрузка; 2359302 - уже стоит
+  if Result then
+    LogComp('UCRT: установлен (код wusa ' + IntToStr(ExitCode) + ')')
+  else if ExitCode = 3010 then
+    LogComp('UCRT: установлен, Windows просит перезагрузку (код 3010)')
+  else
+    LogComp('UCRT: ucrtbase.dll после установки нет, код wusa ' +
+            IntToStr(ExitCode) + '. Обновление вручную: ' + MingwUcrtPage);
 end;
 
 // Write Image to USB: выбрать образ (предлагается собранный образ проекта
