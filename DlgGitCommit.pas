@@ -26,6 +26,9 @@ unit DlgGitCommit;
 //  Над списком - флажок на каждый вид, что есть в списке: отметить / снять
 //  сразу все его строки (часть отмечена - флажок серый). Цвета - для светлого и
 //  тёмного фона списка свои.
+//
+//  Файлы из папок вывода Lazarus (lib\<процессор>-<система>\, backup\) -
+//  тоже красные. F1 - справка по окну (ShowHelp).
 // ---------------------------------------------------------------------------
 
 interface
@@ -87,6 +90,8 @@ type
     // совпадает с ним, он обновляется вслед за флажками
     FAutoSummary: string;
     procedure UpdateAutoSummary;
+    procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure ShowHelp;
     procedure KindCheckClick(Sender: TObject);
     procedure LayoutKinds(Sender: TObject);
     procedure ListSelect(Sender: TObject; Item: TListItem; Selected: Boolean);
@@ -157,6 +162,7 @@ const
 
   // Расширения через ';' с ';' по краям - поиск по ';.ext;'
   GitJunkExts = ';.exe;.com;.old;.log;.$$$;.tmp;.temp;.bak;.dcu;.obj;.o;' +
+    '.ppu;.compiled;.rsj;.lps;.or;.dbg;' +
     '.map;.tds;.ilk;.pdb;.dsk;.ddp;.local;.identcache;.stat;.cbk;.drc;' +
     '.zip;.rar;.7z;.cab;.msi;.jar;.tar;.gz;.tgz;.bz2;.xz;.arj;.lzh;.lha;' +
     '.iso;.ace;.zst;';
@@ -171,6 +177,31 @@ const
     '.bat;.cmd;.sh;.ps1;.lst;.csv;.yml;.yaml;.toml;.dof;.clr;.manifest;' +
     '.gitignore;.gitattributes;';
 
+// Файл в папке вывода Lazarus: lib\<процессор>-<система>\ (lib\x86_64-win64\
+// и т. п.) или backup\ - их создаёт сборка и сам Lazarus
+function GitInBuildDir(const APath: string): Boolean;
+var
+  PathText, Segment: string;
+  SlashPos: Integer;
+begin
+  Result := False;
+  PathText := '/' + LowerCase(StringReplace(APath, '\', '/', [rfReplaceAll]));
+  if Pos('/backup/', PathText) > 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  SlashPos := Pos('/lib/', PathText);
+  if SlashPos = 0 then
+    Exit;
+  Segment := Copy(PathText, SlashPos + 5, MaxInt);
+  SlashPos := Pos('/', Segment);
+  if SlashPos = 0 then
+    Exit;
+  Segment := Copy(Segment, 1, SlashPos - 1);
+  Result := Pos('-', Segment) > 0;
+end;
+
 // Вид файла по имени и расширению
 function GitFileKind(const APath: WideString): Integer;
 var
@@ -180,7 +211,8 @@ begin
   Ext := ExtractFileExt(FileName);
   if Ext = '' then
     Ext := FileName;               // .gitignore и т. п. без имени
-  if (FileName = 'thumbs.db') or (FileName = 'desktop.ini') or
+  if GitInBuildDir(string(APath)) or
+     (FileName = 'thumbs.db') or (FileName = 'desktop.ini') or
      (Copy(Ext, 1, 2) = '.~') or (Pos(';' + Ext + ';', GitJunkExts) > 0) then
     Result := gfkJunk
   else if Pos(';' + Ext + ';', GitBinaryExts) > 0 then
@@ -245,6 +277,7 @@ begin
   Constraints.MinWidth := 600;
   Constraints.MinHeight := 400;
   KeyPreview := True;
+  OnKeyDown := FormKeyDown;
 
   FLeft := TUiPanel.Create(Self);
   FLeft.Parent := Self;
@@ -580,6 +613,53 @@ begin
       APicked[Result] := FChanges[ChangeIdx];
       Inc(Result);
     end;
+end;
+
+procedure TDlgGitCommit.FormKeyDown(Sender: TObject; var Key: Word;
+  Shift: TShiftState);
+begin
+  if (Key = VK_F1) and (Shift = []) then
+  begin
+    Key := 0;
+    ShowHelp;
+  end;
+end;
+
+// F1: что значат строки и кнопки окна
+procedure TDlgGitCommit.ShowHelp;
+begin
+  ShowMessage(
+    'Окно Commit'#13#10#13#10 +
+    'В списке - изменённые и новые файлы папки репозитория. Флажок у ' +
+    'строки - файл войдёт в коммит. Выделение строк (щелчок, Ctrl+щелчок, ' +
+    'Shift+щелчок) - для кнопок Ignore и Discard.'#13#10#13#10 +
+    'Колонка «Вид» и цвет:'#13#10 +
+    '- красные, «не коммитить?» - результат сборки и временные файлы: exe, ' +
+    'obj, o, dcu, ppu, compiled, old, log, bak, архивы, всё из папок ' +
+    'lib\<процессор>-<система> и backup Lazarus. При первом показе - без ' +
+    'флажка. Обычно их добавляют в игнор (Ignore...), чтобы больше не ' +
+    'появлялись;'#13#10 +
+    '- жёлтые, «библиотеки» - dll, bpl, lib, res и т. п. Коммитят, если без ' +
+    'них проект не собрать (например .res проекта со значком и версией);'#13#10 +
+    '- фиолетовые - картинки;'#13#10 +
+    '- зелёные, «исходники» - pas, dfm, lfm, lpr, lpi, inc, bas и т. д. ' +
+    'Обычно коммитят;'#13#10 +
+    '- голубые, «текст» - txt, md, ini, bat, json и т. п.;'#13#10 +
+    '- «прочее» - вид по расширению не узнан, решите сами.'#13#10 +
+    'Флажки над списком отмечают или снимают сразу все строки своего ' +
+    'вида.'#13#10#13#10 +
+    'Колонка «Что»: новый - git этот файл ещё не хранит; изменён - ' +
+    'отличается от последнего коммита; удалён - нет на диске; ' +
+    'переименован; конфликт - после неудачного слияния.'#13#10#13#10 +
+    'Ignore... - выделенные файлы больше не предлагаются к коммиту ' +
+    '(правило в .gitignore или .git/info/exclude).'#13#10 +
+    'Discard Selected - отменить изменения выделенных файлов: изменённые ' +
+    'и удалённые - как в последнем коммите, новые - в Корзину. Сначала ' +
+    'спросит.'#13#10#13#10 +
+    'Справа - разница выбранного файла (git diff).'#13#10 +
+    'Заголовок обязателен, описание - по желанию. Commit - коммит в ' +
+    'текущую ветку, Commit and Push - коммит и отправка на сервер. Cancel ' +
+    '(Esc) - закрыть без коммита.');
 end;
 
 procedure TDlgGitCommit.BtnIgnoreClick(Sender: TObject);
