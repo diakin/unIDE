@@ -21300,16 +21300,25 @@ const
   ScopeDisk = 4;      // на диске
   ScopeFileSearch = 5; // искать файл: файлы по маске, без образца
 
-  // Раскладка в три ряда по 24 пикселя (панель под надписью - около 75):
-  //   1: [Find      ] [<-Find][Find->]
-  //   2: [Replace   ] [Replace][All][Undo]
-  //   3: [Normal ] [Case] [В файле       ]
-  // Режим поиска, галка Case и область - в третьем ряду.
+  // Раскладка - сетка из четырёх рядов с шагом RowStep, левый край у всех
+  // рядов - SideGap:
+  //   1: [Find          ] [<-Find ] [Find->]
+  //   2: [Replace       ] [Replace] [All   ]
+  //   3: [Normal ] [Case] [В окне          ]
+  //   4: [Undo                             ]
+  // Кнопки рядов 1 и 2 - две общие колонки одной ширины, правый край всех
+  // рядов один (RightEdge). Кнопки - той же высоты и на той же строке, что
+  // поля со списком.
 procedure TForm1.BuildSearchPanel;
 const
-  Row1 = 1;
+  SideGap = 4;     // отступ слева и справа от краёв панели
+  ItemGap = 3;     // между полем и кнопкой, между кнопками
+  RowTop = 2;      // верх первого ряда
+  RowStep = 26;    // шаг рядов
+  ButtonPad = 14;  // поля кнопки слева и справа от подписи, вместе
 var
-  PosX, WidthPx, I, Arrow, RightEdge, Delta: Integer;
+  WidthPx, I, Arrow, RightEdge, ColAWidth, ColBWidth, RowHeight,
+    Row2Top, Row3Top, Row4Top, ColALeft, ColBLeft: Integer;
   Bmp: TBitmap;
 
   // Ширина текста шрифтом панели поиска - замер на временном холсте: у
@@ -21326,16 +21335,6 @@ begin
   try
     Bmp.Canvas.Font.Assign(pnlSearchIn.Font);
 
-    cmbFind.Top := Row1 + 1;
-    cmbFind.Width := 100;
-
-    cmbReplace.Width := 100;
-
-    PosX := 110;
-    Inc(PosX, 57);
-    Inc(PosX, 37);
-
-    Inc(PosX, 49);
     UndoBtn.Font.Assign(pnlSearchIn.Font);
     UndoBtn.Font.Style := [fsBold];
 
@@ -21355,10 +21354,8 @@ begin
     cmbMode.Width := TextW('WholeWord') + Arrow + 6;
     SendMessage(cmbMode.Handle, CB_SETDROPPEDWIDTH, WidthPx + Arrow + 8, 0);
 
-    chkCase.Left := cmbMode.Left + cmbMode.Width + 4;
     chkCase.Width := TextW(chkCase.Caption) + 20;
 
-    cmbScope.Left := chkCase.Left + chkCase.Width + 4;
     // Порядок пунктов важен (ScopeFile ... ScopeDisk), подписи - нет
     cmbScope.Items.Add('В окне');
     cmbScope.Items.Add('Список');
@@ -21379,28 +21376,58 @@ begin
         WidthPx := TextW(cmbScope.Items[I]);
     cmbScope.Width := WidthPx + Arrow + 8;
 
-    // Правый край первой строки - вровень с третьей, самой длинной: лишнее
-    // место отдаём полю поиска, кнопки за ним сдвигаем. Find-> встаёт у
-    // правого края рамки.
-    RightEdge := cmbScope.Left + cmbScope.Width;
+    // Высота ряда - высота поля со списком (её задаёт шрифт); кнопки той
+    // же высоты
+    RowHeight := cmbFind.Height;
+    if RowHeight < 20 then
+      RowHeight := 22;
+    Row2Top := RowTop + RowStep;
+    Row3Top := Row2Top + RowStep;
+    Row4Top := Row3Top + RowStep;
 
-    Delta := RightEdge - (BtnNext.Left + BtnNext.Width);
-    if Delta > 0 then
-    begin
-      cmbFind.Width := cmbFind.Width + Delta;
-      BtnPrev.Left := BtnPrev.Left + Delta;
-      BtnNext.Left := BtnNext.Left + Delta;
-    end;
+    // Две колонки кнопок: ширина - по самой длинной подписи в колонке
+    ColAWidth := TextW(BtnPrev.Caption);
+    if TextW(BtnRepl.Caption) > ColAWidth then
+      ColAWidth := TextW(BtnRepl.Caption);
+    Inc(ColAWidth, ButtonPad);
+    ColBWidth := TextW(BtnNext.Caption);
+    if TextW(BtnAll.Caption) > ColBWidth then
+      ColBWidth := TextW(BtnAll.Caption);
+    Inc(ColBWidth, ButtonPad);
 
-    // Вторая строка - по первой: поле замены той же ширины, что поле
-    // поиска, и Replace ровно под <-Find. Две колонки читаются лучше, чем
-    // две строки, выровненные только по правому краю; Undo при этом
-    // до края рамки не доходит.
-    cmbReplace.Width := cmbFind.Width;
-    BtnRepl.Left := BtnPrev.Left;
-    BtnAll.Left := BtnRepl.Left + BtnRepl.Width + 3;
-    UndoBtn.Left := BtnAll.Left + BtnAll.Width + 3;
-    UndoBtn.Left :=2;// BtnAll.Left + BtnAll.Width + 3;
+    // Правый край: третий ряд по своим ширинам или ряды 1-2 с полем не
+    // уже 100 - что длиннее; панель шире - по её правому краю
+    RightEdge := SideGap + cmbMode.Width + ItemGap + chkCase.Width +
+      ItemGap + cmbScope.Width;
+    if SideGap + 100 + ItemGap + ColAWidth + ItemGap + ColBWidth > RightEdge then
+      RightEdge := SideGap + 100 + ItemGap + ColAWidth + ItemGap + ColBWidth;
+    if pnlSearchIn.ClientWidth - SideGap > RightEdge then
+      RightEdge := pnlSearchIn.ClientWidth - SideGap;
+
+    ColBLeft := RightEdge - ColBWidth;
+    ColALeft := ColBLeft - ItemGap - ColAWidth;
+
+    // Ряд 1: поле поиска до первой колонки, <-Find, Find->
+    cmbFind.SetBounds(SideGap, RowTop, ColALeft - ItemGap - SideGap,
+      cmbFind.Height);
+    BtnPrev.SetBounds(ColALeft, RowTop, ColAWidth, RowHeight);
+    BtnNext.SetBounds(ColBLeft, RowTop, ColBWidth, RowHeight);
+
+    // Ряд 2: так же, Replace под <-Find, All под Find->
+    cmbReplace.SetBounds(SideGap, Row2Top, cmbFind.Width, cmbReplace.Height);
+    BtnRepl.SetBounds(ColALeft, Row2Top, ColAWidth, RowHeight);
+    BtnAll.SetBounds(ColBLeft, Row2Top, ColBWidth, RowHeight);
+
+    // Ряд 3: режим, Case, область - до правого края
+    cmbMode.SetBounds(SideGap, Row3Top, cmbMode.Width, cmbMode.Height);
+    chkCase.SetBounds(cmbMode.Left + cmbMode.Width + ItemGap,
+      Row3Top + (RowHeight - chkCase.Height) div 2, chkCase.Width,
+      chkCase.Height);
+    cmbScope.SetBounds(chkCase.Left + chkCase.Width + ItemGap, Row3Top,
+      RightEdge - (chkCase.Left + chkCase.Width + ItemGap), cmbScope.Height);
+
+    // Ряд 4: Undo во всю ширину
+    UndoBtn.SetBounds(SideGap, Row4Top, RightEdge - SideGap, RowHeight);
   finally
     Bmp.Free;
   end;
