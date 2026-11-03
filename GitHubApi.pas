@@ -4,7 +4,8 @@ unit GitHubApi;
 //  GitHub REST API для окна Clone Repository (DlgGitClone): список
 //  репозиториев пользователя и проверка токена. Без VCL.
 //
-//  - запросы - WinINet (как загрузки SzSetup): HTTPS GET на
+//  - запросы - WinINet (как загрузки SzSetup; Linux - fphttpclient с
+//    OpenSSL): HTTPS GET на
 //    api.github.com с заголовками Authorization: token <токен>,
 //    Accept: application/vnd.github+json, User-Agent: unIDE (без него
 //    GitHub отвечает 403);
@@ -56,6 +57,11 @@ function GitHubRepoExists(const AToken, AOwner, AName: string;
 function GitHubNormalizeUrl(const AText: string; var AName: string): string;
 
 implementation
+
+{$IFDEF UNIX}
+uses
+  fphttpclient, opensslsockets;
+{$ENDIF}
 
 const
   GhApiHost = 'https://api.github.com';
@@ -143,6 +149,66 @@ begin
     Result := Trim(Result) + ' (' + IntToStr(ACode) + ')';
   end;
 end;
+
+{$IFDEF UNIX}
+// Linux: запрос AMethod к api.github.com через fphttpclient (HTTPS -
+// OpenSSL системы). ABody - тело запроса (POST), AResponse - ответ,
+// AStatus - код HTTP. False - запрос не прошёл (AError)
+function GhHttp(const AMethod, AToken, APath, ABody: string;
+  var AResponse: string; var AStatus: Integer; var AError: string): Boolean;
+var
+  Client: TFPHTTPClient;
+  Answer: TStringStream;
+begin
+  Result := False;
+  AResponse := '';
+  AStatus := 0;
+  AError := '';
+  Client := TFPHTTPClient.Create(nil);
+  Answer := TStringStream.Create('');
+  try
+    Client.ConnectTimeout := 20000;
+    Client.IOTimeout := 20000;
+    Client.AllowRedirect := True;
+    Client.AddHeader('User-Agent', 'unIDE');
+    Client.AddHeader('Accept', 'application/vnd.github+json');
+    if AToken <> '' then
+      Client.AddHeader('Authorization', 'token ' + AToken);
+    if ABody <> '' then
+    begin
+      Client.AddHeader('Content-Type', 'application/json; charset=utf-8');
+      Client.RequestBody := TStringStream.Create(ABody);
+    end;
+    try
+      // Код ответа любой (401, 404 ...) - не исключение: разбирает вызвавший
+      Client.HTTPMethod(AMethod, GhApiHost + APath, Answer, []);
+      AStatus := Client.ResponseStatusCode;
+      AResponse := Answer.DataString;
+      Result := True;
+    except
+      on Err: Exception do
+        AError := 'api.github.com: ' + Err.Message;
+    end;
+  finally
+    Client.RequestBody.Free;
+    Client.RequestBody := nil;
+    Answer.Free;
+    Client.Free;
+  end;
+end;
+
+function GhGet(const AToken, APath: string; var ABody: string;
+  var AStatus: Integer; var AError: string): Boolean;
+begin
+  Result := GhHttp('GET', AToken, APath, '', ABody, AStatus, AError);
+end;
+
+function GhPost(const AToken, APath, ABody: string; var AResponse: string;
+  var AStatus: Integer; var AError: string): Boolean;
+begin
+  Result := GhHttp('POST', AToken, APath, ABody, AResponse, AStatus, AError);
+end;
+{$ELSE}
 
 // GET APath (от api.github.com) с токеном. ABody - ответ (UTF-8),
 // AStatus - код HTTP. False - запрос не прошёл (AError)
@@ -305,6 +371,7 @@ begin
     GhInternetCloseHandle(Session);
   end;
 end;
+{$ENDIF}
 
 // ---------------------------------------------------------------------------
 //  Разбор JSON: массив объектов / один объект; у объекта - пары верхнего
