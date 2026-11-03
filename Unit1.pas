@@ -21428,13 +21428,15 @@ begin
     BtnRepl.SetBounds(ColALeft, Row2Top, ColAWidth, RowHeight);
     BtnAll.SetBounds(ColBLeft, Row2Top, ColBWidth, RowHeight);
 
-    // Ряд 3: режим, Case, область - до правого края
+    // Ряд 3: режим, Case, область. Область - вровень с колонкой Replace
+    // и до правого края; Case - всё место между режимом и областью
     cmbMode.SetBounds(SideGap, Row3Top, cmbMode.Width, cmbMode.Height);
     chkCase.SetBounds(cmbMode.Left + cmbMode.Width + ItemGap,
-      Row3Top + (RowHeight - chkCase.Height) div 2, chkCase.Width,
+      Row3Top + (RowHeight - chkCase.Height) div 2,
+      ColALeft - ItemGap - (cmbMode.Left + cmbMode.Width + ItemGap),
       chkCase.Height);
-    cmbScope.SetBounds(chkCase.Left + chkCase.Width + ItemGap, Row3Top,
-      RightEdge - (chkCase.Left + chkCase.Width + ItemGap), cmbScope.Height);
+    cmbScope.SetBounds(ColALeft, Row3Top, RightEdge - ColALeft,
+      cmbScope.Height);
 
     // Ряд 4: Undo во всю ширину
     UndoBtn.SetBounds(SideGap, Row4Top, RightEdge - SideGap, RowHeight);
