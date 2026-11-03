@@ -130,6 +130,9 @@ begin
   if Windows.GetEnvironmentVariable('LOCALAPPDATA', LocalData,
                                     SizeOf(LocalData)) > 0 then
     AddFolder(DirWithSlash(string(LocalData)) + 'Arduino15');
+  {$IFDEF UNIX}
+  AddFolder(SysUtils.GetEnvironmentVariable('HOME') + '/.arduino15');
+  {$ENDIF}
 end;
 
 function ArdCompareVersion(const AVersion1, AVersion2: string): Integer;

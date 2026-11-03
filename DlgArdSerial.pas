@@ -103,6 +103,11 @@ implementation
 {$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
 
 const
+  // Порт не открыт. Через THandle: в Linux-сборке HANDLE (64 бита) шире
+  // THandle (32), без приведения сравнение с FPort всегда ложно
+  PortNone = THandle(INVALID_HANDLE_VALUE);
+
+const
   BaudRates: array[0..14] of Integer = (
     300, 1200, 2400, 4800, 9600, 19200, 38400, 57600, 74880, 115200,
     230400, 250000, 500000, 1000000, 2000000);
@@ -126,7 +131,7 @@ procedure TDlgArdSerial.FormCreate(Sender: TObject);
 var
   ItemIdx: Integer;
 begin
-  FPort := INVALID_HANDLE_VALUE;
+  FPort := PortNone;
   FAtLineStart := True;
   cbBaud.Items.Clear;
   for ItemIdx := Low(BaudRates) to High(BaudRates) do
@@ -218,7 +223,7 @@ end;
 
 function TDlgArdSerial.IsOpen: Boolean;
 begin
-  Result := FPort <> INVALID_HANDLE_VALUE;
+  Result := FPort <> PortNone;
 end;
 
 procedure TDlgArdSerial.UpdateState(const AText: string);
@@ -271,9 +276,16 @@ begin
     Exit;
   FPort := CreateFile(PChar('\\.\' + FPortName), GENERIC_READ or GENERIC_WRITE,
                       0, nil, OPEN_EXISTING, 0, 0);
-  if FPort = INVALID_HANDLE_VALUE then
+  if FPort = PortNone then
   begin
     ErrorText := SysErrorMessage(GetLastError);
+    {$IFDEF UNIX}
+    // EACCES: порт есть, нет прав - пользователь не в группе порта
+    if GetLastError = 13 then
+      ErrorText := ErrorText + ' (пользователя нужно добавить в группу ' +
+                   'dialout: sudo usermod -aG dialout $USER, затем войти ' +
+                   'в систему заново)';
+    {$ENDIF}
     UpdateState('Не удалось открыть ' + FPortName + ': ' + ErrorText);
     Exit;
   end;
@@ -301,10 +313,10 @@ end;
 procedure TDlgArdSerial.ClosePortHandle;
 begin
   tmrRead.Enabled := False;
-  if FPort <> INVALID_HANDLE_VALUE then
+  if FPort <> PortNone then
   begin
     Windows.CloseHandle(FPort);
-    FPort := INVALID_HANDLE_VALUE;
+    FPort := PortNone;
   end;
 end;
 

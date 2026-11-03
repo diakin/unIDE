@@ -21,24 +21,51 @@ implementation
 uses SysUtils, dynlibs{$IFDEF LCLGTK2}, gtk2{$ENDIF};
 
 const
-  FontRules =
+  // Семейства Windows через ; и замены для них (первая найденная)
+  SansFamilies = 'Tahoma;MS Sans Serif;Microsoft Sans Serif;MS Shell Dlg;' +
+                 'MS Shell Dlg 2;Segoe UI;Arial;Verdana';
+  SansSubst = '<string>Liberation Sans</string><string>Arimo</string>' +
+              '<string>Nimbus Sans</string><string>FreeSans</string>' +
+              '<string>DejaVu Sans</string>';
+  MonoFamilies = 'Courier New;Courier;Consolas;Lucida Console;Fixedsys';
+  MonoSubst = '<string>Liberation Mono</string><string>Cousine</string>' +
+              '<string>Nimbus Mono PS</string><string>FreeMono</string>' +
+              '<string>DejaVu Sans Mono</string>';
+
+// По правилу <match> на семейство: несколько значений в одном <test>
+// fontconfig не поддерживает (предупреждение и проверка только первого)
+function FamilyRules(const AFamilies, ASubst: string): string;
+var
+  Rest, Family: string;
+  SepPos: Integer;
+begin
+  Result := '';
+  Rest := AFamilies;
+  while Rest <> '' do
+  begin
+    SepPos := Pos(';', Rest);
+    if SepPos = 0 then
+      SepPos := Length(Rest) + 1;
+    Family := Copy(Rest, 1, SepPos - 1);
+    Delete(Rest, 1, SepPos);
+    Result := Result +
+      ' <match target="pattern">' + LineEnding +
+      '  <test name="family" qual="any"><string>' + Family + '</string></test>' + LineEnding +
+      '  <edit name="family" mode="prepend" binding="strong">' + ASubst + '</edit>' + LineEnding +
+      ' </match>' + LineEnding;
+  end;
+end;
+
+function FontRules: string;
+begin
+  Result :=
     '<?xml version="1.0"?>' + LineEnding +
     '<!DOCTYPE fontconfig SYSTEM "fonts.dtd">' + LineEnding +
     '<fontconfig>' + LineEnding +
-    ' <match target="pattern">' + LineEnding +
-    '  <test name="family" qual="any"><string>Tahoma</string><string>MS Sans Serif</string>' +
-    '<string>Microsoft Sans Serif</string><string>MS Shell Dlg</string><string>MS Shell Dlg 2</string>' +
-    '<string>Segoe UI</string><string>Arial</string><string>Verdana</string></test>' + LineEnding +
-    '  <edit name="family" mode="prepend" binding="strong"><string>Liberation Sans</string>' +
-    '<string>Arimo</string><string>Nimbus Sans</string><string>FreeSans</string><string>DejaVu Sans</string></edit>' + LineEnding +
-    ' </match>' + LineEnding +
-    ' <match target="pattern">' + LineEnding +
-    '  <test name="family" qual="any"><string>Courier New</string><string>Courier</string>' +
-    '<string>Consolas</string><string>Lucida Console</string><string>Fixedsys</string></test>' + LineEnding +
-    '  <edit name="family" mode="prepend" binding="strong"><string>Liberation Mono</string>' +
-    '<string>Cousine</string><string>Nimbus Mono PS</string><string>FreeMono</string><string>DejaVu Sans Mono</string></edit>' + LineEnding +
-    ' </match>' + LineEnding +
+    FamilyRules(SansFamilies, SansSubst) +
+    FamilyRules(MonoFamilies, MonoSubst) +
     '</fontconfig>' + LineEnding;
+end;
 
 type
   TFcConfigGetCurrent = function: Pointer; cdecl;
@@ -66,7 +93,7 @@ begin
     Exit; // fontconfig старше 2.12
   Config := GetCurrent();
   if Config <> nil then
-    ParseMemory(Config, PChar(FontRules), 1);
+    ParseMemory(Config, PChar(FontRules()), 1);
 end;
 
 procedure UnixFontsSetup;

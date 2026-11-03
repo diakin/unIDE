@@ -17,16 +17,22 @@ unit ArduinoPorts;
 //
 // Delphi 7 заголовков SetupAPI не содержит: функции берутся из
 // setupapi.dll и cfgmgr32.dll при первом перечислении.
+//
+// Linux (UNIX): порты - /dev/ttyACM* и /dev/ttyUSB* по /sys/class/tty;
+// VID, PID, серийный номер, имя устройства - из файлов USB-устройства в
+// sysfs (idVendor, idProduct, serial, product). Слежение - опрос списка
+// раз в 1,5 с по таймеру (без udev).
 
 interface
 
 uses
   {$IFDEF FPC} LCLIntf, {$ENDIF} // AllocateHWnd: в FPC у Classes её нет
+  {$IFDEF UNIX} ExtCtrls, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Registry;
 
 type
   TArdPortInfo = record
-    Name: string;          // COM5
+    Name: string;          // COM5 (Linux: /dev/ttyACM0)
     FriendlyName: string;  // Arduino Due Programming Port (COM5)
     Vid: string;           // 2341 ('' - не USB или неизвестно)
     Pid: string;           // 003D
@@ -45,6 +51,10 @@ type
     FNotify: Pointer;
     FPorts: TArdPortArray;
     FOnChange: TArdPortsChangeEvent;
+    {$IFDEF UNIX}
+    FPollTimer: TTimer;
+    procedure PollTimer(Sender: TObject);
+    {$ENDIF}
     procedure WndProc(var Message: TMessage);
     function GetCount: Integer;
     function GetPort(AIndex: Integer): TArdPortInfo;
@@ -86,6 +96,9 @@ const
 
   RefreshTimerId = 1;
   RefreshDelay = 400;
+  {$IFDEF UNIX}
+  PollInterval = 1500;
+  {$ENDIF}
 
 type
   TSpDevInfoData = record
@@ -173,11 +186,16 @@ end;
 //  Перечисление
 // ---------------------------------------------------------------------------
 
-// Номер порта для сортировки: COM5 -> 5, остальное - в конец
+// Номер порта для сортировки: COM5 -> 5, остальное - в конец.
+// Linux: /dev/ttyACM<n> -> n, /dev/ttyUSB<n> -> 1000 + n
 function PortNumber(const AName: string): Integer;
 begin
   if CompareText(Copy(AName, 1, 3), 'COM') = 0 then
     Result := StrToIntDef(Copy(AName, 4, MaxInt), MaxInt)
+  else if Copy(AName, 1, 11) = '/dev/ttyACM' then
+    Result := StrToIntDef(Copy(AName, 12, MaxInt), 999)
+  else if Copy(AName, 1, 11) = '/dev/ttyUSB' then
+    Result := 1000 + StrToIntDef(Copy(AName, 12, MaxInt), 999)
   else
     Result := MaxInt;
 end;
@@ -287,6 +305,89 @@ begin
   Inc(ACount);
 end;
 
+{$IFDEF UNIX}
+
+// Первая строка маленького файла sysfs; '' - нет файла
+function SysFileLine(const AFile: string): string;
+var
+  Lines: TStringList;
+begin
+  Result := '';
+  if not FileExists(AFile) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(AFile);
+      if Lines.Count > 0 then
+        Result := Trim(Lines[0]);
+    except
+      Result := '';
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+// Сведения о USB-устройстве порта: /sys/class/tty/<имя>/device - интерфейс
+// USB (ttyACM) или устройство драйвера (ttyUSB); idVendor лежит на 1-3
+// уровня выше. Ссылки ядро разрешает само, .. идёт по настоящему пути.
+procedure UnixPortUsb(const ATtyName: string; var APort: TArdPortInfo);
+var
+  UsbDir, Product, Maker: string;
+  LevelIdx: Integer;
+begin
+  UsbDir := '/sys/class/tty/' + ATtyName + '/device/';
+  for LevelIdx := 0 to 4 do
+  begin
+    if FileExists(UsbDir + 'idVendor') then
+      Break;
+    UsbDir := UsbDir + '../';
+  end;
+  if not FileExists(UsbDir + 'idVendor') then
+    Exit;
+  APort.Vid := UpperCase(SysFileLine(UsbDir + 'idVendor'));
+  APort.Pid := UpperCase(SysFileLine(UsbDir + 'idProduct'));
+  APort.SerialNo := SysFileLine(UsbDir + 'serial');
+  Product := SysFileLine(UsbDir + 'product');
+  Maker := SysFileLine(UsbDir + 'manufacturer');
+  if Product = '' then
+    Product := Maker;
+  if Product <> '' then
+    APort.FriendlyName := Product + ' (' + APort.Name + ')';
+  // Как код экземпляра Windows: по нему (VID_, PID_) ищется плата
+  APort.InstanceId := 'USB\VID_' + APort.Vid + '&PID_' + APort.Pid;
+  if APort.SerialNo <> '' then
+    APort.InstanceId := APort.InstanceId + '\' + APort.SerialNo;
+end;
+
+procedure UnixEnumPorts(var APorts: TArdPortArray; var ACount: Integer);
+var
+  Found: TSearchRec;
+  OnePort: TArdPortInfo;
+begin
+  if FindFirst('/sys/class/tty/tty*', faAnyFile, Found) = 0 then
+  try
+    repeat
+      if (Copy(Found.Name, 1, 6) <> 'ttyACM') and
+         (Copy(Found.Name, 1, 6) <> 'ttyUSB') then
+        Continue;
+      OnePort.Name := '/dev/' + Found.Name;
+      OnePort.FriendlyName := OnePort.Name;
+      OnePort.Vid := '';
+      OnePort.Pid := '';
+      OnePort.SerialNo := '';
+      OnePort.InstanceId := '';
+      UnixPortUsb(Found.Name, OnePort);
+      AddPort(APorts, ACount, OnePort);
+    until FindNext(Found) <> 0;
+  finally
+    FindClose(Found);
+  end;
+end;
+
+{$ENDIF}
+
 procedure ArdEnumPorts(var APorts: TArdPortArray);
 var
   DevInfo: THandle;
@@ -300,6 +401,9 @@ var
 begin
   APorts := nil;
   PortCount := 0;
+  {$IFDEF UNIX}
+  UnixEnumPorts(APorts, PortCount);
+  {$ELSE}
   LoadApi;
 
   if Assigned(SetupDiGetClassDevsApi) and Assigned(SetupDiEnumDeviceInfoApi) and
@@ -371,6 +475,7 @@ begin
     ValueNames.Free;
     Reg.Free;
   end;
+  {$ENDIF}
 
   SetLength(APorts, PortCount);
   for SortIdx := 0 to PortCount - 2 do
@@ -405,6 +510,15 @@ var
   RegisterApi: TRegisterDeviceNotification;
 begin
   inherited Create;
+  {$IFDEF UNIX}
+  // Linux: опрос по таймеру, окна и WM_DEVICECHANGE нет
+  ArdEnumPorts(FPorts);
+  FPollTimer := TTimer.Create(nil);
+  FPollTimer.Interval := PollInterval;
+  FPollTimer.OnTimer := PollTimer;
+  FPollTimer.Enabled := True;
+  Exit;
+  {$ENDIF}
   FWnd := {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.AllocateHWnd(WndProc);
   ArdEnumPorts(FPorts);
 
@@ -422,6 +536,9 @@ destructor TArdPortWatcher.Destroy;
 var
   UnregisterApi: TUnregisterDeviceNotification;
 begin
+  {$IFDEF UNIX}
+  FreeAndNil(FPollTimer);
+  {$ENDIF}
   if FNotify <> nil then
   begin
     @UnregisterApi := GetProcAddress(GetModuleHandle(user32),
@@ -461,6 +578,13 @@ begin
                                     Message.LParam);
   end;
 end;
+
+{$IFDEF UNIX}
+procedure TArdPortWatcher.PollTimer(Sender: TObject);
+begin
+  Refresh;
+end;
+{$ENDIF}
 
 procedure TArdPortWatcher.Refresh;
 var

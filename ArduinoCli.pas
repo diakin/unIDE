@@ -253,6 +253,20 @@ begin
   finally
     Ini.Free;
   end;
+  {$IFDEF UNIX}
+  // Linux: arduino-cli не задан - из PATH, ~/.local/bin, ~/bin (туда его
+  // кладёт install.sh). Arduino15 - ~/.arduino15 (папка Arduino IDE и
+  // arduino-cli по умолчанию).
+  if Result.CliFile = '' then
+    Result.CliFile := ExeSearch('arduino-cli',
+                                SysUtils.GetEnvironmentVariable('PATH') + ':' +
+                                SysUtils.GetEnvironmentVariable('HOME') +
+                                '/.local/bin:' +
+                                SysUtils.GetEnvironmentVariable('HOME') + '/bin');
+  if (Result.Arduino15Path = '') and
+     DirectoryExists(SysUtils.GetEnvironmentVariable('HOME') + '/.arduino15') then
+    Result.Arduino15Path := SysUtils.GetEnvironmentVariable('HOME') + '/.arduino15/';
+  {$ENDIF}
 end;
 
 procedure ArdSaveSetting(const AIniFile, ASection, AKey, AValue: string);
@@ -527,6 +541,12 @@ begin
     // Английская локаль: таблицы разбираются по заголовкам колонок (так же
     // делал RQdebugger: set ARDUINO_LOCALE=en). Переменная - только на время
     // запуска, дочерний процесс получает копию окружения.
+    {$IFDEF UNIX}
+    // Linux: окружение процесса из программы не меняется (TProcess берёт
+    // копию со старта) - переменная задаётся через env
+    Proc.CommandLine := 'env ARDUINO_LOCALE=en ' + CmdLine;
+    Started := Proc.Start;
+    {$ELSE}
     HadLocale := Windows.GetEnvironmentVariable('ARDUINO_LOCALE', LocaleBuf,
                                         SizeOf(LocaleBuf)) > 0;
     Windows.SetEnvironmentVariable('ARDUINO_LOCALE', 'en');
@@ -538,6 +558,7 @@ begin
       else
         Windows.SetEnvironmentVariable('ARDUINO_LOCALE', nil);
     end;
+    {$ENDIF}
     if not Started then
     begin
       EmitLine('Не удалось запустить: ' + CmdLine + ' (' + Proc.ErrorText + ')');

@@ -30,11 +30,6 @@ begin
   Result := Default(BOOL);
 end;
 
-function Impl_ClearCommError(hFile:HANDLE; lpErrors:LPDWORD; lpStat:LPCOMSTAT): WINBOOL; stdcall; public name 'unidewin_ClearCommError';
-begin
-  Result := Default(WINBOOL);
-end;
-
 function Impl_CloseClipboard: BOOL; stdcall; public name 'unidewin_CloseClipboard';
 begin
   Result := Default(BOOL);
@@ -371,11 +366,6 @@ end;
 function Impl_GetClipboardData(AFormat: UINT): THandle; stdcall; public name 'unidewin_GetClipboardData';
 begin
   Result := Default(THandle);
-end;
-
-function Impl_GetCommState(hFile:HANDLE; lpDCB:PDCB): WINBOOL; stdcall; public name 'unidewin_GetCommState';
-begin
-  Result := Default(WINBOOL);
 end;
 
 function Impl_GetConsoleScreenBufferInfo(hConsoleOutput:HANDLE; lpConsoleScreenBufferInfo:PCONSOLE_SCREEN_BUFFER_INFO): WINBOOL; stdcall; public name 'unidewin_GetConsoleScreenBufferInfo';
@@ -772,11 +762,6 @@ procedure Impl_PostQuitMessage(nExitCode:longint); stdcall; public name 'unidewi
 begin
 end;
 
-function Impl_PurgeComm(hFile:HANDLE; dwFlags:DWORD): WINBOOL; stdcall; public name 'unidewin_PurgeComm';
-begin
-  Result := Default(WINBOOL);
-end;
-
 function Impl_QueryInformationJobObject(hJob: THandle; JobInfoClass: Integer; lpJobInfo: Pointer; cbJobInfoLength: DWORD; lpReturnLength: PDWORD): BOOL; stdcall; public name 'unidewin_QueryInformationJobObject';
 begin
   Result := Default(BOOL);
@@ -857,16 +842,6 @@ begin
   Result := Default(HANDLE);
 end;
 
-function Impl_SetCommState(hFile:HANDLE; lpDCB:LPDCB): WINBOOL; stdcall; public name 'unidewin_SetCommState';
-begin
-  Result := Default(WINBOOL);
-end;
-
-function Impl_SetCommTimeouts(hFile:HANDLE; lpCommTimeouts:LPCOMMTIMEOUTS): WINBOOL; stdcall; public name 'unidewin_SetCommTimeouts';
-begin
-  Result := Default(WINBOOL);
-end;
-
 function Impl_SetConsoleCtrlHandler(HandlerRoutine:PHANDLER_ROUTINE; Add:WINBOOL): WINBOOL; stdcall; public name 'unidewin_SetConsoleCtrlHandler';
 begin
   Result := Default(WINBOOL);
@@ -920,11 +895,6 @@ end;
 function Impl_SetWindowsHookExA(idHook:longint; lpfn:HOOKPROC; hmod:HINST; dwThreadId:DWORD): HHOOK; stdcall; public name 'unidewin_SetWindowsHookExA';
 begin
   Result := Default(HHOOK);
-end;
-
-function Impl_SetupComm(hFile:HANDLE; dwInQueue:DWORD; dwOutQueue:DWORD): WINBOOL; stdcall; public name 'unidewin_SetupComm';
-begin
-  Result := Default(WINBOOL);
 end;
 
 function Impl_ShellExecuteExA(lpExecInfo: LPSHELLEXECUTEINFOA): Bool; stdcall; public name 'unidewin_ShellExecuteExA';

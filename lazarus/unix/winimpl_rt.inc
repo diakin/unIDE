@@ -813,12 +813,42 @@ begin
     end;
 end;
 
+// Serial port (\\.\COM5 on Windows): here \\.\/dev/ttyACM0 or /dev/ttyUSB0.
+// Opened non-blocking without becoming the controlling terminal; on error
+// UnixLastError is errno, so SysErrorMessage gives the system text
+// (EACCES - user is not in the dialout group).
+function OpenDeviceFd(const AName: AnsiString): THandle;
+var
+  DevFd: cint;
+begin
+  Result := INVALID_HANDLE_VALUE;
+  DevFd := fpOpen(PChar(AName), O_RDWR or O_NOCTTY or O_NONBLOCK);
+  if DevFd < 0 then
+  begin
+    UnixLastError := fpgeterrno;
+    Exit;
+  end;
+  SetLength(UnixFileFds, Length(UnixFileFds) + 1);
+  UnixFileFds[High(UnixFileFds)] := DevFd;
+  Result := DevFd;
+end;
+
 function OpenFileUtf8(const AName: AnsiString; AAccess, ACreation: DWORD): THandle;
 var
   Mode: Integer;
   FileFd: THandle;
 begin
   Result := INVALID_HANDLE_VALUE;
+  if Copy(AName, 1, 4) = '\\.\' then
+  begin
+    Result := OpenDeviceFd(Copy(AName, 5, MaxInt));
+    Exit;
+  end;
+  if Copy(AName, 1, 5) = '/dev/' then
+  begin
+    Result := OpenDeviceFd(AName);
+    Exit;
+  end;
   if (AAccess and GENERIC_WRITE <> 0) and (AAccess and GENERIC_READ <> 0) then
     Mode := fmOpenReadWrite
   else if AAccess and GENERIC_WRITE <> 0 then
@@ -879,7 +909,16 @@ begin
     Exit;
   ReadCount := FileRead(AFile, ABuffer^, AToRead);
   if ReadCount < 0 then
+  begin
+    // Non-blocking device (serial port) with nothing to read
+    if fpgeterrno = ESysEAGAIN then
+    begin
+      Result := True;
+      Exit;
+    end;
+    UnixLastError := fpgeterrno;
     Exit;
+  end;
   ARead := ReadCount;
   Result := True;
 end;
@@ -894,7 +933,10 @@ begin
     Exit;
   WriteCount := FileWrite(AFile, ABuffer, ACount);
   if WriteCount < 0 then
+  begin
+    UnixLastError := fpgeterrno;
     Exit;
+  end;
   AWritten := WriteCount;
   Result := True;
 end;
@@ -944,6 +986,187 @@ begin
       Result := True;
       Exit;
     end;
+end;
+
+// --- serial port (termios) ---
+// What DlgArdSerial needs: speed, 8N1 raw mode, DTR/RTS on, bytes waiting,
+// flush. Timeouts are not kept: the fd is non-blocking, ReadFile returns
+// what has arrived (as ReadIntervalTimeout = MAXDWORD on Windows).
+
+const
+  CommDtrControlMask = $00000030;  // DCB.Flags fDtrControl
+  CommDtrEnable = $00000010;
+  CommRtsControlMask = $00003000;  // DCB.Flags fRtsControl
+  CommRtsEnable = $00001000;
+
+function CommSpeedOf(ABaud: DWORD; var ASpeed: Cardinal): Boolean;
+begin
+  Result := True;
+  case ABaud of
+    50: ASpeed := B50;
+    75: ASpeed := B75;
+    110: ASpeed := B110;
+    134: ASpeed := B134;
+    150: ASpeed := B150;
+    200: ASpeed := B200;
+    300: ASpeed := B300;
+    600: ASpeed := B600;
+    1200: ASpeed := B1200;
+    1800: ASpeed := B1800;
+    2400: ASpeed := B2400;
+    4800: ASpeed := B4800;
+    9600: ASpeed := B9600;
+    19200: ASpeed := B19200;
+    38400: ASpeed := B38400;
+    57600: ASpeed := B57600;
+    115200: ASpeed := B115200;
+    230400: ASpeed := B230400;
+    {$IFDEF LINUX}
+    460800: ASpeed := B460800;
+    500000: ASpeed := B500000;
+    576000: ASpeed := B576000;
+    921600: ASpeed := B921600;
+    1000000: ASpeed := B1000000;
+    1152000: ASpeed := B1152000;
+    1500000: ASpeed := B1500000;
+    2000000: ASpeed := B2000000;
+    {$ENDIF}
+  else
+    Result := False;
+  end;
+end;
+
+function CommBaudOf(ASpeed: Cardinal): DWORD;
+const
+  BaudList: array[0..17] of DWORD = (50, 75, 110, 134, 150, 200, 300, 600,
+    1200, 1800, 2400, 4800, 9600, 19200, 38400, 57600, 115200, 230400);
+var
+  BaudIdx: Integer;
+  OneSpeed: Cardinal;
+begin
+  Result := 0;
+  for BaudIdx := Low(BaudList) to High(BaudList) do
+    if CommSpeedOf(BaudList[BaudIdx], OneSpeed) and (OneSpeed = ASpeed) then
+    begin
+      Result := BaudList[BaudIdx];
+      Exit;
+    end;
+end;
+
+function Impl_GetCommState(hFile:HANDLE; lpDCB:PDCB): WINBOOL; stdcall; public name 'unidewin_GetCommState';
+var
+  Tio: Termios;
+begin
+  Result := False;
+  if not FdIsOurs(hFile) or (lpDCB = nil) then
+    Exit;
+  if TCGetAttr(hFile, Tio) <> 0 then
+  begin
+    UnixLastError := fpgeterrno;
+    Exit;
+  end;
+  lpDCB^.BaudRate := CommBaudOf(Tio.c_cflag and (CBAUD or CBAUDEX));
+  lpDCB^.ByteSize := 8;
+  lpDCB^.Parity := NOPARITY;
+  lpDCB^.StopBits := ONESTOPBIT;
+  lpDCB^.flags := 1; // fBinary
+  Result := True;
+end;
+
+function Impl_SetCommState(hFile:HANDLE; lpDCB:LPDCB): WINBOOL; stdcall; public name 'unidewin_SetCommState';
+var
+  Tio: Termios;
+  Speed: Cardinal;
+  Lines: cint;
+begin
+  Result := False;
+  if not FdIsOurs(hFile) or (lpDCB = nil) then
+    Exit;
+  if not CommSpeedOf(lpDCB^.BaudRate, Speed) then
+  begin
+    UnixLastError := ESysEINVAL;
+    Exit;
+  end;
+  if TCGetAttr(hFile, Tio) <> 0 then
+  begin
+    UnixLastError := fpgeterrno;
+    Exit;
+  end;
+  CFMakeRaw(Tio);
+  Tio.c_cflag := Tio.c_cflag and not (CSIZE or PARENB or PARODD or CSTOPB or
+                                       CRTSCTS);
+  case lpDCB^.ByteSize of
+    5: Tio.c_cflag := Tio.c_cflag or CS5;
+    6: Tio.c_cflag := Tio.c_cflag or CS6;
+    7: Tio.c_cflag := Tio.c_cflag or CS7;
+  else
+    Tio.c_cflag := Tio.c_cflag or CS8;
+  end;
+  case lpDCB^.Parity of
+    ODDPARITY: Tio.c_cflag := Tio.c_cflag or PARENB or PARODD;
+    EVENPARITY: Tio.c_cflag := Tio.c_cflag or PARENB;
+  end;
+  if lpDCB^.StopBits = TWOSTOPBITS then
+    Tio.c_cflag := Tio.c_cflag or CSTOPB;
+  Tio.c_cflag := Tio.c_cflag or CLOCAL or CREAD;
+  Tio.c_cc[VMIN] := 0;
+  Tio.c_cc[VTIME] := 0;
+  CFSetISpeed(Tio, Speed);
+  CFSetOSpeed(Tio, Speed);
+  if TCSetAttr(hFile, TCSANOW, Tio) <> 0 then
+  begin
+    UnixLastError := fpgeterrno;
+    Exit;
+  end;
+  // DTR and RTS on, as DTR_CONTROL_ENABLE / RTS_CONTROL_ENABLE (many boards
+  // reset on DTR)
+  Lines := 0;
+  if lpDCB^.flags and CommDtrControlMask = CommDtrEnable then
+    Lines := Lines or TIOCM_DTR;
+  if lpDCB^.flags and CommRtsControlMask = CommRtsEnable then
+    Lines := Lines or TIOCM_RTS;
+  if Lines <> 0 then
+    fpIOCtl(hFile, TIOCMBIS, @Lines);
+  Result := True;
+end;
+
+function Impl_SetCommTimeouts(hFile:HANDLE; lpCommTimeouts:LPCOMMTIMEOUTS): WINBOOL; stdcall; public name 'unidewin_SetCommTimeouts';
+begin
+  Result := FdIsOurs(hFile);
+end;
+
+function Impl_SetupComm(hFile:HANDLE; dwInQueue:DWORD; dwOutQueue:DWORD): WINBOOL; stdcall; public name 'unidewin_SetupComm';
+begin
+  Result := FdIsOurs(hFile);
+end;
+
+function Impl_PurgeComm(hFile:HANDLE; dwFlags:DWORD): WINBOOL; stdcall; public name 'unidewin_PurgeComm';
+begin
+  Result := FdIsOurs(hFile) and (TCFlush(hFile, TCIOFLUSH) = 0);
+end;
+
+// Bytes waiting in cbInQue. Unplugged device: ioctl fails (EIO) -> False
+function Impl_ClearCommError(hFile:HANDLE; lpErrors:LPDWORD; lpStat:LPCOMSTAT): WINBOOL; stdcall; public name 'unidewin_ClearCommError';
+var
+  Waiting: cint;
+begin
+  Result := False;
+  if lpErrors <> nil then
+    lpErrors^ := 0;
+  if not FdIsOurs(hFile) then
+    Exit;
+  Waiting := 0;
+  if fpIOCtl(hFile, FIONREAD, @Waiting) <> 0 then
+  begin
+    UnixLastError := fpgeterrno;
+    Exit;
+  end;
+  if lpStat <> nil then
+  begin
+    FillChar(lpStat^, SizeOf(lpStat^), 0);
+    lpStat^.cbInQue := Waiting;
+  end;
+  Result := True;
 end;
 
 function AttrOfPath(const AName: AnsiString): DWORD;
