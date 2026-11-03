@@ -672,9 +672,17 @@ begin
   Terminate(1);
 end;
 
+// Linux: "дескриптор" процесса - число из прослойки WinAPI (lazarus/unix):
+// по нему WaitForSingleObject, GetExitCodeProcess, TerminateProcess и
+// CloseHandle работают, как с дескриптором процесса Windows
+function UnixProcHandle(APid: Cardinal): THandle; stdcall;
+  external name 'unidewin_UnixProcHandle';
+
 function TProcRun.DetachHandle: THandle;
 begin
   Result := 0;
+  if (FProc <> nil) and FStarted then
+    Result := UnixProcHandle(FPid);
 end;
 
 procedure ProcKillTree(APid: Cardinal);

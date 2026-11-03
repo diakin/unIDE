@@ -42,6 +42,7 @@ uses
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
   ProcRun,        // запуск внешних программ: канал вывода, ожидание, код выхода
   PathKit,        // пути: разделитель папок, имя exe, папки рядом с программой
+  WineRun,        // Linux: программы Windows (dcc32, rc.exe, exe) через Wine
   OsShell,        // оболочка ОС: открыть по ассоциации, показать в папке, корзина
   DsgClassDesc,   // описание классов Delphi 7 данными: инспектор, конструктор (0.8)
   EdIntf,         // прослойка редактора: сообщения EM_* окну RichEdit1
@@ -1869,6 +1870,10 @@ type
     FCompNoOem: Boolean;
     // RunCompiler: строки вывода в UTF-8 - в ANSI (lazbuild)
     FCompUtf8: Boolean;
+    // Linux, запуск .exe через Wine (RunCompiler, WriteCompileBat): раздел
+    // editor.ini с WineFile/WinePrefix ('' - [Wine]) и пути с / (rc.exe)
+    FWineSection: string;
+    FWineSlash: Boolean;
     FBuildBarBusy: Boolean;     // UpdateBuildBar ставит пункт списка сам
     FLangModeKey: string;
     FRunRowLefts: array of Integer;
@@ -3294,6 +3299,9 @@ type
     // Отладчик RapidQ
     function  RqDbgBuild(const ABas: string; var ACopy: string): Boolean;
     function  RqDbgLaunch(const AExe, ADir: string): Boolean;
+    // Linux: путь файла отладчика для программы под Wine (Z:/home/...)
+    function  RqDbgWinePath(const APath: string): string;
+    procedure RqDbgGo;
     function  RqDbgHere: Boolean;
     function  RqDbgWantedFor(const ABas: string): Boolean;
     procedure RqDbgIncludeSet(const ABas: string; AAll, AInline: TStrings);
@@ -26958,8 +26966,8 @@ begin
   begin
     if FRqDbgInstr <> nil then
       DeleteFile(FRqDbgInstr.CmdFile);
-    if FRqDbgPaused and (FRqDbgEvGo <> 0) then
-      SetEvent(FRqDbgEvGo);
+    if FRqDbgPaused then
+      RqDbgGo;
     FRqDbgOn := False;
   end;
   RqDbgCloseEvents;
@@ -53581,7 +53589,7 @@ var
   I, Q1, Q2, Newest, ResAge, Age: Integer;
 begin
   Result := True;
-  Brcc := ARoot + 'Bin\brcc32.exe';
+  Brcc := ARoot + 'Bin' + PathDelim + 'brcc32.exe';
   if FindFirst(ADir + '*.rc', faAnyFile, SR) <> 0 then
     Exit;
   SL := TStringList.Create;
@@ -53649,6 +53657,11 @@ var
   NL: Integer;
   Ini: TIniFile;
   Oem, Ended, Killed, Utf8Out: Boolean;
+  {$IFDEF UNIX}
+  UseWine: Boolean;
+  Wine: TWineSettings;
+  WineErr: string;
+  {$ENDIF}
 begin
   Result := -1;
   Killed := False;
@@ -53673,13 +53686,36 @@ begin
   // компилятор, OEM там нет
   Utf8Out := FCompUtf8;
   {$IFDEF UNIX}
-  Oem := False;
-  Utf8Out := True;
+  // Linux: программа Windows (dcc32, rc.exe, brcc32) - через Wine, вывод
+  // в OEM, как в Windows; родная - в UTF-8
+  UseWine := WineNeeded(AExe);
+  if UseWine then
+  begin
+    Wine := WineLoad(SettingsFileName, FWineSection);
+    if not WineCheck(Wine, WineErr) then
+    begin
+      LogComp(WineErr);
+      Exit;
+    end;
+  end
+  else
+  begin
+    Oem := False;
+    Utf8Out := True;
+  end;
   {$ENDIF}
 
   Proc := TProcRun.Create;
   try
     Proc.CommandLine := '"' + AExe + '" ' + AParams;
+    {$IFDEF UNIX}
+    if UseWine then
+    begin
+      Proc.CommandLine := WineCommand(Wine, AExe,
+                                      WineArgsToWin(Wine, AParams, FWineSlash));
+      LogComp('Wine: ' + Proc.CommandLine);
+    end;
+    {$ENDIF}
     Proc.Dir := AWorkDir;
     Proc.Window := pwHidden;
     Proc.CaptureOutput := True;
@@ -53749,6 +53785,11 @@ begin
         // lazbuild: UTF-8 - в ANSI (строка целиком: символ не режется)
         if Utf8Out and LooksLikeUtf8(Line) then
           Line := Utf8ToAnsiFull(Line);
+        {$IFDEF UNIX}
+        // Пути Wine (Z:\home\...) - в пути Linux: по ним переход к ошибке
+        if UseWine then
+          Line := WineTextToUnix(Wine, Line);
+        {$ENDIF}
         if Trim(Line) <> '' then
         begin
           if FRosNinjaRun then
@@ -53766,6 +53807,10 @@ begin
 
     if Utf8Out and LooksLikeUtf8(Acc) then
       Acc := Utf8ToAnsiFull(Acc);
+    {$IFDEF UNIX}
+    if UseWine then
+      Acc := WineTextToUnix(Wine, Acc);
+    {$ENDIF}
     if Trim(Acc) <> '' then
     begin
       LogComp(Acc);
@@ -53812,7 +53857,13 @@ begin
     SL.Add('# Build ' + ExtractFileName(ADpr) +
       ' - file is rewritten on every compile');
     SL.Add('cd "' + ExcludeTrailingPathDelimiter(ADir) + '" || exit 1');
-    SL.Add('"' + AExe + '" ' + AParams);
+    if WineNeeded(AExe) then
+      SL.Add(WineCommand(WineLoad(SettingsFileName, FWineSection), AExe,
+                         WineArgsToWin(WineLoad(SettingsFileName,
+                                                FWineSection),
+                                       AParams, FWineSlash)))
+    else
+      SL.Add('"' + AExe + '" ' + AParams);
     try
       SL.SaveToFile(FN);
       LogComp('Командная строка сохранена: ' + FN);
@@ -54802,7 +54853,7 @@ begin
   if Root <> '' then
     Root := IncludeTrailingPathDelimiter(Root);
 
-  Exe := Root + 'Bin\dcc32.exe';
+  Exe := Root + 'Bin' + PathDelim + 'dcc32.exe';
   if not FileExists(Exe) then
   begin
     // По пути из настроек компилятора нет - Delphi переустановили или
@@ -54815,7 +54866,7 @@ begin
       'в IDE Options -> Compilers, поле Delphi path');
               Exit;
     end;
-    Exe := Root + 'Bin\dcc32.exe';
+    Exe := Root + 'Bin' + PathDelim + 'dcc32.exe';
     LogComp('Найден: ' + Exe + '. Путь записан в настройки [' + Sect + ']');
   end;
 
@@ -55034,6 +55085,8 @@ begin
   // Полная командная строка. Без неё не видно, что компилятор получил на
   // самом деле, и разбирать ошибку вида "File not found" не по чему.
   LogComp(Exe + ' ' + Params);
+  // Linux: dcc32 через Wine с настройками этого раздела
+  FWineSection := Sect;
   if not FProbeActive then
     WriteCompileBat(Exe, Params, Dir, Dpr);
   T0 := GetTickCount;
@@ -55046,6 +55099,7 @@ begin
     else
       LogComp('--- Компиляция не запускалась: ошибка сборки ресурсов');
   finally
+    FWineSection := '';
     if Code = 0 then
       BusyEnd('Компиляция: готово', True)
     else
@@ -58073,6 +58127,9 @@ begin
 
   LogComp('--- Компиляция: ' + ExtractFileName(Bas) + '   [' + Sect + ']');
   LogComp('"' + RcExe + '" ' + Params);
+  // Linux: rc.exe через Wine, пути - с / (как RapidQSlashPath)
+  FWineSection := Sect;
+  FWineSlash := True;
   if not FRqProbeActive then
     WriteCompileBat(RcExe, Params, Dir, Bas);
 
@@ -58088,7 +58145,12 @@ begin
   FirstLine := 0;
   BusyBegin('Компиляция ' + ExtractFileName(Bas));
   try
-    Code := RunCompiler(RcExe, Params, Dir);
+    try
+      Code := RunCompiler(RcExe, Params, Dir);
+    finally
+      FWineSection := '';
+      FWineSlash := False;
+    end;
     if Code = -1 then
       Exit;   // не запустился - причина уже в логе
 
@@ -58110,6 +58172,13 @@ begin
         except
           LogComp('Сборка RapidQ: не удалось прочитать ' + DumpFile);
         end;
+        {$IFDEF UNIX}
+        // rc.exe под Wine пишет пути с буквой диска (Z:/home/...)
+        if WineNeeded(RcExe) then
+          for Index := 0 to RcLines.Count - 1 do
+            RcLines[Index] := WineTextToUnix(WineLoad(SettingsFileName, Sect),
+                                             RcLines[Index]);
+        {$ENDIF}
         for Index := 0 to RcLines.Count - 1 do
           if (Trim(RcLines[Index]) <> '') and
              (ConsoleLines.IndexOf(Trim(RcLines[Index])) < 0) then
@@ -66191,6 +66260,8 @@ var
   {$IFDEF UNIX}
   Script: TStringList;
   ScriptFile: string;
+  RunWine: Boolean;
+  Wine: TWineSettings;
   {$ENDIF}
   Proc: TProcRun;
   ProcHandle: THandle;
@@ -66330,18 +66401,37 @@ begin
     DeleteFile(FRqDbgInstr.CmdFile);
 
   {$IFDEF UNIX}
-  // Linux: консольная программа FreeBASIC - в терминале рабочего стола
-  // (GitTerminalCommand: $TERMINAL, x-terminal-emulator, ...). После её
-  // конца терминал ждёт Enter - иначе вывод не прочитать. Текст терминала
-  // в лог не попадает
-  if (Kind = bkFreeBasic) and (OutKind = fbOutConsole) then
+  // Linux: программа Windows (RapidQ, Delphi) - через Wine
+  RunWine := WineNeeded(Exe);
+  if RunWine then
+  begin
+    if Kind = bkDelphi then
+      Wine := WineLoad(SettingsFileName, CompilerSection('Delphi'))
+    else
+      Wine := WineLoad(SettingsFileName, CompilerSection('RapidQ Basic'));
+    if not WineCheck(Wine, ErrText) then
+    begin
+      LogComp('Запуск: ' + ErrText);
+      Exit;
+    end;
+    Cmd := WineCommand(Wine, Exe, '');
+  end;
+  // Linux: консольная программа FreeBASIC или консольная программа Windows
+  // - в терминале рабочего стола (GitTerminalCommand: $TERMINAL,
+  // x-terminal-emulator, ...). После её конца терминал ждёт Enter - иначе
+  // вывод не прочитать. Текст терминала в лог не попадает
+  if ((Kind = bkFreeBasic) and (OutKind = fbOutConsole)) or
+     (RunWine and ExeIsConsole(Exe)) then
   begin
     Cmd := string(GitTerminalCommand('', ''));
     if Cmd = '' then
     begin
       LogComp('Запуск: терминал не найден (задайте переменную TERMINAL или ' +
         'установите xterm) - программа запускается без окна');
-      Cmd := '"' + Exe + '"';
+      if RunWine then
+        Cmd := WineCommand(Wine, Exe, '')
+      else
+        Cmd := '"' + Exe + '"';
     end
     else
     begin
@@ -66350,7 +66440,10 @@ begin
       Script := TStringList.Create;
       try
         Script.Add('cd "' + ExcludeTrailingPathDelimiter(Dir) + '"');
-        Script.Add('"' + Exe + '"');
+        if RunWine then
+          Script.Add(WineCommand(Wine, Exe, ''))
+        else
+          Script.Add('"' + Exe + '"');
         Script.Add('echo "[код выхода $?, Enter - закрыть]"');
         Script.Add('read unide_key');
         ScriptFile := IncludeTrailingPathDelimiter(GetTempDir) +
@@ -67630,6 +67723,11 @@ begin
     // ещё работает, их не поднимет
     // Описание компонентов - типы свойств для выражений Watch (Объект.Свойство)
     RapidQComponentsReady(False);
+    {$IFDEF UNIX}
+    // Linux: программа под Wine - синхронизация файлами, пути Wine
+    FRqDbgInstr.SyncFiles := True;
+    FRqDbgInstr.ProgPath := RqDbgWinePath;
+    {$ENDIF}
     Built := FRqDbgInstr.Build(ABas, ACopy, BaseName + '_rqdbg.cmd',
                                BaseName + '_rqdbg.state',
     'unIDE_RqDbg_' +
@@ -67876,6 +67974,11 @@ begin
     Exit;
   end;
   RqDbgCloseEvents;
+  {$IFDEF UNIX}
+  // Linux: вместо событий - файлы .stop и .go (RqDbgInstr, SyncFiles)
+  DeleteFile(FRqDbgInstr.StopFile);
+  DeleteFile(FRqDbgInstr.GoFile);
+  {$ELSE}
   FRqDbgEvStop := CreateEvent(nil, False, False,
                               PChar(RqDbgStopEventName(FRqDbgInstr.EventBase)));
   FRqDbgEvGo := CreateEvent(nil, False, False,
@@ -67889,6 +67992,7 @@ begin
   end;
   ResetEvent(FRqDbgEvStop);
   ResetEvent(FRqDbgEvGo);
+  {$ENDIF}
 
   Armed := RqDbgResolveMarks;
   // Первая команда: F7/F8 - стоять на первом операторе, F4 - на строке
@@ -67919,6 +68023,12 @@ begin
   Proc := TProcRun.Create;
   try
     Proc.CommandLine := '"' + AExe + '"';
+    {$IFDEF UNIX}
+    if WineNeeded(AExe) then
+      Proc.CommandLine := WineCommand(WineLoad(SettingsFileName,
+                                       CompilerSection('RapidQ Basic')),
+                                      AExe, '');
+    {$ENDIF}
     Proc.Dir := ADir;
     if not Proc.Start then
     begin
@@ -67949,6 +68059,42 @@ begin
   Result := True;
 end;
 
+// Отпустить стоящую программу: событие "go" (Linux - файл .go)
+procedure TForm1.RqDbgGo;
+{$IFDEF UNIX}
+var
+  GoLines: TStringList;
+{$ENDIF}
+begin
+  {$IFDEF UNIX}
+  if FRqDbgInstr = nil then
+    Exit;
+  GoLines := TStringList.Create;
+  try
+    GoLines.Add('go');
+    try
+      GoLines.SaveToFile(FRqDbgInstr.GoFile);
+    except
+      on Err: Exception do
+        LogComp('Отладчик RapidQ: не записан ' + FRqDbgInstr.GoFile + ' (' +
+                Err.Message + ')');
+    end;
+  finally
+    GoLines.Free;
+  end;
+  {$ELSE}
+  if FRqDbgEvGo <> 0 then
+    SetEvent(FRqDbgEvGo);
+  {$ENDIF}
+end;
+
+function TForm1.RqDbgWinePath(const APath: string): string;
+begin
+  Result := WinePathToWin(WineLoad(SettingsFileName,
+                                   CompilerSection('RapidQ Basic')),
+                          APath, True);
+end;
+
 // Команда стоящей программе: файл команды, затем "go"
 procedure TForm1.RqDbgCommand(AMode, ARunTo: Integer);
 begin
@@ -67960,7 +68106,7 @@ begin
   DbgClearExec;
   if FRqDbgVars <> nil then
     FRqDbgVars.Clear;
-  SetEvent(FRqDbgEvGo);
+  RqDbgGo;
   DbgWatchRefresh;
 end;
 
@@ -67976,10 +68122,18 @@ begin
     FRqDbgTimer.Enabled := False;
     Exit;
   end;
+  {$IFDEF UNIX}
+  // Linux: программа встала - есть файл .stop (он создан после того, как
+  // файл состояния записан и закрыт)
+  if FRqDbgPaused or not FileExists(FRqDbgInstr.StopFile) then
+    Exit;
+  DeleteFile(FRqDbgInstr.StopFile);
+  {$ELSE}
   if FRqDbgPaused or (FRqDbgEvStop = 0) then
     Exit;
   if WaitForSingleObject(FRqDbgEvStop, 0) <> WAIT_OBJECT_0 then
     Exit;
+  {$ENDIF}
   // "s точка уровень", затем переменные "вид имя|тип=значение", "#end";
   // файл записан и закрыт до события
   PointId := 0;

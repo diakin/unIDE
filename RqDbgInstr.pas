@@ -16,6 +16,11 @@ unit RqDbgInstr;
 //  "stop" и ждёт события "go" (WaitForSingleObject - поток стоит целиком,
 //  окна программы не перерисовываются, как в Delphi). unIDE по событию
 //  показывает строку, по F9/F7/F8/F4 пишет файл команды и поднимает "go".
+//  Linux (SyncFiles): unIDE - программа Linux, а exe RapidQ идёт под Wine,
+//  именованные события Windows им не общие. Вместо событий - файлы рядом с
+//  файлом команды: программа пишет <cmd>.stop и ждёт <cmd>.go (опрос раз в
+//  20 мс через Sleep kernel32), unIDE по таймеру ждёт .stop, на команду
+//  создаёт .go. Пути в копии - пути Wine (ProgPath: Z:/home/...).
 //
 //  Уровень вызова (для Step over): в начале каждой SUB/FUNCTION локальная
 //  RqDbgLvl = глубина + 1, перед END SUB и EXIT SUB глубина = RqDbgLvl - 1.
@@ -166,6 +171,9 @@ const
   RqDbgModeRunTo = 3;   // Run to cursor: строка курсора или точка останова
 
 type
+  // Путь файла для программы (Linux: путь Wine, Z:/home/...)
+  TRqDbgPathFunc = function(const APath: string): string of object;
+
   TRqDbgInstr = class
   private
     FSrcFile: string;
@@ -267,6 +275,14 @@ type
     property CmdFile: string read FCmdFile;
     property StateFile: string read FStateFile;
     property EventBase: string read FEventBase;
+  public
+    // Синхронизация файлами вместо событий (Linux, программа под Wine) и
+    // перевод путей для программы. Задаются до Build.
+    SyncFiles: Boolean;
+    ProgPath: TRqDbgPathFunc;
+    // Файлы синхронизации (SyncFiles): программа встала / можно идти
+    function StopFile: string;
+    function GoFile: string;
     property PointCount: Integer read FPointCount;
     property LastError: string read FLastError;
     property Prefix: string read FPrefix;
@@ -1260,6 +1276,16 @@ begin
 end;
 
 // Имена кода отладчика: RqDbg в шаблоне - выбранный префикс
+function TRqDbgInstr.StopFile: string;
+begin
+  Result := FCmdFile + '.stop';
+end;
+
+function TRqDbgInstr.GoFile: string;
+begin
+  Result := FCmdFile + '.go';
+end;
+
 function TRqDbgInstr.Pfx(const AText: string): string;
 begin
   Result := StringReplace(AText, 'RqDbg', FPrefix, [rfReplaceAll]);
@@ -1270,7 +1296,7 @@ end;
 // столкнутся.
 procedure TRqDbgInstr.AddRuntime(AOut: TStrings);
 var
-  MaxIdx, CmdPath, StatePath, WatchMax: string;
+  MaxIdx, CmdPath, StatePath, WatchMax, StopPath, GoPath: string;
 
   procedure Add(const AText: string);
   begin
@@ -1286,8 +1312,21 @@ var
 begin
   MaxIdx := IntToStr(FPointCount);
   WatchMax := IntToStr(FWatchExprs.Count);
-  CmdPath := RqDbgSlashPath(FCmdFile);
-  StatePath := RqDbgSlashPath(FStateFile);
+  CmdPath := FCmdFile;
+  StatePath := FStateFile;
+  StopPath := StopFile;
+  GoPath := GoFile;
+  if Assigned(ProgPath) then
+  begin
+    CmdPath := ProgPath(CmdPath);
+    StatePath := ProgPath(StatePath);
+    StopPath := ProgPath(StopPath);
+    GoPath := ProgPath(GoPath);
+  end;
+  CmdPath := RqDbgSlashPath(CmdPath);
+  StatePath := RqDbgSlashPath(StatePath);
+  StopPath := RqDbgSlashPath(StopPath);
+  GoPath := RqDbgSlashPath(GoPath);
   Add(''' --- unIDE: отладчик (копия программы, ' +
       IntToStr(FPointCount) + ' точек) ---');
   Add('DECLARE FUNCTION RqDbgCreateEvent LIB "kernel32" ALIAS "CreateEventA" ' +
@@ -1300,6 +1339,13 @@ begin
   Add('DECLARE FUNCTION RqDbgWait LIB "kernel32" ALIAS ' +
       '"WaitForSingleObject" (BYVAL RqDbgHandle AS LONG, ' +
       'BYVAL RqDbgMs AS LONG) AS LONG');
+  if SyncFiles then
+  begin
+    Add('DECLARE FUNCTION RqDbgSleep LIB "kernel32" ALIAS "Sleep" ' +
+        '(BYVAL RqDbgMs AS LONG) AS LONG');
+    Add('DECLARE FUNCTION RqDbgDelFile LIB "kernel32" ALIAS "DeleteFileA" ' +
+        '(RqDbgDelName AS STRING) AS LONG');
+  end;
   Add('DIM RqDbgBrk(' + MaxIdx + ') AS INTEGER');
   Add('DIM RqDbgUser(' + MaxIdx + ') AS INTEGER');
   Add('DIM RqDbgMode AS LONG');
@@ -1421,13 +1467,32 @@ begin
   // затем новая команда
   Add('SUB RqDbgHalt');
   Add('  DIM RqDbgCallRes AS LONG');
+  if SyncFiles then
+    Add('  DIM RqDbgSyncFile AS QFILESTREAM');
   Add('  RqDbgWant = 0');
   Add('  RqDbgGlobals');
   Add('  RqDbgStateFile.WriteLine("#end")');
   Add('  RqDbgStateFile.Close');
-  Add('  RqDbgCallRes = RqDbgResetEvent(RqDbgEvGo)');
-  Add('  RqDbgCallRes = RqDbgSetEvent(RqDbgEvStop)');
-  Add('  RqDbgCallRes = RqDbgWait(RqDbgEvGo, -1)');
+  if SyncFiles then
+  begin
+    // Файлы: прежний .go убрать, .stop - после закрытого файла состояния,
+    // ждать .go
+    AddLit('  RqDbgCallRes = RqDbgDelFile("', GoPath, '")');
+    AddLit('  RqDbgSyncFile.Open("', StopPath, '", 65535)');
+    Add('  RqDbgSyncFile.WriteLine("s")');
+    Add('  RqDbgSyncFile.Close');
+    Add('  DO');
+    AddLit('    IF FILEEXISTS("', GoPath, '") THEN EXIT DO');
+    Add('    RqDbgCallRes = RqDbgSleep(20)');
+    Add('  LOOP');
+    AddLit('  RqDbgCallRes = RqDbgDelFile("', GoPath, '")');
+  end
+  else
+  begin
+    Add('  RqDbgCallRes = RqDbgResetEvent(RqDbgEvGo)');
+    Add('  RqDbgCallRes = RqDbgSetEvent(RqDbgEvStop)');
+    Add('  RqDbgCallRes = RqDbgWait(RqDbgEvGo, -1)');
+  end;
   Add('  RqDbgStopId = RqDbgPendId');
   Add('  RqDbgStopLvl = RqDbgPendLvl');
   Add('  RqDbgStopKey = RqDbgPendKey');
@@ -1517,10 +1582,13 @@ begin
   Add('END SUB');
   Add('');
   // События создаёт unIDE до запуска; программа открывает их по имени
-  AddLit('RqDbgEvStop = RqDbgCreateEvent(0, 0, 0, "',
-         RqDbgStopEventName(FEventBase), '")');
-  AddLit('RqDbgEvGo = RqDbgCreateEvent(0, 0, 0, "',
-         RqDbgGoEventName(FEventBase), '")');
+  if not SyncFiles then
+  begin
+    AddLit('RqDbgEvStop = RqDbgCreateEvent(0, 0, 0, "',
+           RqDbgStopEventName(FEventBase), '")');
+    AddLit('RqDbgEvGo = RqDbgCreateEvent(0, 0, 0, "',
+           RqDbgGoEventName(FEventBase), '")');
+  end;
   Add('RqDbgStopKey = -1');
   Add('RqDbgStopLvl = -1');
   Add('RqDbgWS = ""');

@@ -972,11 +972,156 @@ begin
     lpDistanceToMoveHigh^ := LONG(NewPos shr 32);
 end;
 
+// --- processes started by ProcRun (DetachHandle) ---
+// Handle = UnixProcBase + pid: WaitForSingleObject, GetExitCodeProcess,
+// TerminateProcess, CloseHandle work on it as on a Windows process handle.
+// Other handles: WaitForSingleObject answers WAIT_OBJECT_0 as before.
+
+const
+  UnixProcBase = $40000000;
+  UnixProcLimit = $00400000;   // pid_max on Linux is at most 2^22
+
+type
+  TUnixProcState = record
+    Pid: cint;
+    Done: Boolean;
+    Code: DWORD;
+  end;
+
+var
+  UnixProcs: array of TUnixProcState;
+
+function UnixProcIndex(AHandle: THandle): Integer;
+var
+  ProcIdx: Integer;
+begin
+  Result := -1;
+  if (AHandle < UnixProcBase) or (AHandle >= UnixProcBase + UnixProcLimit) then
+    Exit;
+  for ProcIdx := 0 to High(UnixProcs) do
+    if UnixProcs[ProcIdx].Pid = cint(AHandle - UnixProcBase) then
+    begin
+      Result := ProcIdx;
+      Exit;
+    end;
+end;
+
+function Impl_UnixProcHandle(APid: Cardinal): THandle; stdcall; public name 'unidewin_UnixProcHandle';
+begin
+  Result := 0;
+  if (APid = 0) or (APid >= UnixProcLimit) then
+    Exit;
+  Result := UnixProcBase + APid;
+  if UnixProcIndex(Result) >= 0 then
+    Exit;
+  SetLength(UnixProcs, Length(UnixProcs) + 1);
+  UnixProcs[High(UnixProcs)].Pid := APid;
+  UnixProcs[High(UnixProcs)].Done := False;
+  UnixProcs[High(UnixProcs)].Code := 0;
+end;
+
+// Process ended? Reaps it (waitpid) and keeps the exit code
+function UnixProcPoll(AIndex: Integer): Boolean;
+var
+  Status: cint;
+  WaitRes: cint;
+begin
+  Result := UnixProcs[AIndex].Done;
+  if Result then
+    Exit;
+  Status := 0;
+  WaitRes := fpWaitPid(UnixProcs[AIndex].Pid, @Status, WNOHANG);
+  if WaitRes = UnixProcs[AIndex].Pid then
+  begin
+    UnixProcs[AIndex].Done := True;
+    if WIFEXITED(Status) then
+      UnixProcs[AIndex].Code := WEXITSTATUS(Status)
+    else
+      UnixProcs[AIndex].Code := 1;
+  end
+  else if WaitRes < 0 then
+  begin
+    // Not our child any more (reaped elsewhere): alive while kill(0) works
+    if fpKill(UnixProcs[AIndex].Pid, 0) <> 0 then
+      UnixProcs[AIndex].Done := True;
+  end;
+  Result := UnixProcs[AIndex].Done;
+end;
+
+function Impl_WaitForSingleObject(hHandle:HANDLE; dwMilliseconds:DWORD): DWORD; stdcall; public name 'unidewin_WaitForSingleObject';
+var
+  ProcIdx: Integer;
+  StartTick: QWord;
+begin
+  Result := WAIT_OBJECT_0;
+  ProcIdx := UnixProcIndex(hHandle);
+  if ProcIdx < 0 then
+    Exit;
+  StartTick := SysUtils.GetTickCount64;
+  while not UnixProcPoll(ProcIdx) do
+  begin
+    if (dwMilliseconds <> INFINITE) and
+       (SysUtils.GetTickCount64 - StartTick >= dwMilliseconds) then
+    begin
+      Result := WAIT_TIMEOUT;
+      Exit;
+    end;
+    SysUtils.Sleep(5);
+  end;
+end;
+
+function Impl_GetExitCodeProcess(hProcess:HANDLE; lpExitCode:LPDWORD): WINBOOL; stdcall; public name 'unidewin_GetExitCodeProcess';
+var
+  ProcIdx: Integer;
+begin
+  Result := False;
+  ProcIdx := UnixProcIndex(hProcess);
+  if (ProcIdx < 0) or (lpExitCode = nil) then
+    Exit;
+  if UnixProcPoll(ProcIdx) then
+    lpExitCode^ := UnixProcs[ProcIdx].Code
+  else
+    lpExitCode^ := STILL_ACTIVE;
+  Result := True;
+end;
+
+function Impl_TerminateProcess(hProcess:HANDLE; uExitCode:UINT): WINBOOL; stdcall; public name 'unidewin_TerminateProcess';
+var
+  ProcIdx: Integer;
+begin
+  Result := False;
+  ProcIdx := UnixProcIndex(hProcess);
+  if ProcIdx < 0 then
+    Exit;
+  if UnixProcPoll(ProcIdx) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Result := fpKill(UnixProcs[ProcIdx].Pid, SIGKILL) = 0;
+end;
+
+// CloseHandle of a process handle: forget it (the process keeps running)
+function UnixProcClose(AHandle: THandle): Boolean;
+var
+  ProcIdx: Integer;
+begin
+  ProcIdx := UnixProcIndex(AHandle);
+  Result := ProcIdx >= 0;
+  if not Result then
+    Exit;
+  UnixProcPoll(ProcIdx);
+  UnixProcs[ProcIdx] := UnixProcs[High(UnixProcs)];
+  SetLength(UnixProcs, Length(UnixProcs) - 1);
+end;
+
 function Impl_CloseHandle(hObject:HANDLE): WINBOOL; stdcall; public name 'unidewin_CloseHandle';
 var
   FdIdx: Integer;
 begin
-  Result := False;
+  Result := UnixProcClose(hObject);
+  if Result then
+    Exit;
   for FdIdx := 0 to High(UnixFileFds) do
     if UnixFileFds[FdIdx] = hObject then
     begin

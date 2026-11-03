@@ -418,11 +418,6 @@ begin
   Result := Default(PWideChar);
 end;
 
-function Impl_GetExitCodeProcess(hProcess:HANDLE; lpExitCode:LPDWORD): WINBOOL; stdcall; public name 'unidewin_GetExitCodeProcess';
-begin
-  Result := Default(WINBOOL);
-end;
-
 function Impl_GetFileVersionInfoSizeW(AFileName: PWideChar; var AHandle: DWORD): DWORD; stdcall; public name 'unidewin_GetFileVersionInfoSizeW';
 begin
   Result := Default(DWORD);
@@ -917,11 +912,6 @@ begin
   Result := Default(BOOL);
 end;
 
-function Impl_TerminateProcess(hProcess:HANDLE; uExitCode:UINT): WINBOOL; stdcall; public name 'unidewin_TerminateProcess';
-begin
-  Result := Default(WINBOOL);
-end;
-
 function Impl_TrackPopupMenu(hMenu:HMENU; uFlags:UINT; x:longint; y:longint; nReserved:longint; hWnd:HWND; const prcRect:RECT): WINBOOL; stdcall; public name 'unidewin_TrackPopupMenu';
 begin
   Result := Default(WINBOOL);
@@ -958,11 +948,6 @@ begin
 end;
 
 function Impl_WaitForMultipleObjects(nCount:DWORD; lpHandles : PWOHandleArray; bWaitAll:WINBOOL; dwMilliseconds:DWORD): DWORD; stdcall; public name 'unidewin_WaitForMultipleObjects';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_WaitForSingleObject(hHandle:HANDLE; dwMilliseconds:DWORD): DWORD; stdcall; public name 'unidewin_WaitForSingleObject';
 begin
   Result := Default(DWORD);
 end;

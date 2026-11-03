@@ -79,6 +79,7 @@ uses
   RunConsole in 'RunConsole.pas',
   ProcRun in 'ProcRun.pas',
   PathKit in 'PathKit.pas',
+  WineRun in 'WineRun.pas',
   OsShell in 'OsShell.pas',
   OsReg in 'OsReg.pas',
   DsgClassDesc in 'DsgClassDesc.pas',

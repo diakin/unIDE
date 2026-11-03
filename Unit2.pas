@@ -3655,6 +3655,12 @@ begin
       // RqLcl с inc\rqrt.bi, inc\rqlcl.bi и bin\rqlcl32.dll (Unit1,
       // RqLclDir); пустая - RqLcl рядом с exe редактора
       Fields.Add('RqLclPath|RqLcl folder');
+      {$IFDEF UNIX}
+      // Linux: компилятор и программы Windows - через Wine (WineRun):
+      // программа wine (пусто - из PATH) и папка префикса (пусто - ~/.wine)
+      Fields.Add('WineFile|Wine (exe)');
+      Fields.Add('WinePrefix|Wine prefix');
+      {$ENDIF}
     end
     else if AType = 'Delphi' then
     begin
@@ -3665,6 +3671,12 @@ begin
       Fields.Add('DcuPath|Output (dcu)');
       // Папка исходников Ui*.pas - [UiLib] Source (CompIniSection)
       Fields.Add('UiSource|Ui components');
+      {$IFDEF UNIX}
+      // Linux: компилятор и программы Windows - через Wine (WineRun):
+      // программа wine (пусто - из PATH) и папка префикса (пусто - ~/.wine)
+      Fields.Add('WineFile|Wine (exe)');
+      Fields.Add('WinePrefix|Wine prefix');
+      {$ENDIF}
       // Library path и Browsing path - списки через точку с запятой, как в
       // самой среде; Library заполняется кнопкой Find installed, Browsing
       // задаётся вручную. Пустые Output - папка проекта.
