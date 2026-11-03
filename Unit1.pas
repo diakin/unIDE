@@ -11062,13 +11062,23 @@ end;
 
 // Путь - полный: относительный считается от папки APrjFile (файл .prj или
 // папка проекта с \ в конце)
+// Разделители - свои для ОС (PathNative): относительный путь из описания,
+// записанного в Windows (src\a.bas, \a.bas), годится и в Linux. В Linux
+// \ в начале убирается (путь от папки проекта); в Windows - как раньше
 function PrjPathFromStore(const APrjFile, APath: string): string;
 begin
   Result := Trim(APath);
   if (Result = '') or (APrjFile = '') then
     Exit;
-  if (ExtractFileDrive(Result) <> '') or (Result[1] = '') then
+  if ExtractFileDrive(Result) <> '' then
     Exit;
+  {$IFDEF UNIX}
+  if Result[1] = '/' then
+    Exit;
+  if Result[1] = '\' then
+    Delete(Result, 1, 1);
+  {$ENDIF}
+  Result := PathNative(Result);
   Result := ExpandFileName(ExtractFilePath(ExpandFileName(APrjFile)) + Result);
 end;
 
@@ -11315,7 +11325,8 @@ begin
   if (Result = '') or (ADir = '') then
     Exit;
   if (Result[1] = '\') and (Copy(Result, 1, 2) <> '\\') then
-    Result := IncludeTrailingPathDelimiter(ADir) + Copy(Result, 2, MaxInt)
+    Result := IncludeTrailingPathDelimiter(ADir) +
+      PathNative(Copy(Result, 2, MaxInt))
   else
     Result := PrjPathFromStore(IncludeTrailingPathDelimiter(ADir), Result);
 end;
