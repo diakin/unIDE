@@ -35,6 +35,9 @@ type
     {$IFDEF FPC}
     FTabHook: TObject;            // подмена окна ярлычков (UiTabHookAttach)
     {$ENDIF}
+    {$IFDEF UNIX}
+    procedure OwnColors;
+    {$ENDIF}
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
@@ -144,6 +147,9 @@ type
     procedure WMNotify(var Message: TWMNotify); message WM_NOTIFY;
     procedure DrawHeaderItem(CD: PNMCustomDraw);
     procedure DrawHeaderRest(CD: PNMCustomDraw);
+    {$IFDEF LCLGTK2}
+    procedure GtkHeaderColors;
+    {$ENDIF}
   protected
     procedure ApplyTheme;
     procedure Loaded; override;
@@ -181,6 +187,11 @@ type
   end;
 
 implementation
+
+{$IFDEF LCLGTK2}
+uses
+  gtk2, gdk2, glib2;
+{$ENDIF}
 
 type
   // Доступ к защищённым Tabs и TabIndex вкладок
@@ -564,17 +575,57 @@ begin
   {$IFDEF FPC}
   UiTabHookInvalidate(FTabHook);
   {$ENDIF}
+  {$IFDEF UNIX}
+  OwnColors;
+  {$ENDIF}
   Message.Result := 0;   // UiThemeChanged перерисует
 end;
 
+{$IFDEF UNIX}
+// Linux (gtk2): ярлычки GtkNotebook рисует сам gtk, своё рисование туда не
+// попадает (ярлычки вне клиентской области, TabRect с отрицательным Y).
+// В тёмной теме ярлычкам даются цвета темы: Color - фон notebook (ярлычки
+// во всех состояниях), Font.Color страницы - подпись ярлычка
+procedure TUiPageControl.OwnColors;
+var
+  BackColor, TextColor: TColor;
+  PageIdx: Integer;
+begin
+  if UiThemeNativeFor(Self) then
+  begin
+    BackColor := clDefault;
+    TextColor := clDefault;
+  end
+  else
+  begin
+    BackColor := UiThemeColorFor(Self, 'Tab.BG');
+    TextColor := UiThemeColorFor(Self, 'Tab.Text');
+  end;
+  if Color <> BackColor then
+    Color := BackColor;
+  for PageIdx := 0 to PageCount - 1 do
+    if Pages[PageIdx].Font.Color <> TextColor then
+      Pages[PageIdx].Font.Color := TextColor;
+end;
+{$ENDIF}
+
 procedure TUiPageControl.WMPaint(var Message: TWMPaint);
 begin
+  {$IFDEF UNIX}
+  OwnColors;
+  inherited;
+  Exit;
+  {$ENDIF}
   if not UiTabsPaint(Self, Message, FHot) then
     inherited;
 end;
 
 procedure TUiPageControl.WMEraseBkgnd(var Message: TWMEraseBkgnd);
 begin
+  {$IFDEF UNIX}
+  inherited;
+  Exit;
+  {$ENDIF}
   if UiThemeNativeFor(Self) then
     inherited
   else
@@ -1190,6 +1241,93 @@ begin
   end;
 end;
 
+{$IFDEF LCLGTK2}
+// Linux (gtk2): заголовки столбцов - кнопки GtkTreeView, их рисует gtk
+// цветами своей темы (NM_CUSTOMDRAW заголовка в LCL gtk2 нет). Кнопкам и
+// подписям на них задаются цвета темы unIDE; в Light с системными цветами
+// (UiThemeNativeFor) - сброс к цветам gtk
+procedure TUiListView.GtkHeaderColors;
+const
+  HeaderStates: array[0..2] of TGtkStateType =
+    (GTK_STATE_NORMAL, GTK_STATE_PRELIGHT, GTK_STATE_ACTIVE);
+var
+  TreeWidget, ButtonWidget: PGtkWidget;
+  Column: PGtkTreeViewColumn;
+  ColIdx, StateIdx: Integer;
+  Native: Boolean;
+  BackColors: array[0..2] of TGdkColor;
+  TextColor: TGdkColor;
+
+  procedure ToGdk(AColor: TColor; var AGdk: TGdkColor);
+  var
+    RgbValue: Longint;
+  begin
+    RgbValue := ColorToRGB(AColor);
+    AGdk.pixel := 0;
+    AGdk.red := (RgbValue and $FF) * 257;
+    AGdk.green := ((RgbValue shr 8) and $FF) * 257;
+    AGdk.blue := ((RgbValue shr 16) and $FF) * 257;
+  end;
+
+  procedure ColorLabels(AWidget: PGtkWidget);
+  var
+    Children, Item: PGList;
+    LabelState: Integer;
+  begin
+    if GTK_IS_LABEL(AWidget) then
+    begin
+      for LabelState := 0 to High(HeaderStates) do
+        if Native then
+          gtk_widget_modify_fg(AWidget, HeaderStates[LabelState], nil)
+        else
+          gtk_widget_modify_fg(AWidget, HeaderStates[LabelState], @TextColor);
+      Exit;
+    end;
+    if not GTK_IS_CONTAINER(AWidget) then
+      Exit;
+    Children := gtk_container_get_children(PGtkContainer(AWidget));
+    Item := Children;
+    while Item <> nil do
+    begin
+      ColorLabels(PGtkWidget(Item^.data));
+      Item := Item^.next;
+    end;
+    g_list_free(Children);
+  end;
+
+begin
+  if not HandleAllocated or (ViewStyle <> vsReport) then
+    Exit;
+  TreeWidget := PGtkWidget(Handle);
+  if GTK_IS_BIN(TreeWidget) then
+    TreeWidget := gtk_bin_get_child(PGtkBin(TreeWidget));
+  if (TreeWidget = nil) or not GTK_IS_TREE_VIEW(TreeWidget) then
+    Exit;
+  Native := UiThemeNativeFor(Self);
+  ToGdk(UiThemeColorFor(Self, 'Button.BG'), BackColors[0]);
+  ToGdk(UiThemeColorFor(Self, 'Button.HotBG'), BackColors[1]);
+  ToGdk(UiThemeColorFor(Self, 'Button.DownBG'), BackColors[2]);
+  ToGdk(UiThemeColorFor(Self, 'Button.Text'), TextColor);
+  ColIdx := 0;
+  Column := gtk_tree_view_get_column(PGtkTreeView(TreeWidget), ColIdx);
+  while Column <> nil do
+  begin
+    ButtonWidget := Column^.button;
+    if ButtonWidget <> nil then
+    begin
+      for StateIdx := 0 to High(HeaderStates) do
+        if Native then
+          gtk_widget_modify_bg(ButtonWidget, HeaderStates[StateIdx], nil)
+        else
+          gtk_widget_modify_bg(ButtonWidget, HeaderStates[StateIdx], @BackColors[StateIdx]);
+      ColorLabels(ButtonWidget);
+    end;
+    Inc(ColIdx);
+    Column := gtk_tree_view_get_column(PGtkTreeView(TreeWidget), ColIdx);
+  end;
+end;
+{$ENDIF}
+
 procedure TUiListView.SetThemeColors(Value: Boolean);
 begin
   if FThemeColors <> Value then
@@ -1217,6 +1355,9 @@ end;
 procedure TUiListView.UMUiAttachScroll(var Message: TMessage);
 begin
   UiAttachScroll(Self);
+  {$IFDEF LCLGTK2}
+  GtkHeaderColors;   // столбцы из .dfm к этому времени созданы
+  {$ENDIF}
 end;
 
 procedure TUiListView.UMUiThemeChanged(var Message: TMessage);
@@ -1224,6 +1365,9 @@ var
   Wnd: HWND;
 begin
   ApplyTheme;
+  {$IFDEF LCLGTK2}
+  GtkHeaderColors;
+  {$ENDIF}
   Invalidate;
   UiRedrawFrame(Self);
   // Заголовок колонок - отдельное окно: перерисовать и его

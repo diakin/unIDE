@@ -10,6 +10,10 @@ lazarus/SyntaxHLClaude.lpi). Модули unIDE свои uses не меняют.
   winimpl.pas                - реализация используемых вызовов WinAPI:
                                через LCLIntf (написано руками) и
                                заглушки winimpl_auto.inc (ноль / пусто)
+  unixfonts.pas              - шрифты интерфейса: правила fontconfig (Tahoma,
+                               MS Sans Serif, Segoe UI -> Liberation Sans и т.п.)
+                               и шрифт gtk по умолчанию Tahoma 11px;
+                               UNIDE_SYSTEM_FONTS=1 - без подмены
 
 Все вызовы WinAPI (и свои external 'x.dll' в модулях unIDE под
 {$IFDEF UNIX}) ведут на символы unidewin_<Имя>. Компоновка умная
