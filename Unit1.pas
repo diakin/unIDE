@@ -25871,7 +25871,10 @@ begin
   // режиме F4 - фокус в него); закрывает его F10 в самом FAR (FarClose).
   // Повтор нажатия (клавишу держат) - пропускается: иначе FAR, только что
   // закрытый по F10, открылся бы снова
-  if (Msg.message = WM_SYSKEYDOWN) and (Msg.wParam = VK_F10) and
+  // (Linux: F10 без Alt приходит как WM_KEYDOWN, см. AppMsgHook)
+  if ((Msg.message = WM_SYSKEYDOWN)
+      {$IFDEF UNIX} or (Msg.message = WM_KEYDOWN){$ENDIF}) and
+     (Msg.wParam = VK_F10) and
      (GetKeyState(VK_SHIFT) >= 0) and (GetKeyState(VK_CONTROL) >= 0) and
      (GetKeyState(VK_MENU) >= 0) and (Screen.ActiveForm = Self) and
      ((Msg.hwnd = Handle) or IsChild(Handle, Msg.hwnd)) then
@@ -26499,22 +26502,10 @@ begin
   {$IFDEF UNIX}
   // Linux: пункты, которые работают только под Windows, скрыты (этап 3.1
   // плана): ReactOS (QEMU, Rufus, RosBE - инструменты Windows), установка
-  // пакета Delphi 7 (dcc32 - через Wine, этап 4.3), unIDE FAR (файловые
-  // функции Windows)
+  // пакета Delphi 7 (dcc32 - через Wine, этап 4.3). unIDE FAR на Linux
+  // работает с этапа 5.1
   RosMenu.Visible := False;
   mInstallPkg.Visible := False;
-  // mUtilsSep1, mFar - в .dfm без полей формы
-  if FindComponent('mUtilsSep1') is TMenuItem then
-    TMenuItem(FindComponent('mUtilsSep1')).Visible := False;
-  if FindComponent('mFar') is TMenuItem then
-    with TMenuItem(FindComponent('mFar')) do
-    begin
-      Visible := False;
-      Enabled := False;
-      ShortCut := 0;
-    end;
-  FFarColorsItem.Visible := False;
-  FFarPaletteItem.Visible := False;
   {$ENDIF}
 
   pnlPaletteIn.DoubleBuffered := True;

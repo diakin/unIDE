@@ -8,7 +8,7 @@ unit WinImpl;
 interface
 implementation
 uses Windows, Messages, CommCtrl, ShellAPI, ActiveX, WinInet, RichEdit, ctypes,
-  Types, LCLType, LCLIntf, SysUtils, Classes, Controls, BaseUnix, Unix, termio,
+  Types, LCLType, LCLIntf, SysUtils, Classes, Controls, BaseUnix, Unix, termio, Process,
   UnixFonts;
 
 // --- Через LCLIntf (тот же вызов у LCL) ---
@@ -676,6 +676,7 @@ begin
 end;
 
 {$I winimpl_rt.inc}
+{$I winimpl_files.inc}
 {$I winimpl_auto.inc}
 
 end.

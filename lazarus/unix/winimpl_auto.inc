@@ -53,11 +53,6 @@ procedure Impl_CoUninitialize; stdcall; public name 'unidewin_CoUninitialize';
 begin
 end;
 
-function Impl_CompareFileTime(AFirst, ASecond: PFileTime): Longint; stdcall; public name 'unidewin_CompareFileTime';
-begin
-  Result := Default(Longint);
-end;
-
 function Impl_ContinueDebugEvent(AProcessId, AThreadId, AStatus: DWORD): BOOL; stdcall; public name 'unidewin_ContinueDebugEvent';
 begin
   Result := Default(BOOL);
@@ -228,36 +223,6 @@ begin
   Result := Default(DWORD);
 end;
 
-function Impl_FindClose(AFindHandle: THandle): BOOL; stdcall; public name 'unidewin_FindClose';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FindCloseChangeNotification(AHandle: THandle): BOOL; stdcall; public name 'unidewin_FindCloseChangeNotification';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FindFirstChangeNotificationW(APath: PWideChar; AWatchSubtree: BOOL; AFilter: DWORD): THandle; stdcall; public name 'unidewin_FindFirstChangeNotificationW';
-begin
-  Result := Default(THandle);
-end;
-
-function Impl_FindFirstFileW(AFileName: PWideChar; var AFindData): THandle; stdcall; public name 'unidewin_FindFirstFileW';
-begin
-  Result := Default(THandle);
-end;
-
-function Impl_FindNextChangeNotification(AHandle: THandle): BOOL; stdcall; public name 'unidewin_FindNextChangeNotification';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FindNextFileW(AFindHandle: THandle; var AFindData): BOOL; stdcall; public name 'unidewin_FindNextFileW';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_FindWindowA(lpClassName:LPCSTR; lpWindowName:LPCSTR): HWND; stdcall; public name 'unidewin_FindWindowA';
 begin
   Result := Default(HWND);
@@ -388,22 +353,12 @@ begin
   Result := Default(HDC);
 end;
 
-function Impl_GetDiskFreeSpaceExW(ADir: PWideChar; AFreeAvail, ATotalBytes, ATotalFree: PInt64): BOOL; stdcall; public name 'unidewin_GetDiskFreeSpaceExW';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_GetDlgCtrlID(hWnd:HWND): longint; stdcall; public name 'unidewin_GetDlgCtrlID';
 begin
   Result := Default(longint);
 end;
 
 function Impl_GetDriveTypeA(lpRootPathName:LPCSTR): UINT; stdcall; public name 'unidewin_GetDriveTypeA';
-begin
-  Result := Default(UINT);
-end;
-
-function Impl_GetDriveTypeW(ARoot: PWideChar): UINT; stdcall; public name 'unidewin_GetDriveTypeW';
 begin
   Result := Default(UINT);
 end;
@@ -474,11 +429,6 @@ begin
 end;
 
 function Impl_GetRegionData(_para1:HRGN; _para2:DWORD; _para3:LPRGNDATA): DWORD; stdcall; public name 'unidewin_GetRegionData';
-begin
-  Result := Default(DWORD);
-end;
-
-function Impl_GetShortPathNameW(ALongPath, AShortPath: PWideChar; ABufferLen: DWORD): DWORD; stdcall; public name 'unidewin_GetShortPathNameW';
 begin
   Result := Default(DWORD);
 end;
@@ -807,11 +757,6 @@ begin
   Result := Default(DWORD);
 end;
 
-function Impl_SHFileOperationW(var AOp): Integer; stdcall; public name 'unidewin_SHFileOperationW';
-begin
-  Result := Default(Integer);
-end;
-
 function Impl_SHGetFolderPathW(AOwner: HWND; AFolder: Integer; AToken: THandle; AFlags: DWORD; APath: PWideChar): HRESULT; stdcall; public name 'unidewin_SHGetFolderPathW';
 begin
   Result := Default(HRESULT);
@@ -857,11 +802,6 @@ begin
   Result := Default(WINBOOL);
 end;
 
-function Impl_SetFileAttributesW(AFileName: PWideChar; AAttr: DWORD): BOOL; stdcall; public name 'unidewin_SetFileAttributesW';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_SetFileTime(hFile:HANDLE; lpCreationTime:LPFILETIME; lpLastAccessTime:LPFILETIME; lpLastWriteTime:LPFILETIME): WINBOOL; stdcall; public name 'unidewin_SetFileTime';
 begin
   Result := Default(WINBOOL);
@@ -895,11 +835,6 @@ end;
 function Impl_ShellExecuteExA(lpExecInfo: LPSHELLEXECUTEINFOA): Bool; stdcall; public name 'unidewin_ShellExecuteExA';
 begin
   Result := Default(Bool);
-end;
-
-function Impl_ShellExecuteW(AWnd: HWND; AOperation, AFile, AParameters, ADirectory: PWideChar; AShowCmd: Integer): THandle; stdcall; public name 'unidewin_ShellExecuteW';
-begin
-  Result := Default(THandle);
 end;
 
 function Impl_SystemTimeToFileTime(lpSystemTime:LPSYSTEMTIME; lpFileTime:LPFILETIME): WINBOOL; stdcall; public name 'unidewin_SystemTimeToFileTime';

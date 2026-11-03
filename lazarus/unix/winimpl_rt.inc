@@ -1048,12 +1048,22 @@ begin
   Result := UnixProcs[AIndex].Done;
 end;
 
+function UnixWatchSignaled(AHandle: THandle; var ASignaled: Boolean): Boolean; forward;
+
 function Impl_WaitForSingleObject(hHandle:HANDLE; dwMilliseconds:DWORD): DWORD; stdcall; public name 'unidewin_WaitForSingleObject';
 var
   ProcIdx: Integer;
   StartTick: QWord;
+  Signaled: Boolean;
 begin
   Result := WAIT_OBJECT_0;
+  // Folder watch (unIDE FAR): changed - signaled; no waiting
+  if UnixWatchSignaled(hHandle, Signaled) then
+  begin
+    if not Signaled then
+      Result := WAIT_TIMEOUT;
+    Exit;
+  end;
   ProcIdx := UnixProcIndex(hHandle);
   if ProcIdx < 0 then
     Exit;

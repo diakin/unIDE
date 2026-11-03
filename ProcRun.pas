@@ -52,6 +52,9 @@ type
     // если задана, - вместо неё (CreateProcessW: имена вне кодовой страницы)
     CommandLine: string;
     CommandLineW: WideString;
+    // Не Windows: команда оболочки - запуск '/bin/sh -c ShellCommandW'
+    // (кавычки, '|', '>' разбирает sh); задана - CommandLine не нужна
+    ShellCommandW: WideString;
     // Текущая папка программы; '' - как у среды
     Dir: string;
     DirW: WideString;
@@ -531,7 +534,13 @@ begin
     Exit;
   end;
   FProc := TProcess.Create(nil);
-  if CommandLineW <> '' then
+  if ShellCommandW <> '' then
+  begin
+    FProc.Executable := '/bin/sh';
+    FProc.Parameters.Add('-c');
+    FProc.Parameters.Add(UTF8Encode(ShellCommandW));
+  end
+  else if CommandLineW <> '' then
     FProc.CommandLine := UTF8Encode(CommandLineW)
   else
     FProc.CommandLine := CommandLine;

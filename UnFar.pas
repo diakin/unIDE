@@ -155,6 +155,7 @@ unit UnFar;
 interface
 
 uses
+  {$IFDEF UNIX}LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ExtCtrls,
   IniBuf, SzSetup, ProcRun, FarFind, FarVolumes, FarFtp, FarProgress,
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
@@ -502,6 +503,9 @@ type
     // Вывод процесса не в окно, а в буфер (7z.exe: список архива, ошибки)
     FProcCapture: Boolean;
     FProcRaw: string;
+    // Linux: вывод в UTF-8 - конец куска с неполным символом ждёт
+    // следующего куска
+    FProcTail: string;
     // Работа с архивом через 7z.exe: что делается и с чем (для повтора с
     // паролем - всё здесь)
     FArcAction: TFarArcAction;
@@ -941,6 +945,9 @@ type
     procedure DrawMenu;
     procedure DrawSwatch(ACol, ARow: Integer; AColor, AFrame: TColor);
     procedure ShowDriveMenu(APanelIndex: Integer);
+{$IFDEF UNIX}
+    procedure UnixDriveMenu(APanelIndex: Integer);
+{$ENDIF}
     procedure ShowSortMenu;
     procedure ShowHistoryMenu(ACursor: Integer = -1);
     function HistoryFind(const APath: WideString): Integer;
@@ -961,6 +968,12 @@ type
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
       PosX, PosY: Integer); override;
     procedure DblClick; override;
+{$IFDEF UNIX}
+    // Linux: символ (UTF-8 от gtk) - в KeyMessage как WM_CHAR (UTF-16)
+    procedure UTF8KeyPress(var UTF8Key: TUTF8Char); override;
+    // Linux: отпускание клавиши - в KeyMessage (WM_KEYUP): слой кейбара
+    procedure KeyUp(var Key: Word; Shift: TShiftState); override;
+{$ENDIF}
     procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
       PosX, PosY: Integer); override;
@@ -1096,6 +1109,11 @@ function FarPanelBackColor: TColor;
 
 implementation
 
+{$IFDEF UNIX}
+uses
+  BaseUnix;
+{$ENDIF}
+
 {$R farfont.res}  // RCDATA FAR_TER_C18B - Terminus Bold 10x18, cp1251
 
 const
@@ -1184,6 +1202,8 @@ const
   FarFofSilent = $4;
   FarFofNoErrorUI = $400;
   FarArcTempDir = 'unIDE_far';
+  // Разделитель папок в путях на диске (внутри архива - всегда '\')
+  FarSep = {$IFDEF UNIX}'/'{$ELSE}'\'{$ENDIF};
   // Пункт FTP в меню дисков (Data пункта)
   FarFtpMenuData = 'ftp:';
   // Окно Shift+F1: ширина подписей полей; форматы и уровни сжатия (-mx)
@@ -1428,8 +1448,8 @@ end;
 function FarWithSlash(const APath: WideString): WideString;
 begin
   Result := APath;
-  if (Result <> '') and (Result[Length(Result)] <> '\') then
-    Result := Result + '\';
+  if (Result <> '') and (Result[Length(Result)] <> FarSep) then
+    Result := Result + FarSep;
 end;
 
 // Удалить папку ADir (с '\' в конце или без) со всем содержимым, без
@@ -1440,7 +1460,7 @@ var
   FromList: WideString;
 begin
   FromList := ADir;
-  if (FromList <> '') and (FromList[Length(FromList)] = '\') then
+  if (FromList <> '') and (FromList[Length(FromList)] = FarSep) then
     SetLength(FromList, Length(FromList) - 1);
   if (FromList = '') or not FarDirExists(FromList) then
     Exit;
@@ -1514,7 +1534,8 @@ end;
 function FarStripSlash(const APath: WideString): WideString;
 begin
   Result := APath;
-  if (Length(Result) > 3) and (Result[Length(Result)] = '\') then
+  if (Length(Result) > {$IFDEF UNIX}1{$ELSE}3{$ENDIF}) and
+     (Result[Length(Result)] = FarSep) then
     SetLength(Result, Length(Result) - 1);
 end;
 
@@ -1527,11 +1548,15 @@ begin
   Result := '';
   AChildName := '';
   Trimmed := APath;
-  if (Trimmed <> '') and (Trimmed[Length(Trimmed)] = '\') then
+  if (Trimmed <> '') and (Trimmed[Length(Trimmed)] = FarSep) then
     SetLength(Trimmed, Length(Trimmed) - 1);
   SlashPos := Length(Trimmed);
-  while (SlashPos > 0) and (Trimmed[SlashPos] <> '\') do
+  while (SlashPos > 0) and (Trimmed[SlashPos] <> FarSep) do
     Dec(SlashPos);
+{$IFDEF UNIX}
+  if SlashPos < 1 then
+    Exit;  // '/' - корень
+{$ELSE}
   if SlashPos < 3 then
     Exit;  // 'D:' - корень
   if Copy(Trimmed, 1, 2) = '\\' then
@@ -1544,6 +1569,7 @@ begin
     if SlashCount <= 3 then
       Exit;
   end;
+{$ENDIF}
   AChildName := Copy(Trimmed, SlashPos + 1, MaxInt);
   Result := Copy(Trimmed, 1, SlashPos);
 end;
@@ -1574,6 +1600,30 @@ begin
     Dec(LastPos);
   Result := Copy(AText, FirstPos, LastPos - FirstPos + 1);
 end;
+
+{$IFDEF UNIX}
+// Linux: файл можно выполнить (право x у текущего пользователя)
+function FarIsExecutable(const APath: WideString): Boolean;
+begin
+  Result := FarFileExists(APath) and
+    (BaseUnix.FpAccess(PChar(UTF8Encode(APath)), X_OK) = 0);
+end;
+
+// Linux: строка в одинарных кавычках для sh ('a b' -> 'a b', it's ->
+// 'it'\''s')
+function FarShellQuote(const AText: WideString): WideString;
+var
+  CharIndex: Integer;
+begin
+  Result := '''';
+  for CharIndex := 1 to Length(AText) do
+    if AText[CharIndex] = '''' then
+      Result := Result + '''\'''''
+    else
+      Result := Result + AText[CharIndex];
+  Result := Result + '''';
+end;
+{$ENDIF}
 
 // Имя для вставки в строку: с пробелом - в кавычках
 function FarQuoteName(const AName: WideString): WideString;
@@ -1639,6 +1689,16 @@ end;
 // остальное - от папки панели ABase
 function FarFullPath(const ABase, ATarget: WideString): WideString;
 begin
+{$IFDEF UNIX}
+  // '/...' - полный путь, '~/...' - от домашней папки
+  if (ATarget <> '') and (ATarget[1] = '/') then
+    Result := ATarget
+  else if (ATarget = '~') or (Copy(ATarget, 1, 2) = '~/') then
+    Result := WideString(UTF8Decode(GetEnvironmentVariable('HOME'))) +
+      Copy(ATarget, 2, MaxInt)
+  else
+    Result := ABase + ATarget;
+{$ELSE}
   if (Length(ATarget) >= 2) and (ATarget[2] = ':') then
     Result := ATarget
   else if Copy(ATarget, 1, 2) = '\\' then
@@ -1648,6 +1708,7 @@ begin
       ATarget
   else
     Result := ABase + ATarget;
+{$ENDIF}
 end;
 
 // 'D:\a\b.txt' -> ADir = 'D:\a\', AName = 'b.txt'
@@ -1656,7 +1717,7 @@ var
   SlashPos: Integer;
 begin
   SlashPos := Length(APath);
-  while (SlashPos > 0) and (APath[SlashPos] <> '\') do
+  while (SlashPos > 0) and (APath[SlashPos] <> FarSep) do
     Dec(SlashPos);
   ADir := Copy(APath, 1, SlashPos);
   AName := Copy(APath, SlashPos + 1, MaxInt);
@@ -1683,8 +1744,7 @@ var
   DirPath, Upper, ChildName: WideString;
 begin
   DirPath := APath;
-  if (Length(DirPath) > 3) and (DirPath[Length(DirPath)] = '\') then
-    SetLength(DirPath, Length(DirPath) - 1);
+  DirPath := FarStripSlash(DirPath);
   if FarDirExists(DirPath) then
   begin
     Result := True;
@@ -2821,7 +2881,11 @@ begin
   NewCount := 0;
   SetLength(NewItems, 64);
 
+{$IFDEF UNIX}
+  IsRootDir := NewPath = '/';
+{$ELSE}
   IsRootDir := (Length(NewPath) = 3) and (NewPath[2] = ':');
+{$ENDIF}
   if not IsRootDir then
   begin
     NewItems[0].Name := '..';
@@ -3210,6 +3274,9 @@ begin
   ControlStyle := ControlStyle + [csOpaque];
   TabStop := True;
   Color := FPal[fpPanelBack];
+{$IFDEF UNIX}
+  FUnicodeChars := True;
+{$ENDIF}
   FPanels[0] := TFarPanel.Create;
   FPanels[1] := TFarPanel.Create;
   FActive := 0;
@@ -3856,8 +3923,7 @@ begin
 
   // Заголовок - путь; у активной панели - цветом курсора
   Title := Panel.DisplayPath;
-  if (Length(Title) > 3) and (Title[Length(Title)] = '\') then
-    SetLength(Title, Length(Title) - 1);
+  Title := FarStripSlash(Title);
   Title := ' ' + FarFitPath(Title, PanelW - 6) + ' ';
   if IsActive then
     PutCentered(PanelX, 0, PanelW, Title, FPal[fpPanelCursorText],
@@ -4224,6 +4290,41 @@ begin
   end;
   Invalidate;
 end;
+
+{$IFDEF UNIX}
+procedure TFarView.KeyUp(var Key: Word; Shift: TShiftState);
+var
+  KeyMsg: TMsg;
+begin
+  inherited KeyUp(Key, Shift);
+  FillChar(KeyMsg, SizeOf(KeyMsg), 0);
+  KeyMsg.hwnd := Handle;
+  if (ssAlt in Shift) or (Key = VK_MENU) then
+    KeyMsg.message := WM_SYSKEYUP
+  else
+    KeyMsg.message := WM_KEYUP;
+  KeyMsg.wParam := Key;
+  if KeyMessage(KeyMsg) then
+    Key := 0;
+end;
+
+procedure TFarView.UTF8KeyPress(var UTF8Key: TUTF8Char);
+var
+  CharMsg: TMsg;
+  WideText: WideString;
+begin
+  inherited UTF8KeyPress(UTF8Key);
+  WideText := UTF8Decode(UTF8Key);
+  if Length(WideText) <> 1 then
+    Exit;
+  FillChar(CharMsg, SizeOf(CharMsg), 0);
+  CharMsg.hwnd := Handle;
+  CharMsg.message := WM_CHAR;
+  CharMsg.wParam := Ord(WideText[1]);
+  if KeyMessage(CharMsg) then
+    UTF8Key := '';
+end;
+{$ENDIF}
 
 procedure TFarView.DblClick;
 var
@@ -4937,7 +5038,7 @@ begin
     if IsUp then
       GoUp
     else if IsDir then
-      ChangeDir(Panel, Panel.Path + Name + '\', '')
+      ChangeDir(Panel, Panel.Path + Name + FarSep, '')
     else
       // Файл - открыть как архив, какое бы ни было расширение
       OpenArchive(FActive, Panel.Path + Name, Panel.Path + Name, False, '');
@@ -4994,7 +5095,12 @@ begin
     Exit;
   end;
   Ext := WideLowerCase(FarNameExt(Name));
+{$IFDEF UNIX}
+  // Linux: исполняемый файл (право x) или .sh - выполнить через sh
+  if FarIsExecutable(Panel.Path + Name) or (Ext = 'sh') then
+{$ELSE}
   if (Ext = 'exe') or (Ext = 'com') or (Ext = 'bat') or (Ext = 'cmd') then
+{$ENDIF}
   begin
     if FCmdProc <> nil then
     begin
@@ -5005,9 +5111,16 @@ begin
     CmdHistoryAdd(FarQuoteName(Name));
     FOutScroll := 0;
     OutLine(PromptText + FarQuoteName(Name));
+{$IFDEF UNIX}
+    if FarIsExecutable(Panel.Path + Name) then
+      CmdRun('./' + FarShellQuote(Name))
+    else
+      CmdRun('sh ' + FarShellQuote(Name));
+{$ELSE}
     // Имя - в двойных кавычках: cmd.exe /C снимает внешнюю пару, и имя с
     // пробелами и знаками & ( ) остаётся в кавычках
     CmdRun(WideString('""') + Name + WideString('""'));
+{$ENDIF}
     if not FPanelsHidden and (PanelHeight > OutBottom) then
       Status(FarProduct + ': вывод команды - Ctrl+O или Ctrl+Up');
     Invalidate;
@@ -6012,7 +6125,7 @@ begin
 
   // В папку: путь кончается на '\', папка уже есть или имён несколько.
   // Иначе (одно имя) - копия / перенос под новым именем.
-  IntoDir := (Target[Length(Target)] = '\') or FarDirExists(Target) or
+  IntoDir := (Target[Length(Target)] = FarSep) or FarDirExists(Target) or
              (Length(FDlgNames) > 1);
   if IntoDir then
   begin
@@ -6027,7 +6140,7 @@ begin
     for NameIndex := 0 to High(FDlgNames) do
       if FarSameName(Copy(TargetDir, 1,
            Length(Source.Path + FDlgNames[NameIndex]) + 1),
-           Source.Path + FDlgNames[NameIndex] + '\') then
+           Source.Path + FDlgNames[NameIndex] + FarSep) then
       begin
         Status(FarProduct + ': нельзя копировать или переносить папку в саму себя');
         Exit;
@@ -6097,7 +6210,7 @@ begin
   // 'a\b\c' - курсор на 'a'
   FirstPart := Name;
   SlashPos := 1;
-  while (SlashPos <= Length(FirstPart)) and (FirstPart[SlashPos] <> '\') do
+  while (SlashPos <= Length(FirstPart)) and (FirstPart[SlashPos] <> FarSep) do
     Inc(SlashPos);
   FirstPart := Copy(FirstPart, 1, SlashPos - 1);
   if (Length(FirstPart) >= 2) and (FirstPart[2] = ':') then
@@ -6496,7 +6609,7 @@ begin
       // в эту папку
       if Item.Data = FarFtpMenuData then
         OpenFtpHosts(PanelIndex)
-      else if Length(Item.Data) = 1 then
+      else if (Length(Item.Data) = 1) and (Item.Data <> '/') then
         SelectDrive(PanelIndex, Item.Data[1])
       else if (Item.Data <> '') and FarDirExists(Item.Data) then
         ChangeDir(FPanels[PanelIndex], Item.Data, '');
@@ -6986,6 +7099,10 @@ var
   end;
 
 begin
+{$IFDEF UNIX}
+  UnixDriveMenu(APanelIndex);
+  Exit;
+{$ENDIF}
   CurrentDrive := FarDriveIndex(FPanels[APanelIndex].Path);
   CursorIndex := -1;
   SetLength(Items, 0);
@@ -7135,6 +7252,296 @@ begin
       '', '', True, -1);
   MenuOpen(fmDrive, 'Change drive', Items, CursorIndex, APanelIndex);
 end;
+
+{$IFDEF UNIX}
+// Linux: строка /proc/mounts - поле с '\040' (пробел) и т.п. -> текст
+function FarUnixMountField(const AText: string): string;
+var
+  CharIndex: Integer;
+begin
+  Result := '';
+  CharIndex := 1;
+  while CharIndex <= Length(AText) do
+  begin
+    if (AText[CharIndex] = '\') and (CharIndex + 3 <= Length(AText)) and
+       (AText[CharIndex + 1] in ['0'..'7']) then
+    begin
+      Result := Result + Chr((Ord(AText[CharIndex + 1]) - 48) * 64 +
+        (Ord(AText[CharIndex + 2]) - 48) * 8 + (Ord(AText[CharIndex + 3]) - 48));
+      Inc(CharIndex, 4);
+    end
+    else
+    begin
+      Result := Result + AText[CharIndex];
+      Inc(CharIndex);
+    end;
+  end;
+end;
+
+// Linux: первая строка файла (/sys/...), '' - нет файла
+function FarUnixReadLine(const AFile: string): string;
+var
+  TextFile: Text;
+begin
+  Result := '';
+  if not FileExists(AFile) then
+    Exit;
+  AssignFile(TextFile, AFile);
+  {$I-}
+  Reset(TextFile);
+  {$I+}
+  if IOResult <> 0 then
+    Exit;
+  if not Eof(TextFile) then
+    ReadLn(TextFile, Result);
+  CloseFile(TextFile);
+  Result := Trim(Result);
+end;
+
+// Linux: блочное устройство тома ('/dev/sda1', '/dev/nvme0n1p2') -> имя
+// диска в /sys/block ('sda', 'nvme0n1'); '' - не диск
+function FarUnixDiskOf(const ADevice: string): string;
+var
+  DevName: string;
+begin
+  Result := '';
+  if Copy(ADevice, 1, 5) <> '/dev/' then
+    Exit;
+  DevName := ExtractFileName(ExpandFileName(ADevice));
+  if DirectoryExists('/sys/block/' + DevName) then
+    Result := DevName
+  else if DirectoryExists('/sys/class/block/' + DevName) then
+    Result := ExtractFileName(ExpandFileName('/sys/class/block/' + DevName +
+      '/..'));
+  if (Result <> '') and not DirectoryExists('/sys/block/' + Result) then
+    Result := '';
+end;
+
+// Linux: метка тома по /dev/disk/by-label
+function FarUnixLabelOf(const ADevice: string): string;
+var
+  Found: TSearchRec;
+  DevPath: string;
+begin
+  Result := '';
+  if Copy(ADevice, 1, 5) <> '/dev/' then
+    Exit;
+  DevPath := ExpandFileName(ADevice);
+  if FindFirst('/dev/disk/by-label/*', faAnyFile, Found) = 0 then
+  begin
+    repeat
+      if ExpandFileName('/dev/disk/by-label/' +
+           fpReadLink('/dev/disk/by-label/' + Found.Name)) = DevPath then
+      begin
+        // В имени ссылки пробел и т.п. - '\x20'
+        Result := StringReplace(Found.Name, '\x20', ' ', [rfReplaceAll]);
+        Break;
+      end;
+    until FindNext(Found) <> 0;
+    FindClose(Found);
+  end;
+end;
+
+// Linux: меню дисков - домашняя папка, точки монтирования из /proc/mounts
+// (без служебных: proc, sysfs, tmpfs ...), FTP, физические диски из
+// /sys/block. Data пункта - путь папки (ChangeDir)
+procedure TFarView.UnixDriveMenu(APanelIndex: Integer);
+const
+  SkipFs = ' proc sysfs cgroup cgroup2 devpts mqueue debugfs tracefs ' +
+    'securityfs pstore bpf configfs fusectl hugetlbfs autofs binfmt_misc ' +
+    'devtmpfs rpc_pipefs nsfs efivarfs ramfs tmpfs squashfs fuse.portal ' +
+    'fuse.gvfsd-fuse ';
+  NetFs = ' nfs nfs4 cifs smb3 smbfs fuse.sshfs fuse.rclone 9p ';
+type
+  TUnixMount = record
+    Device, Path, FileSys: string;
+  end;
+var
+  Items: TFarMenuItems;
+  Mounts: array of TUnixMount;
+  MountsFile: Text;
+  MountLine, Device, MountPath, FileSys, DiskName, TypeText, ModelText: string;
+  Fields: TStringList;
+  MountIdx, CursorIndex, BestLen, HotKey: Integer;
+  FreeAvail, TotalBytes, TotalFree: Int64;
+  SizeText, FreeText, HomeDir, PanelPath, HotText: WideString;
+  Found: TSearchRec;
+
+  procedure AddItem(const AText, ARight, AData: WideString;
+    ADisabled: Boolean);
+  begin
+    SetLength(Items, Length(Items) + 1);
+    Items[High(Items)].Text := AText;
+    Items[High(Items)].RightText := ARight;
+    Items[High(Items)].Mark := ' ';
+    Items[High(Items)].Separator := False;
+    Items[High(Items)].Disabled := ADisabled;
+    Items[High(Items)].Data := AData;
+    Items[High(Items)].Tag := -1;
+  end;
+
+  procedure AddSeparator;
+  begin
+    AddItem('', '', '', True);
+    Items[High(Items)].Separator := True;
+  end;
+
+  function Columns(const APath, AType, AFs, ALabel, ASize, AFree,
+    AModel: WideString): WideString;
+  begin
+    Result := FarPadRight(FarFitName(APath, 20), 20) + ' ' +
+      FarPadRight(AType, 9) + ' ' + FarPadRight(FarFitName(AFs, 6), 6) + ' ' +
+      FarPadRight(FarFitName(ALabel, 12), 12) + ' ' + FarPadLeft(ASize, 9) +
+      ' ' + FarPadLeft(AFree, 9) + '  ' + FarFitName(AModel, 24);
+  end;
+
+begin
+  SetLength(Items, 0);
+  SetLength(Mounts, 0);
+  PanelPath := FPanels[APanelIndex].Path;
+  Fields := TStringList.Create;
+  try
+    Fields.Delimiter := ' ';
+    Fields.StrictDelimiter := True;
+    AssignFile(MountsFile, '/proc/mounts');
+    {$I-}
+    Reset(MountsFile);
+    {$I+}
+    if IOResult = 0 then
+    begin
+      while not Eof(MountsFile) do
+      begin
+        ReadLn(MountsFile, MountLine);
+        Fields.DelimitedText := MountLine;
+        if Fields.Count < 3 then
+          Continue;
+        Device := FarUnixMountField(Fields[0]);
+        MountPath := FarUnixMountField(Fields[1]);
+        FileSys := Fields[2];
+        if Pos(' ' + FileSys + ' ', SkipFs) > 0 then
+          Continue;
+        if (Copy(MountPath, 1, 6) = '/proc/') or
+           (Copy(MountPath, 1, 5) = '/sys/') or
+           (Copy(MountPath, 1, 5) = '/dev/') or (MountPath = '/dev') or
+           (Copy(MountPath, 1, 6) = '/snap/') or
+           ((Copy(MountPath, 1, 5) = '/run/') and
+            (Copy(MountPath, 1, 11) <> '/run/media/')) or
+           (Copy(MountPath, 1, 6) = '/boot/') then
+          Continue;
+        // Одна точка - один раз (последний mount поверх прежнего)
+        for MountIdx := 0 to High(Mounts) do
+          if Mounts[MountIdx].Path = MountPath then
+          begin
+            Mounts[MountIdx].Device := Device;
+            Mounts[MountIdx].FileSys := FileSys;
+            MountPath := '';
+            Break;
+          end;
+        if MountPath = '' then
+          Continue;
+        SetLength(Mounts, Length(Mounts) + 1);
+        Mounts[High(Mounts)].Device := Device;
+        Mounts[High(Mounts)].Path := MountPath;
+        Mounts[High(Mounts)].FileSys := FileSys;
+      end;
+      CloseFile(MountsFile);
+    end;
+  finally
+    Fields.Free;
+  end;
+
+  AddItem('    ' + FarEscapeAmp(Columns('Папка', 'Тип', 'ФС', 'Метка',
+    'Размер', 'Свободно', 'Модель')), '', '', True);
+  // Домашняя папка - первой
+  HomeDir := FarWithSlash(WideString(UTF8Decode(GetEnvironmentVariable('HOME'))));
+  AddItem('&0  ' + FarEscapeAmp(Columns('~ ' + FarStripSlash(HomeDir), 'home',
+    '', '', '', '', '')), '', HomeDir, False);
+  CursorIndex := High(Items);
+  BestLen := 0;
+  if FarSameName(Copy(PanelPath, 1, Length(HomeDir)), HomeDir) then
+    BestLen := Length(HomeDir);
+  HotKey := 1;
+  for MountIdx := 0 to High(Mounts) do
+  begin
+    MountPath := Mounts[MountIdx].Path;
+    Device := Mounts[MountIdx].Device;
+    DiskName := FarUnixDiskOf(Device);
+    if Pos(' ' + Mounts[MountIdx].FileSys + ' ', NetFs) > 0 then
+      TypeText := 'network'
+    else if DiskName <> '' then
+    begin
+      if FarUnixReadLine('/sys/block/' + DiskName + '/removable') = '1' then
+        TypeText := 'removable'
+      else
+        TypeText := 'fixed';
+    end
+    else
+      TypeText := '';
+    ModelText := '';
+    if DiskName <> '' then
+      ModelText := FarUnixReadLine('/sys/block/' + DiskName + '/device/model');
+    SizeText := '';
+    FreeText := '';
+    if FarDiskFree(PWideChar(WideString(UTF8Decode(MountPath))), @FreeAvail,
+         @TotalBytes, @TotalFree) and (TotalBytes > 0) then
+    begin
+      SizeText := FarSizeShort(TotalBytes);
+      FreeText := FarSizeShort(FreeAvail);
+    end;
+    if HotKey <= 9 then
+      HotText := WideString('&') + WideString(IntToStr(HotKey)) + '  '
+    else
+      HotText := '    ';
+    Inc(HotKey);
+    AddItem(HotText + FarEscapeAmp(Columns(UTF8Decode(MountPath), TypeText,
+      Mounts[MountIdx].FileSys, UTF8Decode(FarUnixLabelOf(Device)), SizeText,
+      FreeText, UTF8Decode(ModelText))), '',
+      FarWithSlash(UTF8Decode(MountPath)), False);
+    // Курсор - на точке, в которой панель (самая длинная подходящая)
+    if (Length(FarWithSlash(UTF8Decode(MountPath))) > BestLen) and
+       (Copy(PanelPath, 1, Length(FarWithSlash(UTF8Decode(MountPath)))) =
+        FarWithSlash(UTF8Decode(MountPath))) then
+    begin
+      BestLen := Length(FarWithSlash(UTF8Decode(MountPath)));
+      CursorIndex := High(Items);
+    end;
+  end;
+  // FTP - как плагин FTP в FAR
+  AddSeparator;
+  if Length(FFtpHosts) > 0 then
+    AddItem('    FTP', 'адресов: ' + WideString(IntToStr(Length(FFtpHosts))),
+      FarFtpMenuData, False)
+  else
+    AddItem('    FTP', '', FarFtpMenuData, False);
+  // Физические диски: /sys/block (без loop, ram, zram)
+  if FindFirst('/sys/block/*', faAnyFile, Found) = 0 then
+  begin
+    MountIdx := 0;
+    repeat
+      if (Copy(Found.Name, 1, 4) = 'loop') or (Copy(Found.Name, 1, 3) = 'ram') or
+         (Copy(Found.Name, 1, 4) = 'zram') or (Found.Name = '.') or
+         (Found.Name = '..') then
+        Continue;
+      if MountIdx = 0 then
+        AddSeparator;
+      Inc(MountIdx);
+      // size - в секторах по 512 байт
+      TotalBytes := StrToInt64Def(FarUnixReadLine('/sys/block/' + Found.Name +
+        '/size'), 0) * 512;
+      if TotalBytes > 0 then
+        SizeText := FarSizeShort(TotalBytes)
+      else
+        SizeText := 'нет носителя';
+      AddItem('    ' + FarEscapeAmp(FarPadRight(WideString('/dev/' +
+        Found.Name), 14) + ' ' + FarPadRight(FarFitName(UTF8Decode(
+        FarUnixReadLine('/sys/block/' + Found.Name + '/device/model')), 32),
+        32) + FarPadLeft(SizeText, 12)), '', '', True);
+    until FindNext(Found) <> 0;
+    FindClose(Found);
+  end;
+  MenuOpen(fmDrive, 'Change folder', Items, CursorIndex, APanelIndex);
+end;
+{$ENDIF}
 
 // ---------------------------------------------------------------------------
 //  FTP (пункт FTP в меню дисков). Панель на FTP - два режима:
@@ -7672,7 +8079,8 @@ end;
 function FarLooksLocal(const AText: WideString): Boolean;
 begin
   Result := ((Length(AText) >= 2) and (AText[2] = ':')) or
-    (Copy(AText, 1, 2) = '\\') or (Pos('\', AText) > 0);
+    (Copy(AText, 1, 2) = '\\') or (Pos('\', AText) > 0)
+    {$IFDEF UNIX} or ((AText <> '') and (AText[1] = '/')) {$ENDIF};
 end;
 
 procedure TFarView.FtpRunJob(AKind: TFarFtpJobKind; APanelIdx: Integer;
@@ -7753,8 +8161,8 @@ begin
     Exit;
   end;
   SetString(TempDir, TempBuffer, TempLen);
-  TempDir := FarWithSlash(TempDir) + 'unIDE_ftp\' +
-    WideString(IntToStr(GetTickCount)) + '\';
+  TempDir := FarWithSlash(TempDir) + 'unIDE_ftp' + FarSep +
+    WideString(IntToStr(GetTickCount)) + FarSep;
   if not FarForceDirs(TempDir) then
   begin
     Status(FarProduct + ': папку не создать: ' + string(TempDir));
@@ -7894,7 +8302,7 @@ begin
        not FPanels[1 - FFtpOpPanel].IsArchive then
       Base := FPanels[1 - FFtpOpPanel].Path;
     Target := FarFullPath(Base, Text);
-    IntoDir := (Target[Length(Target)] = '\') or FarDirExists(Target) or
+    IntoDir := (Target[Length(Target)] = FarSep) or FarDirExists(Target) or
       (Length(FFtpOpItems) > 1);
     if IntoDir then
       TargetDir := FarWithSlash(Target)
@@ -8499,7 +8907,7 @@ begin
     Name := Copy(Name, 2, Length(Name) - 2);
   // Полное имя (Alt+Shift+Ins) - только имя файла
   CharIdx := Length(Name);
-  while (CharIdx > 0) and (Name[CharIdx] <> '\') do
+  while (CharIdx > 0) and (Name[CharIdx] <> FarSep) do
     Dec(CharIdx);
   Name := Copy(Name, CharIdx + 1, MaxInt);
   if (WideLowerCase(Copy(Name, 1, 4)) <> 'ftp_') or
@@ -10355,8 +10763,7 @@ begin
   for HistoryIndex := 0 to High(FHistory) do
   begin
     ShownPath := FHistory[HistoryIndex];
-    if (Length(ShownPath) > 3) and (ShownPath[Length(ShownPath)] = '\') then
-      SetLength(ShownPath, Length(ShownPath) - 1);
+    ShownPath := FarStripSlash(ShownPath);
     Items[HistoryIndex].Text := FarEscapeAmp(ShownPath);
     Items[HistoryIndex].RightText := '';
     if FHistoryLock[HistoryIndex] then
@@ -10420,9 +10827,8 @@ end;
 function TFarView.PromptText: WideString;
 begin
   Result := ActivePanel.Path;
-  if (Length(Result) > 3) and (Result[Length(Result)] = '\') then
-    SetLength(Result, Length(Result) - 1);
-  Result := Result + '>';
+  Result := FarStripSlash(Result);
+  Result := Result + {$IFDEF UNIX}'$'{$ELSE}'>'{$ENDIF};
 end;
 
 procedure TFarView.CmdSetText(const AText: WideString);
@@ -10485,8 +10891,7 @@ begin
   begin
     Result := BaseDir;
     // 'D:\a\' -> 'D:\a' (корень диска 'D:\' - как есть)
-    if (Length(Result) > 3) and (Result[Length(Result)] = '\') then
-      SetLength(Result, Length(Result) - 1);
+    Result := FarStripSlash(Result);
   end
   else
     Result := BaseDir + Panel.FItems[Panel.Cursor].Name;
@@ -10753,14 +11158,14 @@ begin
   if Copy(Lower, 1, 5) = 'chdir' then
   begin
     if (Length(Lower) > 5) and not ((Lower[6] = ' ') or (Lower[6] = '.') or
-       (Lower[6] = '\')) then
+       (Lower[6] = '\') or (Lower[6] = '/')) then
       Exit;
     Arg := Copy(ACommand, 6, MaxInt);
   end
   else if Copy(Lower, 1, 2) = 'cd' then
   begin
     if (Length(Lower) > 2) and not ((Lower[3] = ' ') or (Lower[3] = '.') or
-       (Lower[3] = '\')) then
+       (Lower[3] = '\') or (Lower[3] = '/')) then
       Exit;
     Arg := Copy(ACommand, 3, MaxInt);
   end
@@ -10815,6 +11220,13 @@ var
   EnvBuffer: array[0..MAX_PATH] of WideChar;
   EnvLen: DWORD;
 begin
+{$IFDEF UNIX}
+  // Linux: StartProcess запускает строку через /bin/sh -c
+  ComSpec := '';
+  EnvLen := 0;
+  EnvBuffer[0] := #0;
+  StartProcess(ACommand, ActivePanel.Path, False);
+{$ELSE}
   EnvLen := FarGetEnvVar('ComSpec', EnvBuffer, MAX_PATH + 1);
   if (EnvLen > 0) and (EnvLen <= MAX_PATH) then
     ComSpec := PWideChar(@EnvBuffer[0])
@@ -10822,6 +11234,7 @@ begin
     ComSpec := 'cmd.exe';
   StartProcess(WideString('"') + ComSpec + WideString('" /C ') + ACommand,
     ActivePanel.Path, False);
+{$ENDIF}
 end;
 
 // Процесс без окна консоли: stdout и stderr - в трубу, ввода нет (конец
@@ -10834,7 +11247,11 @@ var
 begin
   Result := False;
   Proc := TProcRun.Create;
+{$IFDEF UNIX}
+  Proc.ShellCommandW := ACommandLine;
+{$ELSE}
   Proc.CommandLineW := ACommandLine;
+{$ENDIF}
   Proc.DirW := AWorkDir;
   Proc.Window := pwHidden;
   Proc.Console := pcNoWindow;
@@ -10854,6 +11271,7 @@ begin
   FCmdProc := Proc;
   FProcCapture := ACapture;
   FProcRaw := '';
+  FProcTail := '';
   FProcTimer.Enabled := True;
   Result := True;
 end;
@@ -10865,6 +11283,7 @@ var
   Chunk: string;
   WideBuffer: array of WideChar;
   ReadCount, WideLen, MaxBytes: Integer;
+  {$IFDEF UNIX}TailPos: Integer;{$ENDIF}
   Text: WideString;
   Changed, Closed: Boolean;
 begin
@@ -10894,9 +11313,35 @@ begin
     end
     else
     begin
+{$IFDEF UNIX}
+      // UTF-8: неполный символ в конце - до следующего куска
+      Chunk := FProcTail + Chunk;
+      FProcTail := '';
+      TailPos := Length(Chunk);
+      while (TailPos > 0) and (Length(Chunk) - TailPos < 4) and
+            (Ord(Chunk[TailPos]) and $C0 = $80) do
+        Dec(TailPos);
+      if (TailPos > 0) and (Ord(Chunk[TailPos]) >= $C0) then
+      begin
+        if ((Ord(Chunk[TailPos]) >= $F0) and (Length(Chunk) - TailPos < 3)) or
+           ((Ord(Chunk[TailPos]) >= $E0) and (Length(Chunk) - TailPos < 2)) or
+           (Length(Chunk) - TailPos < 1) then
+        begin
+          FProcTail := Copy(Chunk, TailPos, MaxInt);
+          SetLength(Chunk, TailPos - 1);
+        end;
+      end;
+      ReadCount := Length(Chunk);
+      SetLength(WideBuffer, ReadCount + 1);
+      WideLen := 0;
+      if ReadCount > 0 then
+        WideLen := FarMultiToWide(CP_UTF8, 0, PAnsiChar(Chunk), ReadCount,
+          @WideBuffer[0], ReadCount);
+{$ELSE}
       SetLength(WideBuffer, ReadCount + 1);
       WideLen := FarMultiToWide(FarCpOem, 0, PAnsiChar(Chunk), ReadCount,
         @WideBuffer[0], ReadCount);
+{$ENDIF}
       if WideLen > 0 then
       begin
         SetLength(Text, WideLen);
@@ -11993,7 +12438,7 @@ begin
   FArcJobNames[0] := Name;
   FArcJobPassword := Panel.FArcPassword;
   FArcJobTemp := FarWithSlash(PWideChar(@TempBuffer[0])) + FarArcTempDir +
-    '\' + IntToHex(GetTickCount, 8) + '\';
+    FarSep + IntToHex(GetTickCount, 8) + FarSep;
   ArcRun;
 end;
 
@@ -12049,7 +12494,7 @@ begin
   FArcJobDest := Target;
   FArcJobPassword := Panel.FArcPassword;
   // Временная папка - в папке назначения: перенос оттуда - без копирования
-  FArcJobTemp := Target + '~unIDE_7z_' + IntToHex(GetTickCount, 8) + '\';
+  FArcJobTemp := Target + '~unIDE_7z_' + IntToHex(GetTickCount, 8) + FarSep;
   FDlgNames := nil;
   ArcRun;
 end;
@@ -13201,7 +13646,7 @@ begin
     Exit;
   end;
   TempDir := FarWithSlash(PWideChar(@TempBuffer[0])) + FarArcTempDir +
-    '\add_' + IntToHex(GetTickCount, 8) + '\';
+    FarSep + 'add_' + IntToHex(GetTickCount, 8) + FarSep;
   // Всё верно: выбор формата и уровня - на следующий раз
   FArcAddFormat := FormatIndex;
   FArcAddLevel := LevelIndex;
