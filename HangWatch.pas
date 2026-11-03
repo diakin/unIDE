@@ -57,6 +57,9 @@ unit HangWatch;
 //  исключения Delphi - класс и сообщение, и цепочку вызовов упавшего
 //  потока - как при зависании. Потом обработчик возвращает управление
 //  Windows. Под отладчиком Windows обработчик не вызывает.
+//
+//  Linux (этап 6 плана) - своя реализация в HangWatchUnix.inc: снимок
+//  стека по сигналу SIGPROF, сбои - через System.RaiseProc.
 // ---------------------------------------------------------------------------
 
 interface
@@ -89,6 +92,10 @@ var
   HangHeapStatus: function: THeapStatus = nil;
 
 implementation
+
+{$IFDEF UNIX}
+{$I HangWatchUnix.inc}
+{$ELSE}
 
 // В Windows.pas Delphi 7 её нет; в user32 - с Windows 2000
 function IsHungAppWindow(Wnd: HWND): BOOL; stdcall; external {$IFDEF UNIX}name 'unidewin_IsHungAppWindow'{$ELSE}user32{$ENDIF};
@@ -1327,5 +1334,7 @@ begin
   CrashEvent := 0;
   CrashDone := 0;
 end;
+
+{$ENDIF}
 
 end.

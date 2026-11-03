@@ -76,6 +76,8 @@ procedure WndWatchStop;
 
 implementation
 
+{$IFDEF MSWINDOWS}
+
 const
   PollInterval = 250;     // опрос состояния, мс
   DirtyLimit = 500;       // область не перерисована дольше - в журнал
@@ -1199,5 +1201,34 @@ finalization
   // Watcher и элементы не освобождаются: окна, уничтожаясь после
   // WndWatchStop, ещё могут вызвать WatchProc. Выход из программы - память
   // вернёт Windows.
+
+{$ELSE}
+
+// Linux: журнал окна ищет ошибку перерисовки окна Windows (белые полосы,
+// пропадающее окно) по сообщениям WM_* и хукам Windows - под gtk2 их нет.
+// Вызовы ничего не делают
+
+procedure WndWatchStart(const ALogFile: string);
+begin
+end;
+
+procedure WndWatchControl(AControl: TWinControl; const AName: string;
+                          APaintCheck: Boolean;
+                          AWhiteCheck: Boolean);
+begin
+end;
+
+procedure WndWatchMainForm(AForm: TWinControl; const AName: string);
+begin
+end;
+
+procedure WndWatchTrace(AControl: TWinControl);
+begin
+end;
+
+procedure WndWatchStop;
+begin
+end;
+{$ENDIF}
 
 end.

@@ -5544,9 +5544,16 @@ begin
   FMemUsedMB := UsedMB;
   FMemFreeMB := FreeMB;
   FMemLargestMB := LargestMB;
+  {$IFDEF UNIX}
+  // Linux: занимает процесс (VmRSS) и доступно в системе (MemAvailable);
+  // цвет - по доступному (HangWatch.AddressSpaceGet)
+  StatusBar1.Panels[StatusBar1.Panels.Count - 1].Text :=
+    Format('Память: процесс %d МБ, доступно %d', [UsedMB, FreeMB]);
+  {$ELSE}
   StatusBar1.Panels[StatusBar1.Panels.Count - 1].Text :=
     Format('Память: занято %d МБ, свободно %d, кусок %d',
            [UsedMB, FreeMB, LargestMB]);
+  {$ENDIF}
   StatusBar1.Invalidate;
 end;
 
@@ -41251,6 +41258,12 @@ begin
   StartTick := GetTickCount;
   if FDsgForeign = nil then
     FDsgForeign := TDsgForeignList.Create;
+  {$IFDEF UNIX}
+  // Linux (этап 6 плана): список берётся из реестра Delphi 7 и из пакетов
+  // .bpl, загруженных в процесс (BplRtti) - библиотеку Windows в процесс
+  // Linux не загрузить. Сторонних страниц палитры нет, список пуст
+  Exit;
+  {$ENDIF}
   BinDir := DsgDelphiBin;
   RootDir := '';
   if BinDir <> '' then
@@ -67340,6 +67353,14 @@ var
   Targets: TList;
 begin
   Result := False;
+  {$IFDEF UNIX}
+  // Linux (этап 6 плана): отладчик Delphi 7 работает через отладочный API
+  // Windows (DbgEngine), а программа Delphi 7 здесь идёт под Wine
+  LogComp('Отладчик: на Linux отладчик программ Delphi 7 не работает ' +
+          '(программа запускается под Wine) - запуск без отладчика, точки ' +
+          'останова не действуют');
+  Exit;
+  {$ENDIF}
   MapFile := ChangeFileExt(AExe, '.map');
   if not FileExists(MapFile) then
   begin
@@ -70629,6 +70650,13 @@ var
 begin
   if FBusyDepth > 0 then
     Exit;
+  {$IFDEF UNIX}
+  // Linux (этап 6 плана): Rufus - программа Windows; пункты меню скрыты
+  ShowCompLog;
+  LogComp('Rufus работает только в Windows. На Linux образ пишется на ' +
+          'флешку программой «Диски» (gnome-disks) или командой dd');
+  Exit;
+  {$ENDIF}
   Image := '';
   BuildDir := '';
   if (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
@@ -70694,6 +70722,13 @@ var
 begin
   if FBusyDepth > 0 then
     Exit;
+  {$IFDEF UNIX}
+  // Linux (этап 6 плана): Rufus - программа Windows; пункты меню скрыты
+  ShowCompLog;
+  LogComp('Rufus работает только в Windows. На Linux образ пишется на ' +
+          'флешку программой «Диски» (gnome-disks) или командой dd');
+  Exit;
+  {$ENDIF}
   ShowCompLog;
   Exe := string(RufusLocalExe);
   if Exe <> '' then

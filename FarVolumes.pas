@@ -93,6 +93,7 @@ const
 
 implementation
 
+{$IFDEF MSWINDOWS}
 const
   FvShareReadWrite = 3;       // FILE_SHARE_READ or FILE_SHARE_WRITE
   FvCpAnsi = 0;               // CP_ACP
@@ -170,6 +171,8 @@ function FvDiskFree(ADir: PWideChar; AFreeAvail, ATotalBytes,
 
 // ---------------------------------------------------------------------------
 
+{$ENDIF}
+
 function FarSizeShort(ABytes: Int64): WideString;
 const
   Units: array[0..4] of string = ('K', 'M', 'G', 'T', 'P');
@@ -192,6 +195,7 @@ begin
   Result := Format('%.2f %s', [Value, Units[UnitIdx]]);
 end;
 
+{$IFDEF MSWINDOWS}
 function FvTrim(const AText: WideString): WideString;
 var
   StartPos, EndPos: Integer;
@@ -303,6 +307,20 @@ begin
   end;
 end;
 
+{$ELSE}
+// Linux: устройства Windows (\\.\PhysicalDriveN, IOCTL) не открываются -
+// меню дисков unIDE FAR строится из /proc/mounts и /sys/block (UnFar)
+function FarDeviceNumber(const ADevicePath: WideString;
+  var ANumber: TFarDeviceNumber): Boolean;
+begin
+  ANumber.Valid := False;
+  ANumber.DeviceType := 0;
+  ANumber.DiskNumber := -1;
+  ANumber.PartNumber := -1;
+  Result := False;
+end;
+{$ENDIF}
+
 function FarDeviceText(const ANumber: TFarDeviceNumber): WideString;
 begin
   Result := '';
@@ -320,6 +338,7 @@ begin
   end;
 end;
 
+{$IFDEF MSWINDOWS}
 function FarDeviceInfo(const ADevicePath: WideString; AWithSize: Boolean;
   var ADisk: TFarDisk): Boolean;
 var
@@ -409,6 +428,20 @@ begin
     Result := 0;
 end;
 
+{$ELSE}
+function FarDeviceInfo(const ADevicePath: WideString; AWithSize: Boolean;
+  var ADisk: TFarDisk): Boolean;
+begin
+  Result := False;
+end;
+
+function FarPhysicalDisks(var ADisks: TFarDisks): DWORD;
+begin
+  SetLength(ADisks, 0);
+  Result := 50;   // ERROR_NOT_SUPPORTED
+end;
+{$ENDIF}
+
 function FarFindDisk(const ADisks: TFarDisks; ANumber: Integer): Integer;
 var
   DiskIdx: Integer;
@@ -422,6 +455,7 @@ begin
     end;
 end;
 
+{$IFDEF MSWINDOWS}
 procedure FarNoLetterVolumes(var AVolumes: TFarVolumes);
 var
   Kernel: HMODULE;
@@ -513,5 +547,12 @@ begin
     FindVolClose(FindHandle);
   end;
 end;
+
+{$ELSE}
+procedure FarNoLetterVolumes(var AVolumes: TFarVolumes);
+begin
+  SetLength(AVolumes, 0);
+end;
+{$ENDIF}
 
 end.
