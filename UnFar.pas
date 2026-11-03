@@ -133,6 +133,8 @@ unit UnFar;
 //      чтение, архивный, скрытый, системный, временный, неиндексируемый,
 //      автономный; время записи, создания, доступа; с подпапками. У
 //      нескольких файлов меняется только то, что переключили или вписали.
+//    - b.62: щелчок по заголовку панели (путь) или по приглашению перед
+//      командной строкой - путь этой папки в буфер обмена.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -168,7 +170,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.61';
+  FarBuild = 'b.62';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -727,6 +729,10 @@ type
     procedure ProcTick(Sender: TObject);
     procedure ProcFinish(AKill: Boolean);
     function PromptText: WideString;
+    // Щелчок по приглашению командной строки (путь перед '>')
+    function PromptClickAt(AX, AY: Integer): Boolean;
+    // Щелчок по заголовку панели (путь); APanelIndex - чей заголовок
+    function TitleClickAt(AX, AY: Integer; var APanelIndex: Integer): Boolean;
     procedure ChangePanelCut(ADelta: Integer);
     procedure ChangePanelShift(ADelta: Integer);
     function LeftPanelWidth: Integer;
@@ -4331,6 +4337,14 @@ begin
     Invalidate;
     Exit;
   end;
+  // Щелчок по приглашению командной строки - путь активной панели в буфер
+  if (Button = mbLeft) and not InDocArea(PosX, PosY) and
+     PromptClickAt(PosX, PosY) then
+  begin
+    CopyToClipboard(Copy(PromptText, 1, Length(PromptText) - 1));
+    Invalidate;
+    Exit;
+  end;
   // Панели спрятаны или щелчок ниже панелей (вывод, командная строка);
   // редактор и просмотр - во всю высоту
   if FPanelsHidden or ((PosY div FCellH >= PanelHeight) and
@@ -4357,6 +4371,14 @@ begin
       EditMouse(PosX, PosY, ssShift in Shift, False);
       FEditDragging := True;
     end;
+    Invalidate;
+    Exit;
+  end;
+  // Щелчок по заголовку панели - её путь в буфер, панель - активная
+  if (Button = mbLeft) and TitleClickAt(PosX, PosY, PanelIndex) then
+  begin
+    FActive := PanelIndex;
+    CopyToClipboard(FarStripSlash(FPanels[PanelIndex].DisplayPath));
     Invalidate;
     Exit;
   end;
@@ -10933,6 +10955,52 @@ begin
   Result := ActivePanel.Path;
   Result := FarStripSlash(Result);
   Result := Result + {$IFDEF UNIX}'$'{$ELSE}'>'{$ENDIF};
+end;
+
+// Ширина приглашения на экране - как в DrawCmdLine
+function TFarView.PromptClickAt(AX, AY: Integer): Boolean;
+var
+  Prompt: WideString;
+  Col: Integer;
+begin
+  Result := False;
+  if (CmdRow < 0) or (AY div FCellH <> CmdRow) then
+    Exit;
+  Prompt := PromptText;
+  if Length(Prompt) > FCols * 2 div 3 then
+    Prompt := FarFitPath(Prompt, FCols * 2 div 3);
+  Col := AX div FCellW;
+  // '>' в конце - не путь
+  Result := (Col >= 0) and (Col < Length(Prompt) - 1);
+end;
+
+// Заголовок панели - в строке 0, по центру, как в DrawPanel
+function TFarView.TitleClickAt(AX, AY: Integer;
+  var APanelIndex: Integer): Boolean;
+var
+  Col, PanelX, PanelW, TitleLen, TitleX: Integer;
+  Title: WideString;
+begin
+  Result := False;
+  if FPanelsHidden or (AY div FCellH <> 0) then
+    Exit;
+  Col := AX div FCellW;
+  if FSingle >= 0 then
+    APanelIndex := FSingle
+  else if Col < LeftPanelWidth then
+    APanelIndex := 0
+  else
+    APanelIndex := 1;
+  PanelBounds(APanelIndex, PanelX, PanelW);
+  if PanelW <= 0 then
+    Exit;
+  Title := FarStripSlash(FPanels[APanelIndex].DisplayPath);
+  Title := ' ' + FarFitPath(Title, PanelW - 6) + ' ';
+  TitleLen := Length(Title);
+  if TitleLen > PanelW then
+    TitleLen := PanelW;
+  TitleX := PanelX + (PanelW - TitleLen) div 2;
+  Result := (Col >= TitleX) and (Col < TitleX + TitleLen);
 end;
 
 procedure TFarView.CmdSetText(const AText: WideString);
