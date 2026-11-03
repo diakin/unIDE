@@ -220,43 +220,49 @@ begin
   Result.Arduino15Path := '';
   Result.IdePath := '';
   Result.AdditionalUrls := '';
-  if (AIniFile = '') or not FileExists(AIniFile) then
-    Exit;
+  // Нет editor.ini (первый запуск) - только поиск ниже (Linux)
+  if (AIniFile <> '') and FileExists(AIniFile) then
+  begin
+    Ini := TIniFile.Create(AIniFile);
+    try
+      // Инструмент по умолчанию (IDE Options - Compilers, строка над полями):
+      // у него свой раздел. '(default)' - раздел самого типа.
+      ToolName := Trim(Ini.ReadString(ArdIniSection, 'Default', ''));
+      if (ToolName <> '') and (ToolName <> '(default)') and
+         Ini.SectionExists(ArdIniSection + '.' + ToolName) then
+        Result.Section := ArdIniSection + '.' + ToolName;
 
-  Ini := TIniFile.Create(AIniFile);
-  try
-    // Инструмент по умолчанию (IDE Options - Compilers, строка над полями):
-    // у него свой раздел. '(default)' - раздел самого типа.
-    ToolName := Trim(Ini.ReadString(ArdIniSection, 'Default', ''));
-    if (ToolName <> '') and (ToolName <> '(default)') and
-       Ini.SectionExists(ArdIniSection + '.' + ToolName) then
-      Result.Section := ArdIniSection + '.' + ToolName;
-
-    Result.CliFile := Trim(Ini.ReadString(Result.Section, 'CliFile', ''));
-    Result.CliCfgFile := Trim(Ini.ReadString(Result.Section, 'CliCfgFile',
-                                             ''));
-    Result.CliDataPath := ArdDir(Ini.ReadString(Result.Section,
-                                                'CliDataPath', ''));
-    Result.DownloadsPath := ArdDir(Ini.ReadString(Result.Section,
-                                                  'DownloadsPath', ''));
-    Result.SketchPath := ArdDir(Ini.ReadString(Result.Section, 'SketchPath',
+      Result.CliFile := Trim(Ini.ReadString(Result.Section, 'CliFile', ''));
+      Result.CliCfgFile := Trim(Ini.ReadString(Result.Section, 'CliCfgFile',
                                                ''));
-    Result.BuildPath := ArdDir(Ini.ReadString(Result.Section, 'BuildPath',
-                                              ''));
-    Result.LibPath := ArdDir(Ini.ReadString(Result.Section, 'LibPath', ''));
-    Result.LogFile := Trim(Ini.ReadString(Result.Section, 'LogFile', ''));
-    Result.Arduino15Path := ArdDir(Ini.ReadString(Result.Section,
-                                                  'Arduino15Path', ''));
-    Result.IdePath := ArdDir(Ini.ReadString(Result.Section, 'IdePath', ''));
-    Result.AdditionalUrls := Trim(Ini.ReadString(Result.Section,
-                                                 'AdditionalUrls', ''));
-  finally
-    Ini.Free;
+      Result.CliDataPath := ArdDir(Ini.ReadString(Result.Section,
+                                                  'CliDataPath', ''));
+      Result.DownloadsPath := ArdDir(Ini.ReadString(Result.Section,
+                                                    'DownloadsPath', ''));
+      Result.SketchPath := ArdDir(Ini.ReadString(Result.Section, 'SketchPath',
+                                                 ''));
+      Result.BuildPath := ArdDir(Ini.ReadString(Result.Section, 'BuildPath',
+                                                ''));
+      Result.LibPath := ArdDir(Ini.ReadString(Result.Section, 'LibPath', ''));
+      Result.LogFile := Trim(Ini.ReadString(Result.Section, 'LogFile', ''));
+      Result.Arduino15Path := ArdDir(Ini.ReadString(Result.Section,
+                                                    'Arduino15Path', ''));
+      Result.IdePath := ArdDir(Ini.ReadString(Result.Section, 'IdePath', ''));
+      Result.AdditionalUrls := Trim(Ini.ReadString(Result.Section,
+                                                   'AdditionalUrls', ''));
+    finally
+      Ini.Free;
+    end;
   end;
   {$IFDEF UNIX}
   // Linux: arduino-cli не задан - из PATH, ~/.local/bin, ~/bin (туда его
   // кладёт install.sh). Arduino15 - ~/.arduino15 (папка Arduino IDE и
   // arduino-cli по умолчанию).
+  // Свой arduino-cli в папке поставки (tools/arduino-cli у программы)
+  if (Result.CliFile = '') and
+     FileExists(ExtractFilePath(ParamStr(0)) + 'tools/arduino-cli/arduino-cli') then
+    Result.CliFile := ExtractFilePath(ParamStr(0)) +
+                      'tools/arduino-cli/arduino-cli';
   if Result.CliFile = '' then
     Result.CliFile := ExeSearch('arduino-cli',
                                 SysUtils.GetEnvironmentVariable('PATH') + ':' +

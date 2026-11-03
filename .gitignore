@@ -139,3 +139,6 @@ uniFAR/*_compile.bat
 !/rapidq_ref/inc/old/
 !/rapidq_ref/inc/old/QMaxSplitter.inc.txt
 !/rapidq_ref/inc/old/QSplitter.inc.txt
+
+# Папка поставки под Linux (lazarus/linux/build_linux.sh, этап 7)
+/dist/

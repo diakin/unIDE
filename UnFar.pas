@@ -11764,8 +11764,12 @@ var
 {$ENDIF}
 begin
 {$IFDEF UNIX}
-  // Linux: 7zz (7-Zip), 7z / 7za (p7zip) из PATH
-  Result := '';
+  // Linux: свой 7zz в tools/7zip у программы (папка поставки) или в
+  // ~/.local/share/unIDE/tools/7zip; иначе 7zz (7-Zip), 7z / 7za (p7zip)
+  // из PATH
+  Result := SzLocalExe;
+  if Result <> '' then
+    Exit;
   for ToolName in ['7zz', '7z', '7za'] do
   begin
     FoundPath := ExeSearch(ToolName, GetEnvironmentVariable('PATH'));

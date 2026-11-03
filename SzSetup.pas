@@ -796,6 +796,11 @@ var
   Len: DWORD;
   SlashPos: Integer;
 begin
+  {$IFDEF UNIX}
+  // Linux: <папка программы>/tools/ (папка поставки, этап 7 плана)
+  Result := WideString(UTF8Decode(ExtractFilePath(ParamStr(0)))) + 'tools/';
+  Exit;
+  {$ENDIF}
   Len := SzGetModuleFileName(0, Buffer, Length(Buffer));
   if (Len = 0) or (Len >= DWORD(Length(Buffer))) then
   begin
@@ -814,6 +819,13 @@ var
   Buffer: array[0..MAX_PATH] of WideChar;
 begin
   Result := '';
+  {$IFDEF UNIX}
+  // Linux: ~/.local/share/unIDE/tools/
+  if GetEnvironmentVariable('HOME') <> '' then
+    Result := WideString(UTF8Decode(GetEnvironmentVariable('HOME'))) +
+              '/.local/share/unIDE/tools/';
+  Exit;
+  {$ENDIF}
   FillChar(Buffer, SizeOf(Buffer), 0);
   if SzShGetFolderPath(0, SzCsidlLocalAppData, 0, 0, Buffer) = 0 then
   begin
@@ -825,14 +837,14 @@ end;
 
 function SzAppDir: WideString;
 begin
-  Result := SzToolsAppDir + '7zip\';
+  Result := SzToolsAppDir + '7zip' + PathDelim;
 end;
 
 function SzUserDir: WideString;
 begin
   Result := SzToolsUserDir;
   if Result <> '' then
-    Result := Result + '7zip\';
+    Result := Result + '7zip' + PathDelim;
 end;
 
 function SzLocalExe: WideString;
@@ -843,6 +855,17 @@ begin
   Result := '';
   Dirs[0] := SzAppDir;
   Dirs[1] := SzUserDir;
+  {$IFDEF UNIX}
+  // Linux: 7zz (7-Zip для Linux, один файл без библиотек)
+  for DirIndex := 0 to 1 do
+    if (Dirs[DirIndex] <> '') and
+       FileExists(UTF8Encode(Dirs[DirIndex] + '7zz')) then
+    begin
+      Result := Dirs[DirIndex] + '7zz';
+      Exit;
+    end;
+  Exit;
+  {$ENDIF}
   for DirIndex := 0 to 1 do
     if (Dirs[DirIndex] <> '') and SzFileExists(Dirs[DirIndex] + '7z.exe') and
        SzFileExists(Dirs[DirIndex] + '7z.dll') then

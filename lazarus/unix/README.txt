@@ -3,8 +3,11 @@ unIDE: сборка под Linux (gtk2), этап 3.1 плана перенос�
 Модули-заменители WinAPI (только для Linux, в путях режима Linux64 в
 lazarus/SyntaxHLClaude.lpi). Модули unIDE свои uses не меняют.
 
-  windows.pas, messages.pas  - объявления из FPC RTL (rtl/win/wininc),
+  windows.pas                - объявления из FPC RTL (rtl/win/wininc),
                                копии в wininc/*.inc
+  (Messages - модуль LCL, lcl/nonwin32: у него TMessage = TLMessage, как
+   нужно для WindowProc; своего messages.pas здесь нет - иначе lazbuild
+   брал его, и TMessage был записью Windows, этап 7)
   richedit, commctrl, shellapi, activex, wininet .pas
                              - из FPC packages/winunits-base
   winimpl.pas                - реализация используемых вызовов WinAPI:
