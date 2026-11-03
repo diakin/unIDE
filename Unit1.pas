@@ -14562,6 +14562,16 @@ begin
   if AFbcExe = '' then
     Exit;
   BaseDir := ExtractFilePath(AFbcExe);
+  {$IFDEF UNIX}
+  // Linux: fbc в <prefix>/bin, inc - <prefix>/include/freebasic, lib -
+  // <prefix>/lib/freebasic
+  BaseDir := ExtractFilePath(ExcludeTrailingPathDelimiter(BaseDir));
+  if DirectoryExists(BaseDir + 'include/freebasic') then
+    AIncDir := BaseDir + 'include/freebasic';
+  if DirectoryExists(BaseDir + 'lib/freebasic') then
+    ALibDir := BaseDir + 'lib/freebasic';
+  Exit;
+  {$ENDIF}
   if DirectoryExists(BaseDir + 'inc') then
     AIncDir := BaseDir + 'inc';
   if ABits = 64 then
@@ -53610,7 +53620,7 @@ var
   Acc, Line: string;
   NL: Integer;
   Ini: TIniFile;
-  Oem, Ended, Killed: Boolean;
+  Oem, Ended, Killed, Utf8Out: Boolean;
 begin
   Result := -1;
   Killed := False;
@@ -53631,6 +53641,13 @@ begin
   // fbc пишет имена файлов так, как их получил, - в ANSI
   if FCompNoOem then
     Oem := False;
+  // Вывод в UTF-8 - в ANSI: lazbuild (FCompUtf8); в Linux - любой
+  // компилятор, OEM там нет
+  Utf8Out := FCompUtf8;
+  {$IFDEF UNIX}
+  Oem := False;
+  Utf8Out := True;
+  {$ENDIF}
 
   Proc := TProcRun.Create;
   try
@@ -53702,7 +53719,7 @@ begin
         while (Line <> '') and (Line[Length(Line)] = #13) do
           SetLength(Line, Length(Line) - 1);
         // lazbuild: UTF-8 - в ANSI (строка целиком: символ не режется)
-        if FCompUtf8 and LooksLikeUtf8(Line) then
+        if Utf8Out and LooksLikeUtf8(Line) then
           Line := Utf8ToAnsiFull(Line);
         if Trim(Line) <> '' then
         begin
@@ -53719,7 +53736,7 @@ begin
       Application.ProcessMessages; // окно не должно застывать
     until False;
 
-    if FCompUtf8 and LooksLikeUtf8(Acc) then
+    if Utf8Out and LooksLikeUtf8(Acc) then
       Acc := Utf8ToAnsiFull(Acc);
     if Trim(Acc) <> '' then
     begin
@@ -53758,6 +53775,27 @@ var
   FN: string;
 begin
   FN := ChangeFileExt(ADpr, '') + '_compile.bat';
+  {$IFDEF UNIX}
+  // Linux: сценарий sh (запуск: sh <имя>_compile.sh)
+  FN := ChangeFileExt(ADpr, '') + '_compile.sh';
+  SL := TStringList.Create;
+  try
+    SL.Add('#!/bin/sh');
+    SL.Add('# Build ' + ExtractFileName(ADpr) +
+      ' - file is rewritten on every compile');
+    SL.Add('cd "' + ExcludeTrailingPathDelimiter(ADir) + '" || exit 1');
+    SL.Add('"' + AExe + '" ' + AParams);
+    try
+      SL.SaveToFile(FN);
+      LogComp('Командная строка сохранена: ' + FN);
+    except
+      LogComp('Не удалось записать ' + FN);
+    end;
+  finally
+    SL.Free;
+  end;
+  Exit;
+  {$ENDIF}
 
   SL := TStringList.Create;
   try
@@ -58250,6 +58288,10 @@ begin
     if (FbCompilerExe(32, Problem) = '') and
        (FbCompilerExe(64, Problem) <> '') then
       ABits := 64;
+    {$IFDEF UNIX}
+    // Linux: по умолчанию - разрядность системы (fbc один, родной)
+    ABits := SizeOf(Pointer) * 8;
+    {$ENDIF}
   end;
 end;
 
@@ -58327,6 +58369,20 @@ begin
     end;
   end;
 
+  {$IFDEF UNIX}
+  // Linux: fbc из поля (папка или файл), иначе из PATH. Разрядность -
+  // родная для fbc (32 и 64 - поля одинаковые по смыслу)
+  if ABits = 64 then
+    Result := Pick(Dir64, ['fbc']);
+  if Result = '' then
+    Result := Pick(Dir32, ['fbc']);
+  if Result = '' then
+    Result := ExeSearch('fbc', GetEnvironmentVariable('PATH'));
+  if Result = '' then
+    AProblem := 'fbc не найден ни в папке из IDE Options - Compilers - ' +
+      'FreeBASIC, ни в PATH. Установите FreeBASIC (fbc)';
+  Exit;
+  {$ENDIF}
   if ABits = 64 then
   begin
     if Dir64 <> '' then
@@ -58462,7 +58518,15 @@ begin
     if CompareText(Copy(AMain, 1, Length(BaseDir)), BaseDir) <> 0 then
       BaseDir := ExtractFilePath(AMain);
   end;
-  Result := BaseDir + 'bin\' + ExtractFileName(AMain);
+  Result := BaseDir + 'bin' + PathDelim + ExtractFileName(AMain);
+  {$IFDEF UNIX}
+  // Linux: программа без расширения, библиотека - .so
+  if OutKind = fbOutDll then
+    Result := ChangeFileExt(Result, '.so')
+  else
+    Result := ChangeFileExt(Result, '');
+  Exit;
+  {$ENDIF}
   if OutKind = fbOutDll then
     Result := ChangeFileExt(Result, '.dll')
   else
@@ -58688,6 +58752,13 @@ begin
   else
     Params := '-s console';
   end;
+  {$IFDEF UNIX}
+  // -s (подсистема exe) - ключ Windows
+  if OutKind = fbOutDll then
+    Params := '-dll'
+  else
+    Params := '';
+  {$ENDIF}
   // Обратная косая перед закрывающей кавычкой экранировала бы её - папки
   // передаются без неё
   // Пустые Include и Library - папки самого компилятора: у fbc 32 и 64
@@ -58755,7 +58826,10 @@ begin
     if ResFile = '' then
       ResFile := ChangeFileExt(MainBas, '.rc');
   end;
-  if FileExists(ResFile) then
+  {$IFDEF UNIX}
+  ResFile := '';   // .rc (GoRC) - только Windows
+  {$ENDIF}
+  if (ResFile <> '') and FileExists(ResFile) then
   begin
     Params := Params + ' "' + ResFile + '"';
     LogComp('Ресурсы: ' + ResFile);
@@ -58817,7 +58891,8 @@ begin
         if FirstFile = '' then
         begin
           if (ExtractFileDrive(ErrFile) = '') and
-             (Copy(ErrFile, 1, 2) <> '\\') then
+             (Copy(ErrFile, 1, 2) <> '\\') and
+             not ((PathDelim = '/') and (Copy(ErrFile, 1, 1) = '/')) then
             ErrFile := ExpandFileName(Dir + ErrFile);
           FirstFile := ErrFile;
           FirstLine := ErrLine;
@@ -62598,8 +62673,10 @@ begin
   begin
     // У DLL запускать нечего
     TargetSrc := FbTargetBas(False);
+    // (в Linux у программы расширения нет, библиотека - .so)
     if (TargetSrc <> '') and
-       (LowerCase(ExtractFileExt(FbOutFileOf(TargetSrc))) = '.exe') then
+       (LowerCase(ExtractFileExt(FbOutFileOf(TargetSrc))) <> '.dll') and
+       (LowerCase(ExtractFileExt(FbOutFileOf(TargetSrc))) <> '.so') then
     begin
       // Перевод RapidQ - рядом с исходником RapidQ, обычная программа - bin
       if RqFbConvertedExe(TargetSrc) <> ChangeFileExt(TargetSrc, '.exe') then
@@ -66083,6 +66160,10 @@ end;
 procedure TForm1.RunTarget;
 var
   Dpr, Exe, Dir, Cmd, ErrText: string;
+  {$IFDEF UNIX}
+  Script: TStringList;
+  ScriptFile: string;
+  {$ENDIF}
   Proc: TProcRun;
   ProcHandle: THandle;
   Con: TRunConsole;
@@ -66220,6 +66301,52 @@ begin
      FileExists(FRqDbgInstr.CmdFile) then
     DeleteFile(FRqDbgInstr.CmdFile);
 
+  {$IFDEF UNIX}
+  // Linux: консольная программа FreeBASIC - в терминале рабочего стола
+  // (GitTerminalCommand: $TERMINAL, x-terminal-emulator, ...). После её
+  // конца терминал ждёт Enter - иначе вывод не прочитать. Текст терминала
+  // в лог не попадает
+  if (Kind = bkFreeBasic) and (OutKind = fbOutConsole) then
+  begin
+    Cmd := string(GitTerminalCommand('', ''));
+    if Cmd = '' then
+    begin
+      LogComp('Запуск: терминал не найден (задайте переменную TERMINAL или ' +
+        'установите xterm) - программа запускается без окна');
+      Cmd := '"' + Exe + '"';
+    end
+    else
+    begin
+      // Команда - сценарием во временной папке: строка терминала без
+      // вложенных кавычек
+      Script := TStringList.Create;
+      try
+        Script.Add('cd "' + ExcludeTrailingPathDelimiter(Dir) + '"');
+        Script.Add('"' + Exe + '"');
+        Script.Add('echo "[код выхода $?, Enter - закрыть]"');
+        Script.Add('read unide_key');
+        ScriptFile := IncludeTrailingPathDelimiter(GetTempDir) +
+          'unide_run_' + ChangeFileExt(ExtractFileName(Exe), '') + '.sh';
+        try
+          Script.SaveToFile(ScriptFile);
+        except
+          LogComp('Запуск: не записан ' + ScriptFile);
+          Exit;
+        end;
+      finally
+        Script.Free;
+      end;
+      Cmd := Cmd + ' -e sh "' + ScriptFile + '"';
+    end;
+    if not ProcLaunch(Cmd, Dir, ErrText) then
+    begin
+      LogComp('Запуск не удался: ' + Exe + ' (' + ErrText + ')');
+      Exit;
+    end;
+    LogComp('--- Запуск: ' + Exe + ' (в терминале)');
+    Exit;
+  end;
+  {$ENDIF}
   // Консольная программа (RapidQ без $APPTYPE GUI, FreeBASIC, консольная
   // Delphi): окно после её конца не закрывается до клавиши, а его текст
   // идёт в лог - иначе сообщение об ошибке при старте не прочитать
