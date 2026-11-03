@@ -1552,12 +1552,10 @@ object Form1: TForm1
       Align = alLeft
       BevelOuter = bvNone
       object grpCompiler: TUiGroupBox
-        Color = clPurple
         Align = alBottom
         Caption = 'Project'
         Height = 98
         object pnlCompilerIn: TPanel
-          Color = clTeal
           Align = alTop
           BevelOuter = bvNone
           ParentFont = True
@@ -1724,7 +1722,6 @@ object Form1: TForm1
         end
       end
       object pnlToolbarIn: TPanel
-        Color = clGreen
         Align = alTop
         BevelOuter = bvNone
         ParentFont = True
@@ -2208,7 +2205,6 @@ object Form1: TForm1
   end
   object FRightPanel: TPanel
     BevelWidth = 0
-    Color = clTeal
     BevelOuter = bvNone
     Caption = ''
     Align = alRight
