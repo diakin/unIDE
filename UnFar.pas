@@ -126,6 +126,9 @@ unit UnFar;
 //    - b.59: F1 - справка (FarHelp): окно поверх всего, тема - по месту, где
 //      нажали (панели, просмотр, редактор, поиск, FTP, архив, меню дисков,
 //      F9); ссылки - Tab / Enter, назад - Backspace / Alt+F1.
+//    - b.60: F3 на папке - её размер (выделены папки - их размер): обход в
+//      своём потоке (TFarDirSizeThread), ход и итог - в строке сообщений,
+//      размер - в строке о файле под курсором вместо Folder. Esc - прервать.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -161,7 +164,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.59';
+  FarBuild = 'b.60';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -179,6 +182,7 @@ type
     IsDir: Boolean;
     IsUp: Boolean;       // строка '..'
     Selected: Boolean;
+    DirSizeKnown: Boolean; // папка: размер посчитан (F3), он - в Size
   end;
   // Один тип массива для поля и локальных переменных: в Delphi 7 два
   // отдельно описанных 'array of TFarItem' - разные типы, присвоить нельзя
@@ -388,6 +392,32 @@ type
   // или вправо (1) на ACellWidth пикселей
   TFarHalfResizeEvent = procedure(ADelta, ACellWidth: Integer) of object;
 
+  // Размер папок (F3 на папке): обход папок с подпапками в своём потоке.
+  // Ссылки на папки (reparse point) не обходятся - как и в FAR, чтобы не
+  // считать одно дважды и не уйти в петлю
+  TFarDirSizeThread = class(TThread)
+  private
+    FPaths: TFarNames;
+    FSizes: array of Int64;
+    FLock: TRTLCriticalSection;
+    FBytes: Int64;
+    FFiles: Integer;
+    FDirs: Integer;
+    FCancelled: Boolean;
+    FDone: Integer;
+    procedure ScanDir(const ADir: WideString; var ASize: Int64);
+  protected
+    procedure Execute; override;
+  public
+    constructor Create(const APaths: TFarNames);
+    destructor Destroy; override;
+    procedure Cancel;
+    function Done: Boolean;
+    procedure Progress(var ABytes: Int64; var AFiles, ADirs: Integer);
+    function PathSize(AIndex: Integer): Int64;
+    property Cancelled: Boolean read FCancelled;
+  end;
+
   TFarView = class(TCustomControl)
   private
     FPanels: array[0..1] of TFarPanel;
@@ -441,6 +471,13 @@ type
     FHelp: TFarHelp;
     FHelpBoxLeft, FHelpBoxTop, FHelpBoxW, FHelpBoxH: Integer;
     FHelpTextRows: Integer;
+    // Размер папок (F3 на папке): поток, опрос, какая панель и папка,
+    // имена считаемых папок в ней
+    FDirSizeThread: TFarDirSizeThread;
+    FDirSizeTimer: TTimer;
+    FDirSizePanel: Integer;
+    FDirSizePath: WideString;
+    FDirSizeNames: TFarNames;
     // F9 - Colors / Files highlighting своими окнами: группа палитры в
     // меню элементов, правило для удаления, окно выбора цвета (Pick*)
     FPalGroupFirst: TFarPalItem;
@@ -812,6 +849,10 @@ type
     function HelpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure HelpMouse(AX, AY: Integer);
     procedure DrawHelp;
+    procedure StartDirSize;
+    procedure DirSizeStop;
+    procedure DirSizeTick(Sender: TObject);
+    procedure DirSizeApply;
     procedure ShowPalGroups(ACursor: Integer);
     procedure ShowPalItems(AFirst: TFarPalItem; ACursor: TFarPalItem);
     procedure ShowHiRules(ACursor: Integer);
@@ -2952,6 +2993,7 @@ begin
           FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY <> 0;
         NewItems[NewCount].IsUp := False;
         NewItems[NewCount].Selected := False;
+        NewItems[NewCount].DirSizeKnown := False;
         NewItems[NewCount].WriteTime := FindData.ftLastWriteTime;
         NewItems[NewCount].CreateTime := FindData.ftCreationTime;
         NewItems[NewCount].AccessTime := FindData.ftLastAccessTime;
@@ -3353,6 +3395,7 @@ var
 begin
   FOnStatus := nil;
   FreeAndNil(FHelp);
+  DirSizeStop;
   FSzTimer.Enabled := False;
   if FFindTimer <> nil then
     FFindTimer.Enabled := False;
@@ -3905,6 +3948,8 @@ begin
         RightText := 'Up'
       else if Panel.FFtpMode = 1 then
         RightText := ''
+      else if IsDir and DirSizeKnown then
+        RightText := FarGroupDigits(Size)
       else if IsDir then
         RightText := 'Folder'
       else
@@ -4703,6 +4748,15 @@ var
 begin
   Result := True;
   Plain := not ACtrl and not AAlt;
+
+  // Идёт подсчёт размера папок (F3): Esc - прервать
+  if (FDirSizeThread <> nil) and (AKey = VK_ESCAPE) and Plain and
+     not AShift then
+  begin
+    DirSizeStop;
+    Status(FarProduct + ': подсчёт размера прерван');
+    Exit;
+  end;
 
   // Список адресов FTP: Ctrl+Ins (Ctrl+C) - адреса в буфер обмена,
   // Shift+Ins (Ctrl+V) - адреса из буфера (если там ftp://...; иначе -
@@ -10224,9 +10278,14 @@ begin
     Exit;
   if ArcBlocked then
     Exit;
+  if Panel.FItems[Panel.Cursor].IsUp then
+  begin
+    Status(FarProduct + ': F3 - просмотр файла или размер папки');
+    Exit;
+  end;
   if Panel.FItems[Panel.Cursor].IsDir then
   begin
-    Status(FarProduct + ': F3 - просмотр файла; это папка');
+    StartDirSize;
     Exit;
   end;
   OpenViewer(Panel.Path + Panel.FItems[Panel.Cursor].Name);
@@ -15708,6 +15767,242 @@ begin
     PutText(FHelpBoxLeft + FHelpBoxW - 2, FHelpBoxTop + FHelpBoxH - 2, 1,
       Marker, LinkFore, Back);
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Размер папок (F3 на папке)
+// ---------------------------------------------------------------------------
+
+const
+  FarAttrReparse = $400;   // FILE_ATTRIBUTE_REPARSE_POINT: ссылка на папку
+
+constructor TFarDirSizeThread.Create(const APaths: TFarNames);
+var
+  PathIdx: Integer;
+begin
+  SetLength(FPaths, Length(APaths));
+  for PathIdx := 0 to High(APaths) do
+    FPaths[PathIdx] := APaths[PathIdx];
+  SetLength(FSizes, Length(APaths));
+  InitializeCriticalSection(FLock);
+  FDone := 0;
+  FreeOnTerminate := False;
+  inherited Create(False);
+end;
+
+destructor TFarDirSizeThread.Destroy;
+begin
+  FCancelled := True;
+  inherited Destroy;   // ждёт конца Execute
+  DeleteCriticalSection(FLock);
+end;
+
+procedure TFarDirSizeThread.Cancel;
+begin
+  FCancelled := True;
+end;
+
+function TFarDirSizeThread.Done: Boolean;
+begin
+  Result := FDone <> 0;
+end;
+
+procedure TFarDirSizeThread.Progress(var ABytes: Int64;
+  var AFiles, ADirs: Integer);
+begin
+  EnterCriticalSection(FLock);
+  try
+    ABytes := FBytes;
+    AFiles := FFiles;
+    ADirs := FDirs;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
+function TFarDirSizeThread.PathSize(AIndex: Integer): Int64;
+begin
+  Result := 0;
+  if (AIndex >= 0) and (AIndex <= High(FSizes)) then
+    Result := FSizes[AIndex];
+end;
+
+procedure TFarDirSizeThread.ScanDir(const ADir: WideString; var ASize: Int64);
+var
+  FindHandle: THandle;
+  FindData: TFarFindData;
+  FoundName: WideString;
+  FileSize: Int64;
+begin
+  FindHandle := FarFindFirst(PWideChar(ADir + '*'), FindData);
+  if FindHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    repeat
+      if FCancelled then
+        Exit;
+      FoundName := PWideChar(@FindData.cFileName[0]);
+      if (FoundName = '.') or (FoundName = '..') then
+        Continue;
+      if FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY <> 0 then
+      begin
+        EnterCriticalSection(FLock);
+        Inc(FDirs);
+        LeaveCriticalSection(FLock);
+        if FindData.dwFileAttributes and FarAttrReparse = 0 then
+          ScanDir(ADir + FoundName + '\', ASize);
+      end
+      else
+      begin
+        FileSize := Int64(FindData.nFileSizeHigh) shl 32 +
+          FindData.nFileSizeLow;
+        Inc(ASize, FileSize);
+        EnterCriticalSection(FLock);
+        Inc(FFiles);
+        Inc(FBytes, FileSize);
+        LeaveCriticalSection(FLock);
+      end;
+    until not FarFindNext(FindHandle, FindData);
+  finally
+    Windows.FindClose(FindHandle);
+  end;
+end;
+
+procedure TFarDirSizeThread.Execute;
+var
+  PathIdx: Integer;
+  DirSize: Int64;
+begin
+  try
+    for PathIdx := 0 to High(FPaths) do
+    begin
+      if FCancelled then
+        Break;
+      DirSize := 0;
+      ScanDir(FPaths[PathIdx], DirSize);
+      FSizes[PathIdx] := DirSize;
+    end;
+  except
+    // ошибка обхода - подсчёт просто кончается
+  end;
+  InterlockedExchange(FDone, 1);
+end;
+
+// F3 на папке: посчитать размер выделенных папок активной панели, нет
+// выделенных - папки под курсором
+procedure TFarView.StartDirSize;
+var
+  Panel: TFarPanel;
+  BasePath: WideString;
+  Paths: TFarNames;
+  ItemIdx, DirCount: Integer;
+begin
+  DirSizeStop;
+  Panel := ActivePanel;
+  BasePath := Panel.Path;
+  if (BasePath <> '') and (BasePath[Length(BasePath)] <> '\') then
+    BasePath := BasePath + '\';
+  SetLength(FDirSizeNames, 0);
+  DirCount := 0;
+  for ItemIdx := 0 to Panel.Count - 1 do
+    if Panel.FItems[ItemIdx].Selected and Panel.FItems[ItemIdx].IsDir and
+       not Panel.FItems[ItemIdx].IsUp then
+    begin
+      SetLength(FDirSizeNames, DirCount + 1);
+      FDirSizeNames[DirCount] := Panel.FItems[ItemIdx].Name;
+      Inc(DirCount);
+    end;
+  if DirCount = 0 then
+  begin
+    SetLength(FDirSizeNames, 1);
+    FDirSizeNames[0] := Panel.FItems[Panel.Cursor].Name;
+    DirCount := 1;
+  end;
+  SetLength(Paths, DirCount);
+  for ItemIdx := 0 to DirCount - 1 do
+    Paths[ItemIdx] := BasePath + FDirSizeNames[ItemIdx] + '\';
+  FDirSizePanel := FActive;
+  FDirSizePath := Panel.Path;
+  FDirSizeThread := TFarDirSizeThread.Create(Paths);
+  if FDirSizeTimer = nil then
+  begin
+    FDirSizeTimer := TTimer.Create(Self);
+    FDirSizeTimer.Interval := 150;
+    FDirSizeTimer.OnTimer := DirSizeTick;
+  end;
+  FDirSizeTimer.Enabled := True;
+  Status(FarProduct + ': считаю размер... (Esc - прервать)');
+end;
+
+// Остановить подсчёт и освободить поток (ждёт его конца)
+procedure TFarView.DirSizeStop;
+begin
+  if FDirSizeTimer <> nil then
+    FDirSizeTimer.Enabled := False;
+  if FDirSizeThread <> nil then
+  begin
+    FDirSizeThread.Cancel;
+    FDirSizeThread.WaitFor;
+    FDirSizeThread.Free;
+    FDirSizeThread := nil;
+  end;
+end;
+
+procedure TFarView.DirSizeTick(Sender: TObject);
+var
+  Bytes: Int64;
+  Files, Dirs: Integer;
+begin
+  if FDirSizeThread = nil then
+  begin
+    FDirSizeTimer.Enabled := False;
+    Exit;
+  end;
+  if FDirSizeThread.Done then
+  begin
+    FDirSizeTimer.Enabled := False;
+    DirSizeApply;
+    Exit;
+  end;
+  FDirSizeThread.Progress(Bytes, Files, Dirs);
+  Status(FarProduct + ': считаю размер: ' + FarGroupDigits(Bytes) +
+    ' байт, файлов ' + IntToStr(Files) + ', папок ' + IntToStr(Dirs) +
+    ' (Esc - прервать)');
+end;
+
+// Подсчёт кончился: размеры - папкам панели (если она всё в той же
+// папке), итог - в строку сообщений
+procedure TFarView.DirSizeApply;
+var
+  Panel: TFarPanel;
+  Bytes: Int64;
+  Files, Dirs, NameIdx, ItemIdx: Integer;
+  Text: string;
+begin
+  if FDirSizeThread = nil then
+    Exit;
+  FDirSizeThread.Progress(Bytes, Files, Dirs);
+  Panel := FPanels[FDirSizePanel];
+  if Panel.Path = FDirSizePath then
+    for NameIdx := 0 to High(FDirSizeNames) do
+    begin
+      ItemIdx := Panel.IndexOfName(FDirSizeNames[NameIdx]);
+      if (ItemIdx >= 0) and Panel.FItems[ItemIdx].IsDir then
+      begin
+        Panel.FItems[ItemIdx].Size := FDirSizeThread.PathSize(NameIdx);
+        Panel.FItems[ItemIdx].DirSizeKnown := True;
+      end;
+    end;
+  if Length(FDirSizeNames) = 1 then
+    Text := string(FDirSizeNames[0])
+  else
+    Text := 'папок ' + IntToStr(Length(FDirSizeNames));
+  Status(FarProduct + ': ' + Text + ' - ' + FarGroupDigits(Bytes) +
+    ' байт, файлов ' + IntToStr(Files) + ', папок внутри ' +
+    IntToStr(Dirs));
+  FDirSizeThread.Free;
+  FDirSizeThread := nil;
+  Invalidate;
 end;
 
 end.
