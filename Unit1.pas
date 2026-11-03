@@ -36755,6 +36755,8 @@ var
   TI, ElemTyp: TDsgTypeDesc;
   FlagW: Boolean;
   DfmNode: TDfmNode;
+  SetterLine: Integer;
+  SetterVia: string;
 begin
   It := FObjProps.Selected;
   if (It = nil) or (FObjCurNode = nil) then
@@ -36892,18 +36894,42 @@ begin
                    (FDesigner.GroupCount > 1) and
                    (CompareText(FObjDfmFile, FDsgDfm) = 0);
 
-  // Значение задаёт код - сказать об этом, но править дать: в .dfm оно
-  // запишется, а при работе код поставит своё
+  // Значение задаёт код - сказать об этом. Строка в модуле найдена -
+  // выбор: перейти к ней (курсор редактора на строку, Enter) или всё же
+  // править в .dfm (в .dfm запишется, а при работе код поставит своё)
   if not FObjEditCode and not FObjEditArray and
      ObjIsCodeProp(DfmNode, FObjEditName) then
   begin
     Str := ObjCodeSetterOf(DfmNode.Name, FObjEditName);
-    if Str = '' then
-      Str := 'значение при работе отличается от записанного в .dfm, но ' +
-      'строку, где код его ставит, в модуле формы не нашёл';
-ShowMessage('18729:' + FObjEditName + ' у ' + DfmNode.Name + ' задаёт код: ' + Str +
-      '.'#13#10#13#10'Значение запишется в .dfm, но при работе ' +
-      'программы код поставит своё.');
+    SetterLine := -1;
+    if Str <> '' then
+      SetterLine := ObjCodeSetterLine(DfmNode.Name, FObjEditName, SetterVia);
+    if SetterLine >= 0 then
+    begin
+      case MessageDlgButtons('18729:' + FObjEditName + ' у ' + DfmNode.Name +
+        ' задаёт код: ' + Str + '.'#13#10#13#10'Значение можно записать в ' +
+        '.dfm, но при работе программы код поставит своё.', mtInformation,
+        '', ['Перейти к строке', 'Править в .dfm', 'Отмена'], 0, 2) of
+        0:
+          begin
+            JumpToUnitLine(SetterLine);
+            Exit;
+          end;
+        1:
+          ;  // правка в .dfm - дальше, как обычно
+      else
+        Exit;
+      end;
+    end
+    else
+    begin
+      if Str = '' then
+        Str := 'значение при работе отличается от записанного в .dfm, но ' +
+        'строку, где код его ставит, в модуле формы не нашёл';
+      ShowMessage('18729:' + FObjEditName + ' у ' + DfmNode.Name +
+        ' задаёт код: ' + Str + '.'#13#10#13#10'Значение запишется в .dfm, ' +
+        'но при работе программы код поставит своё.');
+    end;
   end;
 
   // Тип свойства - для выбора редактора и проверки. Неизвестный класс -
