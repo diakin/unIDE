@@ -69,6 +69,7 @@ uses
   QemuTool,       // свой QEMU unIDE (tools\qemu): запуск образов ReactOS
   GitTool,        // Git: найти в системе или свой (tools\git), Git Bash
   RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
+  MingwTool,      // свой MinGW-w64 GCC (tools\mingw): сборка скетча под ПК
   GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
   UiCaptionTabs,  // вкладки Components | Git на месте подписи рамки палитры
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
@@ -3363,6 +3364,10 @@ type
     function  GitInstallOwn(const AIntro: string; AAsk: Boolean): string;
     function  GitRunPostInstall(const ARoot: string): Boolean;
     function  RufusEnsure: string;
+    // MinGW-w64 (MingwTool): свой g++ в tools\mingw, меню Arduino
+    function  MingwEnsure(AAsk: Boolean): string;
+    function  MingwCheckRun(const AGpp: string): Boolean;
+    procedure MingwInstallClick(Sender: TObject);
     // Git: панель на месте палитры (режим ReactOS), меню Repository и Branch
     function  GitExePath(AOffer: Boolean): string;
     procedure GitOnLine(const ALine: WideString);
@@ -69585,6 +69590,13 @@ begin
   mArdMonitor := NewItem('Serial Monitor', mArdMonitorClick, False);
   mArdMonitor.ShortCut := ShortCut(Ord('M'), [ssCtrl, ssShift]);
   NewItem('-', nil, False);
+  // В конце меню (после пунктов из .dfm): свой компилятор для ПК
+  InsertIdx := mArduino.Count;
+  NewItem('-', nil, False);
+  NewItem('Install MinGW-w64 GCC ' + MingwVersion + ' (tools\mingw)...',
+    MingwInstallClick, False).Hint := 'Скачать свой MinGW-w64 (WinLibs, ' +
+    'около 110 МБ) в tools\mingw - g++ для сборки скетча под ПК ' +
+    '(эмулятор); в реестр и PATH ничего не пишется';
 end;
 
 // Меню ReactOS - после Arduino. Download Build Tools: страницы загрузки
@@ -70635,6 +70647,191 @@ begin
       FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
                            'Compilation log');
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  MinGW-w64 (MingwTool): свой g++ unIDE в tools\mingw - сборка скетча
+//  Arduino под ПК для эмулятора. WinLibs GCC, MSVCRT, архив 7z
+// ---------------------------------------------------------------------------
+
+// g++ запускается в этой Windows: g++ --version, ответ - в журнал
+function TForm1.MingwCheckRun(const AGpp: string): Boolean;
+var
+  Proc: TProcRun;
+  Chunk, Output: string;
+  Got: Integer;
+  StartTick: DWORD;
+  Ended: Boolean;
+begin
+  Result := False;
+  Proc := TProcRun.Create;
+  try
+    Proc.CommandLine := '"' + AGpp + '" --version';
+    Proc.Dir := ExtractFilePath(AGpp);
+    Proc.Window := pwHidden;
+    Proc.Console := pcNoWindow;
+    Proc.CaptureOutput := True;
+    if not Proc.Start then
+    begin
+      LogComp('MinGW: g++ не запустился - ' + Proc.ErrorText);
+      Exit;
+    end;
+    Output := '';
+    Ended := False;
+    StartTick := GetTickCount;
+    repeat
+      Chunk := '';
+      Got := Proc.Read(Chunk);
+      if Got < 0 then
+        Break;
+      if Got > 0 then
+      begin
+        Output := Output + Chunk;
+        Continue;
+      end;
+      if Ended then
+        Break;
+      if Proc.WaitFor(50) then
+        Ended := True;
+      if GetTickCount - StartTick > 20000 then
+      begin
+        Proc.Terminate(1);
+        LogComp('MinGW: g++ --version не ответил за 20 с');
+        Exit;
+      end;
+    until False;
+    Proc.WaitFor(1000);
+    Output := Trim(Output);
+    if Pos(#10, Output) > 0 then
+      Output := Trim(Copy(Output, 1, Pos(#10, Output) - 1));
+    Result := (Proc.ExitCode = 0) and (Output <> '');
+    if Result then
+      LogComp('MinGW: ' + Output)
+    else
+      LogComp('MinGW: g++ --version - код ' + IntToStr(Proc.ExitCode) +
+              '. Возможно, эта сборка GCC не работает в этой Windows; ' +
+              'ответ: ' + Output);
+  finally
+    Proc.Free;
+  end;
+end;
+
+// g++.exe своего MinGW; нет - (AAsk) вопрос и установка (и своего 7-Zip:
+// им распаковывается архив). Отказ или не вышло - пусто
+function TForm1.MingwEnsure(AAsk: Boolean): string;
+var
+  OsInfo: TSzOsInfo;
+  Package: TMingwPackage;
+  Target, SevenZip, Note, ErrText: string;
+  Need7Zip: Boolean;
+  Stage7Zip, StageMingw: Integer;
+begin
+  Result := string(MingwLocalGpp);
+  if (Result <> '') or not AAsk then
+    Exit;
+  ShowCompLog;
+  {$IFDEF UNIX}
+  LogComp('MinGW: на Linux g++ - из пакетов системы: sudo apt install g++');
+  Exit;
+  {$ENDIF}
+  SzGetOsInfo(OsInfo);
+  if not MingwChoosePackage(OsInfo, Package) then
+  begin
+    LogComp('MinGW-w64: для ' + OsInfo.Name + ' сборки нет');
+    Exit;
+  end;
+  Target := string(MingwChooseTargetDir);
+  if Target = '' then
+  begin
+    LogComp('MinGW: нет папки для установки - в ' + string(MingwAppDir) +
+            ' и ' + string(MingwUserDir) + ' не записать');
+    Exit;
+  end;
+  SevenZip := string(SzLocalExe);
+  Need7Zip := SevenZip = '';
+  Note := '';
+  if Need7Zip then
+    Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): им ' +
+            'распаковывается архив MinGW.';
+  if MessageDlg('9835:Своего компилятора MinGW-w64 unIDE нет.'#13#10#13#10 +
+                'Скачать GCC ' + MingwVersion + ' (' + MingwRuntime + ', ' +
+                Package.Arch + ', сборка WinLibs, около ' +
+                IntToStr(Package.ApproxSize div 1000000) + ' МБ) с GitHub и ' +
+                'распаковать в ' + Target + '? Распакованный - около 0,5 ГБ.' +
+                Note + #13#10#13#10'Нужен для сборки скетча Arduino под ПК ' +
+                '(эмулятор). В системе ничего не ставится: ни реестра, ни ' +
+                'PATH. Работает ли эта сборка GCC в Windows 7, не ' +
+                'проверено - после установки unIDE запустит g++ --version.',
+                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  CompDlgOpen('MinGW-w64 GCC ' + MingwVersion);
+  FCompDlg.Caption := 'Установка MinGW-w64';
+  Stage7Zip := -1;
+  if Need7Zip then
+    Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 3);
+  StageMingw := FCompDlg.AddStage('MinGW-w64 GCC ' + MingwVersion + ' (' +
+                                  Package.Arch + ')', 97);
+  BusyBegin('Установка MinGW-w64');
+  try
+    if Need7Zip then
+    begin
+      SevenZip := RosSetup7Zip(Stage7Zip);
+      if SevenZip = '' then
+        Exit;
+    end;
+    FCompDlg.StartStage(StageMingw, 0, 'скачивание');
+    FRosInstallStage := StageMingw;
+    LogComp('MinGW: скачивание ' + MingwUrl(Package.FileName) + ', затем ' +
+            'распаковка в ' + Target);
+    if not SzInstallPlanSync(Target, MingwPlan(Package, OsInfo.Name,
+                             SevenZip), RosInstallProgress, ErrText) then
+    begin
+      FCompDlg.EndStage(StageMingw, False, ErrText);
+      LogComp('MinGW: не установлен - ' + ErrText);
+      Exit;
+    end;
+    Result := string(MingwLocalGpp);
+    FCompDlg.EndStage(StageMingw, Result <> '', 'GCC ' + MingwVersion + ' (' +
+                      Package.Arch + ')');
+    if Result = '' then
+      LogComp('MinGW: ' + MingwGppName + ' после установки не найден')
+    else
+    begin
+      LogComp('MinGW-w64 GCC ' + MingwVersion + ': ' + Result);
+      MingwCheckRun(Result);
+    end;
+  finally
+    BusyEnd('Установка MinGW-w64', Result <> '');
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result <> '' then
+      FCompDlg.FinishBuild(True, 'Установлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// Arduino - Install MinGW-w64: свой уже есть - путь, версия и проверка
+// запуска в журнал; нет - установка
+procedure TForm1.MingwInstallClick(Sender: TObject);
+var
+  Gpp: string;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  Gpp := string(MingwLocalGpp);
+  if Gpp <> '' then
+  begin
+    LogComp('MinGW: свой MinGW-w64 unIDE - ' + Gpp + ' (' +
+            MingwInstalledInfo(Gpp) + '). Поставить заново - удалить ' +
+            'папку ' + ExtractFilePath(ExcludeTrailingPathDelimiter(
+            ExtractFilePath(Gpp))) + ', затем Install MinGW-w64');
+    MingwCheckRun(Gpp);
+    Exit;
+  end;
+  MingwEnsure(True);
 end;
 
 // Write Image to USB: выбрать образ (предлагается собранный образ проекта
