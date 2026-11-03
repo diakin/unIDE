@@ -99,6 +99,12 @@ type
     function WriteTemp(const ABytes, AExt: string): Boolean;
     function OpenPage(const APage, ASourceFile: string): Boolean;
     procedure MsgWndProc(var Message: TMessage);
+    // Отложенное действие WM_FMT_* (после выхода из события браузера)
+    procedure PostAction(AMsg: Cardinal);
+{$IFDEF UNIX}
+    // Linux: AllocateHWnd в LCL gtk2 окна не даёт - очередь приложения
+    procedure AsyncAction(AData: PtrInt);
+{$ENDIF}
     procedure BrowserBeforeNavigate2(Sender: TObject; const ADisp: IDispatch;
       var AUrl: OleVariant; var AFlags: OleVariant;
       var ATargetFrameName: OleVariant; var APostData: OleVariant;
@@ -458,7 +464,7 @@ begin
   if CutAt > 0 then
     Body := Copy(Body, 1, CutAt - 1);
   if Copy(Body, 1, 3) = '///' then
-    Delete(Body, 1, 3)
+    Delete(Body, 1, {$IFDEF UNIX}2{$ELSE}3{$ENDIF})  // Linux: '/' остаётся
   else if Copy(Body, 1, 2) = '//' then
     Body := '\\' + Copy(Body, 3, MaxInt);   // file://сервер/папка
 
@@ -509,6 +515,10 @@ begin
     Result := Result + '/';
   if Copy(Result, 1, 2) = '//' then
     Result := 'file:' + Result          // \\сервер\папка
+{$IFDEF UNIX}
+  else if Copy(Result, 1, 1) = '/' then
+    Result := 'file://' + Result        // Linux: /папка -> file:///папка
+{$ENDIF}
   else
     Result := 'file:///' + Result;
 end;
@@ -857,6 +867,9 @@ end;
 
 destructor TWebPreview.Destroy;
 begin
+{$IFDEF UNIX}
+  Application.RemoveAsyncCalls(Self);
+{$ENDIF}
   if FMsgWnd <> 0 then
     {$IFDEF FPC}LCLIntf{$ELSE}Classes{$ENDIF}.DeallocateHWnd(FMsgWnd);
   FreeAndNil(FBrowser);
@@ -1324,14 +1337,14 @@ begin
   begin
     Log('браузер: ' + Url + ' - метка на странице');
     FPendingAnchor := Anchor;
-    PostMessage(FMsgWnd, WM_FMT_ANCHOR, 0, 0);
+    PostAction(WM_FMT_ANCHOR);
   end
   else if (LocalPath <> '') and IsIdeFile(LocalPath) and
           Assigned(FOnOpenFile) then
   begin
     Log('браузер: ' + Url + ' - вкладкой: ' + LocalPath);
     FPendingOpen := LocalPath;
-    PostMessage(FMsgWnd, WM_FMT_OPENFILE, 0, 0);
+    PostAction(WM_FMT_OPENFILE);
   end
   else if LocalPath <> '' then
   begin
@@ -1350,6 +1363,26 @@ begin
   if Assigned(FOnLog) then
     FOnLog(AText);
 end;
+
+procedure TWebPreview.PostAction(AMsg: Cardinal);
+begin
+{$IFDEF UNIX}
+  Application.QueueAsyncCall(AsyncAction, PtrInt(AMsg));
+{$ELSE}
+  PostMessage(FMsgWnd, AMsg, 0, 0);
+{$ENDIF}
+end;
+
+{$IFDEF UNIX}
+procedure TWebPreview.AsyncAction(AData: PtrInt);
+var
+  Message: TMessage;
+begin
+  FillChar(Message, SizeOf(Message), 0);
+  Message.Msg := Cardinal(AData);
+  MsgWndProc(Message);
+end;
+{$ENDIF}
 
 procedure TWebPreview.MsgWndProc(var Message: TMessage);
 var

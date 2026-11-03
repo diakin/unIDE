@@ -582,6 +582,10 @@ begin
     Result := Result + '/';
   if Copy(Result, 1, 2) = '//' then
     Result := 'file:' + Result          // \\сервер\папка
+{$IFDEF UNIX}
+  else if Copy(Result, 1, 1) = '/' then
+    Result := 'file://' + Result        // Linux: /папка -> file:///папка
+{$ENDIF}
   else
     Result := 'file:///' + Result;
 end;
@@ -1948,8 +1952,9 @@ begin
       'vertical-align:top;}'#10 +
     'th{font-weight:600;background:' + AColors.CodeBack + ';}'#10 +
     'hr{height:2px;border:0;background:' + AColors.Border +
-      ';margin:20px 0;}'#10 +
-    'img{max-width:100%;}'#10;
+      ';margin:20px 0;}'#10
+    // Linux (TIpHtmlPanel): max-width в процентах прячет картинку
+    {$IFNDEF UNIX} + 'img{max-width:100%;}'#10{$ENDIF};
   if AColors.Dark then
     // Полосы прокрутки IE (свойства только IE) - в тон тёмной странице
     Css := Css +

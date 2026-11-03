@@ -13,6 +13,12 @@ unit RqHelp;
 //  projects у exe. Для CHM и для HTML поиск отдельный: рядом с exe после
 //  пересборки лежит только CHM (CopyOwnRunFiles), а html_doc - в исходниках.
 //
+//  Linux: hhctrl.ocx нет - HtmlHelpProc = UnixHtmlHelp: CHM распаковывается
+//  (chmreader из FPC) в ~/.cache/unide/chm/<имя>_<время файла>/ при первом
+//  обращении, страница открывается браузером системы (xdg-open). Указатель
+//  (HH_DISPLAY_INDEX, HH_KEYWORD_LOOKUP) - поиск слова в .hhk CHM; слова
+//  нет - стартовая страница.
+//
 //  F1: rapidq_ref\help\keywords.txt - строки СЛОВО=страница[#метка],
 //  тоже из gen_chm.py. Слова нет - открывается указатель CHM с этим словом.
 // ---------------------------------------------------------------------------
@@ -67,12 +73,12 @@ function FbHelpKeyword(const AChm, AWord: string): Boolean;
 implementation
 
 uses
-  Forms, OsShell;
+  Forms, OsShell{$IFDEF UNIX}, chmreader, chmsitemap{$ENDIF};
 
 const
-  ChmRel = 'help\rapidq.chm';
-  KeywordsRel = 'help\keywords.txt';
-  HtmlRel = 'html_doc\contents.html';
+  ChmRel = 'help' + PathDelim + 'rapidq.chm';
+  KeywordsRel = 'help' + PathDelim + 'keywords.txt';
+  HtmlRel = 'html_doc' + PathDelim + 'contents.html';
   HH_DISPLAY_TOPIC = $0000;
   HH_DISPLAY_INDEX = $0002;
   HH_CLOSE_ALL = $0012;
@@ -157,8 +163,262 @@ begin
   end;
 end;
 
+{$IFDEF UNIX}
+type
+  // Распаковка CHM: каждый файл - в папку Dest
+  TChmUnpacker = class
+    Reader: TChmReader;
+    Dest: string;
+    Failed: Boolean;
+    procedure SaveEntry(Name: String; Offset, UncompressedSize,
+      Section: Integer);
+  end;
+
+procedure TChmUnpacker.SaveEntry(Name: String; Offset, UncompressedSize,
+  Section: Integer);
+var
+  Data: TMemoryStream;
+  Target: string;
+begin
+  // Папки и служебные файлы CHM (#SYSTEM, $FIftiMain ...) - пропустить
+  if (Name = '') or (Name[Length(Name)] = '/') or (Pos('/#', Name) = 1) or
+     (Pos('/$', Name) = 1) or (Pos('::', Name) > 0) then
+    Exit;
+  Data := Reader.GetObject(Name);
+  if Data = nil then
+    Exit;
+  try
+    Target := Dest + Copy(Name, 2, MaxInt);
+    if not ForceDirectories(ExtractFileDir(Target)) then
+    begin
+      Failed := True;
+      Exit;
+    end;
+    try
+      Data.SaveToFile(Target);
+    except
+      Failed := True;
+    end;
+  finally
+    Data.Free;
+  end;
+end;
+
+// Папка распакованного AChm (с '/' на конце); распаковать, если её ещё нет.
+// '' - не вышло (HelpError)
+function ChmUnpackedDir(const AChm: string; out ADefaultPage: string;
+  out AIndexFile: string): string;
+var
+  CacheBase, InfoFile: string;
+  Info: TStringList;
+  Unpacker: TChmUnpacker;
+  ChmStream: TFileStream;
+begin
+  Result := '';
+  ADefaultPage := '';
+  AIndexFile := '';
+  if not FileExists(AChm) then
+  begin
+    HelpError := 'нет файла ' + AChm;
+    Exit;
+  end;
+  CacheBase := GetEnvironmentVariable('XDG_CACHE_HOME');
+  if CacheBase = '' then
+    CacheBase := GetEnvironmentVariable('HOME') + '/.cache';
+  Result := IncludeTrailingPathDelimiter(CacheBase) + 'unide/chm/' +
+    ChangeFileExt(ExtractFileName(AChm), '') + '_' +
+    IntToStr(FileAge(AChm)) + '/';
+  // .unide_chm.txt - распаковано полностью: стартовая страница, указатель
+  InfoFile := Result + '.unide_chm.txt';
+  Info := TStringList.Create;
+  try
+    if FileExists(InfoFile) then
+    begin
+      Info.LoadFromFile(InfoFile);
+      ADefaultPage := Info.Values['default'];
+      AIndexFile := Info.Values['index'];
+      Exit;
+    end;
+    if not ForceDirectories(Result) then
+    begin
+      HelpError := 'папка не создаётся: ' + Result;
+      Result := '';
+      Exit;
+    end;
+    Unpacker := TChmUnpacker.Create;
+    try
+      try
+        ChmStream := TFileStream.Create(AChm, fmOpenRead or fmShareDenyWrite);
+        Unpacker.Reader := TChmReader.Create(ChmStream, True);
+        Unpacker.Dest := Result;
+        Unpacker.Reader.GetCompleteFileList(Unpacker.SaveEntry, False);
+        ADefaultPage := Unpacker.Reader.DefaultPage;
+        AIndexFile := Unpacker.Reader.IndexFile;
+      except
+        on Err: Exception do
+        begin
+          HelpError := 'CHM не читается: ' + AChm + ' (' + Err.Message + ')';
+          Unpacker.Failed := True;
+        end;
+      end;
+      Unpacker.Reader.Free;
+      if Unpacker.Failed then
+      begin
+        if HelpError = '' then
+          HelpError := 'CHM не распакован в ' + Result;
+        Result := '';
+        Exit;
+      end;
+    finally
+      Unpacker.Free;
+    end;
+    // Указатель: .hhk (имя из #SYSTEM, иначе первый .hhk в корне)
+    if (AIndexFile = '') or not FileExists(Result + Copy(AIndexFile, 2, MaxInt))
+    then
+    begin
+      AIndexFile := '';
+      Info.Clear;
+    end;
+    Info.Values['default'] := ADefaultPage;
+    Info.Values['index'] := AIndexFile;
+    Info.SaveToFile(InfoFile);
+  finally
+    Info.Free;
+  end;
+end;
+
+// Слово AKeyword в указателе (.hhk): страница первого совпадения (сначала
+// точное, потом начало слова); '' - нет
+function ChmIndexLookup(const AHhkFile, AKeyword: string): string;
+var
+  SiteMap: TChmSiteMap;
+  Prefix: string;
+
+  function Walk(AItems: TChmSiteMapItems; AExact: Boolean): string;
+  var
+    ItemIdx: Integer;
+    Item: TChmSiteMapItem;
+  begin
+    Result := '';
+    if AItems = nil then
+      Exit;
+    for ItemIdx := 0 to AItems.Count - 1 do
+    begin
+      Item := AItems.Item[ItemIdx];
+      if (Item.Local <> '') and
+         ((AExact and (CompareText(Item.Name, AKeyword) = 0)) or
+          (not AExact and (CompareText(Copy(Item.Name, 1, Length(Prefix)),
+            Prefix) = 0))) then
+      begin
+        Result := Item.Local;
+        Exit;
+      end;
+      Result := Walk(Item.Children, AExact);
+      if Result <> '' then
+        Exit;
+    end;
+  end;
+
+begin
+  Result := '';
+  if (AHhkFile = '') or not FileExists(AHhkFile) or (AKeyword = '') then
+    Exit;
+  Prefix := AKeyword;
+  SiteMap := TChmSiteMap.Create(stIndex);
+  try
+    try
+      SiteMap.LoadFromFile(AHhkFile);
+      Result := Walk(SiteMap.Items, True);
+      if Result = '' then
+        Result := Walk(SiteMap.Items, False);
+    except
+      Result := '';
+    end;
+  finally
+    SiteMap.Free;
+  end;
+end;
+
+// Замена HtmlHelpA: APath - 'файл.chm[::/страница][>окно]'
+function UnixHtmlHelp(hwndCaller: HWND; pszFile: PChar; uCommand: UINT;
+  dwData: THhData): HWND; stdcall;
+var
+  PathText, ChmFile, Topic, Keyword, Dir, DefaultPage, IndexFile,
+    Anchor, Found: string;
+  SepPos, WndPos, HashPos: Integer;
+begin
+  Result := 0;
+  if uCommand = HH_CLOSE_ALL then
+    Exit;
+  PathText := pszFile;
+  WndPos := LastDelimiter('>', PathText);
+  if WndPos > 0 then
+    SetLength(PathText, WndPos - 1);
+  SepPos := Pos('::', PathText);
+  if SepPos > 0 then
+  begin
+    ChmFile := Copy(PathText, 1, SepPos - 1);
+    Topic := Copy(PathText, SepPos + 2, MaxInt);
+  end
+  else
+  begin
+    ChmFile := PathText;
+    Topic := '';
+  end;
+  Dir := ChmUnpackedDir(ChmFile, DefaultPage, IndexFile);
+  if Dir = '' then
+    Exit;
+  Keyword := '';
+  if uCommand = HH_DISPLAY_INDEX then
+  begin
+    if dwData <> 0 then
+      Keyword := PChar(dwData);
+  end
+  else if uCommand = HH_KEYWORD_LOOKUP then
+  begin
+    if (dwData <> 0) and (THhAkLink(Pointer(dwData)^).pszKeywords <> nil) then
+      Keyword := THhAkLink(Pointer(dwData)^).pszKeywords;
+  end;
+  if Keyword <> '' then
+  begin
+    Found := ChmIndexLookup(Dir + Copy(IndexFile, 2, MaxInt), Keyword);
+    if Found <> '' then
+      Topic := Found
+    else if uCommand = HH_KEYWORD_LOOKUP then
+      Exit;  // вызывающий откроет указатель (стартовую страницу)
+  end;
+  if Topic = '' then
+    Topic := DefaultPage;
+  if Topic = '' then
+    Topic := '/index.html';
+  while (Topic <> '') and (Topic[1] = '/') do
+    Delete(Topic, 1, 1);
+  Anchor := '';
+  HashPos := Pos('#', Topic);
+  if HashPos > 0 then
+  begin
+    Anchor := Copy(Topic, HashPos, MaxInt);
+    SetLength(Topic, HashPos - 1);
+  end;
+  if not FileExists(Dir + Topic) then
+  begin
+    HelpError := 'в справке нет страницы ' + Topic + ' (' + ChmFile + ')';
+    Exit;
+  end;
+  if ShellOpenIn(0, 'file://' + Dir + Topic + Anchor, Dir) then
+    Result := 1
+  else
+    HelpError := 'браузер не открылся: ' + Dir + Topic;
+end;
+{$ENDIF}
+
 function LoadHtmlHelp: Boolean;
 begin
+{$IFDEF UNIX}
+  HtmlHelpProc := UnixHtmlHelp;
+  Result := True;
+  Exit;
+{$ENDIF}
   if not Assigned(HtmlHelpProc) then
   begin
     if HhLib = 0 then
@@ -320,9 +580,9 @@ begin
   try
     CandidateDirs(Dirs, 'fb_ref');
     for DirIdx := 0 to Dirs.Count - 1 do
-      if FileExists(Dirs[DirIdx] + 'help\freebasic.chm') then
+      if FileExists(Dirs[DirIdx] + 'help' + PathDelim + 'freebasic.chm') then
       begin
-        Result := ExpandFileName(Dirs[DirIdx] + 'help\freebasic.chm');
+        Result := ExpandFileName(Dirs[DirIdx] + 'help' + PathDelim + 'freebasic.chm');
         Exit;
       end;
   finally
@@ -340,9 +600,9 @@ begin
   try
     CandidateDirs(Dirs, 'unide_ref');
     for DirIdx := 0 to Dirs.Count - 1 do
-      if FileExists(Dirs[DirIdx] + 'help\unide.chm') then
+      if FileExists(Dirs[DirIdx] + 'help' + PathDelim + 'unide.chm') then
       begin
-        Result := ExpandFileName(Dirs[DirIdx] + 'help\unide.chm');
+        Result := ExpandFileName(Dirs[DirIdx] + 'help' + PathDelim + 'unide.chm');
         Exit;
       end;
     HelpError := 'не найден unide_ref\help\unide.chm (проверено: ' +
@@ -362,9 +622,9 @@ begin
   try
     CandidateDirs(Dirs, 'git_ref');
     for DirIdx := 0 to Dirs.Count - 1 do
-      if FileExists(Dirs[DirIdx] + 'help\git.chm') then
+      if FileExists(Dirs[DirIdx] + 'help' + PathDelim + 'git.chm') then
       begin
-        Result := ExpandFileName(Dirs[DirIdx] + 'help\git.chm');
+        Result := ExpandFileName(Dirs[DirIdx] + 'help' + PathDelim + 'git.chm');
         Exit;
       end;
     HelpError := 'не найден git_ref\help\git.chm (проверено: ' +
@@ -384,9 +644,9 @@ begin
   try
     CandidateDirs(Dirs, 'qemu_ref');
     for DirIdx := 0 to Dirs.Count - 1 do
-      if FileExists(Dirs[DirIdx] + 'help\qemu.chm') then
+      if FileExists(Dirs[DirIdx] + 'help' + PathDelim + 'qemu.chm') then
       begin
-        Result := ExpandFileName(Dirs[DirIdx] + 'help\qemu.chm');
+        Result := ExpandFileName(Dirs[DirIdx] + 'help' + PathDelim + 'qemu.chm');
         Exit;
       end;
     HelpError := 'не найден qemu_ref\help\qemu.chm (проверено: ' +
@@ -406,9 +666,9 @@ begin
   try
     CandidateDirs(Dirs, 'rosbe_ref');
     for DirIdx := 0 to Dirs.Count - 1 do
-      if FileExists(Dirs[DirIdx] + 'help\rosbe.chm') then
+      if FileExists(Dirs[DirIdx] + 'help' + PathDelim + 'rosbe.chm') then
       begin
-        Result := ExpandFileName(Dirs[DirIdx] + 'help\rosbe.chm');
+        Result := ExpandFileName(Dirs[DirIdx] + 'help' + PathDelim + 'rosbe.chm');
         Exit;
       end;
     HelpError := 'не найден rosbe_ref\help\rosbe.chm (проверено: ' +
