@@ -129,6 +129,10 @@ unit UnFar;
 //    - b.60: F3 на папке - её размер (выделены папки - их размер): обход в
 //      своём потоке (TFarDirSizeThread), ход и итог - в строке сообщений,
 //      размер - в строке о файле под курсором вместо Folder. Esc - прервать.
+//    - b.61: Ctrl+A - атрибуты файлов и папок (окно Attributes): только
+//      чтение, архивный, скрытый, системный, временный, неиндексируемый,
+//      автономный; время записи, создания, доступа; с подпапками. У
+//      нескольких файлов меняется только то, что переключили или вписали.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -164,7 +168,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.60';
+  FarBuild = 'b.61';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -195,7 +199,7 @@ type
     fdFind, fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError,
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
-    fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite);
+    fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -478,6 +482,11 @@ type
     FDirSizePanel: Integer;
     FDirSizePath: WideString;
     FDirSizeNames: TFarNames;
+    // Окно атрибутов (Ctrl+A): флажки и время при открытии (что изменено -
+    // сравнением с ними), есть ли среди файлов папки
+    FAttrInit: array[0..6] of Boolean;
+    FAttrTimeInit: array[0..2] of WideString;
+    FAttrHasDir: Boolean;
     // F9 - Colors / Files highlighting своими окнами: группа палитры в
     // меню элементов, правило для удаления, окно выбора цвета (Pick*)
     FPalGroupFirst: TFarPalItem;
@@ -853,6 +862,8 @@ type
     procedure DirSizeStop;
     procedure DirSizeTick(Sender: TObject);
     procedure DirSizeApply;
+    procedure StartAttributes;
+    procedure AttrConfirm;
     procedure ShowPalGroups(ACursor: Integer);
     procedure ShowPalItems(AFirst: TFarPalItem; ACursor: TFarPalItem);
     procedure ShowHiRules(ACursor: Integer);
@@ -4992,6 +5003,8 @@ begin
           EnsureVisible(ActivePanel);
           Invalidate;
         end;
+      Ord('A'):             // атрибуты файлов и папок
+        StartAttributes;
     else
       Result := False;
     end
@@ -5485,6 +5498,12 @@ begin
   if (FDlgKind = fdArcAdd) and (AButton = 0) then
   begin
     ArcAddConfirm;
+    Exit;
+  end;
+  // Ctrl+A, Set: атрибуты - проверка времени, окно закрывает AttrConfirm
+  if (FDlgKind = fdAttr) and (AButton = 0) then
+  begin
+    AttrConfirm;
     Exit;
   end;
   // Alt+F7, Find: поиск
@@ -15572,6 +15591,8 @@ begin
         Result := FarHelpFiles;
       fdHistClear:
         Result := FarHelpPanels;
+      fdAttr:
+        Result := FarHelpFiles;
     end;
   if Result <> '' then
     Exit;
@@ -16002,6 +16023,333 @@ begin
     IntToStr(Dirs));
   FDirSizeThread.Free;
   FDirSizeThread := nil;
+  Invalidate;
+end;
+
+// ---------------------------------------------------------------------------
+//  Атрибуты (Ctrl+A)
+// ---------------------------------------------------------------------------
+
+const
+  // Флажки окна по порядку строк и их биты атрибутов. Только эти атрибуты
+  // ставит SetFileAttributes; сжатый, зашифрованный и т. п. - только
+  // показываются строкой текста
+  FarAttrBits: array[0..6] of DWORD = ($0001, $0020, $0002, $0004, $0100,
+    $2000, $1000);
+  FarAttrNames: array[0..6] of string = ('Read only', 'Archive', 'Hidden',
+    'System', 'Temporary', 'Not content indexed', 'Offline');
+  FarAttrSettable = $0001 or $0020 or $0002 or $0004 or $0100 or $2000 or
+    $1000;
+  FarAttrNormal = $0080;
+  FarAttrCompressed = $0800;
+  FarAttrEncrypted = $4000;
+  FarAttrSparse = $0200;
+  FarAttrReparsePt = $0400;
+  FarWriteAttributes = $0100;      // FILE_WRITE_ATTRIBUTES
+  FarBackupSemantics = $02000000;  // FILE_FLAG_BACKUP_SEMANTICS: папка
+
+// Время файла (UTC) - 'ДД.ММ.ГГГГ чч:мм:сс' местного времени; нулевое - ''
+function FarFormatFileTime(const ATime: TFileTime): WideString;
+var
+  LocalTime: TFileTime;
+  SysTime: Windows.TSystemTime;
+begin
+  Result := '';
+  if (ATime.dwLowDateTime = 0) and (ATime.dwHighDateTime = 0) then
+    Exit;
+  if not FileTimeToLocalFileTime(ATime, LocalTime) then
+    Exit;
+  if not FileTimeToSystemTime(LocalTime, SysTime) then
+    Exit;
+  Result := WideString(Format('%.2d.%.2d.%.4d %.2d:%.2d:%.2d',
+    [SysTime.wDay, SysTime.wMonth, SysTime.wYear, SysTime.wHour,
+     SysTime.wMinute, SysTime.wSecond]));
+end;
+
+// 'ДД.ММ.ГГГГ [чч:мм[:сс]]' местного времени - время файла (UTC). Числа
+// разделяет любой не цифровой знак. False - не дата
+function FarParseFileTime(const AText: WideString; var ATime: TFileTime): Boolean;
+var
+  Parts: array[0..5] of Integer;
+  PartCount, CharIdx: Integer;
+  InNumber: Boolean;
+  SysTime: Windows.TSystemTime;
+  LocalTime: TFileTime;
+begin
+  Result := False;
+  for PartCount := 0 to 5 do
+    Parts[PartCount] := 0;
+  PartCount := 0;
+  InNumber := False;
+  for CharIdx := 1 to Length(AText) do
+    if (AText[CharIdx] >= '0') and (AText[CharIdx] <= '9') then
+    begin
+      if not InNumber then
+      begin
+        if PartCount > 5 then
+          Exit;
+        Inc(PartCount);
+        InNumber := True;
+      end;
+      Parts[PartCount - 1] := Parts[PartCount - 1] * 10 +
+        Ord(AText[CharIdx]) - Ord('0');
+      if Parts[PartCount - 1] > 9999 then
+        Exit;
+    end
+    else
+      InNumber := False;
+  if PartCount < 3 then
+    Exit;
+  if (Parts[0] < 1) or (Parts[0] > 31) or (Parts[1] < 1) or
+     (Parts[1] > 12) or (Parts[2] < 1601) or (Parts[3] > 23) or
+     (Parts[4] > 59) or (Parts[5] > 59) then
+    Exit;
+  FillChar(SysTime, SizeOf(SysTime), 0);
+  SysTime.wDay := Parts[0];
+  SysTime.wMonth := Parts[1];
+  SysTime.wYear := Parts[2];
+  SysTime.wHour := Parts[3];
+  SysTime.wMinute := Parts[4];
+  SysTime.wSecond := Parts[5];
+  if not SystemTimeToFileTime(SysTime, LocalTime) then
+    Exit;
+  Result := LocalFileTimeToFileTime(LocalTime, ATime);
+end;
+
+// Атрибуты и время одного файла или папки; ARecurse - и всего внутри
+// папки. AErrors - сколько не вышло
+procedure FarApplyAttr(const APath: WideString; ASetMask, AClearMask: DWORD;
+  const ATimes: array of TFileTime; const ATimeSet: array of Boolean;
+  ARecurse: Boolean; var ACount, AErrors: Integer);
+var
+  OldAttr, NewAttr: DWORD;
+  FileHandle, FindHandle: THandle;
+  FindData: TFarFindData;
+  FoundName: WideString;
+  TimePtr: array[0..2] of PFileTime;
+  TimeIdx: Integer;
+  AnyTime, Failed: Boolean;
+begin
+  Failed := False;
+  OldAttr := FarGetAttributes(PWideChar(APath));
+  if OldAttr = $FFFFFFFF then
+  begin
+    Inc(AErrors);
+    Exit;
+  end;
+  // Время - сначала: у файла только для чтения после снятия флажка
+  AnyTime := False;
+  for TimeIdx := 0 to 2 do
+    if ATimeSet[TimeIdx] then
+    begin
+      TimePtr[TimeIdx] := @ATimes[TimeIdx];
+      AnyTime := True;
+    end
+    else
+      TimePtr[TimeIdx] := nil;
+  if AnyTime then
+  begin
+    FileHandle := CreateFileW(PWideChar(APath), FarWriteAttributes,
+      FILE_SHARE_READ or FILE_SHARE_WRITE or FILE_SHARE_DELETE, nil,
+      OPEN_EXISTING, FarBackupSemantics, 0);
+    if FileHandle = INVALID_HANDLE_VALUE then
+      Failed := True
+    else
+    begin
+      // Порядок SetFileTime: создание, доступ, запись; в окне - запись,
+      // создание, доступ
+      if not SetFileTime(FileHandle, TimePtr[1], TimePtr[2], TimePtr[0]) then
+        Failed := True;
+      CloseHandle(FileHandle);
+    end;
+  end;
+  NewAttr := ((OldAttr or ASetMask) and not AClearMask) and FarAttrSettable;
+  if NewAttr <> (OldAttr and FarAttrSettable) then
+  begin
+    if NewAttr = 0 then
+      NewAttr := FarAttrNormal;
+    if not SetFileAttributesW(PWideChar(APath), NewAttr) then
+      Failed := True;
+  end;
+  if Failed then
+    Inc(AErrors)
+  else
+    Inc(ACount);
+  if not ARecurse or (OldAttr and FILE_ATTRIBUTE_DIRECTORY = 0) or
+     (OldAttr and FarAttrReparsePt <> 0) then
+    Exit;
+  FindHandle := FarFindFirst(PWideChar(APath + '\*'), FindData);
+  if FindHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    repeat
+      FoundName := PWideChar(@FindData.cFileName[0]);
+      if (FoundName <> '.') and (FoundName <> '..') then
+        FarApplyAttr(APath + '\' + FoundName, ASetMask, AClearMask, ATimes,
+          ATimeSet, True, ACount, AErrors);
+    until not FarFindNext(FindHandle, FindData);
+  finally
+    Windows.FindClose(FindHandle);
+  end;
+end;
+
+// Ctrl+A: окно атрибутов выделенных файлов (нет выделенных - файла под
+// курсором). Флажок стоит, если атрибут есть у всех; время - у одного
+// файла его, у нескольких - пусто (вписанное - всем)
+procedure TFarView.StartAttributes;
+var
+  Panel: TFarPanel;
+  Names, Lines: TFarNames;
+  NameIdx, ItemIdx, AttrIdx: Integer;
+  AllSet: array[0..6] of Boolean;
+  ShownOnly: WideString;
+  Attr: DWORD;
+begin
+  Panel := ActivePanel;
+  if ArcBlocked then
+    Exit;
+  if Panel.IsFtp or (Panel.FFtpMode = 1) then
+  begin
+    Status(FarProduct + ': атрибуты на FTP не меняются');
+    Exit;
+  end;
+  Names := CollectNames(False);
+  if Length(Names) = 0 then
+    Exit;
+  FDlgNames := Names;
+  FAttrHasDir := False;
+  for AttrIdx := 0 to 6 do
+    AllSet[AttrIdx] := True;
+  Attr := 0;
+  for NameIdx := 0 to High(Names) do
+  begin
+    ItemIdx := Panel.IndexOfName(Names[NameIdx]);
+    if ItemIdx < 0 then
+      Continue;
+    Attr := Panel.FItems[ItemIdx].Attr;
+    if Panel.FItems[ItemIdx].IsDir then
+      FAttrHasDir := True;
+    for AttrIdx := 0 to 6 do
+      if Attr and FarAttrBits[AttrIdx] = 0 then
+        AllSet[AttrIdx] := False;
+  end;
+  for AttrIdx := 0 to 6 do
+    FAttrInit[AttrIdx] := AllSet[AttrIdx];
+  for AttrIdx := 0 to 2 do
+    FAttrTimeInit[AttrIdx] := '';
+  if Length(Names) = 1 then
+  begin
+    ItemIdx := Panel.IndexOfName(Names[0]);
+    if ItemIdx >= 0 then
+    begin
+      FAttrTimeInit[0] := FarFormatFileTime(Panel.FItems[ItemIdx].WriteTime);
+      FAttrTimeInit[1] := FarFormatFileTime(Panel.FItems[ItemIdx].CreateTime);
+      FAttrTimeInit[2] := FarFormatFileTime(Panel.FItems[ItemIdx].AccessTime);
+    end;
+    // Атрибуты, которые здесь не меняются, - строкой
+    ShownOnly := '';
+    if Attr and FarAttrCompressed <> 0 then
+      ShownOnly := ShownOnly + ', compressed';
+    if Attr and FarAttrEncrypted <> 0 then
+      ShownOnly := ShownOnly + ', encrypted';
+    if Attr and FarAttrSparse <> 0 then
+      ShownOnly := ShownOnly + ', sparse';
+    if Attr and FarAttrReparsePt <> 0 then
+      ShownOnly := ShownOnly + ', reparse point';
+    SetLength(Lines, 2);
+    Lines[0] := 'Change file attributes for';
+    Lines[1] := FarFitName(Names[0], 50);
+    if ShownOnly <> '' then
+    begin
+      SetLength(Lines, 3);
+      Lines[2] := 'Also: ' + Copy(ShownOnly, 3, MaxInt);
+    end;
+  end
+  else
+  begin
+    SetLength(Lines, 3);
+    Lines[0] := 'Change file attributes for';
+    Lines[1] := IntToStr(Length(Names)) + ' items';
+    Lines[2] := 'Only switched boxes and entered times change';
+  end;
+  DlgOpen(fdAttr, 'Attributes', Lines, True, False, False, '',
+    ['Set', 'Cancel']);
+  for AttrIdx := 0 to 6 do
+    DlgAddCheck(FarAttrNames[AttrIdx], FAttrInit[AttrIdx]);
+  DlgAddRow('Written:', False, False, FAttrTimeInit[0], [], 0);
+  DlgAddRow('Created:', False, False, FAttrTimeInit[1], [], 0);
+  DlgAddRow('Accessed:', False, False, FAttrTimeInit[2], [], 0);
+  if FAttrHasDir then
+    DlgAddCheck('Process subfolders', False);
+  FDlgRow := 0;
+end;
+
+// [ Set ]: время проверить (не дата - окно остаётся), атрибуты и время -
+// файлам, панели перечитать
+procedure TFarView.AttrConfirm;
+var
+  SetMask, ClearMask: DWORD;
+  Times: array[0..2] of TFileTime;
+  TimeSet: array[0..2] of Boolean;
+  AttrIdx, NameIdx, DoneCount, ErrorCount: Integer;
+  TimeText, BasePath: WideString;
+  Recurse: Boolean;
+  Names: TFarNames;
+begin
+  if Length(FDlgRows) < 10 then
+    Exit;
+  SetMask := 0;
+  ClearMask := 0;
+  for AttrIdx := 0 to 6 do
+    if (FDlgRows[AttrIdx].Index = 1) <> FAttrInit[AttrIdx] then
+    begin
+      if FDlgRows[AttrIdx].Index = 1 then
+        SetMask := SetMask or FarAttrBits[AttrIdx]
+      else
+        ClearMask := ClearMask or FarAttrBits[AttrIdx];
+    end;
+  for AttrIdx := 0 to 2 do
+  begin
+    TimeSet[AttrIdx] := False;
+    FillChar(Times[AttrIdx], SizeOf(TFileTime), 0);
+    TimeText := FarTrimW(FDlgRows[7 + AttrIdx].Text);
+    if (TimeText = '') or (TimeText = FAttrTimeInit[AttrIdx]) then
+      Continue;
+    if not FarParseFileTime(TimeText, Times[AttrIdx]) then
+    begin
+      FDlgRow := 7 + AttrIdx;
+      Status(FarProduct + ': ' + string(FDlgRows[7 + AttrIdx].Caption) +
+        ' - не дата; нужно ДД.ММ.ГГГГ чч:мм:сс');
+      Invalidate;
+      Exit;
+    end;
+    TimeSet[AttrIdx] := True;
+  end;
+  Recurse := FAttrHasDir and (Length(FDlgRows) > 10) and
+    (FDlgRows[10].Index = 1);
+  Names := FDlgNames;
+  DlgClose;
+  if (SetMask = 0) and (ClearMask = 0) and not TimeSet[0] and
+     not TimeSet[1] and not TimeSet[2] then
+  begin
+    Status(FarProduct + ': атрибуты не изменены');
+    Exit;
+  end;
+  BasePath := ActivePanel.Path;
+  if (BasePath <> '') and (BasePath[Length(BasePath)] = '\') then
+    SetLength(BasePath, Length(BasePath) - 1);
+  DoneCount := 0;
+  ErrorCount := 0;
+  for NameIdx := 0 to High(Names) do
+    FarApplyAttr(BasePath + '\' + Names[NameIdx], SetMask, ClearMask, Times,
+      TimeSet, Recurse, DoneCount, ErrorCount);
+  ActivePanel.Reread;
+  EnsureVisible(ActivePanel);
+  if ErrorCount > 0 then
+    Status(FarProduct + ': атрибуты изменены у ' + IntToStr(DoneCount) +
+      ', не вышло у ' + IntToStr(ErrorCount))
+  else
+    Status(FarProduct + ': атрибуты изменены у ' + IntToStr(DoneCount));
   Invalidate;
 end;
 
