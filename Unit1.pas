@@ -3383,6 +3383,7 @@ type
                        var AOutput: WideString): Integer;
     function  GitQuery(const AGit, ADir, AArgs: string): string;
     function  GitBaseDir: string;
+    function  GitProjectDir: string;
     procedure GitSetChosenRepo(const ADir: string);
     procedure GitRecentLoad;
     procedure GitRecentAdd(const ADir: string; AFromBar: Boolean);
@@ -70756,6 +70757,8 @@ end;
 
 const
   GitIniSection = 'Git';
+  GitEdPathHint = 'Локальная папка репозитория: выделите мышью и Ctrl+C ' +
+    '(двойной щелчок - всё)';
   // Сколько недавних репозиториев помнит кнопка Repository...
   GitRecentMax = 20;
   // GitRunConsole / GitConsoleLogin: консоль не запускалась
@@ -71324,7 +71327,6 @@ end;
 // проект - выбор вручную читается заново (у другого проекта он свой)
 function TForm1.GitBaseDir: string;
 var
-  RosCfg: TRosSettings;
   Ini: TIniFile;
 begin
   if not FGitIniLoaded or (FGitChosenFor <> FCurrentProject) then
@@ -71342,17 +71344,29 @@ begin
   Result := FGitRepoChosen;
   if (Result <> '') and DirectoryExists(Result) then
     Exit;
-  Result := '';
-  if (FCurrentProject <> '') and
-     (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
-     RosSettingsOf(FCurrentProject, RosCfg) and
-     DirectoryExists(RosCfg.SourceDir) then
-    Result := RosCfg.SourceDir
-  else if (FCurrentProject <> '') and ProjectExists(FCurrentProject) then
-    Result := ProjectDir(FCurrentProject);
+  Result := GitProjectDir;
   if ((Result = '') or not DirectoryExists(Result)) and
      (FCurrentFileName <> '') then
     Result := ExtractFilePath(FCurrentFileName);
+  if (Result <> '') and not DirectoryExists(Result) then
+    Result := '';
+end;
+
+// Папка открытого проекта для git: исходники проекта ReactOS или папка
+// проекта; проекта нет или папки нет - ''
+function TForm1.GitProjectDir: string;
+var
+  RosCfg: TRosSettings;
+begin
+  Result := '';
+  if FCurrentProject = '' then
+    Exit;
+  if (ProjectBuildKind(FCurrentProject) = bkCMakeNinja) and
+     RosSettingsOf(FCurrentProject, RosCfg) and
+     DirectoryExists(RosCfg.SourceDir) then
+    Result := RosCfg.SourceDir
+  else if ProjectExists(FCurrentProject) then
+    Result := ProjectDir(FCurrentProject);
   if (Result <> '') and not DirectoryExists(Result) then
     Result := '';
 end;
@@ -71896,8 +71910,7 @@ begin
   // .dfm: FGitEdPath.AutoSize := False;
   // .dfm: FGitEdPath.Font.Size := 10;
   // .dfm: FGitEdPath.SetBounds(200, 27, 100, 18);
-  FGitEdPath.Hint := 'Локальная папка репозитория: выделите мышью и Ctrl+C ' +
-    '(двойной щелчок - всё)';
+  FGitEdPath.Hint := GitEdPathHint;
   // .dfm: FGitEdPath.ShowHint := True;
   // .dfm: FGitEdPath.OnDblClick := GitFieldDblClick;
   // .dfm: FGitLblOrigin := NewLabel(310, 27, 'origin:');
@@ -72035,6 +72048,8 @@ var
   Changes: TGitChanges;
   Ahead, Behind, BranchIdx, StashCount, StashIdx: Integer;
   StatusChecked: Boolean;
+  ProjDir: string;
+  RepoForeign: Boolean;
 begin
   if (FGitBar = nil) or not FGitBar.Visible or FGitBusy then
     Exit;
@@ -72057,6 +72072,11 @@ begin
   FGitOpStart := '';
   FGitLblSync.ThemeColors := True;
   FGitLblBuild.ThemeColors := True;
+  FGitLblRepo.ThemeColors := True;
+  FGitEdPath.ThemeColors := True;
+  FGitLblManual.ThemeColors := True;
+  FGitLblManual.Caption := '(выбран вручную)';
+  FGitEdPath.Hint := GitEdPathHint;
   FGitBranchFill := True;
   try
     FGitCmbBranch.Items.Clear;
@@ -72109,8 +72129,34 @@ begin
     FGitLblOrigin.Visible := Remote <> '';
     FGitEdRemote.Visible := Remote <> '';
     FGitLblManual.Visible := FGitRepoChosen <> '';
-    GitLayoutRepoRow;
+    // Выбран вручную, а папки открытого проекта в нём нет (например, остался
+    // от другого проекта) - имя, путь и пометка красным
+    ProjDir := '';
     if FGitRepoChosen <> '' then
+      ProjDir := GitProjectDir;
+    RepoForeign := (ProjDir <> '') and not AnsiStartsText(
+      IncludeTrailingPathDelimiter(Repo), IncludeTrailingPathDelimiter(ProjDir));
+    if RepoForeign then
+    begin
+      FGitLblRepo.ThemeColors := False;
+      FGitLblRepo.Font.Color := $3C3CFF;
+      FGitEdPath.ThemeColors := False;
+      FGitEdPath.Font.Color := $3C3CFF;
+      FGitLblManual.ThemeColors := False;
+      FGitLblManual.Font.Color := $3C3CFF;
+      FGitLblManual.Caption := '(выбран вручную, проекта в нём нет)';
+    end;
+    GitLayoutRepoRow;
+    if RepoForeign then
+    begin
+      FGitLblRepo.Hint := 'Выбран вручную; папка проекта ' + ProjDir +
+        ' не в этом репозитории. Repository - Use Repository of Current ' +
+        'Project - репозиторий по проекту';
+      FGitEdPath.Hint := FGitLblRepo.Hint;
+      FGitLblManual.Hint := FGitLblRepo.Hint;
+      FGitLblManual.ShowHint := True;
+    end
+    else if FGitRepoChosen <> '' then
       FGitLblRepo.Hint := 'Выбран вручную (Repository - Use Repository of ' +
         'Current Project - снова по проекту)'
     else
