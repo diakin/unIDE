@@ -238,11 +238,6 @@ begin
   Result := Default(BOOL);
 end;
 
-function Impl_FormatMessageA(AFlags: DWORD; ASource: Pointer; AMessageId: DWORD; ALanguageId: DWORD; ABuffer: PChar; ASize: DWORD; AArguments: Pointer): DWORD; stdcall; public name 'unidewin_FormatMessageA';
-begin
-  Result := Default(DWORD);
-end;
-
 function Impl_FreeConsole: WINBOOL; stdcall; public name 'unidewin_FreeConsole';
 begin
   Result := Default(WINBOOL);
@@ -261,46 +256,6 @@ end;
 function Impl_FreeLibrary(hLibModule:HINST): WINBOOL; stdcall; public name 'unidewin_FreeLibrary';
 begin
   Result := Default(WINBOOL);
-end;
-
-function Impl_FtpCreateDirectoryA(AConnect: Pointer; ADir: PAnsiChar): BOOL; stdcall; public name 'unidewin_FtpCreateDirectoryA';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FtpDeleteFileA(AConnect: Pointer; AFileName: PAnsiChar): BOOL; stdcall; public name 'unidewin_FtpDeleteFileA';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FtpFindFirstFileA(AConnect: Pointer; ASearch: PAnsiChar; var AFindData; AFlags: DWORD; AContext: DWORD): Pointer; stdcall; public name 'unidewin_FtpFindFirstFileA';
-begin
-  Result := Default(Pointer);
-end;
-
-function Impl_FtpGetCurrentDirectoryA(AConnect: Pointer; ADir: PAnsiChar; var ALength: DWORD): BOOL; stdcall; public name 'unidewin_FtpGetCurrentDirectoryA';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FtpOpenFileA(AConnect: Pointer; AFileName: PAnsiChar; AAccess, AFlags, AContext: DWORD): Pointer; stdcall; public name 'unidewin_FtpOpenFileA';
-begin
-  Result := Default(Pointer);
-end;
-
-function Impl_FtpRemoveDirectoryA(AConnect: Pointer; ADir: PAnsiChar): BOOL; stdcall; public name 'unidewin_FtpRemoveDirectoryA';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FtpRenameFileA(AConnect: Pointer; AExisting, ANew: PAnsiChar): BOOL; stdcall; public name 'unidewin_FtpRenameFileA';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_FtpSetCurrentDirectoryA(AConnect: Pointer; ADir: PAnsiChar): BOOL; stdcall; public name 'unidewin_FtpSetCurrentDirectoryA';
-begin
-  Result := Default(BOOL);
 end;
 
 function Impl_GetAsyncKeyState(vKey:longint): SHORT; stdcall; public name 'unidewin_GetAsyncKeyState';
@@ -573,32 +528,7 @@ begin
   Result := Default(DWORD);
 end;
 
-function Impl_InternetCloseHandle(AHandle: Pointer): BOOL; stdcall; public name 'unidewin_InternetCloseHandle';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_InternetConnectA(ASession: Pointer; AServer: PAnsiChar; APort: Word; AUser, APassword: PAnsiChar; AService, AFlags: DWORD; AContext: DWORD): Pointer; stdcall; public name 'unidewin_InternetConnectA';
-begin
-  Result := Default(Pointer);
-end;
-
 function Impl_InternetConnectW(ASession: Pointer; AServer: PWideChar; APort: Word; AUser, APassword: PWideChar; AService, AFlags: DWORD; AContext: DWORD): Pointer; stdcall; public name 'unidewin_InternetConnectW';
-begin
-  Result := Default(Pointer);
-end;
-
-function Impl_InternetFindNextFileA(AFind: Pointer; var AFindData): BOOL; stdcall; public name 'unidewin_InternetFindNextFileA';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_InternetGetLastResponseInfoA(var AError: DWORD; ABuffer: PAnsiChar; var ALength: DWORD): BOOL; stdcall; public name 'unidewin_InternetGetLastResponseInfoA';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_InternetOpenA(AAgent: PAnsiChar; AAccessType: DWORD; AProxy, AProxyBypass: PAnsiChar; AFlags: DWORD): Pointer; stdcall; public name 'unidewin_InternetOpenA';
 begin
   Result := Default(Pointer);
 end;
@@ -618,22 +548,7 @@ begin
   Result := Default(Pointer);
 end;
 
-function Impl_InternetReadFile(AFile: Pointer; ABuffer: Pointer; AToRead: DWORD; var ARead: DWORD): BOOL; stdcall; public name 'unidewin_InternetReadFile';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_InternetSetOptionA(AHandle: Pointer; AOption: DWORD; ABuffer: Pointer; ABufferLength: DWORD): BOOL; stdcall; public name 'unidewin_InternetSetOptionA';
-begin
-  Result := Default(BOOL);
-end;
-
 function Impl_InternetSetOptionW(AHandle: Pointer; AOption: DWORD; ABuffer: Pointer; ABufferLength: DWORD): BOOL; stdcall; public name 'unidewin_InternetSetOptionW';
-begin
-  Result := Default(BOOL);
-end;
-
-function Impl_InternetWriteFile(AFile: Pointer; ABuffer: Pointer; AToWrite: DWORD; var AWritten: DWORD): BOOL; stdcall; public name 'unidewin_InternetWriteFile';
 begin
   Result := Default(BOOL);
 end;

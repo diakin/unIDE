@@ -1625,6 +1625,32 @@ begin
 end;
 {$ENDIF}
 
+// Аргумент командной строки 7-Zip и т.п.: Windows - в двойных кавычках;
+// Linux - в одинарных для sh (StartProcess: /bin/sh -c)
+function FarArg(const AText: WideString): WideString;
+begin
+{$IFDEF UNIX}
+  Result := FarShellQuote(AText);
+{$ELSE}
+  Result := WideString('"') + AText + WideString('"');
+{$ENDIF}
+end;
+
+// Путь внутри архива ('a\b', всегда '\') -> путь на диске (Linux: 'a/b')
+function FarArcToDisk(const AArcPath: WideString): WideString;
+{$IFDEF UNIX}
+var
+  CharIndex: Integer;
+{$ENDIF}
+begin
+  Result := AArcPath;
+{$IFDEF UNIX}
+  for CharIndex := 1 to Length(Result) do
+    if Result[CharIndex] = '\' then
+      Result[CharIndex] := '/';
+{$ENDIF}
+end;
+
 // Имя для вставки в строку: с пробелом - в кавычках
 function FarQuoteName(const AName: WideString): WideString;
 var
@@ -3002,7 +3028,7 @@ begin
   else if FArcDir = '' then
     Result := FArcTitle
   else
-    Result := FArcTitle + '\' + FArcDir;
+    Result := FArcTitle + FarSep + FarArcToDisk(FArcDir);
 end;
 
 function TFarPanel.ArcInnerPath(const AName: WideString): WideString;
@@ -10884,7 +10910,7 @@ begin
   else if Panel.FFtpMode = 1 then
     BaseDir := ''
   else if Panel.IsArchive then
-    BaseDir := Panel.DisplayPath + '\'
+    BaseDir := Panel.DisplayPath + FarSep
   else
     BaseDir := Panel.Path;
   if Panel.FItems[Panel.Cursor].IsUp then
@@ -11731,8 +11757,27 @@ end;
 // 7z.exe своего 7-Zip unIDE (SzSetup: tools\7zip у exe или в профиле);
 // нет - ''
 function TFarView.SevenZipPath: WideString;
+{$IFDEF UNIX}
+var
+  ToolName: string;
+  FoundPath: string;
+{$ENDIF}
 begin
+{$IFDEF UNIX}
+  // Linux: 7zz (7-Zip), 7z / 7za (p7zip) из PATH
+  Result := '';
+  for ToolName in ['7zz', '7z', '7za'] do
+  begin
+    FoundPath := ExeSearch(ToolName, GetEnvironmentVariable('PATH'));
+    if FoundPath <> '' then
+    begin
+      Result := WideString(UTF8Decode(FoundPath));
+      Exit;
+    end;
+  end;
+{$ELSE}
   Result := SzLocalExe;
+{$ENDIF}
 end;
 
 function TFarView.IsArchiveName(const AName: WideString): Boolean;
@@ -11788,19 +11833,25 @@ begin
   SevenZip := SevenZipPath;
   if SevenZip = '' then
   begin
+{$IFDEF UNIX}
+    // Linux: 7-Zip ставится пакетом системы
+    Status(FarProduct + ': нет 7-Zip (7zz, 7z) - установите пакет 7zip ' +
+      '(sudo apt install 7zip) или p7zip-full');
+    FArcAction := aaNone;
+{$ELSE}
     // Нет 7-Zip - предложить скачать; работа с архивом (FArcAction и
     // остальное) ждёт и продолжится после установки
     SzOffer;
+{$ENDIF}
     Exit;
   end;
-  Command := WideString('"') + SevenZip + WideString('"');
+  Command := FarArg(SevenZip);
   if FArcAction = aaList then
   begin
     Command := Command + ' l -slt -sccUTF-8';
     if FArcJobPassword <> '' then
-      Command := Command + WideString(' "-p') + FArcJobPassword +
-        WideString('"');
-    Command := Command + WideString(' "') + FArcJobFile + WideString('"');
+      Command := Command + ' ' + FarArg('-p' + FArcJobPassword);
+    Command := Command + ' ' + FarArg(FArcJobFile);
     Status(FarProduct + ': открываю архив...');
   end
   else
@@ -11818,8 +11869,8 @@ begin
     for NameIndex := 0 to High(FArcJobNames) do
     begin
       if FArcJobPrefix <> '' then
-        ListText := ListText + UTF8Encode(FArcJobPrefix + '\' +
-          FArcJobNames[NameIndex]) + #13#10
+        ListText := ListText + UTF8Encode(FarArcToDisk(FArcJobPrefix + '\' +
+          FArcJobNames[NameIndex])) + #13#10
       else
         ListText := ListText + UTF8Encode(FArcJobNames[NameIndex]) + #13#10;
     end;
@@ -11851,16 +11902,15 @@ begin
         ' -sccUTF-8 -scsUTF-8 -bso0 -bsp1';
       if FArcJobPassword <> '' then
       begin
-        Command := Command + WideString(' "-p') + FArcJobPassword +
-          WideString('"');
+        Command := Command + ' ' + FarArg('-p' + FArcJobPassword);
         // 7z - шифровать и имена файлов; ZIP - AES-256 (не ZipCrypto)
         if FArcJobFormat = 1 then
           Command := Command + ' -mhe=on'
         else
           Command := Command + ' -mem=AES256';
       end;
-      Command := Command + WideString(' "') + FArcJobFile +
-        WideString('" "@') + ListFile + WideString('"');
+      Command := Command + ' ' + FarArg(FArcJobFile) + ' ' +
+        FarArg('@' + ListFile);
       Status(FarProduct + ': упаковка... (Ctrl+Break - прервать)');
     end
     else
@@ -11869,11 +11919,10 @@ begin
       Command := Command + ' x -y -sccUTF-8 -scsUTF-8 -bso0 -bsp1';
       // Без пароля -p не ставим: '-p' без значения - вопрос пароля
       if FArcJobPassword <> '' then
-        Command := Command + WideString(' "-p') + FArcJobPassword +
-          WideString('"');
-      Command := Command + WideString(' "-o') +
-        Copy(FArcJobTemp, 1, Length(FArcJobTemp) - 1) + WideString('" "') +
-        FArcJobFile + WideString('" "@') + ListFile + WideString('"');
+        Command := Command + ' ' + FarArg('-p' + FArcJobPassword);
+      Command := Command + ' ' +
+        FarArg('-o' + Copy(FArcJobTemp, 1, Length(FArcJobTemp) - 1)) + ' ' +
+        FarArg(FArcJobFile) + ' ' + FarArg('@' + ListFile);
       Status(FarProduct + ': распаковка...');
     end;
   end;
@@ -12182,7 +12231,7 @@ begin
           ArcError(Output);
         SourceDir := FArcJobTemp;
         if FArcJobPrefix <> '' then
-          SourceDir := SourceDir + FArcJobPrefix + '\';
+          SourceDir := SourceDir + FarArcToDisk(FArcJobPrefix) + FarSep;
         if Action = aaOpenFile then
         begin
           // Файл - во временной папке unIDE_far, она остаётся до выхода
@@ -12191,7 +12240,7 @@ begin
             FPanels[FArcJobPanel].FArcPassword := FArcJobPassword;
           if IsArchiveName(FArcJobNames[0]) or FArcJobForce then
             OpenArchive(FArcJobPanel, OpenPath,
-              FPanels[FArcJobPanel].DisplayPath + '\' + FArcJobNames[0], True,
+              FPanels[FArcJobPanel].DisplayPath + FarSep + FArcJobNames[0], True,
               '')
           else
             ShellOpen(OpenPath, SourceDir);
