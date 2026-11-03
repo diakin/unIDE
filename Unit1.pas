@@ -69594,8 +69594,8 @@ begin
   InsertIdx := mArduino.Count;
   NewItem('-', nil, False);
   NewItem('Install MinGW-w64 GCC ' + MingwVersion + ' (tools\mingw)...',
-    MingwInstallClick, False).Hint := 'Скачать свой MinGW-w64 (WinLibs, ' +
-    'около 110 МБ) в tools\mingw - g++ для сборки скетча под ПК ' +
+    MingwInstallClick, False).Hint := 'Скачать свой MinGW-w64 (xPack, ' +
+    'около 310 МБ) в tools\mingw - g++ для сборки скетча под ПК ' +
     '(эмулятор); в реестр и PATH ничего не пишется';
 end;
 
@@ -70651,7 +70651,7 @@ end;
 
 // ---------------------------------------------------------------------------
 //  MinGW-w64 (MingwTool): свой g++ unIDE в tools\mingw - сборка скетча
-//  Arduino под ПК для эмулятора. WinLibs GCC, MSVCRT, архив 7z
+//  Arduino под ПК для эмулятора. xPack GCC 12.2.0-1 (Windows 7 + UCRT), zip
 // ---------------------------------------------------------------------------
 
 // g++ запускается в этой Windows: g++ --version, ответ - в журнал
@@ -70722,7 +70722,7 @@ function TForm1.MingwEnsure(AAsk: Boolean): string;
 var
   OsInfo: TSzOsInfo;
   Package: TMingwPackage;
-  Target, SevenZip, Note, ErrText: string;
+  Target, SevenZip, Note, ErrText, Reason: string;
   Need7Zip: Boolean;
   Stage7Zip, StageMingw: Integer;
 begin
@@ -70735,11 +70735,13 @@ begin
   Exit;
   {$ENDIF}
   SzGetOsInfo(OsInfo);
-  if not MingwChoosePackage(OsInfo, Package) then
+  if not MingwChoosePackage(OsInfo, Package, Reason) then
   begin
-    LogComp('MinGW-w64: для ' + OsInfo.Name + ' сборки нет');
+    LogComp('MinGW-w64: ' + Reason);
     Exit;
   end;
+  if Reason <> '' then
+    LogComp('MinGW-w64: ' + Reason);
   Target := string(MingwChooseTargetDir);
   if Target = '' then
   begin
@@ -70753,15 +70755,17 @@ begin
   if Need7Zip then
     Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): им ' +
             'распаковывается архив MinGW.';
+  if Reason <> '' then
+    Note := Note + #13#10#13#10'Внимание: ' + Reason + '.';
   if MessageDlg('9835:Своего компилятора MinGW-w64 unIDE нет.'#13#10#13#10 +
                 'Скачать GCC ' + MingwVersion + ' (' + MingwRuntime + ', ' +
-                Package.Arch + ', сборка WinLibs, около ' +
-                IntToStr(Package.ApproxSize div 1000000) + ' МБ) с GitHub и ' +
-                'распаковать в ' + Target + '? Распакованный - около 0,5 ГБ.' +
-                Note + #13#10#13#10'Нужен для сборки скетча Arduino под ПК ' +
+                Package.Arch + ', около ' +
+                IntToStr(Package.ApproxSize div 1048576) + ' МБ) с GitHub ' +
+                '(или SourceForge) и распаковать в ' + Target + '?' + Note +
+                #13#10#13#10'Нужен для сборки скетча Arduino под ПК ' +
                 '(эмулятор). В системе ничего не ставится: ни реестра, ни ' +
-                'PATH. Работает ли эта сборка GCC в Windows 7, не ' +
-                'проверено - после установки unIDE запустит g++ --version.',
+                'PATH. После установки unIDE запустит g++ --version и ' +
+                'проверит, что компилятор работает в этой Windows.',
                 mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
     Exit;
   CompDlgOpen('MinGW-w64 GCC ' + MingwVersion);
