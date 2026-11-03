@@ -142,3 +142,4 @@ uniFAR/*_compile.bat
 
 # Папка поставки под Linux (lazarus/linux/build_linux.sh, этап 7)
 /dist/
+/uniFAR/uniFAR64.exe.old
