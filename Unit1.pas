@@ -339,6 +339,10 @@ type
     Clean: TCleanSnap;  // записанный текст (см. CleanCapture)
     IsUtf8: Boolean;    // кодировка файла на диске
     HasBom: Boolean;
+    // Конец строки в файле (EdFileText.EdDetectLineEnd): EdLineEndCRLF,
+    // EdLineEndLF; EdLineEndNone (новый файл, переводов строк нет) -
+    // как принято в ОС: CRLF в Windows, LF в Linux
+    LineEnd: Byte;
     Broken: Boolean;    // файла нет на диске - окно помечается как нерабочее
     // Главный .bas, к которому файл подключён через $INCLUDE: файл открыт
     // из дерева вкладки Includes (или остановкой отладчика в нём). На
@@ -2656,6 +2660,7 @@ type
     function  IsLargeText: Boolean;
     function  LargeSkip(const AWhat: string): Boolean;
     procedure SaveEditorFile(const AFileName: string);
+    function EditorLineLf: Boolean;
     procedure SaveMappedEditor(const AFileName: string);
     function  CheckDiskChanges(AOnly: Integer): Boolean;
     function  AskDiskChange(WinIdx: Integer; IsMod, CanMerge, Many: Boolean;
@@ -8525,32 +8530,53 @@ begin
   MemStatusUpdate;
 end;
 
+// Кодировка и конец строки файла - в запись окна (IsUtf8, HasBom,
+// LineEnd). FFileIsUtf8 / FFileHasBom - кодировка активной вкладки: файл
+// грузится в другую вкладку - они остаются прежними. Раньше здесь
+// оставалась кодировка нового файла, и StoreCurrentWindow (в
+// ActivateWindow) записывал её прежней вкладке: после открытия второго
+// файла Save первого писал его в кодировке второго (найдено 03.11.2026)
 procedure TForm1.LoadWinFile(AWinIdx: Integer; const AFileName: string);
 var
   NewText: WideString;
-  ShowBusy: Boolean;
+  ShowBusy, SavedUtf8, SavedBom: Boolean;
 begin
   // Открытие из проекта, списка недавних, перечитывание: окно остаётся
   // пустым, сообщение - как у ошибки чтения
   if not FileSizeAllowed(AFileName) then
     raise Exception.Create(ExtractFileName(AFileName) + ': ' +
       FileTooLargeText);
-  if LoadWinMapped(AWinIdx, AFileName) then
-    Exit;
-  // Большой файл читается секунду и дольше - этап в панели хода
-  ShowBusy := EdFileSize(AFileName) >= MapProgressMinLen;
-  if ShowBusy then
-    BusyBegin(ExtractFileName(AFileName) + ': чтение');
+  // Конец строки - как в файле, Save запишет так же
+  FWindows[AWinIdx].LineEnd := EdDetectLineEnd(AFileName);
+  SavedUtf8 := FFileIsUtf8;
+  SavedBom := FFileHasBom;
   try
-    NewText := LoadFileWide(AFileName);
-    SetWinWide(AWinIdx, NewText);
+    if not LoadWinMapped(AWinIdx, AFileName) then
+    begin
+      // Большой файл читается секунду и дольше - этап в панели хода
+      ShowBusy := EdFileSize(AFileName) >= MapProgressMinLen;
+      if ShowBusy then
+        BusyBegin(ExtractFileName(AFileName) + ': чтение');
+      try
+        NewText := LoadFileWide(AFileName);
+        SetWinWide(AWinIdx, NewText);
+      finally
+        if ShowBusy then
+          BusyEnd('', True);
+      end;
+      // Файл от 8 МБ - запас адресов после открытия
+      if EdFileSize(AFileName) >= 8 * 1024 * 1024 then
+        LogAddressSpace(ExtractFileName(AFileName) + ' открыт');
+    end;
+    FWindows[AWinIdx].IsUtf8 := FFileIsUtf8;
+    FWindows[AWinIdx].HasBom := FFileHasBom;
   finally
-    if ShowBusy then
-      BusyEnd('', True);
+    if AWinIdx <> FWindowsIndex then
+    begin
+      FFileIsUtf8 := SavedUtf8;
+      FFileHasBom := SavedBom;
+    end;
   end;
-  // Файл от 8 МБ - запас адресов после открытия
-  if EdFileSize(AFileName) >= 8 * 1024 * 1024 then
-    LogAddressSpace(ExtractFileName(AFileName) + ' открыт');
 end;
 
 // В редакторе большой файл (отображение, шаг 0.7.8): весь текст строкой не
@@ -8785,7 +8811,8 @@ begin
   CaretPos := RichEdit1.SelStart;
   StartTick := GetTickCount;
   try
-    EdSaveMapped(FEdEmu.Buffer, AFileName, FFileIsUtf8, FFileHasBom);
+    EdSaveMapped(FEdEmu.Buffer, AFileName, FFileIsUtf8, FFileHasBom,
+      EditorLineLf);
   finally
     Inc(FEditSerial);
     FEdEmu.UseBuffer(FEdEmu.Buffer, False);
@@ -8797,6 +8824,32 @@ begin
   NoteDisk(AFileName, '');
   LogComp(Format('%s: записан (большой файл), %d мс',
     [ExtractFileName(AFileName), GetTickCount - StartTick]));
+end;
+
+// Перевод строки при записи текста редактора: по вкладке, чей буфер на
+// экране (LineEnd), у нового файла - как принято в ОС
+function TForm1.EditorLineLf: Boolean;
+var
+  WinIdx: Integer;
+  LineEnd: Byte;
+begin
+  LineEnd := EdLineEndNone;
+  if FEdEmu <> nil then
+    for WinIdx := 0 to WindowsItemCount - 1 do
+      if FWindows[WinIdx].Used and (FWindows[WinIdx].Buffer = FEdEmu.Buffer) then
+      begin
+        LineEnd := FWindows[WinIdx].LineEnd;
+        Break;
+      end;
+  if LineEnd = EdLineEndNone then
+  begin
+    {$IFDEF UNIX}
+    LineEnd := EdLineEndLF;
+    {$ELSE}
+    LineEnd := EdLineEndCRLF;
+    {$ENDIF}
+  end;
+  Result := LineEnd = EdLineEndLF;
 end;
 
 procedure TForm1.SaveEditorFile(const AFileName: string);
@@ -8815,7 +8868,7 @@ begin
     SaveMappedEditor(AFileName);
     Exit;
   end;
-  Raw := EdEncodeBuffer(FEdEmu.Buffer, FFileIsUtf8);
+  Raw := EdEncodeBuffer(FEdEmu.Buffer, FFileIsUtf8, EditorLineLf);
 
   Stream := TFileStream.Create(AFileName, fmCreate);
   try
@@ -9540,11 +9593,9 @@ begin
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := FN;
   FWindows[Idx].IncOwner := '';
-  LoadWinFile(Idx, FN); // тут же определится кодировка
+  LoadWinFile(Idx, FN); // тут же определится кодировка (в запись окна)
   FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
-  FWindows[Idx].IsUtf8 := FFileIsUtf8;
-  FWindows[Idx].HasBom := FFileHasBom;
   FWindows[Idx].Broken := False;
   FWindows[Idx].WorkMs := 0;
   FWindows[Idx].NoGuides := False;
@@ -17531,8 +17582,6 @@ begin
 
     FWindows[I].FileName := NewName;
     LoadWinFile(I, NewName);
-    FWindows[I].IsUtf8 := FFileIsUtf8;
-    FWindows[I].HasBom := FFileHasBom;
     FWindows[I].Broken := False;
     FWindows[I].MapValid := False;
     Inc(Found);
@@ -17704,8 +17753,6 @@ begin
         Inc(FileCount);
         StartupStage('Чтение ' + ExtractFileName(Path));
         LoadWinFile(I, Path);
-        FWindows[I].IsUtf8 := FFileIsUtf8;
-        FWindows[I].HasBom := FFileHasBom;
         FWindows[I].Broken := False;
       end
       else
@@ -25643,6 +25690,9 @@ CurrentChar := CharAt(CursorPos);
     end
     else
       StatusBar1.Panels[5].Text := 'ANSI';
+    // Строки через LF (файл Linux) - Save запишет так же
+    if EditorLineLf then
+      StatusBar1.Panels[5].Text := StatusBar1.Panels[5].Text + ' LF';
   end;
   EncodingMenuSync;
 
@@ -85326,7 +85376,7 @@ begin
       StatusBar1.Panels[3].Width :=
         SampleBmp.Canvas.TextWidth('Поз.: 99999999/99999999') + 16;
       StatusBar1.Panels[4].Width := SampleBmp.Canvas.TextWidth('ASCII: 255 (''W'')') + 16;
-      StatusBar1.Panels[5].Width := SampleBmp.Canvas.TextWidth('UTF-8 BOM') + 16;
+      StatusBar1.Panels[5].Width := SampleBmp.Canvas.TextWidth('UTF-8 BOM LF') + 16;
       StatusBar1.Panels[6].Width := SampleBmp.Canvas.TextWidth(
         'Память: занято 9999 МБ, свободно 9999, кусок 9999') + 16;
       LineH := SampleBmp.Canvas.TextHeight('Wg') + 8;

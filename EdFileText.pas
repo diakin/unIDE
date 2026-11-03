@@ -30,10 +30,20 @@ uses
 // страница Windows
 function EdDecodeBytes(const ARaw: AnsiString; AIsUtf8: Boolean): WideString;
 
-// Текст буфера байтами файла: строки через #13#10, после последней - нет.
-// AsUtf8 - UTF-8 (без BOM), иначе кодовая страница Windows (символ, которого
-// в ней нет, - как у WideCharToMultiByte)
-function EdEncodeBuffer(ABuffer: TEdBuffer; AsUtf8: Boolean): AnsiString;
+// Текст буфера байтами файла: строки через #13#10 (ALineLf - через #10),
+// после последней - нет. AsUtf8 - UTF-8 (без BOM), иначе кодовая страница
+// Windows (символ, которого в ней нет, - как у WideCharToMultiByte)
+function EdEncodeBuffer(ABuffer: TEdBuffer; AsUtf8: Boolean;
+  ALineLf: Boolean = False): AnsiString;
+
+// Конец строки в файле по первому переводу строки в первых 64 КБ:
+// EdLineEndCRLF, EdLineEndLF; EdLineEndNone - переводов нет (или файл
+// не прочитан)
+const
+  EdLineEndNone = 0;
+  EdLineEndCRLF = 1;
+  EdLineEndLF = 2;
+function EdDetectLineEnd(const AFileName: string): Byte;
 
 // Весь текст окна редактора одним EM_SETTEXTEX в UTF-16: символы вне
 // кодовой страницы Windows доходят до буфера окна как есть
@@ -58,14 +68,14 @@ function EdLoadMapped(ABuffer: TEdBuffer; const AFileName: string;
 
 // Текст буфера в поток по строкам (через #13#10), кусками около 1 МБ
 procedure EdWriteBuffer(ABuffer: TEdBuffer; AStream: TStream;
-  AsUtf8: Boolean);
+  AsUtf8: Boolean; ALineLf: Boolean = False);
 
 // Запись буфера с отображённым файлом в AFileName: текст - во временный
 // файл рядом, отображение снимается, временный файл встаёт на место
 // AFileName и отображается заново. Откат после записи пуст. Исключение -
 // не записано (временный файл, если остался, назван в сообщении)
 procedure EdSaveMapped(ABuffer: TEdBuffer; const AFileName: string;
-  AsUtf8, AHasBom: Boolean);
+  AsUtf8, AHasBom: Boolean; ALineLf: Boolean = False);
 
 implementation
 
@@ -302,7 +312,8 @@ begin
   AOutLen := Dest - PAnsiChar(Pointer(AOut));
 end;
 
-function EdEncodeBuffer(ABuffer: TEdBuffer; AsUtf8: Boolean): AnsiString;
+function EdEncodeBuffer(ABuffer: TEdBuffer; AsUtf8: Boolean;
+  ALineLf: Boolean): AnsiString;
 var
   RowIdx, OutLen: Integer;
 begin
@@ -316,13 +327,59 @@ begin
     begin
       if OutLen + 2 > Length(Result) then
         SetLength(Result, (OutLen + 2) * 2 + 4096);
-      Result[OutLen + 1] := #13;
-      Result[OutLen + 2] := #10;
-      Inc(OutLen, 2);
+      if ALineLf then
+      begin
+        Result[OutLen + 1] := #10;
+        Inc(OutLen);
+      end
+      else
+      begin
+        Result[OutLen + 1] := #13;
+        Result[OutLen + 2] := #10;
+        Inc(OutLen, 2);
+      end;
     end;
     AppendLine(ABuffer[RowIdx], AsUtf8, Result, OutLen);
   end;
   SetLength(Result, OutLen);
+end;
+
+function EdDetectLineEnd(const AFileName: string): Byte;
+const
+  ProbeSize = 65536;
+var
+  Stream: TFileStream;
+  Probe: AnsiString;
+  ReadLen, ByteIdx: Integer;
+begin
+  Result := EdLineEndNone;
+  try
+    Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+  except
+    Exit;
+  end;
+  try
+    SetLength(Probe, ProbeSize);
+    ReadLen := Stream.Read(Probe[1], ProbeSize);
+  finally
+    Stream.Free;
+  end;
+  for ByteIdx := 1 to ReadLen do
+    if Probe[ByteIdx] = #10 then
+    begin
+      if (ByteIdx > 1) and (Probe[ByteIdx - 1] = #13) then
+        Result := EdLineEndCRLF
+      else
+        Result := EdLineEndLF;
+      Exit;
+    end
+    else if (Probe[ByteIdx] = #13) and (ByteIdx < ReadLen) and
+            (Probe[ByteIdx + 1] <> #10) then
+    begin
+      // одиночный #13 (старый Mac) - пишется как CRLF
+      Result := EdLineEndCRLF;
+      Exit;
+    end;
 end;
 
 function EdAnsiCharMap(var AMap: TEdCharMap): Boolean;
@@ -422,7 +479,7 @@ begin
 end;
 
 procedure EdWriteBuffer(ABuffer: TEdBuffer; AStream: TStream;
-  AsUtf8: Boolean);
+  AsUtf8: Boolean; ALineLf: Boolean = False);
 const
   ChunkSize = 1024 * 1024;
 var
@@ -438,9 +495,17 @@ begin
     begin
       if ChunkLen + 2 > Length(Chunk) then
         SetLength(Chunk, (ChunkLen + 2) * 2);
-      Chunk[ChunkLen + 1] := #13;
-      Chunk[ChunkLen + 2] := #10;
-      Inc(ChunkLen, 2);
+      if ALineLf then
+      begin
+        Chunk[ChunkLen + 1] := #10;
+        Inc(ChunkLen);
+      end
+      else
+      begin
+        Chunk[ChunkLen + 1] := #13;
+        Chunk[ChunkLen + 2] := #10;
+        Inc(ChunkLen, 2);
+      end;
     end;
     AppendLine(ABuffer[RowIdx], AsUtf8, Chunk, ChunkLen);
     if ChunkLen >= ChunkSize then
@@ -454,7 +519,7 @@ begin
 end;
 
 procedure EdSaveMapped(ABuffer: TEdBuffer; const AFileName: string;
-  AsUtf8, AHasBom: Boolean);
+  AsUtf8, AHasBom: Boolean; ALineLf: Boolean = False);
 var
   TempName: string;
   Stream: TFileStream;
@@ -470,7 +535,7 @@ begin
       Bom[0] := $EF; Bom[1] := $BB; Bom[2] := $BF;
       Stream.WriteBuffer(Bom, 3);
     end;
-    EdWriteBuffer(ABuffer, Stream, AsUtf8);
+    EdWriteBuffer(ABuffer, Stream, AsUtf8, ALineLf);
   finally
     Stream.Free;
   end;
