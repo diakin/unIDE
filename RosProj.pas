@@ -50,6 +50,8 @@ uses
 const
   RosProjectType = 'ReactOS';      // тип в [Project.<имя>] Type
   RosMainFile = 'configure.cmd';   // главный файл (Target)
+  // Чем настраивается сборка: в Linux - configure.sh того же дерева
+  RosConfigureFile = {$IFDEF UNIX}'configure.sh'{$ELSE}'configure.cmd'{$ENDIF};
   RosSection = 'ReactOS';          // ключи ReactOS_* в разделе проекта
   RosDefaultTarget = 'bootcd';
 
@@ -105,6 +107,9 @@ type
 // OEM-кодировке.
 procedure RosBuildScript(const ASettings: TRosSettings; AStep: TRosStep;
                          ALines: TStrings);
+// Linux: скрипт RosBE-Unix в папке установки по умолчанию
+// (/usr/local/RosBE/RosBE.sh); нет - пусто. В Windows всегда пусто
+function RosUnixEnvScript: string;
 // Где скачать инструменты сборки (меню ReactOS - Download Build Tools):
 // строки "подпись=адрес"; '-' - разделитель
 procedure RosToolLinks(AList: TStrings);
@@ -123,7 +128,8 @@ begin
   if Trim(ADir) = '' then
     Exit;
   Dir := IncludeTrailingPathDelimiter(Trim(ADir));
-  Result := FileExists(Dir + RosMainFile) and
+  Result := (FileExists(Dir + RosMainFile) or
+             FileExists(Dir + RosConfigureFile)) and
             FileExists(Dir + 'CMakeLists.txt') and
             FileExists(Dir + 'PreLoad.cmake');
 end;
@@ -177,7 +183,7 @@ begin
       Exit;
     end;
     for DirIdx := 0 to Dirs.Count - 1 do
-      if FileExists(Dir + Dirs[DirIdx] + '\build.ninja') then
+      if FileExists(Dir + Dirs[DirIdx] + PathDelim + 'build.ninja') then
       begin
         Result := Dir + Dirs[DirIdx];
         Exit;
@@ -219,6 +225,10 @@ begin
   if ((Length(Result) >= 2) and (Result[2] = ':')) or
      (Copy(Result, 1, 2) = '\\') then
     Exit;
+  {$IFDEF UNIX}
+  if Result[1] = '/' then
+    Exit;
+  {$ENDIF}
   if Trim(ASourceDir) <> '' then
     Result := IncludeTrailingPathDelimiter(Trim(ASourceDir)) + Result;
 end;
@@ -293,8 +303,10 @@ begin
       AnsiPath := Utf8ToAnsi(Result);
       if AnsiPath <> '' then
         Result := AnsiPath;
-      Result := ExcludeTrailingPathDelimiter(
-                  StringReplace(Result, '/', '\', [rfReplaceAll]));
+      {$IFNDEF UNIX}
+      Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+      {$ENDIF}
+      Result := ExcludeTrailingPathDelimiter(Result);
       Exit;
     end;
   finally
@@ -306,13 +318,22 @@ function RosSameDir(const AFirst, ASecond: string): Boolean;
 
   function NormDir(const APath: string): string;
   begin
+    {$IFDEF UNIX}
+    Result := Trim(APath);
+    {$ELSE}
     Result := StringReplace(Trim(APath), '/', '\', [rfReplaceAll]);
+    {$ENDIF}
     if Result <> '' then
       Result := ExcludeTrailingPathDelimiter(ExpandFileName(Result));
   end;
 
 begin
+  {$IFDEF UNIX}
+  // Linux: регистр в именах папок различается
+  Result := NormDir(AFirst) = NormDir(ASecond);
+  {$ELSE}
   Result := AnsiCompareText(NormDir(AFirst), NormDir(ASecond)) = 0;
+  {$ENDIF}
 end;
 
 function RosClearCaches(const ABuildDir: string;
@@ -362,6 +383,44 @@ begin
   Result := 'ninja -C "' + ASettings.BuildDir + '" ' + Target;
 end;
 
+{$IFDEF UNIX}
+// Путь в одинарных кавычках sh (кавычка внутри - '\'')
+function RosShQuote(const APath: string): string;
+begin
+  Result := '''' + StringReplace(APath, '''', '''\''''', [rfReplaceAll]) +
+            '''';
+end;
+
+// Как подключается скрипт окружения. RosBE.sh из RosBE-Unix открывает
+// свою интерактивную оболочку - его не выполнить внутри скрипта: вместо
+// него - то же, что он ставит для сборки: PATH (i386/bin - gcc MinGW,
+// bin - cmake, ninja) и ROS_ARCH (без неё configure.sh пишет "Could not
+// detect RosBE"). Другой .sh - выполняется в этой оболочке (. файл)
+function RosUnixEnvText(const AScript: string): string;
+var
+  RosDir: string;
+begin
+  if SameText(ExtractFileName(AScript), 'RosBE.sh') then
+  begin
+    RosDir := ExcludeTrailingPathDelimiter(ExtractFilePath(AScript));
+    Result := 'export PATH=' + RosShQuote(RosDir + '/i386/bin') + ':' +
+              RosShQuote(RosDir + '/bin') + ':"$PATH"; export ROS_ARCH=' +
+              '${ROS_ARCH:-i386}';
+  end
+  else
+    Result := '. ' + RosShQuote(AScript);
+end;
+{$ENDIF}
+
+function RosUnixEnvScript: string;
+begin
+  Result := '';
+  {$IFDEF UNIX}
+  if FileExists('/usr/local/RosBE/RosBE.sh') then
+    Result := '/usr/local/RosBE/RosBE.sh';
+  {$ENDIF}
+end;
+
 procedure RosDescribeBuild(const ASettings: TRosSettings; ALines: TStrings);
 var
   HasBuildDir, HasNinjaFile: Boolean;
@@ -374,7 +433,8 @@ begin
 
   ALines.Add('Папка исходников: ' + ASettings.SourceDir);
   if not RosIsSourceDir(ASettings.SourceDir) then
-    ALines.Add('  в ней нет configure.cmd, CMakeLists.txt или PreLoad.cmake');
+    ALines.Add('  в ней нет ' + RosConfigureFile + ', CMakeLists.txt или ' +
+               'PreLoad.cmake');
   if ASettings.BuildDir = '' then
     ALines.Add('Папка сборки: не задана (Project - Properties)')
   else if not HasBuildDir then
@@ -398,11 +458,19 @@ begin
 
   ALines.Add('');
   ALines.Add('Команды:');
+  {$IFDEF UNIX}
+  if ASettings.EnvScript <> '' then
+    ALines.Add('  ' + RosUnixEnvText(ASettings.EnvScript));
+  if not HasNinjaFile then
+    ALines.Add('  cd "' + ExcludeTrailingPathDelimiter(ASettings.SourceDir) +
+               '" && sh ' + RosConfigureFile + ' ' + ASettings.ConfigureArgs);
+  {$ELSE}
   if ASettings.EnvScript <> '' then
     ALines.Add('  call "' + ASettings.EnvScript + '"');
   if not HasNinjaFile then
     ALines.Add('  cd /d "' + ExcludeTrailingPathDelimiter(ASettings.SourceDir) +
                '" && ' + RosMainFile + ' ' + ASettings.ConfigureArgs);
+  {$ENDIF}
   if ASettings.BuildDir <> '' then
     ALines.Add('  ' + RosNinjaCommand(ASettings))
   else
@@ -414,6 +482,31 @@ procedure RosBuildScript(const ASettings: TRosSettings; AStep: TRosStep;
 var
   Target: string;
 begin
+  {$IFDEF UNIX}
+  Target := Trim(ASettings.NinjaTarget);
+  if Target = '' then
+    Target := RosDefaultTarget;
+  ALines.Clear;
+  ALines.Add('#!/bin/sh');
+  ALines.Add('# unIDE: ReactOS build step, file is rewritten on every build');
+  if ASettings.EnvScript <> '' then
+    ALines.Add(RosUnixEnvText(ASettings.EnvScript));
+  case AStep of
+    rsConfigure:
+    begin
+      ALines.Add('cd ' + RosShQuote(ExcludeTrailingPathDelimiter(
+                 ASettings.SourceDir)) + ' || exit 1');
+      ALines.Add('sh ./' + RosConfigureFile + ' ' +
+                 Trim(ASettings.ConfigureArgs));
+    end;
+    rsNinja:
+    begin
+      ALines.Add('cd ' + RosShQuote(ASettings.BuildDir) + ' || exit 1');
+      ALines.Add('ninja ' + Target);
+    end;
+  end;
+  ALines.Add('exit $?');
+  {$ELSE}
   ALines.Clear;
   ALines.Add('@echo off');
   ALines.Add('rem unIDE: ReactOS build step, file is rewritten on every build');
@@ -438,11 +531,21 @@ begin
     end;
   end;
   ALines.Add('exit /b %errorlevel%');
+  {$ENDIF}
 end;
 
 procedure RosToolLinks(AList: TStrings);
 begin
   AList.Clear;
+  {$IFDEF UNIX}
+  // Linux: RosBE-Unix (собирается из исходников, ставится в
+  // /usr/local/RosBE), QEMU и 7-Zip - из пакетов дистрибутива
+  AList.Add('RosBE-Unix 2.2.1 - для reactosVG14 (/usr/local/RosBE)=' +
+            'https://sourceforge.net/projects/reactos/files/RosBE-Unix/');
+  AList.Add('Сборка ReactOS в Linux (вики ReactOS)=' +
+            'https://reactos.org/wiki/Building_ReactOS');
+  Exit;
+  {$ENDIF}
   // reactosVG14 (ReactOS 0.4.14)
   AList.Add('RosBE 2.2.1 - для reactosVG14 (установщик, Windows XP и новее)=' +
             'https://sourceforge.net/projects/reactos/files/RosBE-Windows/' +

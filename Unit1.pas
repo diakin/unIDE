@@ -26501,11 +26501,18 @@ begin
   {$ENDIF}
   {$IFDEF UNIX}
   // Linux: пункты, которые работают только под Windows, скрыты (этап 3.1
-  // плана): ReactOS (QEMU, Rufus, RosBE - инструменты Windows), установка
-  // пакета Delphi 7 (dcc32 - через Wine, этап 4.3). unIDE FAR на Linux
-  // работает с этапа 5.1
-  RosMenu.Visible := False;
+  // плана): установка пакета Delphi 7 (dcc32 - через Wine, этап 4.3).
+  // unIDE FAR на Linux работает с этапа 5.1. Меню ReactOS - с этапа 5.4:
+  // сборка configure.sh + ninja с RosBE-Unix, Run Image - QEMU из PATH;
+  // скачивание своих RosBE, 7-Zip, QEMU, Rufus и Git - только Windows
   mInstallPkg.Visible := False;
+  mRosRufusWrite.Visible := False;
+  mRosInstallRosBE.Visible := False;
+  mRosInstall7Zip.Visible := False;
+  mRosInstallQemu.Visible := False;
+  mRosInstallRufus.Visible := False;
+  mRosGitInstall.Visible := False;
+  mRosSep2.Visible := False;
   {$ENDIF}
 
   pnlPaletteIn.DoubleBuffered := True;
@@ -56689,7 +56696,7 @@ begin
           #13#10'а исходники проекта - в'#13#10 + ProjectSource +
           #13#10#13#10'ninja с этой папкой остановится на перезапуске ' +
           'CMake.'#13#10#13#10'Удалить CMakeCache.txt (и в host-tools) и ' +
-          'запустить configure.cmd заново?'#13#10'Нет - всё равно ' +
+          'запустить ' + RosConfigureFile + ' заново?'#13#10'Нет - всё равно ' +
           'запустить ninja.', mtConfirmation, [mbYes, mbNo, mbCancel], 0);
       case DlgAnswer of
         mrYes:
@@ -56712,7 +56719,7 @@ begin
             FailedCaches.Free;
           end;
           NeedConfigure := True;
-          LogComp('Перед ninja будет запущен configure.cmd');
+          LogComp('Перед ninja будет запущен ' + RosConfigureFile);
         end;
         mrNo:
           LogComp('ninja без configure - выбрано вручную');
@@ -56726,7 +56733,7 @@ begin
 
   CompDlgOpen(BuildPrj + '   ' + RosCfg.NinjaTarget);
   FCompDlg.Caption := 'Сборка ReactOS';
-  FCompDlg.AddStage('configure.cmd', 5);
+  FCompDlg.AddStage(RosConfigureFile, 5);
   FCompDlg.AddStage('ninja ' + RosCfg.NinjaTarget, 95);
   FCompDlgOwned := True;
   FRosBuilding := True;
@@ -56735,7 +56742,7 @@ begin
     // 1. configure
     if NeedConfigure then
     begin
-      LogComp('--- configure.cmd');
+      LogComp('--- ' + RosConfigureFile);
       FCompDlg.StartStage(RosStageConfigure, 0, '');
       StepCode := RosRunStep(RosCfg, rsConfigure, RosCfg.SourceDir);
       if FCompDlg.AbortRequested then
@@ -56744,7 +56751,7 @@ begin
       begin
         FCompDlg.EndStage(RosStageConfigure, False,
                           'код завершения ' + IntToStr(StepCode));
-        LogComp('configure.cmd: код завершения ' + IntToStr(StepCode));
+        LogComp(RosConfigureFile + ': код завершения ' + IntToStr(StepCode));
         Exit;
       end;
       // Папка сборки не задана - та, что создал configure; запоминается
@@ -56769,10 +56776,10 @@ begin
       begin
         FCompDlg.EndStage(RosStageConfigure, False, 'build.ninja нет');
         if RosCfg.BuildDir = '' then
-          LogComp('После configure.cmd папки output-* в ' +
+          LogComp('После ' + RosConfigureFile + ' папки output-* в ' +
           RosCfg.SourceDir + ' нет')
         else
-          LogComp('После configure.cmd нет ' + NinjaFile);
+          LogComp('После ' + RosConfigureFile + ' нет ' + NinjaFile);
         Exit;
       end;
       FCompDlg.EndStage(RosStageConfigure, True, '');
@@ -56830,16 +56837,27 @@ function TForm1.RosRunStep(const ASettings: TRosSettings; AStep: TRosStep;
                            const AWorkDir: string): Integer;
 var
   Script: TStringList;
+  {$IFNDEF UNIX}
   TempBuf, ComBuf: array[0..MAX_PATH] of Char;
-  ScriptFile, ComSpec: string;
+  ComSpec: string;
+  {$ENDIF}
+  ScriptFile, ScriptExt: string;
 begin
   Result := -1;
+  {$IFDEF UNIX}
+  // Linux: скрипт sh, запуск /bin/sh <файл>
+  ScriptFile := IncludeTrailingPathDelimiter(GetTempDir);
+  ScriptExt := '.sh';
+  {$ELSE}
   TempBuf[0] := #0;
   GetTempPath(MAX_PATH, TempBuf);
+  ScriptFile := IncludeTrailingPathDelimiter(TempBuf);
+  ScriptExt := '.cmd';
+  {$ENDIF}
   if AStep = rsConfigure then
-    ScriptFile := IncludeTrailingPathDelimiter(TempBuf) + 'unide_ros_configure.cmd'
+    ScriptFile := ScriptFile + 'unide_ros_configure' + ScriptExt
   else
-    ScriptFile := IncludeTrailingPathDelimiter(TempBuf) + 'unide_ros_ninja.cmd';
+    ScriptFile := ScriptFile + 'unide_ros_ninja' + ScriptExt;
   Script := TStringList.Create;
   try
     RosBuildScript(ASettings, AStep, Script);
@@ -56852,6 +56870,10 @@ begin
   finally
     Script.Free;
   end;
+  {$IFDEF UNIX}
+  Result := RunCompiler('/bin/sh', '"' + ScriptFile + '"',
+                        ExcludeTrailingPathDelimiter(AWorkDir));
+  {$ELSE}
   // Тот же вызов, что в подменах переменных окружения: Windows-вариант
   ComSpec := 'cmd.exe';
   if Windows.GetEnvironmentVariable(PChar('ComSpec'), ComBuf, SizeOf(ComBuf)) > 0 then
@@ -56859,6 +56881,7 @@ begin
   // /s /c ""файл"": внешние кавычки снимает cmd, путь с пробелами цел
   Result := RunCompiler(ComSpec, '/s /c ""' + ScriptFile + '""',
                         ExcludeTrailingPathDelimiter(AWorkDir));
+  {$ENDIF}
 end;
 
 // Строка вывода шага ninja. "[n/N] ..." - доля этапа в окне хода и в лог
@@ -69694,6 +69717,11 @@ var
   Ini: TIniFile;
   RosDir: string;
 begin
+  {$IFDEF UNIX}
+  // Linux: RosBE-Unix в /usr/local/RosBE
+  Result := RosUnixEnvScript;
+  Exit;
+  {$ENDIF}
   RosDir := '';
   if FileExists(SettingsFileName) then
   begin
@@ -70015,6 +70043,14 @@ begin
   if Result <> '' then
     Exit;
   ShowCompLog;
+  {$IFDEF UNIX}
+  // Linux: QEMU - из пакетов дистрибутива, свой не качается
+  LogComp('QEMU: qemu-system-i386 (и qemu-system-x86_64) в PATH нет. ' +
+          'Установите пакеты: sudo apt install qemu-system-x86 qemu-utils ' +
+          '(Debian, Ubuntu); в других дистрибутивах - пакет qemu с ' +
+          'эмулятором x86');
+  Exit;
+  {$ENDIF}
   SzGetOsInfo(OsInfo);
   if not QemuChoosePackage(OsInfo, Package) then
   begin
@@ -77429,7 +77465,8 @@ begin
     end;
     FreeAndNil(FRosQemuProc);
   end;
-  WorkDir := IncludeTrailingPathDelimiter(RosCfg.BuildDir) + 'unide-qemu\';
+  WorkDir := IncludeTrailingPathDelimiter(RosCfg.BuildDir) + 'unide-qemu' +
+             PathDelim;
   ForceDirectories(WorkDir);
   SerialLog := WorkDir + 'serial.log';
 
@@ -77471,7 +77508,13 @@ begin
     Disk := WorkDir + 'hdd.qcow2';
     if not FileExists(Disk) then
     begin
-      QemuImg := ExtractFilePath(QemuExe) + QemuImgName;
+      QemuImg := string(QemuImgExe(QemuExe));
+      if QemuImg = '' then
+      begin
+        LogComp('Запуск: нет ' + QemuImgName + {$IFDEF UNIX}' (пакет ' +
+                'qemu-utils)' + {$ENDIF}' - диск для установки не создать');
+        Exit;
+      end;
       LogComp('Запуск: диск для установки ReactOS - ' + Disk + ' (8 ГБ, ' +
               'qcow2: файл растёт по мере записи)');
       FRosBuilding := True;

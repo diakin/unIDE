@@ -27,6 +27,10 @@ unit QemuTool;
 //  KDSERIAL); сеть - user (NAT), карта ne2k_pci (драйвер есть в ReactOS).
 //  Проверено на QEMU 8.2 под Linux с ReactOS 0.4.15 bootcd: доходит до
 //  окна установки, вывод COM1 пишется.
+//
+//  Linux (этап 5.4 плана): свой QEMU не качается - qemu-system-i386 (или
+//  qemu-system-x86_64) и qemu-img берутся из PATH (пакеты
+//  qemu-system-x86 и qemu-utils). /dev/kvm доступен - с -enable-kvm.
 // ---------------------------------------------------------------------------
 
 interface
@@ -36,16 +40,24 @@ uses
 
 const
   QemuVersion = '7.0.0';
+  {$IFDEF UNIX}
+  QemuExeName = 'qemu-system-i386';
+  QemuImgName = 'qemu-img';
+  {$ELSE}
   QemuExeName = 'qemu-system-i386w.exe';   // без окна консоли
   QemuImgName = 'qemu-img.exe';
+  {$ENDIF}
   QemuInfoFile = 'unide_qemu.txt';
   QemuSite = 'https://qemu.weilnetz.de/';
 
 // <папка exe>\tools\qemu\ и %LOCALAPPDATA%\unIDE\tools\qemu\
 function QemuAppDir: WideString;
 function QemuUserDir: WideString;
-// qemu-system-i386w.exe своего QEMU (есть и прошивка BIOS); нет - ''
+// qemu-system-i386w.exe своего QEMU (есть и прошивка BIOS); нет - ''.
+// Linux: qemu-system-i386 или qemu-system-x86_64 из PATH
 function QemuLocalExe: WideString;
+// qemu-img рядом с AQemuExe; Linux - рядом или из PATH; нет - ''
+function QemuImgExe(const AQemuExe: WideString): WideString;
 // Куда ставить: где уже есть, иначе у exe, если туда пишется, иначе в
 // профиль; '' - никуда
 function QemuChooseTargetDir: WideString;
@@ -67,6 +79,16 @@ function QemuRunArgs(const AImage, ADisk, ASerialLog, AName: WideString;
 function QemuImgCreateArgs(const ADisk: WideString; ASizeGb: Integer): WideString;
 
 implementation
+
+{$IFDEF UNIX}
+uses
+  BaseUnix;
+
+function QemuInPath(const AName: string): string;
+begin
+  Result := ExeSearch(AName, GetEnvironmentVariable('PATH'));
+end;
+{$ENDIF}
 
 const
   QemuPackageCount = 2;
@@ -126,6 +148,12 @@ var
   DirIndex: Integer;
 begin
   Result := '';
+  {$IFDEF UNIX}
+  Result := QemuInPath('qemu-system-i386');
+  if Result = '' then
+    Result := QemuInPath('qemu-system-x86_64');
+  Exit;
+  {$ENDIF}
   Dirs[0] := QemuAppDir;
   Dirs[1] := QemuUserDir;
   for DirIndex := 0 to 1 do
@@ -135,6 +163,19 @@ begin
       Result := Dirs[DirIndex] + QemuExeName;
       Exit;
     end;
+end;
+
+function QemuImgExe(const AQemuExe: WideString): WideString;
+begin
+  Result := '';
+  if AQemuExe <> '' then
+    Result := WideString(ExtractFilePath(string(AQemuExe))) + QemuImgName;
+  if (Result <> '') and FileExists(string(Result)) then
+    Exit;
+  Result := '';
+  {$IFDEF UNIX}
+  Result := QemuInPath(QemuImgName);
+  {$ENDIF}
 end;
 
 // Можно ли создать папку ADir: проверяется пробой в папке выше (сама папка
@@ -216,6 +257,11 @@ var
   OsInfo: TSzOsInfo;
   Package: TSzPackage;
 begin
+  {$IFDEF UNIX}
+  // Linux: 64-битный QEMU из пакетов
+  Result := 1024;
+  Exit;
+  {$ENDIF}
   SzGetOsInfo(OsInfo);
   Result := 512;
   if QemuChoosePackage(OsInfo, Package) and (Package.Arch = 'x64') then
@@ -246,6 +292,12 @@ begin
     WideString(IntToStr(AMemoryMb)) +
     ' -rtc base=localtime -vga std' +
     ' -netdev user,id=net0 -device ne2k_pci,netdev=net0';
+  {$IFDEF UNIX}
+  // KVM - процессор не эмулируется, в разы быстрее; нужны права на
+  // /dev/kvm (группа kvm)
+  if FpAccess('/dev/kvm', R_OK or W_OK) = 0 then
+    Result := Result + ' -enable-kvm';
+  {$ENDIF}
   if Ext = '.iso' then
   begin
     if ADisk <> '' then
