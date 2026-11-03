@@ -32,6 +32,9 @@ interface
 uses
   Windows, SysUtils, Classes, SzSetup;
 
+// Linux: Git - из пакета системы (git в PATH, корень - папка над bin, обычно
+// /usr/); своего Git и установки нет, версия - из 'git --version'
+
 const
   GitVersion = '2.46.2';
   GitBashName = 'git-bash.exe';
@@ -40,6 +43,8 @@ const
   // Первая версия Git for Windows, которой нужна Windows 8.1 (6.3)
   GitFirstWin81Only = '2.47.0';
 
+// git.exe (git под Linux) в корне ARoot
+function GitExeOf(const ARoot: WideString): WideString;
 // <папка exe>\tools\git\ и %LOCALAPPDATA%\unIDE\tools\git\
 function GitAppDir: WideString;
 function GitUserDir: WideString;
@@ -78,6 +83,10 @@ function GitPostInstallCommand(const ARoot: WideString): WideString;
 function GitTerminalCommand(const ARoot, ADir: WideString): WideString;
 
 implementation
+{$IFDEF UNIX}
+uses
+  Process;
+{$ENDIF}
 
 const
   GitPackageCount = 2;
@@ -148,11 +157,55 @@ begin
     Result := Result + 'git\';
 end;
 
-// В папке - Git for Windows: есть cmd\git.exe
+function GitExeOf(const ARoot: WideString): WideString;
+begin
+  {$IFDEF UNIX}
+  Result := WideString(IncludeTrailingPathDelimiter(string(ARoot))) + 'bin/git';
+  {$ELSE}
+  Result := SzWithSlash(ARoot) + 'cmd\git.exe';
+  {$ENDIF}
+end;
+
+// В папке - Git for Windows: есть cmd\git.exe (Linux: bin/git)
 function GitIsRoot(const ARoot: WideString): Boolean;
 begin
+  {$IFDEF UNIX}
+  Result := (ARoot <> '') and FileExists(string(GitExeOf(ARoot)));
+  {$ELSE}
   Result := (ARoot <> '') and SzFileExists(SzWithSlash(ARoot) + 'cmd\git.exe');
+  {$ENDIF}
 end;
+
+{$IFDEF UNIX}
+var
+  GitVersionRoot: WideString;
+  GitVersionValue: string;
+
+// Первая программа AName в PATH; '' - нет
+function GitInPath(const AName: string): string;
+var
+  PathText, Dir: string;
+  ColonPos: Integer;
+begin
+  Result := '';
+  PathText := GetEnvironmentVariable('PATH');
+  while PathText <> '' do
+  begin
+    ColonPos := Pos(':', PathText);
+    if ColonPos = 0 then
+      ColonPos := Length(PathText) + 1;
+    Dir := Copy(PathText, 1, ColonPos - 1);
+    Delete(PathText, 1, ColonPos);
+    if Dir = '' then
+      Continue;
+    if FileExists(IncludeTrailingPathDelimiter(Dir) + AName) then
+    begin
+      Result := IncludeTrailingPathDelimiter(Dir) + AName;
+      Exit;
+    end;
+  end;
+end;
+{$ENDIF}
 
 function GitEnv(const AName: WideString): WideString;
 var
@@ -261,9 +314,25 @@ var
   Candidates: array[0..6] of WideString;
   Hows: array[0..6] of string;
   CandIndex: Integer;
+{$IFDEF UNIX}
+  ExePath, BinDir: string;
+{$ENDIF}
 begin
   Result := '';
   AHow := '';
+  {$IFDEF UNIX}
+  // git в PATH: /usr/bin/git -> корень /usr/
+  ExePath := GitInPath('git');
+  if ExePath = '' then
+    Exit;
+  BinDir := ExtractFileDir(ExePath);
+  if ExtractFileName(BinDir) = 'bin' then
+  begin
+    Result := WideString(IncludeTrailingPathDelimiter(ExtractFileDir(BinDir)));
+    AHow := 'git в PATH (' + ExePath + ')';
+  end;
+  Exit;
+  {$ENDIF}
   Candidates[0] := GitRegInstallPath(HKEY_LOCAL_MACHINE, True);
   Hows[0] := 'реестр HKLM\' + GitRegKey;
   Candidates[1] := GitRegInstallPath(HKEY_LOCAL_MACHINE, False);
@@ -299,6 +368,9 @@ var
   DirIndex: Integer;
 begin
   Result := '';
+  {$IFDEF UNIX}
+  Exit; // Linux: своего Git нет
+  {$ENDIF}
   Dirs[0] := GitAppDir;
   Dirs[1] := GitUserDir;
   for DirIndex := 0 to 1 do
@@ -357,10 +429,31 @@ var
   ExeIndex, RegIndex: Integer;
   RegRoots: array[0..2] of HKEY;
   RegWow64: array[0..2] of Boolean;
+{$IFDEF UNIX}
+  VersionOut: string;
+{$ENDIF}
 begin
   Result := '';
   if ARoot = '' then
     Exit;
+  {$IFDEF UNIX}
+  // 'git version 2.43.0' -> '2.43.0'; запоминается (панель Git спрашивает
+  // часто, а каждый раз - запуск git)
+  if ARoot = GitVersionRoot then
+  begin
+    Result := GitVersionValue;
+    Exit;
+  end;
+  if RunCommand(string(GitExeOf(ARoot)), ['--version'], VersionOut) then
+  begin
+    VersionOut := Trim(VersionOut);
+    if Pos('git version ', VersionOut) = 1 then
+      Result := Trim(Copy(VersionOut, Length('git version ') + 1, MaxInt));
+  end;
+  GitVersionRoot := ARoot;
+  GitVersionValue := Result;
+  Exit;
+  {$ENDIF}
   Root := SzWithSlash(ARoot);
   for ExeIndex := 0 to ExeCount - 1 do
   begin
@@ -439,6 +532,10 @@ function GitRootFitsOs(const ARoot: WideString): Boolean;
 var
   OsInfo: TSzOsInfo;
 begin
+  {$IFDEF UNIX}
+  Result := True;
+  Exit;
+  {$ENDIF}
   SzGetOsInfo(OsInfo);
   Result := GitVersionFitsOs(GitRootVersion(ARoot), OsInfo);
 end;
@@ -493,6 +590,9 @@ var
   PackageIndex: Integer;
 begin
   Result := False;
+  {$IFDEF UNIX}
+  Exit; // Linux: PortableGit не ставится, Git - пакет системы
+  {$ENDIF}
   if not AOs.IsNT then
     Exit;
   for PackageIndex := 0 to GitPackageCount - 1 do
@@ -549,9 +649,35 @@ begin
 end;
 
 function GitTerminalCommand(const ARoot, ADir: WideString): WideString;
+{$IFDEF UNIX}
+const
+  TermCount = 6;
+  TermNames: array[0..TermCount - 1] of string = (
+    'x-terminal-emulator', 'gnome-terminal', 'konsole', 'xfce4-terminal',
+    'mate-terminal', 'xterm');
+var
+  TermIdx: Integer;
+  TermPath: string;
+{$ENDIF}
 var
   Root, Dir: WideString;
 begin
+  {$IFDEF UNIX}
+  // Терминал рабочего стола; папка - рабочая папка запуска (ProcLaunch)
+  Result := '';
+  TermPath := GetEnvironmentVariable('TERMINAL');
+  if (TermPath <> '') and (Pos('/', TermPath) = 0) then
+    TermPath := GitInPath(TermPath);
+  for TermIdx := 0 to TermCount - 1 do
+  begin
+    if TermPath <> '' then
+      Break;
+    TermPath := GitInPath(TermNames[TermIdx]);
+  end;
+  if TermPath <> '' then
+    Result := WideString('"' + TermPath + '"');
+  Exit;
+  {$ENDIF}
   Root := SzWithSlash(ARoot);
   // Корень диска 'D:\' - 'D:\.': '\' перед кавычкой её экранирует
   Dir := SzNoSlash(ADir);

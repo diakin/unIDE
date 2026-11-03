@@ -69842,6 +69842,13 @@ begin
   Result := string(GitTool.GitFindRoot(How));
   if Result <> '' then
     Exit;
+  {$IFDEF UNIX}
+  // Linux: Git - пакет системы, unIDE его не ставит
+  ShowCompLog;
+  LogComp('Git: git не найден в PATH - установите пакет git ' +
+          '(например, sudo apt install git)');
+  Exit;
+  {$ENDIF}
   Installed := string(GitFindInstalled(InstalledHow));
   if Installed <> '' then
   begin
@@ -69971,6 +69978,16 @@ begin
   if (Dir = '') or not DirectoryExists(Dir) then
     Dir := ExtractFilePath(Application.ExeName);
   CmdLine := string(GitTerminalCommand(Root, Dir));
+  {$IFDEF UNIX}
+  if CmdLine = '' then
+  begin
+    ShowCompLog;
+    LogComp('Git Terminal: терминал не найден (x-terminal-emulator, ' +
+            'gnome-terminal, konsole, xfce4-terminal, mate-terminal, xterm; ' +
+            'или переменная TERMINAL)');
+    Exit;
+  end;
+  {$ENDIF}
   GitTool.GitFindRoot(How);
   LogComp('Git Terminal (' + How + '): ' + CmdLine);
   if not ProcLaunch(CmdLine, Dir, ErrText) then
@@ -70298,7 +70315,7 @@ begin
     Result := GitEnsure;
   if Result = '' then
     Exit;
-  Result := IncludeTrailingPathDelimiter(Result) + 'cmd\git.exe';
+  Result := string(GitExeOf(WideString(Result)));
   if not FileExists(Result) then
     Result := '';
 end;
@@ -71595,7 +71612,11 @@ begin
           ' в системе в этой Windows не работает - ReactOS - Find or ' +
           'Install Git'
       else
+        {$IFDEF UNIX}
+        FGitLblRepo.Caption := 'Git не найден - установите пакет git';
+        {$ELSE}
         FGitLblRepo.Caption := 'Git не найден - ReactOS - Find or Install Git';
+        {$ENDIF}
       FGitLblRepo.Hint := '';
       FGitLblSync.Caption := '';
       FGitLblBuild.Caption := '';

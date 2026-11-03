@@ -215,10 +215,12 @@ begin
       Result := Candidate;
   end;
   {$ENDIF}
+  {$IFDEF UNIX}
+  Result := ExeSearch('git', GetEnvironmentVariable('PATH'));
+  {$ENDIF}
 end;
 
 function GitStatus(const ARoot: string; AChanges: TStrings): Boolean;
-{$IFDEF MSWINDOWS}
 const
   WaitMs = 15000;
 var
@@ -226,11 +228,9 @@ var
   Proc: TProcRun;
   StartTick: Cardinal;
   Finished: Boolean;
-{$ENDIF}
 begin
   Result := False;
   AChanges.Clear;
-  {$IFDEF MSWINDOWS}
   GitExe := GitFindExe;
   if GitExe = '' then
     Exit;
@@ -263,7 +263,6 @@ begin
   end;
   if Result then
     AChanges.Text := Output;
-  {$ENDIF}
 end;
 
 function GitWriteBuildInfo(const AExe, ASource: string): Boolean;
