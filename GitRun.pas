@@ -83,8 +83,13 @@ function GitQuote(const AArg: WideString): WideString;
 function GitTrimOut(const AText: WideString): WideString;
 // git status --porcelain=v1 -z -> список изменений
 procedure GitParseStatus(const AOutput: WideString; var AChanges: TGitChanges);
-// Строки вывода (по #10, #13 отбрасывается) -> AList (пустые пропускаются)
+// Строки вывода (по #10, #13 отбрасывается) -> AList (пустые пропускаются).
+// Сообщения git (warning:, hint:, error:, fatal: и строка 'The file will
+// have its original line endings...') пропускаются: stderr идёт в ту же
+// трубу, и без этого предупреждение про LF/CRLF попадало в список файлов
 procedure GitSplitLines(const AOutput: WideString; AList: TStrings);
+// Строка - сообщение git, а не данные (см. GitSplitLines)
+function GitIsMessageLine(const ALine: WideString): Boolean;
 // 'git rev-list --left-right --count A...B' -> AAhead (слева), ABehind
 function GitParseCounts(const AOutput: WideString;
   var ALeft, ARight: Integer): Boolean;
@@ -461,6 +466,25 @@ begin
   end;
 end;
 
+function GitIsMessageLine(const ALine: WideString): Boolean;
+const
+  MsgPrefixes: array[0..4] of string = ('warning: ', 'hint: ', 'error: ',
+    'fatal: ', 'The file will have its original line endings');
+var
+  PrefixIdx: Integer;
+  LineText: string;
+begin
+  Result := False;
+  LineText := string(ALine);
+  for PrefixIdx := Low(MsgPrefixes) to High(MsgPrefixes) do
+    if Copy(LineText, 1, Length(MsgPrefixes[PrefixIdx])) =
+       MsgPrefixes[PrefixIdx] then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
 procedure GitSplitLines(const AOutput: WideString; AList: TStrings);
 var
   Pos0, LineEnd: Integer;
@@ -478,7 +502,7 @@ begin
     while (Line <> '') and ((Line[Length(Line)] = #13) or
           (Line[Length(Line)] = ' ')) do
       SetLength(Line, Length(Line) - 1);
-    if Line <> '' then
+    if (Line <> '') and not GitIsMessageLine(Line) then
       AList.Add(string(Line));
   end;
 end;
