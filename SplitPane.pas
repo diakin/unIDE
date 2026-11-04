@@ -57,12 +57,21 @@ type
     FFmtBtn: TUiButton;
     FCloseBtn: TUiButton;
     FSyncBtn: TUiButton;
+    // Сравнение панелей (только у заголовка второй панели): Diff и
+    // переходы к соседнему отличию
+    FDiffBtn: TUiButton;
+    FPrevBtn: TUiButton;
+    FNextBtn: TUiButton;
     FTitleText: string;
     FTitleMark: string;
     FOnTitleClick: TNotifyEvent;
     FOnFmtClick: TNotifyEvent;
     FOnCloseClick: TNotifyEvent;
     FOnSyncClick: TNotifyEvent;
+    FOnDiffClick: TNotifyEvent;
+    FOnDiffPrev: TNotifyEvent;
+    FOnDiffNext: TNotifyEvent;
+    procedure DiffBtnClick(Sender: TObject);
     procedure TitleClick(Sender: TObject);
     procedure FmtBtnClick(Sender: TObject);
     procedure SyncBtnClick(Sender: TObject);
@@ -79,6 +88,10 @@ type
     // Кнопка синхронной прокрутки (только у заголовка второй панели):
     // AVisible - показать, AOn - включена
     procedure SetSync(AVisible, AOn: Boolean);
+    // Кнопка сравнения панелей (только у второй панели): AVisible -
+    // показать, AOn - сравнение включено (тогда видны и < >), AInfo -
+    // надпись на кнопке при включённом сравнении ('3/7', '0')
+    procedure SetDiff(AVisible, AOn: Boolean; const AInfo: string);
     // Пометка после имени файла (свой редактор); '' - без неё
     procedure SetTitleMark(const AMark: string);
     property Panel: TPanel read FPanel;
@@ -86,6 +99,9 @@ type
     property OnFmtClick: TNotifyEvent read FOnFmtClick write FOnFmtClick;
     property OnCloseClick: TNotifyEvent read FOnCloseClick write FOnCloseClick;
     property OnSyncClick: TNotifyEvent read FOnSyncClick write FOnSyncClick;
+    property OnDiffClick: TNotifyEvent read FOnDiffClick write FOnDiffClick;
+    property OnDiffPrev: TNotifyEvent read FOnDiffPrev write FOnDiffPrev;
+    property OnDiffNext: TNotifyEvent read FOnDiffNext write FOnDiffNext;
   end;
 
   // Первая видимая строка текста второй панели сменилась
@@ -245,6 +261,43 @@ begin
     FSyncBtn.ShowHint := True;
     FSyncBtn.Visible := False;
     FSyncBtn.OnClick := SyncBtnClick;
+
+    FDiffBtn := TUiButton.Create(FPanel);
+    FDiffBtn.Parent := FPanel;
+    FDiffBtn.Left := 400;
+    FDiffBtn.Align := alRight;
+    FDiffBtn.Width := 80;
+    FDiffBtn.Caption := 'Diff: off';
+    FDiffBtn.TabStop := False;
+    FDiffBtn.Hint := 'Сравнение с редактором, как в WinMerge: отличия ' +
+      'строк - цветом в обеих панелях, прокрутка - по парам строк';
+    FDiffBtn.ShowHint := True;
+    FDiffBtn.Visible := False;
+    FDiffBtn.OnClick := DiffBtnClick;
+
+    FNextBtn := TUiButton.Create(FPanel);
+    FNextBtn.Parent := FPanel;
+    FNextBtn.Left := 300;
+    FNextBtn.Align := alRight;
+    FNextBtn.Width := 24;
+    FNextBtn.Caption := '>';
+    FNextBtn.TabStop := False;
+    FNextBtn.Hint := 'Следующее отличие (Alt+Down)';
+    FNextBtn.ShowHint := True;
+    FNextBtn.Visible := False;
+    FNextBtn.OnClick := DiffBtnClick;
+
+    FPrevBtn := TUiButton.Create(FPanel);
+    FPrevBtn.Parent := FPanel;
+    FPrevBtn.Left := 200;
+    FPrevBtn.Align := alRight;
+    FPrevBtn.Width := 24;
+    FPrevBtn.Caption := '<';
+    FPrevBtn.TabStop := False;
+    FPrevBtn.Hint := 'Предыдущее отличие (Alt+Up)';
+    FPrevBtn.ShowHint := True;
+    FPrevBtn.Visible := False;
+    FPrevBtn.OnClick := DiffBtnClick;
   end;
 
   FFmtBtn := TUiButton.Create(FPanel);
@@ -348,6 +401,53 @@ procedure TPaneHeader.SyncBtnClick(Sender: TObject);
 begin
   if Assigned(FOnSyncClick) then
     FOnSyncClick(Self);
+end;
+
+procedure TPaneHeader.SetDiff(AVisible, AOn: Boolean; const AInfo: string);
+var
+  NewCaption: string;
+  AnchorLeft: Integer;
+begin
+  if FDiffBtn = nil then
+    Exit;
+  if AOn then
+    NewCaption := 'Diff: ' + AInfo
+  else
+    NewCaption := 'Diff: off';
+  if FDiffBtn.Caption <> NewCaption then
+    FDiffBtn.Caption := NewCaption;
+  // Кнопки alRight по порядку слева направо: < > Diff Sync Txt x. Порядок
+  // задаёт Left в момент показа
+  if AVisible and not FDiffBtn.Visible then
+  begin
+    if FSyncBtn.Visible then
+      AnchorLeft := FSyncBtn.Left
+    else
+      AnchorLeft := FFmtBtn.Left;
+    FDiffBtn.Left := AnchorLeft - FDiffBtn.Width;
+  end;
+  if FDiffBtn.Visible <> AVisible then
+    FDiffBtn.Visible := AVisible;
+  if AVisible and AOn and not FNextBtn.Visible then
+  begin
+    FNextBtn.Left := FDiffBtn.Left - FNextBtn.Width;
+    FPrevBtn.Left := FNextBtn.Left - FPrevBtn.Width;
+  end;
+  if FNextBtn.Visible <> (AVisible and AOn) then
+  begin
+    FNextBtn.Visible := AVisible and AOn;
+    FPrevBtn.Visible := AVisible and AOn;
+  end;
+end;
+
+procedure TPaneHeader.DiffBtnClick(Sender: TObject);
+begin
+  if (Sender = FDiffBtn) and Assigned(FOnDiffClick) then
+    FOnDiffClick(Self)
+  else if (Sender = FPrevBtn) and Assigned(FOnDiffPrev) then
+    FOnDiffPrev(Self)
+  else if (Sender = FNextBtn) and Assigned(FOnDiffNext) then
+    FOnDiffNext(Self);
 end;
 
 procedure TPaneHeader.TitleClick(Sender: TObject);
