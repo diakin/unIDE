@@ -143,3 +143,6 @@ uniFAR/*_compile.bat
 # Папка поставки под Linux (lazarus/linux/build_linux.sh, этап 7)
 /dist/
 /uniFAR/uniFAR64.exe.old
+
+# ArdSim build output (sketch copied into ArdSim)
+/ArdSim/ardsim_build/
