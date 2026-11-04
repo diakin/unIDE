@@ -17,11 +17,11 @@ unit ArdSimHost;
 //  тогда упадёт только эмулятор, а не unIDE с несохранёнными файлами.
 //
 //  Прибор рисуется как BS10: зелёный корпус с экраном, под ним светлая
-//  панель с клавиатурой (пропорции сняты с фото прибора). Экран по
-//  умолчанию в размер настоящего дисплея 3.5" (73.44 x 48.96 мм, типовая
-//  активная область 480x320); кнопка «Размер» переключает на «по ширине
-//  панели». Если панель узкая или низкая, сначала уменьшаются зелёные поля
-//  корпуса, потом сам экран.
+//  панель с клавиатурой (цвета и раскладка клавиш - с фото прибора).
+//  Экран всегда 480x320, точка в точку: так текст UTFT читается, как на
+//  приборе. Вокруг экрана - узкие зелёные поля, клавиатура подгоняется под
+//  оставшуюся высоту панели. Если панель уже прибора, правый край
+//  обрезается - панель надо расширить.
 // ---------------------------------------------------------------------------
 
 interface
@@ -72,9 +72,9 @@ type
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
-    // Разложить корпус в AWidth x AHeight; экран шириной не больше
-    // AScreenW. Результат - высота, которая нужна прибору
-    function Arrange(AWidth, AHeight, AScreenW: Integer): Integer;
+    // Разложить прибор по ширине AWidth; клавиатура - чтобы весь прибор
+    // влез в AHeight. Результат - ширина и высота прибора
+    function Arrange(AWidth, AHeight: Integer): TPoint;
     procedure PressKey(AKeyIdx: Integer);
     procedure InvalidateScreen;
   end;
@@ -87,12 +87,10 @@ type
     FBtnStop: TUiButton;
     FBtnIni: TUiButton;
     FBtnWindow: TUiButton;
-    FBtnSize: TUiButton;
     FStatus: TUiLabel;
     FDevice: TArdSimDevice;
     FSerial: TUiMemo;
     FTimer: TTimer;
-    FFitWidth: Boolean;       // экран по ширине панели, иначе - как дисплей
     FBuild: TProcRun;         // build_sim.cmd
     FBuildLine: string;       // недописанная строка вывода сборки
     FRunAfterBuild: Boolean;
@@ -118,7 +116,6 @@ type
     procedure BtnStopClick(Sender: TObject);
     procedure BtnIniClick(Sender: TObject);
     procedure BtnWindowClick(Sender: TObject);
-    procedure BtnSizeClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure LayoutControls;
     procedure Log(const AText: string);
@@ -155,8 +152,6 @@ type
     property ArdSimDir: string read FArdSimDir write FArdSimDir;
     // Папка bin своего MinGW unIDE; '' - build_sim.cmd ищет сам
     property MingwBin: string read FMingwBin write FMingwBin;
-    // Экран по ширине панели (True) или в размер настоящего дисплея
-    property FitWidth: Boolean read FFitWidth;
     property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
     property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
     property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
@@ -188,15 +183,10 @@ const
   SharedBytes = HeaderBytes + ScreenBytes + SerialRingBytes;
   SerialMaxChars = 60000;
 
-  // Активная область дисплея 3.5" 480x320 (типовая по документации на
-  // такие модули), мм
-  DisplayWidthMm = 73.44;
-
-  // Пропорции корпуса BS10 (по фото; поля корпуса - вдвое уже, чем на
-  // фото, по просьбе Андрея), в долях ширины экрана
-  BodySideK = 0.20;       // зелёное поле слева и справа от экрана
-  BodyTopK = 0.135;        // над экраном
-  BodyBottomK = 0.13;     // под экраном
+  // Корпус: зелёные поля вокруг экрана 480x320, точек
+  BodyBorder = 14;
+  // Клавиатура (по фото), в долях ширины экрана; умножаются на PadK -
+  // долю, при которой клавиатура влезает по высоте
   PadWidthK = 1.22;       // ширина панели клавиатуры
   PadTopK = 0.14;         // от верха панели до первого ряда
   PadBottomK = 0.07;      // под последним рядом
@@ -204,7 +194,8 @@ const
   KeyHeightK = 0.165;
   KeyPitchXK = 0.274;
   KeyPitchYK = 0.195;
-  MinBorder = 8;          // поле корпуса, меньше которого не ужимать
+  MinBorder = 8;          // поля панели клавиатуры вокруг клавиш
+  MinKeyHeight = 20;      // клавиши не мельче, даже если не влезают
   RimWidth = 3;           // чёрный кант корпуса
 
   // Цвета (TColor - $00BBGGRR)
@@ -296,96 +287,59 @@ begin
   inherited Destroy;
 end;
 
-// Сверху вниз: корпус (поля, экран, поля), под ним панель клавиатуры.
-// Экран - не шире AScreenW; поля корпуса по бокам ужимаются до MinBorder,
-// когда не хватает ширины. Если не хватает высоты: сначала уменьшаются
-// клавиатура и поля корпуса вместе, в одной доле PadK (до PadMinK от
-// размеров по фото, пропорции прибора сохраняются), потом поля сверху и
-// снизу убираются до MinBorder, потом уменьшается экран
-function TArdSimDevice.Arrange(AWidth, AHeight, AScreenW: Integer): Integer;
-const
-  PadMinK = 0.6;
-
-  function NeedHeight(AScreen: Integer; APadK: Double; ACompact: Boolean): Integer;
-  var
-    Borders: Integer;
-  begin
-    if ACompact then
-      Borders := 2 * MinBorder
-    else
-      Borders := Round(AScreen * APadK * (BodyTopK + BodyBottomK));
-    Result := Borders + AScreen * ArdSimScreenH div ArdSimScreenW +
-              Round(AScreen * APadK * (PadTopK + PadBottomK + 4 * KeyPitchYK +
-                                       KeyHeightK));
-  end;
-
+// Сверху вниз: корпус (узкие поля и экран 480x320), под ним панель
+// клавиатуры. Прибор - по центру AWidth (не уже корпуса). Клавиатура
+// уменьшается (PadK <= 1), чтобы прибор влез в AHeight, но клавиши не
+// ниже MinKeyHeight
+function TArdSimDevice.Arrange(AWidth, AHeight: Integer): TPoint;
 var
-  ScreenW, ScreenH, SideBorder, TopBorder, BottomBorder: Integer;
-  BodyW, BodyLeft, PadW, PadLeft, PadTop, GridW, GridLeft, GridTop: Integer;
-  KeyW, KeyH, PitchX, PitchY, KeyRow, KeyCol, PadUnit: Integer;
+  BodyW, BodyH, DeviceW, BodyLeft, PadW, PadLeft, PadTop: Integer;
+  GridW, GridLeft, GridTop, KeyW, KeyH, PitchX, PitchY: Integer;
+  KeyRow, KeyCol, PadUnit, PadFullH: Integer;
   PadK: Double;
-  Compact: Boolean;
 begin
-  ScreenW := AScreenW;
-  if ScreenW > AWidth - 2 * MinBorder then
-    ScreenW := AWidth - 2 * MinBorder;
-  if ScreenW < 120 then
-    ScreenW := 120;
+  FScreenW := ArdSimScreenW;
+  BodyW := ArdSimScreenW + 2 * BodyBorder;
+  BodyH := ArdSimScreenH + 2 * BodyBorder;
+  DeviceW := AWidth;
+  if DeviceW < BodyW then
+    DeviceW := BodyW;
+  BodyLeft := (DeviceW - BodyW) div 2;
+  FBodyRect := Rect(BodyLeft, 0, BodyLeft + BodyW, BodyH);
+  FScreenRect := Rect(BodyLeft + BodyBorder, BodyBorder,
+                      BodyLeft + BodyBorder + ArdSimScreenW,
+                      BodyBorder + ArdSimScreenH);
+
+  // высота клавиатуры при PadK = 1 - и доля, при которой она влезает
+  PadFullH := Round(ArdSimScreenW * (PadTopK + PadBottomK + 4 * KeyPitchYK +
+                                     KeyHeightK));
   PadK := 1.0;
-  Compact := False;
-  if AHeight > 0 then
-  begin
-    while (PadK > PadMinK) and (NeedHeight(ScreenW, PadK, False) > AHeight) do
-      PadK := PadK - 0.02;
-    if NeedHeight(ScreenW, PadK, False) > AHeight then
-    begin
-      Compact := True;
-      while (ScreenW > 120) and (NeedHeight(ScreenW, PadK, True) > AHeight) do
-        Dec(ScreenW, 4);
-    end;
-  end;
-  FScreenW := ScreenW;
-  ScreenH := ScreenW * ArdSimScreenH div ArdSimScreenW;
+  if (AHeight > 0) and (BodyH + PadFullH > AHeight) then
+    PadK := (AHeight - BodyH) / PadFullH;
+  if ArdSimScreenW * PadK * KeyHeightK < MinKeyHeight then
+    PadK := MinKeyHeight / (ArdSimScreenW * KeyHeightK);
+  if PadK > 1.0 then
+    PadK := 1.0;
 
-  SideBorder := Round(ScreenW * PadK * BodySideK);
-  if ScreenW + 2 * SideBorder > AWidth then
-    SideBorder := (AWidth - ScreenW) div 2;
-  if SideBorder < MinBorder then
-    SideBorder := MinBorder;
-  if Compact then
-  begin
-    TopBorder := MinBorder;
-    BottomBorder := MinBorder;
-  end
-  else
-  begin
-    TopBorder := Round(ScreenW * PadK * BodyTopK);
-    BottomBorder := Round(ScreenW * PadK * BodyBottomK);
-  end;
-  BodyW := ScreenW + 2 * SideBorder;
-  BodyLeft := (AWidth - BodyW) div 2;
-  if BodyLeft < 0 then
-    BodyLeft := 0;
-  FBodyRect := Rect(BodyLeft, 0, BodyLeft + BodyW,
-                    TopBorder + ScreenH + BottomBorder);
-  FScreenRect := Rect(BodyLeft + SideBorder, TopBorder,
-                      BodyLeft + SideBorder + ScreenW, TopBorder + ScreenH);
-
-  // клавиатура - в долях ширины экрана, умноженной на PadK (как и поля)
-  PadUnit := Round(ScreenW * PadK);
+  PadUnit := Round(ArdSimScreenW * PadK);
   KeyW := Round(PadUnit * KeyWidthK);
   KeyH := Round(PadUnit * KeyHeightK);
   PitchX := Round(PadUnit * KeyPitchXK);
   PitchY := Round(PadUnit * KeyPitchYK);
+  // низкие клавиши - не уже, чем в 1.4 раза их высоты (иначе узкие столбики)
+  if KeyW < KeyH * 14 div 10 then
+  begin
+    KeyW := KeyH * 14 div 10;
+    if PitchX < KeyW + 6 then
+      PitchX := KeyW + 6;
+  end;
   GridW := 3 * PitchX + KeyW;
   PadW := Round(PadUnit * PadWidthK);
   if PadW < GridW + 2 * MinBorder then
     PadW := GridW + 2 * MinBorder;
   if PadW > BodyW then
     PadW := BodyW;
-  PadLeft := (AWidth - PadW) div 2;
-  if PadLeft < 0 then
-    PadLeft := 0;
+  PadLeft := (DeviceW - PadW) div 2;
   PadTop := FBodyRect.Bottom - RimWidth;
   GridTop := FBodyRect.Bottom + Round(PadUnit * PadTopK);
   GridLeft := PadLeft + (PadW - GridW) div 2;
@@ -396,7 +350,7 @@ begin
       FKeyRects[KeyRow * ArdSimKeyCols + KeyCol] :=
         Rect(GridLeft + KeyCol * PitchX, GridTop + KeyRow * PitchY,
              GridLeft + KeyCol * PitchX + KeyW, GridTop + KeyRow * PitchY + KeyH);
-  Result := FPadRect.Bottom + 1;
+  Result := Point(DeviceW, FPadRect.Bottom + 1);
 end;
 
 procedure TArdSimDevice.InvalidateScreen;
@@ -676,7 +630,7 @@ begin
   Draw.RoundRect(FPadRect.Left + 1, FPadRect.Top + 1, FPadRect.Right - 1,
                  FPadRect.Bottom - 1, Corner, Corner);
   // корпус
-  Corner := (FBodyRect.Right - FBodyRect.Left) div 16;
+  Corner := BodyBorder * 2;   // скругление не заходит на экран
   Draw.Brush.Color := ClrBody;
   Draw.RoundRect(FBodyRect.Left + 1, FBodyRect.Top + 1, FBodyRect.Right - 1,
                  FBodyRect.Bottom - 1, Corner, Corner);
@@ -743,8 +697,6 @@ begin
   FBtnWindow := MakeButton(FBar, 'Окно',
     'Запустить собранный скетч в отдельном окне ArdSim (с панелью сигналов)',
     BtnWindowClick);
-  FBtnSize := MakeButton(FBar, 'Размер',
-    'Экран как настоящий дисплей 3.5" / по ширине панели', BtnSizeClick);
   FStatus := TUiLabel.Create(Self);
   FStatus.Parent := Self;
   FStatus.AutoSize := False;
@@ -795,8 +747,9 @@ const
   StatusH = 18;
   SerialMinH = 60;
 var
-  AreaW, PosY, ButtonW, BtnIdx, ScreenW, DeviceH: Integer;
-  Buttons: array[0..5] of TUiButton;
+  AreaW, PosY, ButtonW, BtnIdx: Integer;
+  DeviceSize: TPoint;
+  Buttons: array[0..4] of TUiButton;
 begin
   if FBar = nil then
     Exit;
@@ -810,32 +763,21 @@ begin
   Buttons[2] := FBtnStop;
   Buttons[3] := FBtnIni;
   Buttons[4] := FBtnWindow;
-  Buttons[5] := FBtnSize;
-  ButtonW := (AreaW - 5 * 2) div 6;
-  for BtnIdx := 0 to 5 do
+  ButtonW := (AreaW - 4 * 2) div 5;
+  for BtnIdx := 0 to 4 do
     Buttons[BtnIdx].SetBounds(BtnIdx * (ButtonW + 2), 0, ButtonW, BarH);
   Inc(PosY, BarH + 2);
   FStatus.SetBounds(Gap, PosY, AreaW, StatusH);
   Inc(PosY, StatusH);
-  if FFitWidth then
-    ScreenW := AreaW
-  else
-    ScreenW := Round(DisplayWidthMm * Screen.PixelsPerInch / 25.4);
-  DeviceH := FDevice.Arrange(AreaW, ClientHeight - PosY - SerialMinH - 2 * Gap,
-                             ScreenW);
-  FDevice.SetBounds(Gap, PosY, AreaW, DeviceH);
+  DeviceSize := FDevice.Arrange(AreaW,
+                                ClientHeight - PosY - SerialMinH - 2 * Gap);
+  FDevice.SetBounds(Gap, PosY, DeviceSize.X, DeviceSize.Y);
   FDevice.Invalidate;
-  Inc(PosY, DeviceH + Gap);
+  Inc(PosY, DeviceSize.Y + Gap);
   if ClientHeight - PosY - Gap > 20 then
     FSerial.SetBounds(Gap, PosY, AreaW, ClientHeight - PosY - Gap)
   else
     FSerial.SetBounds(Gap, PosY, AreaW, 20);
-end;
-
-procedure TArdSimPanel.BtnSizeClick(Sender: TObject);
-begin
-  FFitWidth := not FFitWidth;
-  LayoutControls;
 end;
 
 procedure TArdSimPanel.Log(const AText: string);
