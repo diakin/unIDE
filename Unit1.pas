@@ -27989,11 +27989,28 @@ begin
 end;
 
 // Перед сборкой и запуском: скетч - цель сборки Arduino, g++ - свой MinGW
-// unIDE (нет - build_sim.cmd ищет сам)
+// unIDE (нет - build_sim.cmd ищет сам), папки libraries для шрифтов UTFT
 procedure TForm1.ArdSimNeedSketch(Sender: TObject);
+var
+  Settings: TArdSettings;
 begin
   FArdSim.SketchFile := BuildTargetOf(bkArduino);
   FArdSim.MingwBin := ExtractFilePath(string(MingwLocalGpp));
+  // Шрифты UTFT скетча - из папок libraries (со вложенными), как у
+  // Include Library: скетчбук, своя папка библиотек, Arduino IDE
+  Settings := ArdCurSettings;
+  FArdSim.FontRoots.Clear;
+  if Settings.SketchPath <> '' then
+    FArdSim.FontRoots.Add(IncludeTrailingPathDelimiter(Settings.SketchPath) +
+      'libraries');
+  if Settings.LibPath <> '' then
+    FArdSim.FontRoots.Add(Settings.LibPath);
+  if Settings.IdePath <> '' then
+    FArdSim.FontRoots.Add(IncludeTrailingPathDelimiter(Settings.IdePath) +
+      'libraries');
+  if Settings.Arduino15Path <> '' then
+    FArdSim.FontRoots.Add(IncludeTrailingPathDelimiter(Settings.Arduino15Path) +
+      'libraries');
 end;
 
 procedure TForm1.ArdSimLog(Sender: TObject; const AText: string);

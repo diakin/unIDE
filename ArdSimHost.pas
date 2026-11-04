@@ -39,7 +39,8 @@ uses
   {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Controls,
   Graphics, StdCtrls, ExtCtrls, Forms, IniFiles, UiStdCtrls, UiButton,
-  UiEditCtrls, ProcRun;
+  UiEditCtrls, ProcRun,
+  ArdSimFonts;   // шрифты UTFT из libraries для build_sim.cmd
 
 const
   ArdSimScreenW = 480;
@@ -131,6 +132,7 @@ type
     FSketchFile: string;
     FArdSimDir: string;
     FMingwBin: string;
+    FFontRoots: TStringList;  // папки libraries: шрифты UTFT для сборки
     FOnLog: TArdSimTextEvent;
     FOnOpenFile: TArdSimTextEvent;
     FOnNeedSketch: TNotifyEvent;
@@ -277,6 +279,9 @@ type
     property ArdSimDir: string read FArdSimDir write FArdSimDir;
     // Папка bin своего MinGW unIDE; '' - build_sim.cmd ищет сам
     property MingwBin: string read FMingwBin write FMingwBin;
+    // Папки libraries (со вложенными): там ищутся .c шрифтов UTFT, которые
+    // объявлены в скетче (ArdSimFonts); задаёт Unit1 в OnNeedSketch
+    property FontRoots: TStringList read FFontRoots;
     property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
     property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
     property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
@@ -872,6 +877,7 @@ begin
   {$ENDIF}
   SetLength(FPixels, ArdSimScreenW * ArdSimScreenH);
   FDbgInfo := TStringList.Create;
+  FFontRoots := TStringList.Create;
   FDbgFiles := TStringList.Create;
 
   FBar := TUiPanel.Create(Self);
@@ -927,6 +933,7 @@ begin
   inherited Destroy;
   FDbgInfo.Free;
   FDbgFiles.Free;
+  FFontRoots.Free;
 end;
 
 procedure TArdSimPanel.Resize;
@@ -1154,6 +1161,8 @@ end;
 procedure TArdSimPanel.StartBuild(ARunAfter: Boolean);
 var
   SimDir, Command: string;
+  Notes: TStringList;
+  NoteIdx: Integer;
 begin
   SimDir := FArdSimDir;
   if SimDir = '' then
@@ -1167,6 +1176,17 @@ begin
     Exit;
   end;
   SimDir := IncludeTrailingPathDelimiter(SimDir);
+  // Шрифты UTFT скетча из папок libraries: список ardsim_build\ardsim_fonts.txt
+  Notes := TStringList.Create;
+  try
+    if ArdSimWriteFontList(FSketchFile, FFontRoots, Notes) = '' then
+      Log('ArdSim: список шрифтов не записан (ardsim_build\' +
+          ArdSimFontListName + ')');
+    for NoteIdx := 0 to Notes.Count - 1 do
+      Log(Notes[NoteIdx]);
+  finally
+    Notes.Free;
+  end;
   // cmd /c ""файл" "аргумент"" - внешние кавычки снимает cmd
   Command := '"' + SimDir + 'build_sim.cmd" "' + FSketchFile + '"';
   if FMingwBin <> '' then

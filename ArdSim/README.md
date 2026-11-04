@@ -31,7 +31,9 @@ ArdSim\build_sim.cmd D:\путь\к\скетчу\BS10-2024virtkbdSD-sb2.ino
 
 UTFT-шрифты (`SmallFont`, `BigFont`, `UbuntuBold` и т. д.) берутся:
 1. из `*.c` в папке скетча;
-2. из папки `%ARDSIM_FONTS%` (все `*.c`), а если она не задана — из `Documents\Arduino\libraries\UTFT\DefaultFonts.c`.
+2. из папки `%ARDSIM_FONTS%` (все `*.c`);
+3. при сборке из unIDE — из папок libraries со всеми вложенными папками: скетчбук, своя папка библиотек, Arduino IDE (как в Include Library). unIDE берёт имена из объявлений `extern uint8_t Имя[];` скетча и для каждого ищет первый `.c` с массивом-шрифтом этого имени. Найденные файлы — в `ardsim_build\ardsim_fonts.txt`, в журнале сборки — строки «ArdSim: шрифт Имя - файл». Файл, в котором есть массив, уже взятый из другого файла, пропускается, чтобы не было повторного определения;
+4. без этого списка (сборка из командной строки) и без `%ARDSIM_FONTS%` — `Documents\Arduino\libraries\UTFT\DefaultFonts.c`.
 
 Шрифт, который не нашёлся, берётся из `ArdSim\fonts` — это замена с тем же размером символа, но другим начертанием. Замены сгенерированы `tools/make_fonts.py`.
 
