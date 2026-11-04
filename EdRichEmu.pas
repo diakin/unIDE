@@ -142,6 +142,11 @@ type
     // прокрутка - сверху, «изменён» - AModified. Уведомления - как после
     // WM_SETTEXT (EN_CHANGE)
     procedure UseBuffer(ABuffer: TEdBuffer; AModified: Boolean);
+    // Буфер правили мимо окна (вторая панель Unit1 правит тот же буфер
+    // вкладки): текст изменён; каретка и выделение - в пределы текста,
+    // первая видимая строка - не за концом; уведомления (EN_CHANGE,
+    // перерисовка) - сейчас, если не внутри сообщения окну
+    procedure ExternalEdit;
     // Шаг строк и ширина символа (шрифт RichEdit1), табуляция - колонок
     procedure SetMetrics(ALineH, ACharW, ATabChars: Integer);
     // Сообщение окну RichEdit1: True - разобрано здесь, Message.Result -
@@ -804,6 +809,22 @@ begin
   FTextChanged := True;
   FNeedPaint := True;
   // Вне сообщения окну - уведомить сразу (в сообщении - Handle в конце)
+  if FDepth = 0 then
+    Notify;
+end;
+
+procedure TEdRichEmu.ExternalEdit;
+begin
+  // Слушатели буфера зовутся по порядку подписки: BufferChanged этого
+  // объекта может прийти и после вызова отсюда - флаги ставятся здесь
+  FTextChanged := True;
+  FModified := True;
+  FEditor.ClampToBuffer;
+  if FTopRow > FBuffer.Count - 1 then
+    FTopRow := FBuffer.Count - 1;
+  if FTopRow < 0 then
+    FTopRow := 0;
+  FNeedPaint := True;
   if FDepth = 0 then
     Notify;
 end;

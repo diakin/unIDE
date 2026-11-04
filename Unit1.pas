@@ -3625,6 +3625,11 @@ type
     function  SplitEditTop: Integer;
     procedure SplitUpdateHeaders;
     procedure SplitTrackClick(AWnd: HWND);
+    // Правка во второй панели (окно TEdView над буфером её вкладки)
+    procedure SplitEdChange(Sender: TObject);
+    procedure SplitSwapMenuClick(Sender: TObject);
+    function  SplitPaneEditing: Boolean;
+    function  SplitSaveWin: Boolean;
     procedure SplitShowTabsMenu(ACurrent: Integer; AHandler: TNotifyEvent);
     procedure EditHeaderTitleClick(Sender: TObject);
     procedure EditTabMenuClick(Sender: TObject);
@@ -4148,10 +4153,6 @@ type
     FSplitClickLine: Integer;
     FSplitClickCol: Integer;
     FSplitClickTop: Integer;
-    // Свой редактор: показать во второй панели копию текста, даже если в ней
-    // та же вкладка, что в редакторе (вкладка редактора сейчас сменится, а
-    // буфер своего редактора перейдёт к новой) - SplitRefresh
-    FSplitNoShare: Boolean;
     // Синхронная прокрутка второй панели (окно TEdView, свой редактор):
     // включена (кнопка Sync в её заголовке), идёт перенос положения из одной
     // панели в другую (чтобы ответ не вернулся обратно), первая видимая
@@ -10357,17 +10358,8 @@ begin
     // ещё активна (SaveActiveClrSchema пишет в схему активной вкладки)
     if (Form2 <> nil) and Form2.Visible then
       Form2.BeforeTabSwitch;
-    // Во второй панели буфер своего редактора (та же вкладка): он сейчас
-    // перейдёт к новой вкладке - панели копию текста прежней
-    if (FSplit <> nil) and (FEdEmu <> nil) and (FSplit.SharedBuffer <> nil) then
-    begin
-      FSplitNoShare := True;
-      try
-        SplitRefresh(-1);
-      finally
-        FSplitNoShare := False;
-      end;
-    end;
+    // Во второй панели буфер вкладки (свой редактор) - он остаётся буфером
+    // той же вкладки и после смены вкладки редактора: копия не нужна
     // Во второй панели эта же вкладка, а последние правки ещё не дошли до
     // неё (SplitTimerTick ждёт паузы) - обновить, пока текст в редакторе
     if (FSplit <> nil) and (FSplitWin = FWindowsIndex) and
@@ -27432,6 +27424,12 @@ end;
 
 procedure TForm1.N3Click(Sender: TObject);
 begin
+  // Правят во второй панели другую вкладку - Save (Ctrl+S) пишет её
+  if SplitPaneEditing and (FSplitWin <> FWindowsIndex) then
+  begin
+    SplitSaveWin;
+    Exit;
+  end;
   SaveCurrentFile; // Просто вызываем наш универсальный метод
 end;
 
@@ -89322,6 +89320,8 @@ begin
   FSplit.OnRowStyle := SplitRowStyle;
   FSplit.OnRowPaint := SplitRowPaint;
   FSplit.Header.OnSyncClick := SplitSyncClick;
+  FSplit.OnEdChange := SplitEdChange;
+  FSplit.OnSwapClick := SplitSwapMenuClick;
   FSplit.Header.OnDiffClick := CmpDiffClick;
   FSplit.Header.OnDiffPrev := CmpPrevClick;
   FSplit.Header.OnDiffNext := CmpNextClick;
@@ -89423,8 +89423,9 @@ var
   Kind: TFmtKind;
   FileName, Utf8Text, ErrText: string;
   Scheme: TClrScheme;
-  Shown, FromDisk, Shared: Boolean;
+  Shown, FromDisk, Shared, Editable: Boolean;
   TopLine: Integer;
+  PaneBuf: TEdBuffer;
 begin
   if (FSplit = nil) or not FSplit.Shown then
     Exit;
@@ -89447,7 +89448,9 @@ begin
     FSplitFmt := False;
   FSplit.SetTitle(TabFileName(FileName),
     PathNative(FileName) + #13#10 +
-    'Щелчок по тексту - править здесь; по заголовку - другая вкладка',
+    'Правка - прямо в этой панели; Code Insight, поиск, закладки - в ' +
+    'основном редакторе (правая кнопка > Править в основном редакторе); ' +
+    'щелчок по заголовку - другая вкладка',
     Kind <> fkNone, FSplitFmt);
   // Кнопка Sync - только у текста в окне TEdView (ниже, при своём редакторе)
   FSplit.Header.SetSync(False, FSplitSync);
@@ -89518,8 +89521,16 @@ begin
   begin
     // Заново и для того же буфера: схема и цвета могли смениться (тема);
     // подсветка разбирает текст лениво, по видимым строкам
-    Shared := (FEdEmu <> nil) and (FSplitWin = FWindowsIndex) and
-              not FSplitNoShare;
+    // Свой редактор: панель показывает буфер своей вкладки (у той же
+    // вкладки, что в редакторе, - тот же объект) и правит его прямо в
+    // панели (SplitEdChange). Большой файл на отображении и сгенерированный
+    // RQ FB - только просмотр
+    PaneBuf := nil;
+    if FEdEmu <> nil then
+      PaneBuf := FWindows[FSplitWin].Buffer;
+    Shared := PaneBuf <> nil;
+    Editable := Shared and not PaneBuf.IsMapped and
+                not RqFbIsGenerated(FileName);
     // Сравнение панелей - по текстам, которые сейчас покажут
     if FCmpOn then
       CmpRecalc;
@@ -89539,10 +89550,11 @@ begin
     FSplitSyncBusy := True;
     try
       if Shared then
-        FSplit.ShowEdText(FEdEmu.Buffer, '', Scheme, TopLine)
+        FSplit.ShowEdText(PaneBuf, '', Scheme, TopLine)
       else
         FSplit.ShowEdText(nil, EdWideText(SplitWinText(FSplitWin)), Scheme,
           TopLine);
+      FSplit.SetEdEditable(Editable);
     finally
       FSplitSyncBusy := False;
     end;
@@ -90406,6 +90418,137 @@ begin
 end;
 
 // Нажатие мыши в окне AWnd (AppMessage): в какой панели теперь работают
+// Текст изменили в самой второй панели. Та же вкладка, что в редакторе
+// (буфер общий): уведомления своего редактора - как после правки в нём
+// (RichEdit1Change: карта, звёздочка вкладки, перерисовка). Другая
+// вкладка: отметка изменений и разбор заново при показе
+procedure TForm1.SplitEdChange(Sender: TObject);
+begin
+  if not SplitWinValid(FSplitWin) then
+    Exit;
+  // Правят в панели - она активная (заголовок)
+  if not FSplitActive then
+  begin
+    FSplitActive := True;
+    SplitUpdateHeaders;
+  end;
+  if FSplitWin = FWindowsIndex then
+  begin
+    if FEdEmu <> nil then
+      FEdEmu.ExternalEdit;
+    // Перерисовка и звёздочка вкладки - и без EN_CHANGE (оно приходит не
+    // во всех сборках: в Linux-сборке RichEdit1Change не вызывается)
+    RichEdit1.Invalidate;
+    RefreshTabsModified;
+    if FTabs <> nil then
+      FTabs.Invalidate;
+    Exit;
+  end;
+  if not FWindows[FSplitWin].Modified then
+  begin
+    FWindows[FSplitWin].Modified := True;
+    UpdateTabCaption(FSplitWin);
+    if FTabs <> nil then
+      FTabs.Invalidate;
+  end;
+  FWindows[FSplitWin].MapValid := False;
+  // Сравнение панелей пересчитается после паузы в наборе (SplitTimerTick)
+  Inc(FEditSerial);
+end;
+
+// Правят во второй панели: её окно TEdView в режиме правки, и панель
+// активна (последний щелчок - в ней) или фокус у её окна
+function TForm1.SplitPaneEditing: Boolean;
+begin
+  Result := (FSplit <> nil) and FSplit.Shown and FSplit.Editable and
+            (FSplit.View = svEdText) and (FSplit.EdView <> nil) and
+            SplitWinValid(FSplitWin) and
+            (FSplitActive or FSplit.EdView.Focused);
+end;
+
+// Меню второй панели > «Править в основном редакторе»: панели меняются
+// местами, каретка - там же, где была в панели (как прежний щелчок)
+procedure TForm1.SplitSwapMenuClick(Sender: TObject);
+begin
+  if (FSplit = nil) or (FSplit.EdView = nil) or (FSplit.EdView.Buffer = nil) then
+    Exit;
+  SplitTextClick(FSplit.EdView.CaretRow, FSplit.EdView.CaretCol,
+    FSplit.EdView.TopRow);
+end;
+
+// Записать вкладку второй панели (не активную в редакторе): прямо из её
+// буфера, в кодировке и с переводом строки файла. Новый файл (нужно имя)
+// и большой файл на отображении - обычным путём, как ConfirmSaveOthers:
+// вкладка на время становится активной
+function TForm1.SplitSaveWin: Boolean;
+var
+  WinIdx, OldIdx: Integer;
+  FileName, Raw: string;
+  PaneBuf: TEdBuffer;
+  LineEnd: Byte;
+  Stream: TFileStream;
+  Bom: array[0..2] of Byte;
+begin
+  Result := False;
+  WinIdx := FSplitWin;
+  if not SplitWinValid(WinIdx) then
+    Exit;
+  FileName := FWindows[WinIdx].FileName;
+  PaneBuf := FWindows[WinIdx].Buffer;
+  if IsUntitledName(FileName) or (PaneBuf = nil) or PaneBuf.IsMapped then
+  begin
+    OldIdx := FWindowsIndex;
+    ActivateWindow(WinIdx);
+    Result := SaveCurrentFile;
+    if SplitWinValid(OldIdx) and (OldIdx <> FWindowsIndex) then
+      ActivateWindow(OldIdx);
+    Exit;
+  end;
+  // Файл на диске изменили снаружи - спросить до записи поверх
+  if not CheckDiskChanges(WinIdx) then
+    Exit;
+  if not SplitWinValid(WinIdx) or (FWindows[WinIdx].Buffer <> PaneBuf) then
+    Exit;
+  LineEnd := FWindows[WinIdx].LineEnd;
+  if LineEnd = EdLineEndNone then
+  begin
+    {$IFDEF UNIX}
+    LineEnd := EdLineEndLF;
+    {$ELSE}
+    LineEnd := EdLineEndCRLF;
+    {$ENDIF}
+  end;
+  Raw := EdEncodeBuffer(PaneBuf, FWindows[WinIdx].IsUtf8,
+    LineEnd = EdLineEndLF);
+  try
+    Stream := TFileStream.Create(FileName, fmCreate);
+    try
+      if FWindows[WinIdx].IsUtf8 and FWindows[WinIdx].HasBom then
+      begin
+        Bom[0] := $EF; Bom[1] := $BB; Bom[2] := $BF;
+        Stream.WriteBuffer(Bom, 3);
+      end;
+      if Raw <> '' then
+        Stream.WriteBuffer(Raw[1], Length(Raw));
+    finally
+      Stream.Free;
+    end;
+  except
+    on Err: Exception do
+    begin
+      ShowMessage('Не удалось сохранить файл: ' + Err.Message);
+      Exit;
+    end;
+  end;
+  NoteDiskRaw(FileName, Raw, FWindows[WinIdx].IsUtf8);
+  FWindows[WinIdx].Modified := False;
+  UpdateTabCaption(WinIdx);
+  if FTabs <> nil then
+    FTabs.Invalidate;
+  StatusBar1.Panels[0].Text := 'Сохранено: ' + ExtractFileName(FileName);
+  Result := True;
+end;
+
 procedure TForm1.SplitTrackClick(AWnd: HWND);
 var
   NewActive: Boolean;
