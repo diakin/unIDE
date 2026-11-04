@@ -17,9 +17,13 @@ unit DlgTtfToUtft;
 //  Параметры: шрифт, жирный, курсив, сглаживание (вкл. - сглаженный текст
 //  и порог яркости; выкл. - GDI рисует сразу без сглаживания, мелкие
 //  размеры обычно чище), клетка, размер шрифта в точках (высота em), сдвиг
-//  X, Y, символ по центру клетки, диапазон кодов, имя массива.
-//  «Подобрать» - наибольший размер, при котором все символы диапазона
-//  входят в клетку, и сдвиг Y, при котором они по высоте в середине.
+//  X, Y, промежуток между символами и строками (UTFT рисует клетки
+//  вплотную, промежуток - пустые точки внутри клетки), символ по центру
+//  клетки, диапазон кодов, имя массива.
+//  «Размер под клетку» - наибольший размер шрифта, при котором все символы
+//  диапазона с промежутками входят в клетку; «Клетку под размер» -
+//  наименьшая клетка (ширина кратна 8) для размера и промежутков. Оба
+//  ставят символы по середине клетки.
 //
 //  Справа - образец 1:1 (как в FontViewer) и под ним выбранный символ
 //  крупно (щелчок по образцу). Символы, вылезающие за клетку, перечислены
@@ -53,6 +57,7 @@ type
     CellW, CellH: Integer;
     PixelSize: Integer;       // высота em, точки
     OffsetX, OffsetY: Integer;
+    GapX, GapY: Integer;      // пустых точек между символами, между строками
     Threshold: Integer;       // %, при сглаживании
     FirstChar, LastChar: Integer;
   end;
@@ -98,10 +103,11 @@ type
     FBtnTtf: TUiButton;
     FChkBold, FChkItalic, FChkSmooth, FChkCenter: TUiCheckBox;
     FEdCellW, FEdCellH, FEdSize, FEdOffX, FEdOffY, FEdThreshold: TUiEdit;
+    FEdGapX, FEdGapY: TUiEdit;
     FEdFirst, FEdLast: TUiEdit;
     FCmbRange: TUiComboBox;
     FEdName: TUiEdit;
-    FBtnFit, FBtnSave, FBtnClose: TUiButton;
+    FBtnFit, FBtnFitCell, FBtnSave, FBtnClose: TUiButton;
     FLblInfo: TUiLabel;
     FLblClip: TUiLabel;
     FScroll: TScrollBox;
@@ -127,6 +133,7 @@ type
     function  ZoomScale: Integer;
     procedure BtnTtfClick(Sender: TObject);
     procedure BtnFitClick(Sender: TObject);
+    procedure BtnFitCellClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
     procedure BtnCloseClick(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -841,9 +848,9 @@ begin
   RowStep := FTextHeight + 14;
   Position := poMainFormCenter;
   Width := 900;
-  Height := 700;
+  Height := 760;
   Constraints.MinWidth := 700;
-  Constraints.MinHeight := 520;
+  Constraints.MinHeight := 600;
 
   FSidePanel := TUiPanel.Create(Self);
   FSidePanel.Parent := Self;
@@ -887,10 +894,20 @@ begin
   Inc(RowY, RowStep);
   AddLabel('Размер шрифта:', 8, RowY);
   FEdSize := AddEdit(ColX, RowY, 50, 'Высота em шрифта, точек');
-  FBtnFit := MakeButton('Подобрать', 'Наибольший размер, при котором все ' +
-    'символы диапазона входят в клетку; сдвиг Y - по середине',
-    ColX + 70, RowY - 1, 100, BtnFitClick);
   Inc(RowY, RowStep);
+  AddLabel('Промежуток X, Y:', 8, RowY);
+  FEdGapX := AddEdit(ColX, RowY, 50, 'Пустых точек между соседними ' +
+    'символами (UTFT рисует клетки вплотную - промежуток внутри клетки)');
+  FEdGapY := AddEdit(ColX + 70, RowY, 50, 'Пустых точек между строками');
+  Inc(RowY, RowStep);
+  FBtnFit := MakeButton('Размер под клетку', 'Наибольший размер шрифта, ' +
+    'при котором все символы диапазона с промежутками входят в клетку; ' +
+    'символы - по середине клетки по высоте', 8, RowY - 1, 136, BtnFitClick);
+  FBtnFitCell := MakeButton('Клетку под размер', 'Наименьшая клетка ' +
+    '(ширина кратна 8) для этого размера шрифта и промежутков; остаток ' +
+    'ширины до кратного 8 - добавка к промежутку', 154, RowY - 1, 136,
+    BtnFitCellClick);
+  Inc(RowY, RowStep + 2);
   AddLabel('Сдвиг X, Y:', 8, RowY);
   FEdOffX := AddEdit(ColX, RowY, 50, 'Сдвиг символа вправо, точек');
   FEdOffY := AddEdit(ColX + 70, RowY, 50, 'Сдвиг символа вниз, точек ' +
@@ -970,6 +987,8 @@ begin
   FEdSize.Text := '22';
   FEdOffX.Text := '0';
   FEdOffY.Text := '0';
+  FEdGapX.Text := '2';
+  FEdGapY.Text := '0';
   FEdThreshold.Text := '50';
   FCmbRange.ItemIndex := 0;
   FEdFirst.Text := '32';
@@ -1014,6 +1033,11 @@ begin
   else if not EditNumber(FEdOffX, AParams.OffsetX) or
      not EditNumber(FEdOffY, AParams.OffsetY) then
     Problem := 'Сдвиг X, Y - числа'
+  else if not EditNumber(FEdGapX, AParams.GapX) or
+     not EditNumber(FEdGapY, AParams.GapY) or (AParams.GapX < 0) or
+     (AParams.GapY < 0) or (AParams.GapX >= AParams.CellW) or
+     (AParams.GapY >= AParams.CellH) then
+    Problem := 'Промежуток X, Y: от 0, меньше клетки'
   else if not EditNumber(FEdThreshold, AParams.Threshold) or
      (AParams.Threshold < 1) or (AParams.Threshold > 99) then
     Problem := 'Порог: 1..99 %'
@@ -1052,6 +1076,8 @@ begin
     FEdSize.Text := IntToStr(AParams.PixelSize);
     FEdOffX.Text := IntToStr(AParams.OffsetX);
     FEdOffY.Text := IntToStr(AParams.OffsetY);
+    FEdGapX.Text := IntToStr(AParams.GapX);
+    FEdGapY.Text := IntToStr(AParams.GapY);
     FEdThreshold.Text := IntToStr(AParams.Threshold);
     FEdFirst.Text := IntToStr(AParams.FirstChar);
     FEdLast.Text := IntToStr(AParams.LastChar);
@@ -1165,8 +1191,16 @@ begin
     Params.LastChar, Params.FirstChar, Params.LastChar, FFont.CharCount,
     Length(FFont.Data)]);
   if Ink.Found then
+  begin
     FLblInfo.Caption := FLblInfo.Caption + Format('; точки символов: ' +
       'x %d..%d, y %d..%d', [Ink.Left, Ink.Right, Ink.Top, Ink.Bottom]);
+    // Наименьший промежуток: пустые столбцы справа одной клетки и слева
+    // соседней (по объединению всех символов)
+    if Ink.ClippedCount = 0 then
+      FLblInfo.Caption := FLblInfo.Caption + Format('; промежуток не ' +
+        'меньше %d по X, %d по Y', [Ink.Left + Params.CellW - 1 - Ink.Right,
+        Ink.Top + Params.CellH - 1 - Ink.Bottom]);
+  end;
   if Ink.ClippedCount > 0 then
   begin
     FLblClip.Font.Color := $000000C0;
@@ -1174,7 +1208,7 @@ begin
       FLblClip.Font.Color := $006060FF;
     FLblClip.Caption := Format('За клетку вылезают %d символов: %s',
       [Ink.ClippedCount, Ink.Clipped]) +
-      ' - уменьшите размер, сдвиньте или нажмите «Подобрать»';
+      ' - уменьшите размер, сдвиньте или нажмите «Размер под клетку» или «Клетку под размер»';
   end
   else
     FLblClip.Caption := '';
@@ -1339,12 +1373,104 @@ begin
   end;
 end;
 
+// Клетка, в которую входят точки всех символов (AInk - при сдвиге 0, 0) с
+// промежутками: ширина (до кратного 8 не округлена), высота
+procedure InkCellSize(const AParams: TTtfParams; const AInk: TTtfInk;
+  var ANeedW, ANeedH: Integer);
+var
+  LeftHalf2, RightHalf2: Integer;
+begin
+  ANeedH := AInk.Bottom - AInk.Top + 1 + AParams.GapY;
+  if AParams.Center then
+  begin
+    // По центру: символ стоит от середины клетки; половины - в удвоенных
+    // точках, чтобы не терять полточки
+    LeftHalf2 := AParams.CellW - 2 * AInk.Left;
+    RightHalf2 := 2 * (AInk.Right + 1) - AParams.CellW;
+    if RightHalf2 > LeftHalf2 then
+      LeftHalf2 := RightHalf2;
+    ANeedW := LeftHalf2 + AParams.GapX;
+  end
+  else
+    ANeedW := AInk.Right - AInk.Left + 1 + AParams.GapX;
+end;
+
+// Сдвиг, при котором символы - по середине клетки (AInk - при сдвиге 0, 0)
+procedure CenterOffsets(var AParams: TTtfParams; const AInk: TTtfInk);
+begin
+  AParams.OffsetY := (AParams.CellH - (AInk.Bottom - AInk.Top + 1)) div 2 -
+    AInk.Top;
+  if AParams.Center then
+    AParams.OffsetX := 0
+  else
+    AParams.OffsetX := (AParams.CellW - (AInk.Right - AInk.Left + 1)) div 2 -
+      AInk.Left;
+end;
+
+// Наименьшая клетка для размера шрифта и промежутков
+procedure TDlgTtfToUtft.BtnFitCellClick(Sender: TObject);
+var
+  Params, Probe: TTtfParams;
+  Ink, Check: TTtfInk;
+  NeedW, NeedH, Attempt: Integer;
+begin
+  if not ReadParams(Params) then
+    Exit;
+  Screen.Cursor := crHourGlass;
+  try
+    Probe := Params;
+    Probe.OffsetX := 0;
+    Probe.OffsetY := 0;
+    Ink := TtfMeasureInk(Probe);
+    if not Ink.Found then
+      Exit;
+    InkCellSize(Probe, Ink, NeedW, NeedH);
+    Params.CellW := ((NeedW + 7) div 8) * 8;
+    if Params.CellW < 8 then
+      Params.CellW := 8;
+    Params.CellH := NeedH;
+    if Params.CellH < 1 then
+      Params.CellH := 1;
+    // Середина клетки - с точностью до точки; если что-то вылезло -
+    // клетка шире на 8 (по высоте - на точку)
+    for Attempt := 1 to 4 do
+    begin
+      if (Params.CellW > 248) or (Params.CellH > 255) then
+        Break;
+      Probe := Params;
+      Probe.OffsetX := 0;
+      Probe.OffsetY := 0;
+      Ink := TtfMeasureInk(Probe);
+      CenterOffsets(Params, Ink);
+      Check := TtfMeasureInk(Params);
+      if Check.ClippedCount = 0 then
+        Break;
+      if (Check.Left < 0) or (Check.Right >= Params.CellW) then
+        Inc(Params.CellW, 8);
+      if (Check.Top < 0) or (Check.Bottom >= Params.CellH) then
+        Inc(Params.CellH);
+    end;
+    if Params.CellW > 248 then
+      Params.CellW := 248;
+    if Params.CellH > 255 then
+      Params.CellH := 255;
+    if Params.GapX >= Params.CellW then
+      Params.GapX := 0;
+    if Params.GapY >= Params.CellH then
+      Params.GapY := 0;
+    WriteParams(Params);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  Rebuild;
+end;
+
 // Наибольший размер, при котором точки всех символов входят в клетку
 procedure TDlgTtfToUtft.BtnFitClick(Sender: TObject);
 var
   Params, Probe: TTtfParams;
   Ink: TTtfInk;
-  LowSize, HighSize, MidSize, BestSize: Integer;
+  LowSize, HighSize, MidSize, BestSize, NeedW, NeedH: Integer;
 
   function Fits(ASize: Integer; var AInk: TTtfInk): Boolean;
   begin
@@ -1353,14 +1479,11 @@ var
     Probe.OffsetX := 0;
     Probe.OffsetY := 0;
     AInk := TtfMeasureInk(Probe);
-    Result := AInk.Found and (AInk.Bottom - AInk.Top + 1 <= Params.CellH);
+    Result := AInk.Found;
     if Result then
     begin
-      if Params.Center then
-        // По центру: левая и правая точки - внутри клетки
-        Result := (AInk.Left >= 0) and (AInk.Right < Params.CellW)
-      else
-        Result := AInk.Right - AInk.Left + 1 <= Params.CellW;
+      InkCellSize(Probe, AInk, NeedW, NeedH);
+      Result := (NeedW <= Params.CellW) and (NeedH <= Params.CellH);
     end;
   end;
 
@@ -1387,12 +1510,7 @@ begin
       Exit;
     Fits(BestSize, Ink);
     Params.PixelSize := BestSize;
-    // По высоте - в середине клетки
-    Params.OffsetY := (Params.CellH - (Ink.Bottom - Ink.Top + 1)) div 2 - Ink.Top;
-    if Params.Center then
-      Params.OffsetX := 0
-    else
-      Params.OffsetX := (Params.CellW - (Ink.Right - Ink.Left + 1)) div 2 - Ink.Left;
+    CenterOffsets(Params, Ink);
     WriteParams(Params);
   finally
     Screen.Cursor := crDefault;
@@ -1539,6 +1657,8 @@ begin
     Params.PixelSize := Ini.ReadInteger(TtfSection, 'Size', Params.PixelSize);
     Params.OffsetX := Ini.ReadInteger(TtfSection, 'OffsetX', Params.OffsetX);
     Params.OffsetY := Ini.ReadInteger(TtfSection, 'OffsetY', Params.OffsetY);
+    Params.GapX := Ini.ReadInteger(TtfSection, 'GapX', Params.GapX);
+    Params.GapY := Ini.ReadInteger(TtfSection, 'GapY', Params.GapY);
     Params.Threshold := Ini.ReadInteger(TtfSection, 'Threshold', Params.Threshold);
     Params.FirstChar := Ini.ReadInteger(TtfSection, 'First', Params.FirstChar);
     Params.LastChar := Ini.ReadInteger(TtfSection, 'Last', Params.LastChar);
@@ -1583,6 +1703,8 @@ begin
     Ini.WriteInteger(TtfSection, 'Size', Params.PixelSize);
     Ini.WriteInteger(TtfSection, 'OffsetX', Params.OffsetX);
     Ini.WriteInteger(TtfSection, 'OffsetY', Params.OffsetY);
+    Ini.WriteInteger(TtfSection, 'GapX', Params.GapX);
+    Ini.WriteInteger(TtfSection, 'GapY', Params.GapY);
     Ini.WriteInteger(TtfSection, 'Threshold', Params.Threshold);
     Ini.WriteInteger(TtfSection, 'First', Params.FirstChar);
     Ini.WriteInteger(TtfSection, 'Last', Params.LastChar);
