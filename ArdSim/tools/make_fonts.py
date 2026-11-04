@@ -36,56 +36,32 @@ Count = 95
 
 
 def fitFont(path, width, height):
-    # the largest size where the line (ascent + descent) fits the cell
-    # height; the width is fitted later by stretching (UTFT fonts fill
-    # their cells, a TrueType glyph at this size is narrower)
+    # the largest size where 'M' and 'g' fit in the cell
     best = ImageFont.truetype(path, 4)
     for size in range(4, height * 2):
         font = ImageFont.truetype(path, size)
         ascent, descent = font.getmetrics()
-        if ascent + descent > height:
+        widest = max(font.getbbox(chr(code))[2] for code in range(First, First + Count))
+        if ascent + descent > height or widest > width + 1:
             break
         best = font
     return best
 
 
-def widestGlyph(font, first, count):
-    return max(font.getbbox(chr(code))[2] - font.getbbox(chr(code))[0]
-               for code in range(first, first + count) if chr(code) != ' ')
-
-
-def glyphBytes(font, char, width, height, widest):
-    # render 4x larger in grey, stretch the widest glyph to the cell width
-    # minus one pixel of spacing, then threshold to 1 bit
-    scale = 4
-    big = ImageFont.truetype(font.path, font.size * scale)
-    ascent, descent = big.getmetrics()
-    left, top, right, bottom = big.getbbox(char)
-    canvasW = max(right - left, 1) + 2 * scale
-    canvasH = height * scale
-    image = Image.new('L', (canvasW, canvasH), 0)
+def glyphBytes(font, char, width, height):
+    image = Image.new('1', (width, height), 0)
     draw = ImageDraw.Draw(image)
-    offsetY = (canvasH - (ascent + descent)) // 2
-    draw.text((scale - left, offsetY), char, font=big, fill=255)
-    stretch = (width - 1) / float(widest)
-    if stretch < 1.0:
-        stretch = 1.0
-    glyphW = max(1, int(round((right - left) / float(scale) * stretch)))
-    glyphW = min(glyphW, width)
-    small = image.crop((scale, 0, scale + max(right - left, 1), canvasH)).resize(
-        (glyphW, height), Image.LANCZOS)
-    cell = Image.new('1', (width, height), 0)
-    offsetX = (width - glyphW) // 2
-    for row in range(height):
-        for col in range(glyphW):
-            if small.getpixel((col, row)) >= 100:
-                cell.putpixel((offsetX + col, row), 1)
+    ascent, descent = font.getmetrics()
+    left, top, right, bottom = font.getbbox(char)
+    offsetX = (width - (right - left)) // 2 - left
+    offsetY = (height - (ascent + descent)) // 2
+    draw.text((offsetX, offsetY), char, font=font, fill=1)
     result = []
     for row in range(height):
         for byteIndex in range(width // 8):
             value = 0
             for bitIndex in range(8):
-                if cell.getpixel((byteIndex * 8 + bitIndex, row)):
+                if image.getpixel((byteIndex * 8 + bitIndex, row)):
                     value |= 0x80 >> bitIndex
             result.append(value)
     return result
@@ -98,9 +74,8 @@ def main(outDir):
         # SevenSegNumFont in UTFT holds only the digits
         first, count = (0x30, 10) if name == 'SevenSegNumFont' else (First, Count)
         data = [width, height, first, count]
-        widest = widestGlyph(font, first, count)
         for code in range(first, first + count):
-            data += glyphBytes(font, chr(code), width, height, widest)
+            data += glyphBytes(font, chr(code), width, height)
         lines = ['// ArdSim stand-in for the UTFT font %s (%dx%d), made by' % (name, width, height),
                  '// tools/make_fonts.py. Replaced by the real font file when it is linked.',
                  'const unsigned char %s[%d] = {' % (name, len(data))]
