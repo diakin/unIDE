@@ -66,7 +66,8 @@ for %%F in (*.cpp) do (
 )
 popd
 
-rem ---- stand-in fonts (once)
+rem ---- stand-in fonts (every build: a second or two; fonts\*.c may change)
+if exist "%OBJDIR%\libardsim_fonts.a" del "%OBJDIR%\libardsim_fonts.a"
 if not exist "%OBJDIR%\libardsim_fonts.a" (
   echo   stand-in fonts
   set STANDINOBJS=
