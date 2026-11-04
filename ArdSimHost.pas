@@ -297,9 +297,10 @@ end;
 
 // Сверху вниз: корпус (поля, экран, поля), под ним панель клавиатуры.
 // Экран - не шире AScreenW; поля корпуса по бокам ужимаются до MinBorder,
-// когда не хватает ширины. Если не хватает высоты: сначала уменьшается
-// клавиатура (до PadMinK от размера по фото), потом поля сверху и снизу,
-// потом экран - корпус с экраном остаётся похожим на прибор
+// когда не хватает ширины. Если не хватает высоты: сначала уменьшаются
+// клавиатура и поля корпуса вместе, в одной доле PadK (до PadMinK от
+// размеров по фото, пропорции прибора сохраняются), потом поля сверху и
+// снизу убираются до MinBorder, потом уменьшается экран
 function TArdSimDevice.Arrange(AWidth, AHeight, AScreenW: Integer): Integer;
 const
   PadMinK = 0.6;
@@ -311,7 +312,7 @@ const
     if ACompact then
       Borders := 2 * MinBorder
     else
-      Borders := Round(AScreen * (BodyTopK + BodyBottomK));
+      Borders := Round(AScreen * APadK * (BodyTopK + BodyBottomK));
     Result := Borders + AScreen * ArdSimScreenH div ArdSimScreenW +
               Round(AScreen * APadK * (PadTopK + PadBottomK + 4 * KeyPitchYK +
                                        KeyHeightK));
@@ -345,7 +346,7 @@ begin
   FScreenW := ScreenW;
   ScreenH := ScreenW * ArdSimScreenH div ArdSimScreenW;
 
-  SideBorder := Round(ScreenW * BodySideK);
+  SideBorder := Round(ScreenW * PadK * BodySideK);
   if ScreenW + 2 * SideBorder > AWidth then
     SideBorder := (AWidth - ScreenW) div 2;
   if SideBorder < MinBorder then
@@ -357,8 +358,8 @@ begin
   end
   else
   begin
-    TopBorder := Round(ScreenW * BodyTopK);
-    BottomBorder := Round(ScreenW * BodyBottomK);
+    TopBorder := Round(ScreenW * PadK * BodyTopK);
+    BottomBorder := Round(ScreenW * PadK * BodyBottomK);
   end;
   BodyW := ScreenW + 2 * SideBorder;
   BodyLeft := (AWidth - BodyW) div 2;
@@ -369,7 +370,7 @@ begin
   FScreenRect := Rect(BodyLeft + SideBorder, TopBorder,
                       BodyLeft + SideBorder + ScreenW, TopBorder + ScreenH);
 
-  // клавиатура - в долях ширины экрана, умноженной на PadK
+  // клавиатура - в долях ширины экрана, умноженной на PadK (как и поля)
   PadUnit := Round(ScreenW * PadK);
   KeyW := Round(PadUnit * KeyWidthK);
   KeyH := Round(PadUnit * KeyHeightK);
