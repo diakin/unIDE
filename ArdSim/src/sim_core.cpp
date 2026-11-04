@@ -178,10 +178,26 @@ static void checkEdges()
   }
 }
 
+// A click is one short press: the key is released when the sketch has
+// scanned it once (its row pin switched to input and back to output).
+// Without this a press longer than the 50 ms scan period repeats, since
+// driving the rows LOW again after the scan gives a new falling edge on
+// the column.
+static bool PressScanned = false;
+
 void pinMode(uint32_t pin, uint32_t mode)
 {
   if (pin < SIM_PIN_COUNT)
   {
+    int row = keyRowOfPin(pin);
+    if (PressRow >= 0 && row == PressRow && mode != OUTPUT)
+      PressScanned = true;
+    else if (PressRow >= 0 && row >= 0 && mode == OUTPUT && PressScanned)
+    {
+      PressRow = -1;
+      PressCol = -1;
+      PressScanned = false;
+    }
     PinMode[pin] = (uint8_t)mode;
     checkEdges();
   }
@@ -353,6 +369,7 @@ void simPoll()
     PressRow = PostRow;
     PressCol = PostCol;
     PressUntil = now + (uint64_t)PostHold * 1000;
+    PressScanned = false;
     PostReady = false;
     LeaveCriticalSection(&KeyLock);
     checkEdges();

@@ -11,7 +11,7 @@
 #include <cstring>
 #include <string>
 
-static const int KeyHoldMs = 120;          // > 50 ms period of kbdcheck2
+static const int KeyHoldMs = 300;          // upper limit; released after the first scan (sim_core)
 static const int SerialHeight = 140;
 static const int KeyWidth = 60, KeyHeight = 44, KeyGap = 6;
 static const int Margin = 8;
@@ -25,7 +25,9 @@ static HWND MainWindow, SerialEdit, StatusText;
 static const int IdTachoOn = 950, IdRpm = 951, IdApply = 952, IdEditIni = 953, IdSignalInfo = 954;
 static const int IdAmpBase = 960, IdPhaseBase = 970;   // + channel 0/1
 static const int PanelChannels = 2;                    // A0, A1 on the panel; the rest in the ini
-static HWND TachoBox, RpmEdit, SignalInfo;
+static const int IdRotorOn = 955, IdRotorInfo = 956, IdWeightsBase = 980;   // + plane
+static HWND TachoBox, RpmEdit, SignalInfo, RotorBox, RotorInfo;
+static HWND WeightsEdit[SIM_PLANES];
 static HWND AmpEdit[PanelChannels], PhaseEdit[PanelChannels];
 static SimSignalConfig SignalConfig;
 static std::string IniPath;
@@ -77,6 +79,9 @@ static void appendSerial(const std::string &text)
 // PC key -> keypad position; false if the key is not on the keypad
 static bool keyOfVirtualKey(WPARAM key, int &row, int &col)
 {
+  // Shift+3 / Shift+8 are '#' and '*': they come as WM_CHAR
+  if (GetKeyState(VK_SHIFT) < 0 && key >= '0' && key <= '9')
+    return false;
   static const struct { WPARAM Key; int Row, Col; } Map[] = {
     {VK_F1, 0, 0}, {VK_F2, 0, 1}, {VK_MULTIPLY, 0, 3},
     {'1', 1, 0}, {'2', 1, 1}, {'3', 1, 2}, {VK_UP, 1, 3},
@@ -152,11 +157,31 @@ static void configToPanel()
 {
   SendMessageA(TachoBox, BM_SETCHECK, SignalConfig.TachoOn ? BST_CHECKED : BST_UNCHECKED, 0);
   setEditNumber(RpmEdit, SignalConfig.Rpm);
+  bool rotorOn = SignalConfig.Rotor.Enabled;
+  SendMessageA(RotorBox, BM_SETCHECK, rotorOn ? BST_CHECKED : BST_UNCHECKED, 0);
   for (int channel = 0; channel < PanelChannels; channel++)
   {
     setEditNumber(AmpEdit[channel], SignalConfig.Channel[channel].HarmAmp[1]);
     setEditNumber(PhaseEdit[channel], SignalConfig.Channel[channel].HarmPhase[1]);
+    // with the rotor model the 1st harmonic is computed, not typed
+    EnableWindow(AmpEdit[channel], !rotorOn);
+    EnableWindow(PhaseEdit[channel], !rotorOn);
   }
+  for (int plane = 0; plane < SIM_PLANES; plane++)
+  {
+    SetWindowTextA(WeightsEdit[plane], SignalConfig.Rotor.Weights[plane]);
+    EnableWindow(WeightsEdit[plane], rotorOn);
+  }
+  char text[128] = "";
+  if (rotorOn)
+  {
+    double amp0, phase0, amp1, phase1;
+    simRotorResponse(SignalConfig, 0, amp0, phase0);
+    simRotorResponse(SignalConfig, 1, amp1, phase1);
+    snprintf(text, sizeof(text), "1x: A%d %.4f V %.0f deg, A%d %.4f V %.0f deg",
+      SignalConfig.Rotor.Sensor[0], amp0, phase0, SignalConfig.Rotor.Sensor[1], amp1, phase1);
+  }
+  SetWindowTextA(RotorInfo, text);
 }
 
 // ini -> generator and panel; a missing ini is created with the defaults
@@ -181,14 +206,19 @@ static void applyPanel()
     SignalConfig.Rpm = 0;
   if (SignalConfig.Rpm > 100000)
     SignalConfig.Rpm = 100000;
-  for (int channel = 0; channel < PanelChannels; channel++)
+  SignalConfig.Rotor.Enabled = SendMessageA(RotorBox, BM_GETCHECK, 0, 0) == BST_CHECKED;
+  for (int plane = 0; plane < SIM_PLANES; plane++)
+    GetWindowTextA(WeightsEdit[plane], SignalConfig.Rotor.Weights[plane], SIM_WEIGHTS_TEXT);
+  for (int channel = 0; channel < PanelChannels && !SignalConfig.Rotor.Enabled; channel++)
   {
     SignalConfig.Channel[channel].HarmAmp[1] = editNumber(AmpEdit[channel], SignalConfig.Channel[channel].HarmAmp[1]);
     SignalConfig.Channel[channel].HarmPhase[1] = editNumber(PhaseEdit[channel], SignalConfig.Channel[channel].HarmPhase[1]);
   }
+  simRotorApply(SignalConfig);
   simSignalSet(SignalConfig);
   simSignalSave(IniPath.c_str(), SignalConfig);
   IniTime = iniWriteTime();
+  configToPanel();
   showSignalInfo("applied");
 }
 
@@ -196,6 +226,9 @@ static bool isPanelEdit(HWND window)
 {
   if (window == RpmEdit)
     return true;
+  for (int plane = 0; plane < SIM_PLANES; plane++)
+    if (window == WeightsEdit[plane])
+      return true;
   for (int channel = 0; channel < PanelChannels; channel++)
     if (window == AmpEdit[channel] || window == PhaseEdit[channel])
       return true;
@@ -232,11 +265,26 @@ static void createSignalPanel(HWND window, int top)
     PhaseEdit[channel] = panelControl(window, "EDIT", "", ES_AUTOHSCROLL, left + 120, top, 70, 20, IdPhaseBase + channel);
     top += 24;
   }
+  RotorBox = panelControl(window, "BUTTON", "Rotor model (1x of A0/A1 from the weights)", BS_AUTOCHECKBOX,
+    left, top, 264, 20, IdRotorOn);
+  top += 22;
+  panelControl(window, "STATIC", "Weights on the rotor: g@deg; g@deg ...", 0, left, top, 264, 16, -1);
+  top += 18;
+  for (int plane = 0; plane < SIM_PLANES; plane++)
+  {
+    char caption[16];
+    snprintf(caption, sizeof(caption), "Plane %d", plane + 1);
+    panelControl(window, "STATIC", caption, 0, left, top + 3, 45, 16, -1);
+    WeightsEdit[plane] = panelControl(window, "EDIT", "", ES_AUTOHSCROLL, left + 50, top, 210, 20, IdWeightsBase + plane);
+    top += 24;
+  }
   top += 4;
   panelControl(window, "BUTTON", "Apply", BS_PUSHBUTTON, left, top, 80, 24, IdApply);
   panelControl(window, "BUTTON", "ardsim.ini...", BS_PUSHBUTTON, left + 90, top, 100, 24, IdEditIni);
   top += 30;
   SignalInfo = panelControl(window, "STATIC", "", 0, left, top, 264, 16, IdSignalInfo);
+  top += 18;
+  RotorInfo = panelControl(window, "STATIC", "", 0, left, top, 264, 16, IdRotorInfo);
 }
 
 static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
@@ -314,7 +362,7 @@ static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPA
       PostMessageA((HWND)lParam, EM_SETSEL, 0, -1);
       return 0;
     }
-    if (id == IdApply || (id == IdTachoOn && HIWORD(wParam) == BN_CLICKED))
+    if (id == IdApply || ((id == IdTachoOn || id == IdRotorOn) && HIWORD(wParam) == BN_CLICKED))
     {
       applyPanel();
       return 0;
@@ -331,6 +379,9 @@ static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPA
     }
     return 0;
   }
+  case WM_LBUTTONDOWN:
+    SetFocus(window);   // leave the panel edits: keys go to the keypad
+    return 0;
   case WM_MOUSEMOVE:
     showPixelInfo((short)LOWORD(lParam), (short)HIWORD(lParam));
     return 0;
@@ -372,8 +423,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int show)
   RegisterClassA(&windowClass);
 
   int clientHeight = Margin * 3 + screenHeight() + SerialHeight;
-  if (clientHeight < 510)
-    clientHeight = 510;   // room for the signal panel at x1
+  if (clientHeight < 610)
+    clientHeight = 610;   // room for the signal panel at x1
   RECT frame = {0, 0, keypadLeft() + 4 * (KeyWidth + KeyGap) + Margin, clientHeight};
   DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
   AdjustWindowRect(&frame, style, FALSE);
@@ -393,6 +444,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int show)
       if (message.message == WM_KEYDOWN && message.wParam == VK_RETURN)
       {
         applyPanel();
+        SetFocus(MainWindow);   // the keypad keys work again
         continue;
       }
       TranslateMessage(&message);

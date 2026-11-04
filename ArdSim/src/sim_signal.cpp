@@ -42,6 +42,7 @@ void simSignalDefaults(SimSignalConfig &config)
   config.PulseDeg = 10;
   config.TachoAnalog = 4;
   config.Vref = 3.3;
+  config.LcdPixelNs = 400;
   for (int channel = 0; channel < SIM_ANALOG_CHANNELS; channel++)
     config.Channel[channel].Offset = channel == 0 || channel == 1 ? 1.65 : 0;
   config.Channel[0].Noise = 0.003;
@@ -51,6 +52,87 @@ void simSignalDefaults(SimSignalConfig &config)
   config.Channel[1].Noise = 0.003;
   config.Channel[1].HarmAmp[1] = 0.20;
   config.Channel[1].HarmPhase[1] = 120;
+  SimRotor &rotor = config.Rotor;
+  rotor.Enabled = true;
+  rotor.AnglesWithRotation = true;
+  rotor.Sensor[0] = 0;
+  rotor.Sensor[1] = 1;
+  rotor.UnbMass[0] = 20;
+  rotor.UnbAngle[0] = 60;
+  rotor.UnbMass[1] = 12;
+  rotor.UnbAngle[1] = 200;
+  rotor.KAmp[0][0] = 0.010; rotor.KPhase[0][0] = 30;
+  rotor.KAmp[0][1] = 0.004; rotor.KPhase[0][1] = 80;
+  rotor.KAmp[1][0] = 0.003; rotor.KPhase[1][0] = 110;
+  rotor.KAmp[1][1] = 0.009; rotor.KPhase[1][1] = 20;
+  simRotorApply(config);
+}
+
+// ---------------------------------------------------------------- rotor
+// "10@0; 5.2@137" -> sum of the weights as a complex number (re, im)
+static void weightsSum(const char *text, double sign, double &sumRe, double &sumIm)
+{
+  sumRe = 0;
+  sumIm = 0;
+  const char *cursor = text;
+  while (*cursor)
+  {
+    char *end;
+    double mass = strtod(cursor, &end);
+    if (end == cursor)
+    {
+      cursor++;
+      continue;
+    }
+    cursor = end;
+    while (*cursor == ' ')
+      cursor++;
+    double angle = 0;
+    if (*cursor == '@')
+    {
+      angle = strtod(cursor + 1, &end);
+      cursor = end;
+    }
+    sumRe += mass * std::cos(sign * angle * TwoPi / 360.0);
+    sumIm += mass * std::sin(sign * angle * TwoPi / 360.0);
+  }
+}
+
+void simRotorResponse(const SimSignalConfig &config, int sensor, double &amp, double &phase)
+{
+  const SimRotor &rotor = config.Rotor;
+  double totalRe = 0, totalIm = 0;
+  // the model works with angles against rotation
+  double sign = rotor.AnglesWithRotation ? -1 : 1;
+  for (int plane = 0; plane < SIM_PLANES; plane++)
+  {
+    double weightRe, weightIm;
+    weightsSum(rotor.Weights[plane], sign, weightRe, weightIm);
+    double unbAngle = sign * rotor.UnbAngle[plane] * TwoPi / 360.0;
+    double unbRe = rotor.UnbMass[plane] * std::cos(unbAngle) + weightRe;
+    double unbIm = rotor.UnbMass[plane] * std::sin(unbAngle) + weightIm;
+    double kRe = rotor.KAmp[sensor][plane] * std::cos(rotor.KPhase[sensor][plane] * TwoPi / 360.0);
+    double kIm = rotor.KAmp[sensor][plane] * std::sin(rotor.KPhase[sensor][plane] * TwoPi / 360.0);
+    totalRe += kRe * unbRe - kIm * unbIm;
+    totalIm += kRe * unbIm + kIm * unbRe;
+  }
+  amp = std::sqrt(totalRe * totalRe + totalIm * totalIm);
+  phase = std::atan2(totalIm, totalRe) * 360.0 / TwoPi;
+  if (phase < 0)
+    phase += 360;
+}
+
+void simRotorApply(SimSignalConfig &config)
+{
+  if (!config.Rotor.Enabled)
+    return;
+  for (int sensor = 0; sensor < SIM_PLANES; sensor++)
+  {
+    int channel = config.Rotor.Sensor[sensor];
+    if (channel < 0 || channel >= SIM_ANALOG_CHANNELS)
+      continue;
+    simRotorResponse(config, sensor, config.Channel[channel].HarmAmp[1], config.Channel[channel].HarmPhase[1]);
+  }
 }
 
 static void ensureLock()
@@ -64,6 +146,7 @@ static void ensureLock()
 
 void simSignalSet(const SimSignalConfig &config)
 {
+  SimLcdPixelNs = config.LcdPixelNs;
   ensureLock();
   EnterCriticalSection(&ConfigLock);
   Pending = config;
@@ -115,6 +198,7 @@ bool simSignalLoad(const char *path, SimSignalConfig &config)
   config.PulseDeg = iniNumber(path, "Tacho", "PulseDeg", defaults.PulseDeg);
   config.TachoAnalog = (int)iniNumber(path, "Tacho", "Analog", defaults.TachoAnalog);
   config.Vref = iniNumber(path, "ADC", "Vref", defaults.Vref);
+  config.LcdPixelNs = iniNumber(path, "LCD", "PixelNs", defaults.LcdPixelNs);
   for (int channel = 0; channel < SIM_ANALOG_CHANNELS; channel++)
   {
     char section[8];
@@ -146,6 +230,36 @@ bool simSignalLoad(const char *path, SimSignalConfig &config)
       }
     }
   }
+  SimRotor &rotor = config.Rotor;
+  rotor.Enabled = iniNumber(path, "Rotor", "Enabled", defaults.Rotor.Enabled ? 1 : 0) != 0;
+  {
+    char direction[32];
+    GetPrivateProfileStringA("Rotor", "Angles", "with", direction, sizeof(direction), path);
+    rotor.AnglesWithRotation = _stricmp(direction, "against") != 0;
+  }
+  for (int plane = 0; plane < SIM_PLANES; plane++)
+  {
+    char key[16];
+    snprintf(key, sizeof(key), "Sensor%d", plane + 1);
+    rotor.Sensor[plane] = (int)iniNumber(path, "Rotor", key, defaults.Rotor.Sensor[plane]);
+    double values[2] = {defaults.Rotor.UnbMass[plane], defaults.Rotor.UnbAngle[plane]};
+    snprintf(key, sizeof(key), "Unbalance%d", plane + 1);
+    iniList(path, "Rotor", key, values, 2);
+    rotor.UnbMass[plane] = values[0];
+    rotor.UnbAngle[plane] = values[1];
+    snprintf(key, sizeof(key), "Weights%d", plane + 1);
+    GetPrivateProfileStringA("Rotor", key, "", rotor.Weights[plane], SIM_WEIGHTS_TEXT, path);
+    for (int sensor = 0; sensor < SIM_PLANES; sensor++)
+    {
+      snprintf(key, sizeof(key), "K%d%d", sensor + 1, plane + 1);
+      values[0] = defaults.Rotor.KAmp[sensor][plane];
+      values[1] = defaults.Rotor.KPhase[sensor][plane];
+      iniList(path, "Rotor", key, values, 2);
+      rotor.KAmp[sensor][plane] = values[0];
+      rotor.KPhase[sensor][plane] = values[1];
+    }
+  }
+  simRotorApply(config);
   return true;
 }
 
@@ -167,6 +281,25 @@ bool simSignalSave(const char *path, const SimSignalConfig &config)
   iniWrite(path, "Tacho", "PulseDeg", "%g", config.PulseDeg);
   iniWrite(path, "Tacho", "Analog", "%d", config.TachoAnalog);
   iniWrite(path, "ADC", "Vref", "%g", config.Vref);
+  iniWrite(path, "LCD", "PixelNs", "%g", config.LcdPixelNs);
+  const SimRotor &rotor = config.Rotor;
+  iniWrite(path, "Rotor", "Enabled", "%d", rotor.Enabled ? 1 : 0);
+  WritePrivateProfileStringA("Rotor", "Angles", rotor.AnglesWithRotation ? "with" : "against", path);
+  for (int plane = 0; plane < SIM_PLANES; plane++)
+  {
+    char key[16];
+    snprintf(key, sizeof(key), "Sensor%d", plane + 1);
+    iniWrite(path, "Rotor", key, "%d", rotor.Sensor[plane]);
+    snprintf(key, sizeof(key), "Unbalance%d", plane + 1);
+    iniWrite(path, "Rotor", key, "%g,%g", rotor.UnbMass[plane], rotor.UnbAngle[plane]);
+    for (int sensor = 0; sensor < SIM_PLANES; sensor++)
+    {
+      snprintf(key, sizeof(key), "K%d%d", sensor + 1, plane + 1);
+      iniWrite(path, "Rotor", key, "%g,%g", rotor.KAmp[sensor][plane], rotor.KPhase[sensor][plane]);
+    }
+    snprintf(key, sizeof(key), "Weights%d", plane + 1);
+    WritePrivateProfileStringA("Rotor", key, rotor.Weights[plane], path);
+  }
   for (int channel = 0; channel < SIM_ANALOG_CHANNELS; channel++)
   {
     const SimChannel &source = config.Channel[channel];

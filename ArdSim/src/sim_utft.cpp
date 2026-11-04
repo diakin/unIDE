@@ -8,6 +8,30 @@
 
 uint16_t SimScreen[SIM_SCREEN_H][SIM_SCREEN_W];
 volatile uint32_t SimScreenVersion = 0;
+volatile double SimLcdPixelNs = 400;
+
+// Drawing time of the real display: every pixel costs SimLcdPixelNs; the
+// sketch thread waits for the accumulated time (with simPoll, so timer
+// ticks go on). Without it a screen is drawn in no time and, for
+// example, a key code read by the 50 ms keypad timer is still there when
+// the next screen starts waiting for a key.
+static double LcdDebtNs = 0;
+
+static inline void lcdPixels(double count)
+{
+  LcdDebtNs += count * SimLcdPixelNs;
+}
+
+static void lcdDone()
+{
+  SimScreenVersion++;
+  if (LcdDebtNs < 200000)       // pay in portions of 0.2 ms and more
+    return;
+  uint64_t until = simMicrosNow() + (uint64_t)(LcdDebtNs / 1000);
+  LcdDebtNs = 0;
+  while (simMicrosNow() < until)
+    simPoll();
+}
 
 UTFT::UTFT() : FrontColor(0xFFFF), BackColor(0), Transparent(false), Font(nullptr), Orient(LANDSCAPE) {}
 
@@ -33,6 +57,7 @@ void UTFT::putPixel(int x, int y, word color)
   if (x < 0 || y < 0 || x >= SIM_SCREEN_W || y >= SIM_SCREEN_H)
     return;
   SimScreen[y][x] = color;
+  lcdPixels(1);
 }
 
 void UTFT::hLine(int x, int y, int length)
@@ -44,7 +69,7 @@ void UTFT::hLine(int x, int y, int length)
   }
   for (int index = 0; index <= length; index++)
     putPixel(x + index, y, FrontColor);
-  SimScreenVersion++;
+  lcdDone();
 }
 
 void UTFT::vLine(int x, int y, int length)
@@ -56,14 +81,15 @@ void UTFT::vLine(int x, int y, int length)
   }
   for (int index = 0; index <= length; index++)
     putPixel(x, y + index, FrontColor);
-  SimScreenVersion++;
+  lcdDone();
 }
 
 void UTFT::clrScr()
 {
   simPoll();
   memset(SimScreen, 0, sizeof(SimScreen));
-  SimScreenVersion++;
+  lcdPixels(SIM_SCREEN_W * SIM_SCREEN_H);
+  lcdDone();
 }
 
 void UTFT::fillScr(byte red, byte green, byte blue)
@@ -77,13 +103,14 @@ void UTFT::fillScr(word color)
   for (int y = 0; y < SIM_SCREEN_H; y++)
     for (int x = 0; x < SIM_SCREEN_W; x++)
       SimScreen[y][x] = color;
-  SimScreenVersion++;
+  lcdPixels(SIM_SCREEN_W * SIM_SCREEN_H);
+  lcdDone();
 }
 
 void UTFT::drawPixel(int x, int y)
 {
   putPixel(x, y, FrontColor);
-  SimScreenVersion++;
+  lcdDone();
 }
 
 void UTFT::drawLine(int x1, int y1, int x2, int y2)
@@ -129,7 +156,7 @@ void UTFT::drawLine(int x1, int y1, int x2, int y2)
       y1 += stepY;
     }
   }
-  SimScreenVersion++;
+  lcdDone();
 }
 
 static void orderRect(int &x1, int &y1, int &x2, int &y2)
@@ -178,7 +205,7 @@ void UTFT::fillRect(int x1, int y1, int x2, int y2)
   for (int y = y1; y <= y2; y++)
     for (int x = x1; x <= x2; x++)
       putPixel(x, y, FrontColor);
-  SimScreenVersion++;
+  lcdDone();
 }
 
 void UTFT::fillRoundRect(int x1, int y1, int x2, int y2)
@@ -239,7 +266,7 @@ void UTFT::drawCircle(int x, int y, int radius)
     putPixel(x + offsetY, y - offsetX, FrontColor);
     putPixel(x - offsetY, y - offsetX, FrontColor);
   }
-  SimScreenVersion++;
+  lcdDone();
 }
 
 void UTFT::fillCircle(int x, int y, int radius)
@@ -304,7 +331,7 @@ void UTFT::printChar(byte character, int x, int y)
       for (int row = 0; row < sizeY; row++)
         for (int col = 0; col < sizeX; col++)
           putPixel(x + col, y + row, BackColor);
-    SimScreenVersion++;
+    lcdDone();
     return;
   }
   const uint8_t *glyph = Font + 4 + (character - first) * bytesPerRow * sizeY;
@@ -321,7 +348,7 @@ void UTFT::printChar(byte character, int x, int y)
           putPixel(x + part * 8 + bit, y + row, BackColor);
       }
     }
-  SimScreenVersion++;
+  lcdDone();
 }
 
 void UTFT::print(const char *text, int x, int y, int deg)
@@ -399,5 +426,5 @@ void UTFT::drawBitmap(int x, int y, int sx, int sy, const uint16_t *data, int sc
         for (int dx = 0; dx < scale; dx++)
           putPixel(x + col * scale + dx, y + row * scale + dy, color);
     }
-  SimScreenVersion++;
+  lcdDone();
 }
