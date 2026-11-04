@@ -24,6 +24,8 @@ unit DlgFontViewer;
 //  extern uint8_t Имя[]; для скетча; Enter или двойной щелчок - открыть
 //  .c в unIDE (OnOpenFile). Под мышью - код символа в строке состояния.
 //
+//  Файл - Создать шрифт из TTF... - окно DlgTtfToUtft (OnMakeFont).
+//
 //  Окно строится в коде, .dfm нет. Немодальное, одно (ShowFontViewer),
 //  освобождается при закрытии.
 // ---------------------------------------------------------------------------
@@ -103,6 +105,8 @@ type
     FDefaultFolder: string;
     FPlaceSaved: Boolean;
     FOnOpenFile: TFontOpenFileEvent;
+    FOnMakeFont: TNotifyEvent;
+    FMiMakeFont: TMenuItem;
 
     FMainMenu: TMainMenu;
     FMenuBar: TUiMenuBar;
@@ -124,7 +128,6 @@ type
     procedure UpdateScroll;
     procedure UpdateColors;
     procedure UpdateStatus;
-    procedure MakeBitmap(AFont: TUtftFont);
     procedure ScrollTo(APos: Integer);
     procedure EnsureVisible(AIndex: Integer);
     function  FontAt(PosY: Integer): Integer;
@@ -139,6 +142,7 @@ type
     procedure MenuReloadClick(Sender: TObject);
     procedure MenuOpenInEditorClick(Sender: TObject);
     procedure MenuCloseClick(Sender: TObject);
+    procedure MenuMakeFontClick(Sender: TObject);
     procedure MenuCopyNameClick(Sender: TObject);
     procedure MenuCopyExternClick(Sender: TObject);
     procedure MenuAllCharsClick(Sender: TObject);
@@ -166,11 +170,23 @@ type
     // папка, если в ini её нет (libraries\UTFT)
     procedure SetPlacementIni(const AIniFile, ADefaultFolder: string);
     property OnOpenFile: TFontOpenFileEvent read FOnOpenFile write FOnOpenFile;
+    property OnMakeFont: TNotifyEvent read FOnMakeFont write FOnMakeFont;
   end;
 
-// Окно FontViewer: одно на программу; если уже открыто - поднять его
+// Окно FontViewer: одно на программу; если уже открыто - поднять его.
+// AOnMakeFont - пункт Файл - Создать шрифт из TTF... (nil - пункта нет)
 procedure ShowFontViewer(AOwner: TComponent; const AIniFile,
-  ADefaultFolder: string; AOnOpenFile: TFontOpenFileEvent);
+  ADefaultFolder: string; AOnOpenFile: TFontOpenFileEvent;
+  AOnMakeFont: TNotifyEvent);
+
+// Символы образца AFont (SampleCodes, SampleCols): все символы шрифта
+// (ASampleText = '') или текст
+procedure UtftSetSample(AFont: TUtftFont; const ASampleText: string);
+// Окно FontViewer, если открыто; nil - нет
+function FontViewerInstance: TDlgFontViewer;
+// Образец 1:1 белым на чёрном шириной FontViewWidth по SampleCodes;
+// AShowCells - клетки через одну темнее
+function UtftMakeSample(AFont: TUtftFont; AShowCells: Boolean): TBitmap;
 
 // Разбор .c-файла: каждый массив с инициализатором { } - в AList
 // (TUtftFont). Результат - False, если файл не прочитан
@@ -638,6 +654,97 @@ begin
     Result := CompareText(Font1.FileName, Font2.FileName);
 end;
 
+// Образец шрифта: FontViewWidth x строки символов, 1:1
+function UtftMakeSample(AFont: TUtftFont; AShowCells: Boolean): TBitmap;
+var
+  CodeIdx, Code, Offset, CellX, CellY, Row, Part, Bit, RunStart: Integer;
+  BytesPerRow, Rows: Integer;
+  Bits: Byte;
+  Canvas: TCanvas;
+begin
+  Result := TBitmap.Create;
+  Rows := (Length(AFont.SampleCodes) + AFont.SampleCols - 1) div AFont.SampleCols;
+  Result.PixelFormat := pf24bit;
+  Result.Width := FontViewWidth;
+  Result.Height := Rows * AFont.SizeY;
+  if Result.Height = 0 then
+    Exit;
+  Canvas := Result.Canvas;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := FvScreenColor;
+  Canvas.FillRect(Rect(0, 0, Result.Width, Result.Height));
+  BytesPerRow := AFont.SizeX div 8;
+  for CodeIdx := 0 to High(AFont.SampleCodes) do
+  begin
+    Code := AFont.SampleCodes[CodeIdx];
+    CellX := (CodeIdx mod AFont.SampleCols) * AFont.SizeX;
+    CellY := (CodeIdx div AFont.SampleCols) * AFont.SizeY;
+    Offset := AFont.GlyphOffset(Code);
+    if Offset < 0 then
+    begin
+      // Такого символа в шрифте нет (UTFT нарисовал бы мусор за таблицей)
+      Canvas.Brush.Color := FvMissingColor;
+      Canvas.FillRect(Rect(CellX, CellY, CellX + AFont.SizeX, CellY + AFont.SizeY));
+      Continue;
+    end;
+    if AShowCells and Odd(CodeIdx mod AFont.SampleCols + CodeIdx div AFont.SampleCols) then
+    begin
+      Canvas.Brush.Color := FvCellColor;
+      Canvas.FillRect(Rect(CellX, CellY, CellX + AFont.SizeX, CellY + AFont.SizeY));
+    end;
+    Canvas.Brush.Color := FvGlyphColor;
+    for Row := 0 to AFont.SizeY - 1 do
+    begin
+      // Подряд идущие точки строки - одним прямоугольником
+      RunStart := -1;
+      for Part := 0 to BytesPerRow - 1 do
+      begin
+        Bits := AFont.Data[Offset + Row * BytesPerRow + Part];
+        for Bit := 0 to 7 do
+          if (Bits and ($80 shr Bit)) <> 0 then
+          begin
+            if RunStart < 0 then
+              RunStart := Part * 8 + Bit;
+          end
+          else if RunStart >= 0 then
+          begin
+            Canvas.FillRect(Rect(CellX + RunStart, CellY + Row,
+              CellX + Part * 8 + Bit, CellY + Row + 1));
+            RunStart := -1;
+          end;
+      end;
+      if RunStart >= 0 then
+        Canvas.FillRect(Rect(CellX + RunStart, CellY + Row,
+          CellX + AFont.SizeX, CellY + Row + 1));
+    end;
+  end;
+end;
+
+// Символы образца: все символы шрифта (ASampleText = '') или текст;
+// столбцов - сколько клеток входит в FontViewWidth
+procedure UtftSetSample(AFont: TUtftFont; const ASampleText: string);
+var
+  CodeIdx: Integer;
+begin
+  if ASampleText = '' then
+  begin
+    SetLength(AFont.SampleCodes, AFont.CharCount);
+    for CodeIdx := 0 to AFont.CharCount - 1 do
+      AFont.SampleCodes[CodeIdx] := AFont.FirstChar + CodeIdx;
+  end
+  else
+  begin
+    SetLength(AFont.SampleCodes, Length(ASampleText));
+    for CodeIdx := 1 to Length(ASampleText) do
+      AFont.SampleCodes[CodeIdx - 1] := Ord(ASampleText[CodeIdx]);
+  end;
+  AFont.SampleCols := 1;
+  if AFont.SizeX > 0 then
+    AFont.SampleCols := FontViewWidth div AFont.SizeX;
+  if AFont.SampleCols < 1 then
+    AFont.SampleCols := 1;
+end;
+
 // ---------------------------------------------------------------------------
 //  TFontListView
 // ---------------------------------------------------------------------------
@@ -689,13 +796,20 @@ end;
 //  TDlgFontViewer
 // ---------------------------------------------------------------------------
 
+function FontViewerInstance: TDlgFontViewer;
+begin
+  Result := FontViewerWindow;
+end;
+
 procedure ShowFontViewer(AOwner: TComponent; const AIniFile,
-  ADefaultFolder: string; AOnOpenFile: TFontOpenFileEvent);
+  ADefaultFolder: string; AOnOpenFile: TFontOpenFileEvent;
+  AOnMakeFont: TNotifyEvent);
 begin
   if FontViewerWindow = nil then
   begin
     FontViewerWindow := TDlgFontViewer.CreateDlg(AOwner);
     FontViewerWindow.OnOpenFile := AOnOpenFile;
+    FontViewerWindow.OnMakeFont := AOnMakeFont;
     FontViewerWindow.SetPlacementIni(AIniFile, ADefaultFolder);
   end;
   FontViewerWindow.Show;
@@ -834,6 +948,9 @@ begin
   FMiOpenInEditor := AddItem(FileMenu, 'Открыть .c в &редакторе',
     ShortCut(VK_RETURN, []), MenuOpenInEditorClick);
   AddItem(FileMenu, '-', 0, nil);
+  FMiMakeFont := AddItem(FileMenu, 'Создать шрифт из &TTF...',
+    ShortCut(Ord('N'), [ssCtrl]), MenuMakeFontClick);
+  AddItem(FileMenu, '-', 0, nil);
   AddItem(FileMenu, '&Закрыть', ShortCut(VK_ESCAPE, []), MenuCloseClick);
 
   EditMenu := TMenuItem.Create(Self);
@@ -954,7 +1071,7 @@ end;
 // Места шрифтов в списке; образцы - заново
 procedure TDlgFontViewer.Relayout;
 var
-  Index, CodeIdx, PosY, LineHeight, Rows, CodeCount: Integer;
+  Index, PosY, LineHeight, Rows, CodeCount: Integer;
   FontItem: TUtftFont;
 begin
   FView.Canvas.Font := FView.Font;
@@ -968,22 +1085,7 @@ begin
     FontItem.Top := PosY;
     if FontItem.IsFont then
     begin
-      // Символы образца
-      if FSampleText = '' then
-      begin
-        SetLength(FontItem.SampleCodes, FontItem.CharCount);
-        for CodeIdx := 0 to FontItem.CharCount - 1 do
-          FontItem.SampleCodes[CodeIdx] := FontItem.FirstChar + CodeIdx;
-      end
-      else
-      begin
-        SetLength(FontItem.SampleCodes, Length(FSampleText));
-        for CodeIdx := 1 to Length(FSampleText) do
-          FontItem.SampleCodes[CodeIdx - 1] := Ord(FSampleText[CodeIdx]);
-      end;
-      FontItem.SampleCols := FontViewWidth div FontItem.SizeX;
-      if FontItem.SampleCols < 1 then
-        FontItem.SampleCols := 1;
+      UtftSetSample(FontItem, FSampleText);
       CodeCount := Length(FontItem.SampleCodes);
       Rows := (CodeCount + FontItem.SampleCols - 1) div FontItem.SampleCols;
       FontItem.SampleTop := 2 * LineHeight + 4;
@@ -1068,71 +1170,6 @@ begin
   end;
 end;
 
-// Образец шрифта: FontViewWidth x строки символов, 1:1
-procedure TDlgFontViewer.MakeBitmap(AFont: TUtftFont);
-var
-  CodeIdx, Code, Offset, CellX, CellY, Row, Part, Bit, RunStart: Integer;
-  BytesPerRow, Rows: Integer;
-  Bits: Byte;
-  Canvas: TCanvas;
-begin
-  AFont.Bitmap := TBitmap.Create;
-  Rows := (Length(AFont.SampleCodes) + AFont.SampleCols - 1) div AFont.SampleCols;
-  AFont.Bitmap.PixelFormat := pf24bit;
-  AFont.Bitmap.Width := FontViewWidth;
-  AFont.Bitmap.Height := Rows * AFont.SizeY;
-  if AFont.Bitmap.Height = 0 then
-    Exit;
-  Canvas := AFont.Bitmap.Canvas;
-  Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := FvScreenColor;
-  Canvas.FillRect(Rect(0, 0, AFont.Bitmap.Width, AFont.Bitmap.Height));
-  BytesPerRow := AFont.SizeX div 8;
-  for CodeIdx := 0 to High(AFont.SampleCodes) do
-  begin
-    Code := AFont.SampleCodes[CodeIdx];
-    CellX := (CodeIdx mod AFont.SampleCols) * AFont.SizeX;
-    CellY := (CodeIdx div AFont.SampleCols) * AFont.SizeY;
-    Offset := AFont.GlyphOffset(Code);
-    if Offset < 0 then
-    begin
-      // Такого символа в шрифте нет (UTFT нарисовал бы мусор за таблицей)
-      Canvas.Brush.Color := FvMissingColor;
-      Canvas.FillRect(Rect(CellX, CellY, CellX + AFont.SizeX, CellY + AFont.SizeY));
-      Continue;
-    end;
-    if FShowCells and Odd(CodeIdx mod AFont.SampleCols + CodeIdx div AFont.SampleCols) then
-    begin
-      Canvas.Brush.Color := FvCellColor;
-      Canvas.FillRect(Rect(CellX, CellY, CellX + AFont.SizeX, CellY + AFont.SizeY));
-    end;
-    Canvas.Brush.Color := FvGlyphColor;
-    for Row := 0 to AFont.SizeY - 1 do
-    begin
-      // Подряд идущие точки строки - одним прямоугольником
-      RunStart := -1;
-      for Part := 0 to BytesPerRow - 1 do
-      begin
-        Bits := AFont.Data[Offset + Row * BytesPerRow + Part];
-        for Bit := 0 to 7 do
-          if (Bits and ($80 shr Bit)) <> 0 then
-          begin
-            if RunStart < 0 then
-              RunStart := Part * 8 + Bit;
-          end
-          else if RunStart >= 0 then
-          begin
-            Canvas.FillRect(Rect(CellX + RunStart, CellY + Row,
-              CellX + Part * 8 + Bit, CellY + Row + 1));
-            RunStart := -1;
-          end;
-      end;
-      if RunStart >= 0 then
-        Canvas.FillRect(Rect(CellX + RunStart, CellY + Row,
-          CellX + AFont.SizeX, CellY + Row + 1));
-    end;
-  end;
-end;
 
 procedure TDlgFontViewer.PaintView(ACanvas: TCanvas; const AClip: TRect);
 var
@@ -1210,7 +1247,7 @@ begin
       if Length(FontItem.SampleCodes) > 0 then
       begin
         if FontItem.Bitmap = nil then
-          MakeBitmap(FontItem);
+          FontItem.Bitmap := UtftMakeSample(FontItem, FShowCells);
         if FontItem.Bitmap.Height > 0 then
           ACanvas.Draw(0, PosY + FontItem.SampleTop, FontItem.Bitmap);
       end;
@@ -1336,6 +1373,7 @@ begin
     Text := Text + '; выбран ' + TUtftFont(FFonts[FSelected]).Name;
   FStatusLabel.Caption := Text;
   FMiOpenInEditor.Enabled := Assigned(FOnOpenFile) and (FSelected >= 0);
+  FMiMakeFont.Enabled := Assigned(FOnMakeFont);
 end;
 
 procedure TDlgFontViewer.UpdateColors;
@@ -1414,6 +1452,12 @@ end;
 procedure TDlgFontViewer.MenuCloseClick(Sender: TObject);
 begin
   Close;
+end;
+
+procedure TDlgFontViewer.MenuMakeFontClick(Sender: TObject);
+begin
+  if Assigned(FOnMakeFont) then
+    FOnMakeFont(Self);
 end;
 
 procedure TDlgFontViewer.MenuCopyNameClick(Sender: TObject);
@@ -1574,7 +1618,10 @@ begin
   if (Folder <> '') and DirectoryExists(Folder) then
     OpenFolder(Folder)
   else
+  begin
     Relayout;
+    UpdateStatus;
+  end;
 end;
 
 procedure TDlgFontViewer.SavePlacement;

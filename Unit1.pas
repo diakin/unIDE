@@ -1120,6 +1120,9 @@ type
     // Окно Emulator (ArdSimHost)
     procedure ArdSimShowClick(Sender: TObject);
     procedure ArdFontViewerClick(Sender: TObject);
+    procedure ArdTtfToUtftClick(Sender: TObject);
+    procedure ArdTtfSaved(const AFileName: string);
+    function  ArdUtftFolder: string;
     procedure ArdSimEnsure;
     procedure ArdSimStateChange(Sender: TObject);
     procedure EmuButtonClick(Sender: TObject);
@@ -4586,6 +4589,7 @@ var
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
     DlgFileCompare, // сравнение двух файлов (File - Compare Files...)
     DlgFontViewer, // просмотр шрифтов UTFT (Arduino - Font Viewer)
+    DlgTtfToUtft, // шрифт UTFT из TTF (Arduino - TTF to UTFT Font)
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
     DlgChooseList, // выбор строки из списка - ChooseFromList
@@ -27796,16 +27800,15 @@ begin
   FArdSimWin.ShowAtRight;
 end;
 
-// Arduino - Font Viewer (UTFT): шрифты UTFT. Папка по умолчанию -
-// libraries\UTFT в скетчбуке, в папке библиотек или у Arduino IDE; дальше
-// окно помнит последнюю папку (editor.ini, [FontViewer])
-procedure TForm1.ArdFontViewerClick(Sender: TObject);
+// Папка libraries\UTFT: в скетчбуке, в папке библиотек или у Arduino IDE;
+// '' - не найдена
+function TForm1.ArdUtftFolder: string;
 var
   Settings: TArdSettings;
   Candidates: TStringList;
-  Folder: string;
   Index: Integer;
 begin
+  Result := '';
   Settings := ArdCurSettings;
   Candidates := TStringList.Create;
   try
@@ -27820,17 +27823,48 @@ begin
     if Settings.Arduino15Path <> '' then
       Candidates.Add(IncludeTrailingPathDelimiter(Settings.Arduino15Path) +
         'libraries' + PathDelim + 'UTFT');
-    Folder := '';
     for Index := 0 to Candidates.Count - 1 do
       if DirectoryExists(Candidates[Index]) then
       begin
-        Folder := Candidates[Index];
+        Result := Candidates[Index];
         Break;
       end;
   finally
     Candidates.Free;
   end;
-  ShowFontViewer(Self, SettingsFileName, Folder, OpenNamedFile);
+end;
+
+// Arduino - Font Viewer (UTFT): шрифты UTFT. Папка по умолчанию -
+// libraries\UTFT (ArdUtftFolder); дальше окно помнит последнюю папку
+// (editor.ini, [FontViewer])
+procedure TForm1.ArdFontViewerClick(Sender: TObject);
+begin
+  ShowFontViewer(Self, SettingsFileName, ArdUtftFolder, OpenNamedFile,
+    ArdTtfToUtftClick);
+end;
+
+// Arduino - TTF to UTFT Font... и Файл - Создать шрифт из TTF... в
+// FontViewer: окно DlgTtfToUtft; записанный .c - в FontViewer
+procedure TForm1.ArdTtfToUtftClick(Sender: TObject);
+begin
+  ShowTtfToUtft(Self, SettingsFileName, ArdUtftFolder, ArdTtfSaved);
+end;
+
+procedure TForm1.ArdTtfSaved(const AFileName: string);
+var
+  Files: TStringList;
+begin
+  ShowFontViewer(Self, SettingsFileName, ArdUtftFolder, OpenNamedFile,
+    ArdTtfToUtftClick);
+  if FontViewerInstance = nil then
+    Exit;
+  Files := TStringList.Create;
+  try
+    Files.Add(AFileName);
+    FontViewerInstance.OpenFiles(Files);
+  finally
+    Files.Free;
+  end;
 end;
 
 // Окно эмулятора создано (ещё не показано). Кнопки панели прибора
@@ -70265,6 +70299,9 @@ begin
   NewItem('Font Viewer (UTFT)...', ArdFontViewerClick, False).Hint :=
     'Шрифты UTFT (.c из libraries\UTFT): образец, имя, размер символа в ' +
     'точках; окно шириной 480 точек, как экран прибора';
+  NewItem('TTF to UTFT Font...', ArdTtfToUtftClick, False).Hint :=
+    'Шрифт UTFT (.c) из шрифта Windows или .ttf: клетка, размер, ' +
+    'диапазон символов (с кириллицей CP1251)';
   NewItem('-', nil, False);
   // В конце меню (после пунктов из .dfm): свой компилятор для ПК
   InsertIdx := mArduino.Count;

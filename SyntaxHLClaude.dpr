@@ -59,6 +59,7 @@ uses
   TextDiff in 'TextDiff.pas',
   DlgFileCompare in 'DlgFileCompare.pas',
   DlgFontViewer in 'DlgFontViewer.pas',
+  DlgTtfToUtft in 'DlgTtfToUtft.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
   DelphiOpts in 'DelphiOpts.pas',
