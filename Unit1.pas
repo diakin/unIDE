@@ -736,9 +736,9 @@ type
     FTabObjects: TTabSheet;
     FTabCode: TTabSheet;
     FTabIncludes: TTabSheet;
-    // Вкладка Emulator (скетч Arduino, собранный ArdSim): создаётся в
-    // BuildRightPanel, видна у Arduino
-    FTabEmu: TTabSheet;
+    // Окно эмулятора (скетч Arduino, собранный ArdSim): создаётся при
+    // первом Arduino - Emulator; FArdSim - его панель
+    FArdSimWin: TArdSimWindow;
     FArdSim: TArdSimPanel;
     FCodeTree: TUiTreeView;
     FObjSource: TLabel;
@@ -1117,7 +1117,8 @@ type
     procedure ApplyRightPanelWidth(ANewWidth: Integer);
     procedure RightPanelCollapse(ACollapse: Boolean);
     procedure RightPanelBtnClick(Sender: TObject);
-    // Вкладка Emulator (ArdSimHost)
+    // Окно Emulator (ArdSimHost)
+    procedure ArdSimShowClick(Sender: TObject);
     procedure ArdSimNeedSketch(Sender: TObject);
     procedure ArdSimLog(Sender: TObject; const AText: string);
     procedure ArdSimOpenFile(Sender: TObject; const AText: string);
@@ -27734,19 +27735,22 @@ begin
   if FIncTree <> nil then
     FIncTree.OnDblClick := IncludesDblClick;
 
-  // Emulator: экран, клавиатура и Serial скетча, собранного ArdSim
-  FTabEmu := TTabSheet.Create(Self);
-  FTabEmu.PageControl := FRightPages;
-  FTabEmu.Caption := 'Emulator';
-  FTabEmu.TabVisible := False;
-  FArdSim := TArdSimPanel.Create(Self);
-  FArdSim.Parent := FTabEmu;
-  FArdSim.Align := alClient;
-  FArdSim.OnNeedSketch := ArdSimNeedSketch;
-  FArdSim.OnLog := ArdSimLog;
-  FArdSim.OnOpenFile := ArdSimOpenFile;
-
   BuildObjectInspector;
+end;
+
+// Arduino - Emulator: окно с прибором (экран, клавиатура, Serial) для
+// скетча, собранного ArdSim
+procedure TForm1.ArdSimShowClick(Sender: TObject);
+begin
+  if FArdSimWin = nil then
+  begin
+    FArdSimWin := TArdSimWindow.CreateFor(Self);
+    FArdSim := FArdSimWin.Panel;
+    FArdSim.OnNeedSketch := ArdSimNeedSketch;
+    FArdSim.OnLog := ArdSimLog;
+    FArdSim.OnOpenFile := ArdSimOpenFile;
+  end;
+  FArdSimWin.ShowAtRight;
 end;
 
 // Перед сборкой и запуском: скетч - цель сборки Arduino, g++ - свой MinGW
@@ -63504,8 +63508,6 @@ begin
   ShowTab(FTabCode, not Basic or (Kind = bkLazarus));
   // RapidQ ($INCLUDE) и FreeBASIC (#include)
   ShowTab(FTabIncludes, RqMode or (Kind = bkFreeBasic));
-  // Эмулятор скетча (ArdSim) - у Arduino
-  ShowTab(FTabEmu, Kind = bkArduino);
 
   // Ряд кнопок Project: видимые - подряд, на места кнопок из .dfm
   RunRow[0] := btnCompileRun;
@@ -69784,6 +69786,9 @@ begin
   NewItem('-', nil, False);
   mArdMonitor := NewItem('Serial Monitor', mArdMonitorClick, False);
   mArdMonitor.ShortCut := ShortCut(Ord('M'), [ssCtrl, ssShift]);
+  NewItem('Emulator (ArdSim)', ArdSimShowClick, False).Hint :=
+    'Окно эмулятора: скетч, собранный под ПК (ArdSim), экран прибора, ' +
+    'клавиатура и Serial';
   NewItem('-', nil, False);
   // В конце меню (после пунктов из .dfm): свой компилятор для ПК
   InsertIdx := mArduino.Count;

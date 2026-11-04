@@ -20,13 +20,14 @@ unit ArdSimHost;
 //  панель с клавиатурой (цвета и раскладка клавиш - с фото прибора).
 //  Экран всегда 480x320, точка в точку: так текст UTFT читается, как на
 //  приборе. Вокруг экрана - узкие зелёные поля, клавиатура подгоняется под
-//  оставшуюся высоту панели. Если панель уже прибора, правый край
-//  обрезается - панель надо расширить.
+//  оставшуюся высоту. Показывается в отдельном окне (TArdSimWindow): в
+//  правую панель unIDE прибор шириной 508 точек не помещался.
 // ---------------------------------------------------------------------------
 
 interface
 
 uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Controls,
   Graphics, StdCtrls, ExtCtrls, Forms, UiStdCtrls, UiButton, UiEditCtrls,
   ProcRun;
@@ -155,6 +156,23 @@ type
     property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
     property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
     property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
+  end;
+
+  // Отдельное окно эмулятора. При первом показе встаёт у правого края
+  // главного окна на всю его высоту (поверх панели Git); дальше - где его
+  // оставили. Закрытие окна останавливает эмулятор
+  TArdSimWindow = class(TForm)
+  private
+    FPanel: TArdSimPanel;
+    FMainForm: TCustomForm;
+    FPlaced: Boolean;
+    procedure WindowClose(Sender: TObject; var Action: TCloseAction);
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
+  public
+    constructor CreateFor(AMainForm: TCustomForm);
+    procedure ShowAtRight;
+    property Panel: TArdSimPanel read FPanel;
   end;
 
 // Папка ArdSim рядом с unIDE: <exe>\ArdSim, <exe>\..\ArdSim; нет - ''
@@ -1284,6 +1302,61 @@ begin
     ACanvas.TextOut(DrawX + 6, DrawY + 6, 'Build - собрать и запустить');
     ACanvas.Brush.Style := bsSolid;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  TArdSimWindow
+// ---------------------------------------------------------------------------
+
+const
+  WindowClientW = ArdSimScreenW + 2 * BodyBorder + 2 * 4;
+
+constructor TArdSimWindow.CreateFor(AMainForm: TCustomForm);
+begin
+  FMainForm := AMainForm;
+  inherited CreateNew(AMainForm);
+  Caption := 'Emulator - ArdSim';
+  BorderStyle := bsSizeToolWin;
+  Position := poDesigned;
+  ClientWidth := WindowClientW;
+  ClientHeight := 760;
+  Constraints.MinWidth := Width - ClientWidth + WindowClientW;
+  OnClose := WindowClose;
+  FPanel := TArdSimPanel.Create(Self);
+  FPanel.Parent := Self;
+  FPanel.Align := alClient;
+end;
+
+// Владелец окна - главное окно unIDE: эмулятор всегда над ним, но не над
+// другими программами
+procedure TArdSimWindow.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  if (FMainForm <> nil) and FMainForm.HandleAllocated then
+    Params.WndParent := FMainForm.Handle;
+end;
+
+procedure TArdSimWindow.WindowClose(Sender: TObject; var Action: TCloseAction);
+begin
+  FPanel.StopAll;
+  Action := caHide;
+end;
+
+procedure TArdSimWindow.ShowAtRight;
+var
+  FrameW: Integer;
+begin
+  if not FPlaced and (FMainForm <> nil) then
+  begin
+    FPlaced := True;
+    FrameW := Width - ClientWidth;
+    Width := WindowClientW + FrameW;
+    Height := FMainForm.Height;
+    Left := FMainForm.Left + FMainForm.Width - Width;
+    Top := FMainForm.Top;
+  end;
+  Show;
+  BringToFront;
 end;
 
 end.
