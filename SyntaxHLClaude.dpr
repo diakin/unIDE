@@ -56,6 +56,8 @@ uses
   RqDbgInstr in 'RqDbgInstr.pas',
   RqDeclFind in 'RqDeclFind.pas',
   TextMerge in 'TextMerge.pas',
+  TextDiff in 'TextDiff.pas',
+  DlgFileCompare in 'DlgFileCompare.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
   DelphiOpts in 'DelphiOpts.pas',

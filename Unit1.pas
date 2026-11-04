@@ -1313,6 +1313,13 @@ type
     procedure GitPullRequestClick(Sender: TObject);
     procedure HighlightMenuFill(Sender: TObject);
     procedure DeleteFileClick(Sender: TObject);
+    // File - Compare Files... и меню вкладки: сравнение двух файлов, как
+    // WinMerge (DlgFileCompare). Tag пункта: 0 - активная вкладка и файл
+    // с диска, 1 - вкладка под мышью и активная, 2 - вкладка и её файл
+    procedure CompareFilesClick(Sender: TObject);
+    procedure CompareTabsList(AList: TStrings);
+    function  CompareTabText(AWinIdx: Integer; var AFileName, AText: string;
+      var AModified: Boolean): Boolean;
     procedure EdPreviewClick(Sender: TObject);
     procedure DsgDescWriteClick(Sender: TObject);
     procedure RosRunImageClick(Sender: TObject);
@@ -4537,6 +4544,7 @@ var
     RqComponents, // описание компонентов RapidQ (Component.data)
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
+    DlgFileCompare, // сравнение двух файлов (File - Compare Files...)
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
     DlgChooseList, // выбор строки из списка - ChooseFromList
@@ -9305,7 +9313,7 @@ end;
 
 procedure TForm1.BuildFileMenu;
 var
-  DelItem: TMenuItem;
+  DelItem, CmpItem, CmpDiskItem: TMenuItem;
   EncIdx: Integer;
 const
   EncCaptions: array[0..2] of string = ('UTF-8', 'UTF-8 BOM', 'ANSI');
@@ -9335,6 +9343,147 @@ begin
   DelItem.Hint := 'Файл активного окна - в Корзину, окно закрывается';
   DelItem.OnClick := DeleteFileClick;
   mSaveAs.Parent.Insert(EncMenu.MenuIndex + 1, DelItem);
+
+  // CompareFiles... - после DeleteFile: окно сравнения двух файлов
+  CmpItem := TMenuItem.Create(Self);
+  CmpItem.Caption := 'CompareFiles...';
+  CmpItem.Hint := 'Сравнить файл активной вкладки с другим файлом (как ' +
+                  'WinMerge)';
+  CmpItem.OnClick := CompareFilesClick;
+  mSaveAs.Parent.Insert(DelItem.MenuIndex + 1, CmpItem);
+
+  // Меню вкладки - после «Удалить файл (в Корзину)»
+  CmpItem := TMenuItem.Create(Self);
+  CmpItem.Caption := 'Сравнить с активной вкладкой';
+  CmpItem.Tag := 1;
+  CmpItem.OnClick := CompareFilesClick;
+  FTabsPopup.Items.Insert(FDelTabItem.MenuIndex + 1, CmpItem);
+  CmpDiskItem := TMenuItem.Create(Self);
+  CmpDiskItem.Caption := 'Сравнить с файлом на диске';
+  CmpDiskItem.Tag := 2;
+  CmpDiskItem.OnClick := CompareFilesClick;
+  FTabsPopup.Items.Insert(CmpItem.MenuIndex + 1, CmpDiskItem);
+end;
+
+// Окно сравнения двух файлов (DlgFileCompare). Пункт File - Compare
+// Files... (Tag 0): слева - активная вкладка, справа - файл, выбранный в
+// окне открытия. Меню вкладки: Tag 1 - активная вкладка и вкладка под
+// мышью (та же вкладка - с её файлом на диске), Tag 2 - вкладка под мышью
+// (с несохранёнными правками) и её файл на диске
+procedure TForm1.CompareFilesClick(Sender: TObject);
+var
+  Dlg: TDlgFileCompare;
+  OpenDlg: TOpenDialog;
+  ClickPt: TPoint;
+  Mode, TabIdx, TabWin: Integer;
+  HasActive: Boolean;
+begin
+  Mode := 0;
+  if Sender is TMenuItem then
+    Mode := TMenuItem(Sender).Tag;
+  HasActive := (FWindowsIndex >= 0) and
+    (FWindowsIndex <= WindowsItemCount - 1) and
+    FWindows[FWindowsIndex].Used;
+  TabWin := FWindowsIndex;
+  if (Mode > 0) and (FTabs <> nil) then
+  begin
+    ClickPt := FTabs.ScreenToClient(FTabsPopup.PopupAt);
+    TabIdx := FTabs.IndexOfTabAt(ClickPt.X, ClickPt.Y);
+    if TabIdx < 0 then
+      TabIdx := FTabs.TabIndex;
+    if (TabIdx >= 0) and (TabIdx <= High(FTabWin)) then
+      TabWin := FTabWin[TabIdx];
+  end;
+  if (Mode = 1) and (TabWin = FWindowsIndex) then
+    Mode := 2;
+
+  Dlg := TDlgFileCompare.CreateDlg(Self);
+  Dlg.SetSchemeProvider(SchemeCopyFor);
+  Dlg.SetViewFont(RichEdit1.Font, FTabChars);
+  Dlg.OnTabs := CompareTabsList;
+  Dlg.OnTabText := CompareTabText;
+  Dlg.SetPlacementIni(SettingsFileName);
+  case Mode of
+    1:
+      begin
+        Dlg.SetSideTab(0, FWindowsIndex);
+        Dlg.SetSideTab(1, TabWin);
+      end;
+    2:
+      begin
+        // begin / end - чтобы else ниже не стал веткой этого if
+        if Dlg.SetSideTab(0, TabWin) and
+           (FWindows[TabWin].FileName <> '') and
+           FileExists(FWindows[TabWin].FileName) then
+          Dlg.SetSideFile(1, FWindows[TabWin].FileName);
+      end;
+  else
+    if HasActive then
+      Dlg.SetSideTab(0, FWindowsIndex);
+    // Вторая сторона - файл с диска
+    OpenDlg := TOpenDialog.Create(Self);
+    try
+      OpenDlg.Title := 'Сравнить с файлом';
+      OpenDlg.Filter := 'Все файлы (*.*)|*.*';
+      OpenDlg.Options := [ofFileMustExist, ofHideReadOnly, ofEnableSizing];
+      if HasActive and (FWindows[FWindowsIndex].FileName <> '') then
+        OpenDlg.InitialDir := ExtractFileDir(FWindows[FWindowsIndex].FileName);
+      if OpenDlg.Execute then
+        Dlg.SetSideFile(1, OpenDlg.FileName);
+    finally
+      OpenDlg.Free;
+    end;
+  end;
+  Dlg.CompareNow;
+  Dlg.Show;
+end;
+
+// Вкладки для окна сравнения: имя файла (без файла - заголовок вкладки),
+// Objects - номер окна
+procedure TForm1.CompareTabsList(AList: TStrings);
+var
+  TabIdx, WinIdx: Integer;
+  Name: string;
+begin
+  AList.Clear;
+  if FTabs = nil then
+    Exit;
+  for TabIdx := 0 to FTabs.Tabs.Count - 1 do
+  begin
+    if TabIdx > High(FTabWin) then
+      Break;
+    WinIdx := FTabWin[TabIdx];
+    if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or
+       not FWindows[WinIdx].Used then
+      Continue;
+    Name := FWindows[WinIdx].FileName;
+    if Name = '' then
+      Name := FTabs.Tabs[TabIdx];
+    AList.AddObject(Name, TObject(WinIdx));
+  end;
+end;
+
+// Текст вкладки для окна сравнения: у активной - из редактора (правки в
+// RichEdit ещё не в буфере вкладки), у остальных - WinText
+function TForm1.CompareTabText(AWinIdx: Integer; var AFileName, AText: string;
+  var AModified: Boolean): Boolean;
+begin
+  Result := False;
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) or
+     not FWindows[AWinIdx].Used then
+    Exit;
+  AFileName := FWindows[AWinIdx].FileName;
+  if AWinIdx = FWindowsIndex then
+  begin
+    AText := GetEditorText;
+    AModified := RichEdit1.Modified;
+  end
+  else
+  begin
+    AText := WinText(AWinIdx);
+    AModified := FWindows[AWinIdx].Modified;
+  end;
+  Result := True;
 end;
 
 // File > DeleteFile и меню вкладки > «Удалить файл (в Корзину)». Из меню
