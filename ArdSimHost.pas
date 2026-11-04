@@ -297,11 +297,14 @@ end;
 
 // Сверху вниз: корпус (поля, экран, поля), под ним панель клавиатуры.
 // Экран - не шире AScreenW; поля корпуса по бокам ужимаются до MinBorder,
-// когда не хватает ширины; если не хватает высоты - сначала поля сверху и
-// снизу, потом уменьшается всё
+// когда не хватает ширины. Если не хватает высоты: сначала уменьшается
+// клавиатура (до PadMinK от размера по фото), потом поля сверху и снизу,
+// потом экран - корпус с экраном остаётся похожим на прибор
 function TArdSimDevice.Arrange(AWidth, AHeight, AScreenW: Integer): Integer;
+const
+  PadMinK = 0.6;
 
-  function NeedHeight(AScreen: Integer; ACompact: Boolean): Integer;
+  function NeedHeight(AScreen: Integer; APadK: Double; ACompact: Boolean): Integer;
   var
     Borders: Integer;
   begin
@@ -310,28 +313,35 @@ function TArdSimDevice.Arrange(AWidth, AHeight, AScreenW: Integer): Integer;
     else
       Borders := Round(AScreen * (BodyTopK + BodyBottomK));
     Result := Borders + AScreen * ArdSimScreenH div ArdSimScreenW +
-              Round(AScreen * (PadTopK + PadBottomK + 4 * KeyPitchYK +
-                               KeyHeightK));
+              Round(AScreen * APadK * (PadTopK + PadBottomK + 4 * KeyPitchYK +
+                                       KeyHeightK));
   end;
 
 var
   ScreenW, ScreenH, SideBorder, TopBorder, BottomBorder: Integer;
   BodyW, BodyLeft, PadW, PadLeft, PadTop, GridW, GridLeft, GridTop: Integer;
-  KeyW, KeyH, PitchX, PitchY, KeyRow, KeyCol: Integer;
+  KeyW, KeyH, PitchX, PitchY, KeyRow, KeyCol, PadUnit: Integer;
+  PadK: Double;
   Compact: Boolean;
 begin
   ScreenW := AScreenW;
   if ScreenW > AWidth - 2 * MinBorder then
     ScreenW := AWidth - 2 * MinBorder;
-  Compact := False;
-  if (AHeight > 0) and (NeedHeight(ScreenW, False) > AHeight) then
-  begin
-    Compact := True;
-    while (ScreenW > 120) and (NeedHeight(ScreenW, True) > AHeight) do
-      Dec(ScreenW, 4);
-  end;
   if ScreenW < 120 then
     ScreenW := 120;
+  PadK := 1.0;
+  Compact := False;
+  if AHeight > 0 then
+  begin
+    while (PadK > PadMinK) and (NeedHeight(ScreenW, PadK, False) > AHeight) do
+      PadK := PadK - 0.02;
+    if NeedHeight(ScreenW, PadK, False) > AHeight then
+    begin
+      Compact := True;
+      while (ScreenW > 120) and (NeedHeight(ScreenW, PadK, True) > AHeight) do
+        Dec(ScreenW, 4);
+    end;
+  end;
   FScreenW := ScreenW;
   ScreenH := ScreenW * ArdSimScreenH div ArdSimScreenW;
 
@@ -359,12 +369,14 @@ begin
   FScreenRect := Rect(BodyLeft + SideBorder, TopBorder,
                       BodyLeft + SideBorder + ScreenW, TopBorder + ScreenH);
 
-  KeyW := Round(ScreenW * KeyWidthK);
-  KeyH := Round(ScreenW * KeyHeightK);
-  PitchX := Round(ScreenW * KeyPitchXK);
-  PitchY := Round(ScreenW * KeyPitchYK);
+  // клавиатура - в долях ширины экрана, умноженной на PadK
+  PadUnit := Round(ScreenW * PadK);
+  KeyW := Round(PadUnit * KeyWidthK);
+  KeyH := Round(PadUnit * KeyHeightK);
+  PitchX := Round(PadUnit * KeyPitchXK);
+  PitchY := Round(PadUnit * KeyPitchYK);
   GridW := 3 * PitchX + KeyW;
-  PadW := Round(ScreenW * PadWidthK);
+  PadW := Round(PadUnit * PadWidthK);
   if PadW < GridW + 2 * MinBorder then
     PadW := GridW + 2 * MinBorder;
   if PadW > BodyW then
@@ -373,10 +385,10 @@ begin
   if PadLeft < 0 then
     PadLeft := 0;
   PadTop := FBodyRect.Bottom - RimWidth;
-  GridTop := FBodyRect.Bottom + Round(ScreenW * PadTopK);
+  GridTop := FBodyRect.Bottom + Round(PadUnit * PadTopK);
   GridLeft := PadLeft + (PadW - GridW) div 2;
   FPadRect := Rect(PadLeft, PadTop, PadLeft + PadW,
-                   GridTop + 4 * PitchY + KeyH + Round(ScreenW * PadBottomK));
+                   GridTop + 4 * PitchY + KeyH + Round(PadUnit * PadBottomK));
   for KeyRow := 0 to ArdSimKeyRows - 1 do
     for KeyCol := 0 to ArdSimKeyCols - 1 do
       FKeyRects[KeyRow * ArdSimKeyCols + KeyCol] :=
