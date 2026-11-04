@@ -47,7 +47,11 @@ type
   end;
 
   // Файл для загрузки: адреса по порядку (первый не вышел - следующий),
-  // размер и SHA-256 (строчными буквами)
+  // размер и SHA-256 (строчными буквами). Size < 0 - размер заранее не
+  // известен: -Size - примерный (для хода), не проверяется. Sha256 =
+  // SzShaFromPrev - сумма берётся из предыдущего скачанного файла плана
+  // (<архив>.sha256 из того же выпуска); Sha256 = '' при Size < 0 - не
+  // проверяется (так качается сам .sha256)
   TSzFile = record
     Url1, Url2: string;
     FileName: WideString;   // куда записать
@@ -145,6 +149,8 @@ type
 
 const
   SzVersion = '26.04';
+  // TSzFile.Sha256: сумма - из предыдущего файла плана (см. TSzFile)
+  SzShaFromPrev = '<prev.sha256>';
   SzToolName = '7zr.exe';
   SzDownloadPage = 'https://www.7-zip.org/download.html';
   SzInfoFile = 'unide_7zip.txt';
@@ -988,7 +994,7 @@ begin
   begin
     FFiles[FileIndex] := APlan.Files[FileIndex];
     FFiles[FileIndex].FileName := FDownloadDir + APlan.Files[FileIndex].FileName;
-    Inc(FTotal, FFiles[FileIndex].Size);
+    Inc(FTotal, Abs(FFiles[FileIndex].Size));
   end;
   InterlockedIncrement(SzRunning);
   FFileIndex := 0;
@@ -1102,7 +1108,7 @@ begin
         if ReadCount > 0 then
         begin
           Inc(Received, ReadCount);
-          if Received > AFile.Size then
+          if (AFile.Size >= 0) and (Received > AFile.Size) then
           begin
             AError := 'файл больше ожидаемого';
             Exit;
@@ -1122,10 +1128,13 @@ begin
       if AError <> '' then
         SzDeleteFile(PWideChar(AFile.FileName));
     end;
-    if Received <> AFile.Size then
+    if (AFile.Size >= 0) and (Received <> AFile.Size) then
       AError := 'получено ' + IntToStr(Received) + ' байт из ' +
         IntToStr(AFile.Size)
-    else if SzShaFinal(Ctx) <> AFile.Sha256 then
+    else if Received = 0 then
+      AError := 'сервер прислал пустой файл'
+    else if ((AFile.Size >= 0) or (AFile.Sha256 <> '')) and
+            (SzShaFinal(Ctx) <> AFile.Sha256) then
       AError := 'контрольная сумма SHA-256 не совпала';
     if AError <> '' then
     begin
@@ -1137,6 +1146,45 @@ begin
   finally
     SzInternetCloseHandle(UrlHandle);
   end;
+end;
+
+// Первые 64 шестнадцатеричные цифры файла (формат sha256sum:
+// '<сумма> *имя' или '<сумма>  имя') строчными буквами; '' - нет
+function SzShaFromFile(const AFileName: WideString): string;
+var
+  FileHandle: THandle;
+  Buffer: array[0..511] of Char;
+  ReadCount: DWORD;
+  CharIdx: Integer;
+  HexChar: Char;
+begin
+  Result := '';
+  FileHandle := SzCreateFile(PWideChar(AFileName), SzGenericRead,
+    SzFileShareRead, nil, SzOpenExisting, SzFileAttrNormal, 0);
+  if FileHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    ReadCount := 0;
+    if not SzReadFile(FileHandle, Buffer, SizeOf(Buffer), ReadCount, nil) then
+      Exit;
+  finally
+    CloseHandle(FileHandle);
+  end;
+  CharIdx := 0;
+  // BOM и пробелы в начале пропустить
+  while (CharIdx < Integer(ReadCount)) and
+        not (Buffer[CharIdx] in ['0'..'9', 'a'..'f', 'A'..'F']) do
+    Inc(CharIdx);
+  while (CharIdx < Integer(ReadCount)) and (Length(Result) < 64) do
+  begin
+    HexChar := Buffer[CharIdx];
+    if not (HexChar in ['0'..'9', 'a'..'f', 'A'..'F']) then
+      Break;
+    Result := Result + LowerCase(HexChar);
+    Inc(CharIdx);
+  end;
+  if Length(Result) <> 64 then
+    Result := '';
 end;
 
 function TSzInstall.Download: string;
@@ -1178,6 +1226,21 @@ begin
       begin
         FFileIndex := FileIndex;
         StartDone := FDone;
+        // Сумма - из скачанного перед ним <архив>.sha256
+        if FFiles[FileIndex].Sha256 = SzShaFromPrev then
+        begin
+          if FileIndex > 0 then
+            FFiles[FileIndex].Sha256 :=
+              SzShaFromFile(FFiles[FileIndex - 1].FileName)
+          else
+            FFiles[FileIndex].Sha256 := '';
+          if FFiles[FileIndex].Sha256 = '' then
+          begin
+            ErrorText := 'нет контрольной суммы SHA-256 для ' +
+              ExtractFileName(string(FFiles[FileIndex].FileName));
+            Break;
+          end;
+        end;
         // Первый адрес не вышел - второй; в ошибке - оба ответа
         HostError := '';
         if not GetFile(FFiles[FileIndex], FFiles[FileIndex].Url1,

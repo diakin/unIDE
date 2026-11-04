@@ -69,6 +69,8 @@ uses
   QemuTool,       // свой QEMU unIDE (tools\qemu): запуск образов ReactOS
   GitTool,        // Git: найти в системе или свой (tools\git), Git Bash
   RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
+  MingwTool,      // свой MinGW-w64 GCC (tools\mingw): сборка скетча под ПК
+  ArdSimHost,     // вкладка Emulator: скетч, собранный ArdSim, в правой панели
   GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
   UiCaptionTabs,  // вкладки Components | Git на месте подписи рамки палитры
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
@@ -734,6 +736,10 @@ type
     FTabObjects: TTabSheet;
     FTabCode: TTabSheet;
     FTabIncludes: TTabSheet;
+    // Окно эмулятора (скетч Arduino, собранный ArdSim): создаётся при
+    // первом Arduino - Emulator; FArdSim - его панель
+    FArdSimWin: TArdSimWindow;
+    FArdSim: TArdSimPanel;
     FCodeTree: TUiTreeView;
     FObjSource: TLabel;
     FDeclPanel: TPanel;
@@ -1111,6 +1117,29 @@ type
     procedure ApplyRightPanelWidth(ANewWidth: Integer);
     procedure RightPanelCollapse(ACollapse: Boolean);
     procedure RightPanelBtnClick(Sender: TObject);
+    // Окно Emulator (ArdSimHost)
+    procedure ArdSimShowClick(Sender: TObject);
+    procedure ArdSimEnsure;
+    procedure ArdSimStateChange(Sender: TObject);
+    procedure EmuButtonClick(Sender: TObject);
+    function MakeEmuButton(const AHint: string; ATag: Integer): TUiIconButton;
+    procedure ArdSimPlaced(Sender: TObject);
+    procedure ArdSimHidden(Sender: TObject);
+    procedure ArdSimNeedSketch(Sender: TObject);
+    procedure ArdSimLog(Sender: TObject; const AText: string);
+    procedure ArdSimOpenFile(Sender: TObject; const AText: string);
+    // Отладчик эмулятора: F5/F7/F8/Shift+F8/F4/F9/Ctrl+F2 и окно Watch
+    // идут эмулятору, пока он работает со скетчем, собранным с отладкой
+    function ArdDbgHere: Boolean;
+    function ArdSimRunning: Boolean;
+    function ArdDbgCodeAt(const AFileName: string; ALine: Integer): Cardinal;
+    procedure ArdDbgStep(ACode: Integer);
+    function ArdDbgLaunch(ACode: Integer; AArg: Cardinal): Boolean;
+    procedure ArdDbgStop(Sender: TObject);
+    procedure ArdDbgResume(Sender: TObject);
+    procedure ArdDbgInfo(Sender: TObject);
+    procedure ArdDbgNeedBreaks(Sender: TObject);
+    procedure ArdDbgWatchRefresh;
     procedure RightPanelPlaceButtons;
     procedure PaletteTabRows(Sender: TObject);
     procedure SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
@@ -1312,6 +1341,13 @@ type
     procedure GitPullRequestClick(Sender: TObject);
     procedure HighlightMenuFill(Sender: TObject);
     procedure DeleteFileClick(Sender: TObject);
+    // File - Compare Files... и меню вкладки: сравнение двух файлов, как
+    // WinMerge (DlgFileCompare). Tag пункта: 0 - активная вкладка и файл
+    // с диска, 1 - вкладка под мышью и активная, 2 - вкладка и её файл
+    procedure CompareFilesClick(Sender: TObject);
+    procedure CompareTabsList(AList: TStrings);
+    function  CompareTabText(AWinIdx: Integer; var AFileName, AText: string;
+      var AModified: Boolean): Boolean;
     procedure EdPreviewClick(Sender: TObject);
     procedure DsgDescWriteClick(Sender: TObject);
     procedure RosRunImageClick(Sender: TObject);
@@ -2077,6 +2113,17 @@ type
     FCompDfmKey: string;
     FCompDfmNames: TStringList;
     FRightPanelWidth: Integer;
+    // Ширина правой панели до того, как её растянули под окно эмулятора;
+    // -1 - не растягивали
+    FArdSimKeepWidth: Integer;
+    FArdSimWasRunning: Boolean;   // для ArdSimStateChange: запуск эмулятора
+    // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
+    // Program reset; создаются в FormCreate
+    btnEmuBuild: TUiIconButton;
+    btnEmuRun: TUiIconButton;
+    btnEmuStop: TUiIconButton;
+    btnEmuIni: TUiIconButton;
+    btnEmuWindow: TUiIconButton;
     // Кнопки свернуть / развернуть правую панель (справа в строке вкладок)
     // и её состояние: свёрнута - видны только разделитель и кнопка [];
     // ширина до сворачивания - в FRightPanelWidth (она и пишется в ini)
@@ -3363,6 +3410,11 @@ type
     function  GitInstallOwn(const AIntro: string; AAsk: Boolean): string;
     function  GitRunPostInstall(const ARoot: string): Boolean;
     function  RufusEnsure: string;
+    // MinGW-w64 (MingwTool): свой g++ в tools\mingw, меню Arduino
+    function  MingwEnsure(AAsk: Boolean): string;
+    function  MingwCheckRun(const AGpp: string): Boolean;
+    function  MingwInstallUcrt: Boolean;
+    procedure MingwInstallClick(Sender: TObject);
     // Git: панель на месте палитры (режим ReactOS), меню Repository и Branch
     function  GitExePath(AOffer: Boolean): string;
     procedure GitOnLine(const ALine: WideString);
@@ -4531,6 +4583,7 @@ var
     RqComponents, // описание компонентов RapidQ (Component.data)
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
+    DlgFileCompare, // сравнение двух файлов (File - Compare Files...)
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
     DlgChooseList, // выбор строки из списка - ChooseFromList
@@ -6982,6 +7035,10 @@ const
   IconStepOver  = 14;
   IconArdVerify = 15;   // Arduino: Verify
   IconArdUpload = 16;   // Arduino: Upload
+  IconEmuBuild  = 17;   // эмулятор (ArdSim): собрать и запустить
+  IconEmuRun    = 18;   // эмулятор: запустить без сборки
+  IconEmuIni    = 19;   // эмулятор: ardsim.ini
+  IconEmuWindow = 20;   // эмулятор: отдельное окно ArdSim
 
   // Лента из ресурсов программы. Нет ресурса - лента остаётся пустой, и
   // кнопки останутся без значков, но программа запустится.
@@ -9299,7 +9356,7 @@ end;
 
 procedure TForm1.BuildFileMenu;
 var
-  DelItem: TMenuItem;
+  DelItem, CmpItem, CmpDiskItem: TMenuItem;
   EncIdx: Integer;
 const
   EncCaptions: array[0..2] of string = ('UTF-8', 'UTF-8 BOM', 'ANSI');
@@ -9329,6 +9386,147 @@ begin
   DelItem.Hint := 'Файл активного окна - в Корзину, окно закрывается';
   DelItem.OnClick := DeleteFileClick;
   mSaveAs.Parent.Insert(EncMenu.MenuIndex + 1, DelItem);
+
+  // CompareFiles... - после DeleteFile: окно сравнения двух файлов
+  CmpItem := TMenuItem.Create(Self);
+  CmpItem.Caption := 'CompareFiles...';
+  CmpItem.Hint := 'Сравнить файл активной вкладки с другим файлом (как ' +
+                  'WinMerge)';
+  CmpItem.OnClick := CompareFilesClick;
+  mSaveAs.Parent.Insert(DelItem.MenuIndex + 1, CmpItem);
+
+  // Меню вкладки - после «Удалить файл (в Корзину)»
+  CmpItem := TMenuItem.Create(Self);
+  CmpItem.Caption := 'Сравнить с активной вкладкой';
+  CmpItem.Tag := 1;
+  CmpItem.OnClick := CompareFilesClick;
+  FTabsPopup.Items.Insert(FDelTabItem.MenuIndex + 1, CmpItem);
+  CmpDiskItem := TMenuItem.Create(Self);
+  CmpDiskItem.Caption := 'Сравнить с файлом на диске';
+  CmpDiskItem.Tag := 2;
+  CmpDiskItem.OnClick := CompareFilesClick;
+  FTabsPopup.Items.Insert(CmpItem.MenuIndex + 1, CmpDiskItem);
+end;
+
+// Окно сравнения двух файлов (DlgFileCompare). Пункт File - Compare
+// Files... (Tag 0): слева - активная вкладка, справа - файл, выбранный в
+// окне открытия. Меню вкладки: Tag 1 - активная вкладка и вкладка под
+// мышью (та же вкладка - с её файлом на диске), Tag 2 - вкладка под мышью
+// (с несохранёнными правками) и её файл на диске
+procedure TForm1.CompareFilesClick(Sender: TObject);
+var
+  Dlg: TDlgFileCompare;
+  OpenDlg: TOpenDialog;
+  ClickPt: TPoint;
+  Mode, TabIdx, TabWin: Integer;
+  HasActive: Boolean;
+begin
+  Mode := 0;
+  if Sender is TMenuItem then
+    Mode := TMenuItem(Sender).Tag;
+  HasActive := (FWindowsIndex >= 0) and
+    (FWindowsIndex <= WindowsItemCount - 1) and
+    FWindows[FWindowsIndex].Used;
+  TabWin := FWindowsIndex;
+  if (Mode > 0) and (FTabs <> nil) then
+  begin
+    ClickPt := FTabs.ScreenToClient(FTabsPopup.PopupAt);
+    TabIdx := FTabs.IndexOfTabAt(ClickPt.X, ClickPt.Y);
+    if TabIdx < 0 then
+      TabIdx := FTabs.TabIndex;
+    if (TabIdx >= 0) and (TabIdx <= High(FTabWin)) then
+      TabWin := FTabWin[TabIdx];
+  end;
+  if (Mode = 1) and (TabWin = FWindowsIndex) then
+    Mode := 2;
+
+  Dlg := TDlgFileCompare.CreateDlg(Self);
+  Dlg.SetSchemeProvider(SchemeCopyFor);
+  Dlg.SetViewFont(RichEdit1.Font, FTabChars);
+  Dlg.OnTabs := CompareTabsList;
+  Dlg.OnTabText := CompareTabText;
+  Dlg.SetPlacementIni(SettingsFileName);
+  case Mode of
+    1:
+      begin
+        Dlg.SetSideTab(0, FWindowsIndex);
+        Dlg.SetSideTab(1, TabWin);
+      end;
+    2:
+      begin
+        // begin / end - чтобы else ниже не стал веткой этого if
+        if Dlg.SetSideTab(0, TabWin) and
+           (FWindows[TabWin].FileName <> '') and
+           FileExists(FWindows[TabWin].FileName) then
+          Dlg.SetSideFile(1, FWindows[TabWin].FileName);
+      end;
+  else
+    if HasActive then
+      Dlg.SetSideTab(0, FWindowsIndex);
+    // Вторая сторона - файл с диска
+    OpenDlg := TOpenDialog.Create(Self);
+    try
+      OpenDlg.Title := 'Сравнить с файлом';
+      OpenDlg.Filter := 'Все файлы (*.*)|*.*';
+      OpenDlg.Options := [ofFileMustExist, ofHideReadOnly, ofEnableSizing];
+      if HasActive and (FWindows[FWindowsIndex].FileName <> '') then
+        OpenDlg.InitialDir := ExtractFileDir(FWindows[FWindowsIndex].FileName);
+      if OpenDlg.Execute then
+        Dlg.SetSideFile(1, OpenDlg.FileName);
+    finally
+      OpenDlg.Free;
+    end;
+  end;
+  Dlg.CompareNow;
+  Dlg.Show;
+end;
+
+// Вкладки для окна сравнения: имя файла (без файла - заголовок вкладки),
+// Objects - номер окна
+procedure TForm1.CompareTabsList(AList: TStrings);
+var
+  TabIdx, WinIdx: Integer;
+  Name: string;
+begin
+  AList.Clear;
+  if FTabs = nil then
+    Exit;
+  for TabIdx := 0 to FTabs.Tabs.Count - 1 do
+  begin
+    if TabIdx > High(FTabWin) then
+      Break;
+    WinIdx := FTabWin[TabIdx];
+    if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or
+       not FWindows[WinIdx].Used then
+      Continue;
+    Name := FWindows[WinIdx].FileName;
+    if Name = '' then
+      Name := FTabs.Tabs[TabIdx];
+    AList.AddObject(Name, TObject(WinIdx));
+  end;
+end;
+
+// Текст вкладки для окна сравнения: у активной - из редактора (правки в
+// RichEdit ещё не в буфере вкладки), у остальных - WinText
+function TForm1.CompareTabText(AWinIdx: Integer; var AFileName, AText: string;
+  var AModified: Boolean): Boolean;
+begin
+  Result := False;
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) or
+     not FWindows[AWinIdx].Used then
+    Exit;
+  AFileName := FWindows[AWinIdx].FileName;
+  if AWinIdx = FWindowsIndex then
+  begin
+    AText := GetEditorText;
+    AModified := RichEdit1.Modified;
+  end
+  else
+  begin
+    AText := WinText(AWinIdx);
+    AModified := FWindows[AWinIdx].Modified;
+  end;
+  Result := True;
 end;
 
 // File > DeleteFile и меню вкладки > «Удалить файл (в Корзину)». Из меню
@@ -26415,6 +26613,16 @@ begin
   // Значки тулбара и ряда Delphi: ленты 24x24 для светлой и тёмной темы
   // (см. SetToolIcon). У каждой кнопки остаются свои копии, ленты после
   // этого не нужны.
+  // Кнопки эмулятора (ряд Project у Arduino): значки ставятся ниже
+  btnEmuBuild := MakeEmuButton('Эмулятор: собрать скетч под ПК (ArdSim) ' +
+    'и запустить в окне эмулятора', 0);
+  btnEmuRun := MakeEmuButton('Эмулятор: запустить собранный скетч без ' +
+    'сборки', 1);
+  btnEmuStop := MakeEmuButton('Эмулятор: остановить', 2);
+  btnEmuIni := MakeEmuButton('Эмулятор: ardsim.ini - сигналы, тахометр, ' +
+    'модель ротора (перечитывается после сохранения)', 3);
+  btnEmuWindow := MakeEmuButton('Эмулятор: отдельное окно ArdSim с панелью ' +
+    'сигналов', 4);
   IconsLight := TBitmap.Create;
   IconsDark := TBitmap.Create;
   try
@@ -26437,6 +26645,11 @@ begin
     SetToolIcon(btnStepOver, IconStepOver, IconsLight, IconsDark);
     SetToolIcon(btnArdVerify, IconArdVerify, IconsLight, IconsDark);
     SetToolIcon(btnArdUpload, IconArdUpload, IconsLight, IconsDark);
+    SetToolIcon(btnEmuBuild, IconEmuBuild, IconsLight, IconsDark);
+    SetToolIcon(btnEmuRun, IconEmuRun, IconsLight, IconsDark);
+    SetToolIcon(btnEmuStop, IconReset, IconsLight, IconsDark);
+    SetToolIcon(btnEmuIni, IconEmuIni, IconsLight, IconsDark);
+    SetToolIcon(btnEmuWindow, IconEmuWindow, IconsLight, IconsDark);
   finally
     IconsDark.Free;
     IconsLight.Free;
@@ -26840,6 +27053,9 @@ begin
   // свои объекты
   FreeAndNil(FGitBashProc);
   FreeAndNil(FRosQemuProc);
+  // Эмулятор скетча (ArdSim) без unIDE не нужен: остановить
+  if FArdSim <> nil then
+    FArdSim.StopAll;
   // Окно History (немодальное) - его положение в editor.ini, пока главное
   // окно цело
   if FGitHistWin <> nil then
@@ -27568,6 +27784,365 @@ begin
     FIncTree.OnDblClick := IncludesDblClick;
 
   BuildObjectInspector;
+end;
+
+// Arduino - Emulator: окно с прибором (экран, клавиатура, Serial) для
+// скетча, собранного ArdSim
+procedure TForm1.ArdSimShowClick(Sender: TObject);
+begin
+  ArdSimEnsure;
+  FArdSimWin.ShowAtRight;
+end;
+
+// Окно эмулятора создано (ещё не показано). Кнопки панели прибора
+// спрятаны: они - в ряду Project (btnEmu*)
+procedure TForm1.ArdSimEnsure;
+begin
+  if FArdSimWin <> nil then
+    Exit;
+  FArdSimWin := TArdSimWindow.CreateFor(Self);
+  FArdSim := FArdSimWin.Panel;
+  FArdSim.ShowToolbar := False;
+  FArdSim.OnNeedSketch := ArdSimNeedSketch;
+  FArdSim.OnLog := ArdSimLog;
+  FArdSim.OnOpenFile := ArdSimOpenFile;
+  FArdSim.OnStateChange := ArdSimStateChange;
+  FArdSim.OnDbgStop := ArdDbgStop;
+  FArdSim.OnDbgResume := ArdDbgResume;
+  FArdSim.OnDbgInfo := ArdDbgInfo;
+  FArdSim.OnDbgNeedBreaks := ArdDbgNeedBreaks;
+  FArdSimWin.OnPlaced := ArdSimPlaced;
+  FArdSimWin.OnHidden := ArdSimHidden;
+  FArdSimKeepWidth := -1;
+  ArdSimStateChange(FArdSim);
+end;
+
+function TForm1.MakeEmuButton(const AHint: string; ATag: Integer): TUiIconButton;
+begin
+  Result := TUiIconButton.Create(Self);
+  Result.Parent := btnArdVerify.Parent;
+  Result.SetBounds(btnArdVerify.Left, btnArdVerify.Top, btnArdVerify.Width,
+                   btnArdVerify.Height);
+  Result.Hint := AHint;
+  Result.ShowHint := True;
+  Result.Visible := False;
+  Result.Tag := ATag;
+  Result.OnClick := EmuButtonClick;
+end;
+
+// Кнопки эмулятора: 0 сборка и запуск, 1 запуск, 2 стоп, 3 ardsim.ini,
+// 4 отдельное окно ArdSim. Сборка и запуск открывают окно эмулятора
+procedure TForm1.EmuButtonClick(Sender: TObject);
+begin
+  case (Sender as TComponent).Tag of
+    0: begin
+         ArdSimShowClick(Sender);
+         FArdSim.BuildAndRun;
+       end;
+    1: begin
+         ArdSimShowClick(Sender);
+         FArdSim.RunSim;
+       end;
+    2: if FArdSim <> nil then
+         FArdSim.StopAll;
+    3: begin
+         ArdSimEnsure;
+         FArdSim.OpenIni;
+       end;
+    4: begin
+         ArdSimEnsure;
+         FArdSim.OpenArdSimWindow;
+       end;
+  end;
+end;
+
+// Сборка или эмулятор начались / кончились: доступность кнопок
+procedure TForm1.ArdSimStateChange(Sender: TObject);
+var
+  Busy: Boolean;
+begin
+  if (btnEmuBuild = nil) or (FArdSim = nil) then
+    Exit;
+  Busy := FArdSim.Building;
+  btnEmuBuild.Enabled := not Busy;
+  btnEmuRun.Enabled := not Busy;
+  btnEmuWindow.Enabled := not Busy;
+  btnEmuStop.Enabled := Busy or FArdSim.Running;
+  // Эмулятор запущен: номера строк сборки = нынешние, правки - с этой
+  // минуты (FDbgEdits), как у отладочной сборки
+  if FArdSim.Running and not FArdSimWasRunning and (FDbgSession = nil) and
+     not FRqDbgOn then
+    DbgClearEdits;
+  FArdSimWasRunning := FArdSim.Running;
+end;
+
+// Окно эмулятора показано или передвинуто: если оно над правой частью
+// главного окна, правая панель растягивается до его левого края, и
+// редактор кончается там, где начинается эмулятор. Окно ушло с главного -
+// прежняя ширина панели. FRightPanelWidth (сохраняется в editor.ini) не
+// меняется
+procedure TForm1.ArdSimPlaced(Sender: TObject);
+var
+  EmuLeft, NewWidth: Integer;
+begin
+  if (FArdSimWin = nil) or (FRightPanel = nil) then
+    Exit;
+  EmuLeft := ScreenToClient(Point(FArdSimWin.Left, FArdSimWin.Top)).X;
+  NewWidth := ClientWidth - EmuLeft;
+  if (EmuLeft <= 0) or (NewWidth <= 0) or
+     (FArdSimWin.Left > ClientToScreen(Point(ClientWidth, 0)).X) then
+  begin
+    ArdSimHidden(Sender);
+    Exit;
+  end;
+  if NewWidth > ClientWidth - RightPanelMinLeft then
+    NewWidth := ClientWidth - RightPanelMinLeft;
+  if NewWidth < RightPanelMinWidth then
+    NewWidth := RightPanelMinWidth;
+  if FArdSimKeepWidth < 0 then
+    FArdSimKeepWidth := FRightPanel.Width;
+  FRightPanel.Width := NewWidth;
+  FormResizeEvent(Self);
+end;
+
+// Окно эмулятора закрыто: правой панели - прежняя ширина
+procedure TForm1.ArdSimHidden(Sender: TObject);
+begin
+  if (FArdSimKeepWidth < 0) or (FRightPanel = nil) then
+    Exit;
+  FRightPanel.Width := FArdSimKeepWidth;
+  FArdSimKeepWidth := -1;
+  FormResizeEvent(Self);
+end;
+
+// Перед сборкой и запуском: скетч - цель сборки Arduino, g++ - свой MinGW
+// unIDE (нет - build_sim.cmd ищет сам)
+procedure TForm1.ArdSimNeedSketch(Sender: TObject);
+begin
+  FArdSim.SketchFile := BuildTargetOf(bkArduino);
+  FArdSim.MingwBin := ExtractFilePath(string(MingwLocalGpp));
+end;
+
+procedure TForm1.ArdSimLog(Sender: TObject; const AText: string);
+begin
+  ShowCompLog;
+  LogComp(AText);
+end;
+
+procedure TForm1.ArdSimOpenFile(Sender: TObject; const AText: string);
+begin
+  OpenNamedFile(AText);
+end;
+
+// ---------------------------------------------------------------------------
+//  Отладчик эмулятора (ArdSim). ardprep ставит перед каждым оператором
+//  скетча SIM_STEP: эмулятор сам останавливается на точках останова и
+//  шагах и ждёт команды в общей памяти (TArdSimPanel.Dbg*). Строки - по
+//  тексту сборки; правки после запуска эмулятора сдвигают их (FDbgEdits).
+//  Пока скетч идёт, F7/F8 - пауза на ближайшем операторе.
+// ---------------------------------------------------------------------------
+
+function TForm1.ArdSimRunning: Boolean;
+begin
+  Result := (FArdSim <> nil) and FArdSim.Running;
+end;
+
+// Клавиши отладчика - эмулятору: он идёт со скетчем, собранным с
+// отладкой, другого сеанса нет, активна вкладка Arduino
+function TForm1.ArdDbgHere: Boolean;
+begin
+  Result := (FDbgSession = nil) and not FRqDbgOn and (FArdSim <> nil) and
+            FArdSim.DbgAvailable and (CurBuildKind = bkArduino);
+end;
+
+// Строка ALine (с 0, по нынешнему тексту) файла скетча - в номер для
+// эмулятора; 0 - не файл скетча или строка вставлена после сборки
+function TForm1.ArdDbgCodeAt(const AFileName: string; ALine: Integer): Cardinal;
+var
+  FileIdx, BuildLine: Integer;
+begin
+  Result := 0;
+  if FArdSim = nil then
+    Exit;
+  FileIdx := FArdSim.DbgFileIndex(AFileName);
+  if FileIdx < 0 then
+    Exit;
+  BuildLine := DbgLineThen(AFileName, ALine);
+  if BuildLine < 0 then
+    Exit;
+  Result := (Cardinal(FileIdx) shl 20) or Cardinal(BuildLine + 1);
+end;
+
+// F7, F8, Shift+F8: на остановке - шаг; на ходу - пауза (если прошлый
+// шаг уже дошёл)
+procedure TForm1.ArdDbgStep(ACode: Integer);
+begin
+  if FArdSim.DbgStopped then
+    FArdSim.DbgCommand(ACode, 0)
+  else if (ACode <> ArdDbgOut) and not FArdSim.DbgStepping then
+    FArdSim.DbgCommand(ArdDbgPause, 0);
+end;
+
+// F7/F8/F4 на вкладке Arduino, эмулятор не идёт: собрать, запустить и
+// встать на первом операторе (F4 - на строке). False - не наш случай
+function TForm1.ArdDbgLaunch(ACode: Integer; AArg: Cardinal): Boolean;
+begin
+  Result := False;
+  if (FDbgSession <> nil) or FRqDbgOn or (CurBuildKind <> bkArduino) then
+    Exit;
+  Result := True;
+  ArdSimEnsure;
+  if FArdSim.Building then
+    Exit;
+  if FArdSim.Running then
+  begin
+    // идёт, но без отладки (собран прежней версией ArdSim)
+    ShowCompLog;
+    LogComp('Эмулятор: скетч собран без отладочных вставок - соберите его ' +
+            'заново (кнопка сборки эмулятора)');
+    Exit;
+  end;
+  ArdSimShowClick(Self);
+  FArdSim.SetStartCommand(ACode, AArg);
+  FArdSim.BuildAndRun;
+end;
+
+procedure TForm1.ArdDbgStop(Sender: TObject);
+var
+  Code: Cardinal;
+  SrcFile: string;
+  SrcLine: Integer;
+begin
+  Code := FArdSim.DbgStopCode;
+  SrcFile := FArdSim.DbgFileName(Code shr 20);
+  SrcLine := Integer(Code and $FFFFF) - 1;
+  if (SrcFile = '') or (SrcLine < 0) then
+  begin
+    LogComp('--- Эмулятор: остановка, файл ' + IntToStr(Code shr 20) +
+            ', строка ' + IntToStr(SrcLine + 1) + ' - файла нет в списке');
+    Exit;
+  end;
+  if IsIconic(Application.Handle) then
+    Application.Restore;
+  SetForegroundWindow(Handle);
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) <> 0 then
+    OpenNamedFile(SrcFile);
+  // путь - как у вкладки: так его сравнивают точки и правки
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) = 0 then
+    SrcFile := FCurrentFileName;
+  SrcLine := DbgLineNow(SrcFile, SrcLine);
+  LogComp('--- Эмулятор: остановка ' + ExtractFileName(SrcFile) + ', строка ' +
+          IntToStr(SrcLine + 1) + ' (' + FArdSim.DbgWhere + '). F9 - дальше, ' +
+          'F8 - шаг, F7 - шаг с заходом, Shift+F8 - выйти из функции, ' +
+          'F4 - до каретки, Ctrl+F2 - стоп');
+  FDbgExecFile := SrcFile;
+  FDbgExecLine := SrcLine;
+  if CompareText(FCurrentFileName, SrcFile) = 0 then
+    GotoLine(SrcLine);
+  DbgRepaint;
+  DbgWatchRefresh;
+  // значение под мышью - подсказкой, пока скетч стоит
+  if FDbgHintTimer = nil then
+  begin
+    FDbgHintTimer := TTimer.Create(Self);
+    FDbgHintTimer.Interval := CiTickMs;
+    FDbgHintTimer.OnTimer := DbgHintTimerTick;
+  end;
+  FDbgHintTimer.Enabled := True;
+end;
+
+procedure TForm1.ArdDbgResume(Sender: TObject);
+begin
+  if (FDbgSession = nil) and not FRqDbgOn then
+    DbgClearExec;
+  DbgWatchRefresh;
+end;
+
+procedure TForm1.ArdDbgInfo(Sender: TObject);
+begin
+  DbgWatchRefresh;
+end;
+
+// Точки останова файлов скетча - эмулятору (он сравнивает со своими)
+procedure TForm1.ArdDbgNeedBreaks(Sender: TObject);
+var
+  Codes: TArdDbgCodes;
+  MarkIdx, Count: Integer;
+  Code: Cardinal;
+begin
+  Count := 0;
+  if FBreakMarks <> nil then
+  begin
+    SetLength(Codes, FBreakMarks.Count);
+    for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    begin
+      Code := ArdDbgCodeAt(TBreakMark(FBreakMarks[MarkIdx]).FileName,
+                           TBreakMark(FBreakMarks[MarkIdx]).Line);
+      if Code <> 0 then
+      begin
+        Codes[Count] := Code;
+        Inc(Count);
+      end;
+    end;
+  end;
+  SetLength(Codes, Count);
+  FArdSim.DbgSetBreakpoints(Codes);
+end;
+
+// Окно Watch при эмуляторе: выражения уходят эмулятору, значения - из
+// его ответа (имя или имя[индекс]; глобальные и локальные переменные)
+procedure TForm1.ArdDbgWatchRefresh;
+var
+  ExprIdx: Integer;
+  State, ValueText, Where: string;
+  Item: TListItem;
+
+  procedure SetSub(AItem: TListItem; ASubIdx: Integer; const AText: string);
+  begin
+    while AItem.SubItems.Count <= ASubIdx do
+      AItem.SubItems.Add('');
+    if AItem.SubItems[ASubIdx] <> AText then
+      AItem.SubItems[ASubIdx] := AText;
+  end;
+
+begin
+  FArdSim.LiveWatch := FWatchWnd.Visible;
+  FArdSim.DbgSetWatch(FWatchList);
+  State := '';
+  if not FArdSim.DbgAvailable then
+  begin
+    State := '<эмулятор: скетч собран без отладки - соберите заново>';
+    Where := 'Эмулятор работает без отладки';
+  end
+  else if FArdSim.DbgStopped then
+    Where := 'Эмулятор стоит: ' + FArdSim.DbgWhere
+  else
+    Where := 'Эмулятор работает: значения на ходу';
+  if FWatchWnd.lblWhere.Caption <> ' ' + Where then
+    FWatchWnd.lblWhere.Caption := ' ' + Where;
+  FWatchWnd.lvWatch.Items.BeginUpdate;
+  try
+    while FWatchWnd.lvWatch.Items.Count > FWatchList.Count do
+      FWatchWnd.lvWatch.Items.Delete(FWatchWnd.lvWatch.Items.Count - 1);
+    while FWatchWnd.lvWatch.Items.Count < FWatchList.Count do
+      FWatchWnd.lvWatch.Items.Add;
+    for ExprIdx := 0 to FWatchList.Count - 1 do
+    begin
+      Item := FWatchWnd.lvWatch.Items[ExprIdx];
+      if Item.Caption <> FWatchList[ExprIdx] then
+        Item.Caption := FWatchList[ExprIdx];
+      if State <> '' then
+        ValueText := State
+      else if not FArdSim.DbgWatchResult(ExprIdx, ValueText) then
+        ValueText := '<ждём ответа эмулятора>';
+      SetSub(Item, 0, ValueText);
+      SetSub(Item, 1, WatchCondGet(FWatchList[ExprIdx]));
+      SetSub(Item, 2, '');
+    end;
+  finally
+    FWatchWnd.lvWatch.Items.EndUpdate;
+  end;
+  WatchArrUpdate;
 end;
 
 // Палитре нужна другая высота (ряды вкладок, ряды кнопок): тулбар на ту же
@@ -62967,6 +63542,13 @@ begin
     FArdCancel := True;
     Exit;
   end;
+  // Эмулятор скетча (Arduino): остановить его
+  if (FDbgSession = nil) and not FRqDbgOn and ArdSimRunning and
+     (CurBuildKind = bkArduino) then
+  begin
+    FArdSim.StopAll;
+    Exit;
+  end;
   // Под отладчиком: процесс снимается, конец сеанса - в DbgExited
   if FDbgSession <> nil then
   begin
@@ -63340,6 +63922,14 @@ begin
     btnArdVerify.Visible := ArdRow;
   if btnArdUpload <> nil then
     btnArdUpload.Visible := ArdRow;
+  if btnEmuBuild <> nil then
+  begin
+    btnEmuBuild.Visible := ArdRow;
+    btnEmuRun.Visible := ArdRow;
+    btnEmuStop.Visible := ArdRow;
+    btnEmuIni.Visible := ArdRow;
+    btnEmuWindow.Visible := ArdRow;
+  end;
   if cmbArdPort <> nil then
     cmbArdPort.Visible := ArdRow;
   // Списки FreeBASIC и компилятора RapidQ показывает UpdateBuildBar: их
@@ -63349,6 +63939,12 @@ begin
     btnArdVerify.Left := FRunRowLefts[1];        // места View Unit,
     btnArdUpload.Left := FRunRowLefts[2];        // View Form
     btnProgReset.Left := FRunRowLefts[3];        // и New Form
+    // за ними, с промежутком, - кнопки эмулятора
+    btnEmuBuild.Left := btnProgReset.Left + btnProgReset.Width + 6;
+    btnEmuRun.Left := btnEmuBuild.Left + 35;
+    btnEmuStop.Left := btnEmuRun.Left + 35;
+    btnEmuIni.Left := btnEmuStop.Left + 35;
+    btnEmuWindow.Left := btnEmuIni.Left + 35;
   end
   else
   begin
@@ -67553,7 +68149,9 @@ end;
 // стоит. Пока идёт свободно - нельзя, как в Delphi.
 function TForm1.DbgCanStep: Boolean;
 begin
-  if RqDbgHere then
+  if ArdDbgHere then
+    Result := True
+  else if RqDbgHere then
     Result := FRqDbgPaused
   else if FDbgSession <> nil then
     Result := FDbgSession.Paused
@@ -67596,6 +68194,11 @@ end;
 // есть номера строк
 procedure TForm1.DbgStepInto;
 begin
+  if ArdDbgHere then
+  begin
+    ArdDbgStep(ArdDbgInto);
+    Exit;
+  end;
   if RqDbgHere then
   begin
     RqDbgCommand(RqDbgModeInto, 0);
@@ -67603,6 +68206,8 @@ begin
   end;
   if FDbgSession = nil then
   begin
+    if ArdDbgLaunch(ArdDbgInto, 0) then
+      Exit;
     DbgLaunch(DbgStartStep);
     Exit;
   end;
@@ -67616,6 +68221,11 @@ end;
 // Step over (F8): до следующей строки, вызовы целиком
 procedure TForm1.DbgStepOver;
 begin
+  if ArdDbgHere then
+  begin
+    ArdDbgStep(ArdDbgOver);
+    Exit;
+  end;
   if RqDbgHere then
   begin
     RqDbgCommand(RqDbgModeOver, 0);
@@ -67623,6 +68233,8 @@ begin
   end;
   if FDbgSession = nil then
   begin
+    if ArdDbgLaunch(ArdDbgInto, 0) then
+      Exit;
     DbgLaunch(DbgStartStep);
     Exit;
   end;
@@ -67649,6 +68261,23 @@ begin
   LineIdx := CurrentLineIndex;
   if LineIdx < 0 then
     Exit;
+  // Эмулятор: до строки (на ходу - тоже)
+  if ArdDbgHere or ((FDbgSession = nil) and not FRqDbgOn and
+                    (CurBuildKind = bkArduino) and not ArdSimRunning) then
+  begin
+    ArdSimEnsure;
+    if ArdDbgCodeAt(FCurrentFileName, LineIdx) = 0 then
+    begin
+      LogComp('Run to cursor: ' + ExtractFileName(FCurrentFileName) +
+              ' - не файл скетча эмулятора или строка добавлена после сборки');
+      Exit;
+    end;
+    if ArdDbgHere then
+      FArdSim.DbgCommand(ArdDbgRunTo, ArdDbgCodeAt(FCurrentFileName, LineIdx))
+    else
+      ArdDbgLaunch(ArdDbgRunTo, ArdDbgCodeAt(FCurrentFileName, LineIdx));
+    Exit;
+  end;
   // RapidQ: точка строки по копии сеанса
   if RqDbgHere then
   begin
@@ -69148,6 +69777,12 @@ var
 begin
   Result := False;
   AValue := '';
+  if ArdDbgHere then
+  begin
+    if FArdSim.DbgStopped then
+      Result := FArdSim.DbgVarValue(AExpr, AValue);
+    Exit;
+  end;
   if (FDbgSession = nil) and FRqDbgOn then
   begin
     if FRqDbgPaused then
@@ -69189,6 +69824,7 @@ begin
     Exit;
   end;
   if not (FRqDbgOn and FRqDbgPaused) and
+     not (ArdDbgHere and FArdSim.DbgStopped) and
      ((FDbgSession = nil) or FDbgSession.Finished or
       not FDbgSession.Paused) then
   begin
@@ -69584,7 +70220,17 @@ begin
   NewItem('-', nil, False);
   mArdMonitor := NewItem('Serial Monitor', mArdMonitorClick, False);
   mArdMonitor.ShortCut := ShortCut(Ord('M'), [ssCtrl, ssShift]);
+  NewItem('Emulator (ArdSim)', ArdSimShowClick, False).Hint :=
+    'Окно эмулятора: скетч, собранный под ПК (ArdSim), экран прибора, ' +
+    'клавиатура и Serial';
   NewItem('-', nil, False);
+  // В конце меню (после пунктов из .dfm): свой компилятор для ПК
+  InsertIdx := mArduino.Count;
+  NewItem('-', nil, False);
+  NewItem('Install MinGW-w64 GCC ' + MingwVersion + ' (tools\mingw)...',
+    MingwInstallClick, False).Hint := 'Скачать свой MinGW-w64 (xPack, ' +
+    'около 310 МБ) в tools\mingw - g++ для сборки скетча под ПК ' +
+    '(эмулятор); в реестр и PATH ничего не пишется';
 end;
 
 // Меню ReactOS - после Arduino. Download Build Tools: страницы загрузки
@@ -70635,6 +71281,304 @@ begin
       FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
                            'Compilation log');
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  MinGW-w64 (MingwTool): свой g++ unIDE в tools\mingw - сборка скетча
+//  Arduino под ПК для эмулятора. xPack GCC 12.2.0-1 (Windows 7 + UCRT), zip
+// ---------------------------------------------------------------------------
+
+// g++ запускается в этой Windows: g++ --version, ответ - в журнал
+function TForm1.MingwCheckRun(const AGpp: string): Boolean;
+var
+  Proc: TProcRun;
+  Chunk, Output: string;
+  Got: Integer;
+  StartTick: DWORD;
+  Ended: Boolean;
+begin
+  Result := False;
+  Proc := TProcRun.Create;
+  try
+    Proc.CommandLine := '"' + AGpp + '" --version';
+    Proc.Dir := ExtractFilePath(AGpp);
+    Proc.Window := pwHidden;
+    Proc.Console := pcNoWindow;
+    Proc.CaptureOutput := True;
+    if not Proc.Start then
+    begin
+      LogComp('MinGW: g++ не запустился - ' + Proc.ErrorText);
+      Exit;
+    end;
+    Output := '';
+    Ended := False;
+    StartTick := GetTickCount;
+    repeat
+      Chunk := '';
+      Got := Proc.Read(Chunk);
+      if Got < 0 then
+        Break;
+      if Got > 0 then
+      begin
+        Output := Output + Chunk;
+        Continue;
+      end;
+      if Ended then
+        Break;
+      if Proc.WaitFor(50) then
+        Ended := True;
+      if GetTickCount - StartTick > 20000 then
+      begin
+        Proc.Terminate(1);
+        LogComp('MinGW: g++ --version не ответил за 20 с');
+        Exit;
+      end;
+    until False;
+    Proc.WaitFor(1000);
+    Output := Trim(Output);
+    if Pos(#10, Output) > 0 then
+      Output := Trim(Copy(Output, 1, Pos(#10, Output) - 1));
+    Result := (Proc.ExitCode = 0) and (Output <> '');
+    if Result then
+      LogComp('MinGW: ' + Output)
+    else
+      LogComp('MinGW: g++ --version - код ' + IntToStr(Proc.ExitCode) +
+              '. Возможно, эта сборка GCC не работает в этой Windows; ' +
+              'ответ: ' + Output);
+  finally
+    Proc.Free;
+  end;
+end;
+
+// g++.exe своего MinGW; нет - (AAsk) вопрос и установка (и своего 7-Zip:
+// им распаковывается архив). Отказ или не вышло - пусто
+function TForm1.MingwEnsure(AAsk: Boolean): string;
+var
+  OsInfo: TSzOsInfo;
+  Package: TMingwPackage;
+  Target, SevenZip, Note, ErrText, Reason: string;
+  Need7Zip, NeedUcrt: Boolean;
+  Stage7Zip, StageMingw: Integer;
+begin
+  Result := string(MingwLocalGpp);
+  if (Result <> '') or not AAsk then
+    Exit;
+  ShowCompLog;
+  {$IFDEF UNIX}
+  LogComp('MinGW: на Linux g++ - из пакетов системы: sudo apt install g++');
+  Exit;
+  {$ENDIF}
+  SzGetOsInfo(OsInfo);
+  if not MingwChoosePackage(OsInfo, Package, Reason) then
+  begin
+    LogComp('MinGW-w64: ' + Reason);
+    Exit;
+  end;
+  // Windows 7 x64 без UCRT: KB2999226 скачает и запустит unIDE
+  NeedUcrt := not MingwHasUcrt and MingwUcrtAutoFits(OsInfo);
+  if NeedUcrt then
+    Reason := '';
+  if Reason <> '' then
+    LogComp('MinGW-w64: ' + Reason);
+  Target := string(MingwChooseTargetDir);
+  if Target = '' then
+  begin
+    LogComp('MinGW: нет папки для установки - в ' + string(MingwAppDir) +
+            ' и ' + string(MingwUserDir) + ' не записать');
+    Exit;
+  end;
+  SevenZip := string(SzLocalExe);
+  Need7Zip := SevenZip = '';
+  Note := '';
+  if Need7Zip then
+    Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): им ' +
+            'распаковывается архив MinGW.';
+  if Reason <> '' then
+    Note := Note + #13#10#13#10'Внимание: ' + Reason + '.';
+  if NeedUcrt then
+    Note := Note + #13#10#13#10'В Windows нет Universal C Runtime: после ' +
+            'компилятора будет скачано обновление Microsoft ' + MingwUcrtKb +
+            ' (около 1 МБ) и запущена его установка (wusa.exe, нужны права ' +
+            'администратора, возможна перезагрузка).';
+  if MessageDlg('9835:Своего компилятора MinGW-w64 unIDE нет.'#13#10#13#10 +
+                'Скачать GCC ' + MingwVersion + ' (' + MingwRuntime + ', ' +
+                Package.Arch + ', около ' +
+                IntToStr(Package.ApproxSize div 1048576) + ' МБ) с GitHub ' +
+                '(или SourceForge) и распаковать в ' + Target + '?' + Note +
+                #13#10#13#10'Нужен для сборки скетча Arduino под ПК ' +
+                '(эмулятор). В системе ничего не ставится: ни реестра, ни ' +
+                'PATH. После установки unIDE запустит g++ --version и ' +
+                'проверит, что компилятор работает в этой Windows.',
+                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  CompDlgOpen('MinGW-w64 GCC ' + MingwVersion);
+  FCompDlg.Caption := 'Установка MinGW-w64';
+  Stage7Zip := -1;
+  if Need7Zip then
+    Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 3);
+  StageMingw := FCompDlg.AddStage('MinGW-w64 GCC ' + MingwVersion + ' (' +
+                                  Package.Arch + ')', 97);
+  BusyBegin('Установка MinGW-w64');
+  try
+    if Need7Zip then
+    begin
+      SevenZip := RosSetup7Zip(Stage7Zip);
+      if SevenZip = '' then
+        Exit;
+    end;
+    FCompDlg.StartStage(StageMingw, 0, 'скачивание');
+    FRosInstallStage := StageMingw;
+    LogComp('MinGW: скачивание ' + MingwUrl(Package.FileName) + ', затем ' +
+            'распаковка в ' + Target);
+    if not SzInstallPlanSync(Target, MingwPlan(Package, OsInfo.Name,
+                             SevenZip), RosInstallProgress, ErrText) then
+    begin
+      FCompDlg.EndStage(StageMingw, False, ErrText);
+      LogComp('MinGW: не установлен - ' + ErrText);
+      Exit;
+    end;
+    Result := string(MingwLocalGpp);
+    FCompDlg.EndStage(StageMingw, Result <> '', 'GCC ' + MingwVersion + ' (' +
+                      Package.Arch + ')');
+    if Result = '' then
+      LogComp('MinGW: ' + MingwGppName + ' после установки не найден')
+    else
+    begin
+      LogComp('MinGW-w64 GCC ' + MingwVersion + ': ' + Result);
+      if NeedUcrt then
+        MingwInstallUcrt;
+      MingwCheckRun(Result);
+    end;
+  finally
+    BusyEnd('Установка MinGW-w64', Result <> '');
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result <> '' then
+      FCompDlg.FinishBuild(True, 'Установлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// Arduino - Install MinGW-w64: свой уже есть - путь, версия и проверка
+// запуска в журнал; нет - установка
+procedure TForm1.MingwInstallClick(Sender: TObject);
+var
+  Gpp: string;
+  OsInfo: TSzOsInfo;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  Gpp := string(MingwLocalGpp);
+  if Gpp <> '' then
+  begin
+    LogComp('MinGW: свой MinGW-w64 unIDE - ' + Gpp + ' (' +
+            MingwInstalledInfo(Gpp) + '). Поставить заново - удалить ' +
+            'папку ' + ExtractFilePath(ExcludeTrailingPathDelimiter(
+            ExtractFilePath(Gpp))) + ', затем Install MinGW-w64');
+    if not MingwHasUcrt then
+    begin
+      SzGetOsInfo(OsInfo);
+      if MingwUcrtAutoFits(OsInfo) then
+      begin
+        if MessageDlg('9836:В Windows нет Universal C Runtime - без него ' +
+                      'GCC из xPack, скорее всего, не запустится.'#13#10#13#10 +
+                      'Скачать обновление Microsoft ' + MingwUcrtKb +
+                      ' (около 1 МБ) и запустить его установку? Нужны ' +
+                      'права администратора, возможна перезагрузка.',
+                      mtConfirmation, [mbOK, mbCancel], 0) = mrOk then
+          MingwInstallUcrt;
+      end
+      else
+        LogComp('MinGW: в Windows нет Universal C Runtime (ucrtbase.dll); ' +
+                'обновление для этой Windows - ' + MingwUcrtPage);
+    end;
+    MingwCheckRun(Gpp);
+    Exit;
+  end;
+  MingwEnsure(True);
+end;
+
+// UCRT для Windows 7 x64: скачать KB2999226 (.msu) в tools\ucrt, если его
+// там нет, и запустить wusa.exe (запрос UAC), дождаться конца. True -
+// после этого ucrtbase.dll есть
+function TForm1.MingwInstallUcrt: Boolean;
+var
+  Target, Msu, ErrText, Wusa, Params: string;
+  ExecInfo: TShellExecuteInfo;
+  ExitCode: DWORD;
+  WinDir: array[0..MAX_PATH] of Char;
+begin
+  Result := MingwHasUcrt;
+  if Result then
+    Exit;
+  ShowCompLog;
+  Target := string(MingwUcrtTargetDir);
+  if Target = '' then
+  begin
+    LogComp('UCRT: нет папки для загрузки - в tools\ucrt не записать');
+    Exit;
+  end;
+  Msu := IncludeTrailingPathDelimiter(Target) + MingwUcrtFile;
+  if not FileExists(Msu) then
+  begin
+    LogComp('UCRT: скачивание ' + MingwUcrtUrl);
+    BusyBegin('Загрузка ' + MingwUcrtKb);
+    try
+      if not SzInstallPlanSync(Target, MingwUcrtPlan, RosInstallProgress,
+                               ErrText) then
+      begin
+        LogComp('UCRT: не скачан - ' + ErrText + '. Страница обновления: ' +
+                MingwUcrtPage);
+        Exit;
+      end;
+    finally
+      BusyEnd('Загрузка ' + MingwUcrtKb, FileExists(Msu));
+    end;
+  end;
+  // unIDE 32-битный: system32 для него - SysWOW64, а 64-битный пакет
+  // ставит 64-битный wusa (папка Sysnative)
+  GetWindowsDirectory(WinDir, MAX_PATH);
+  Wusa := IncludeTrailingPathDelimiter(string(WinDir)) + 'Sysnative\wusa.exe';
+  if not FileExists(Wusa) then
+    Wusa := 'wusa.exe';
+  Params := '"' + Msu + '"';
+  LogComp('UCRT: установка ' + Wusa + ' ' + Params + ' - подтвердите запрос ' +
+          'прав администратора');
+  FillChar(ExecInfo, SizeOf(ExecInfo), 0);
+  ExecInfo.cbSize := SizeOf(ExecInfo);
+  ExecInfo.fMask := SEE_MASK_NOCLOSEPROCESS;
+  ExecInfo.Wnd := Handle;
+  ExecInfo.lpVerb := 'open';
+  ExecInfo.lpFile := PChar(Wusa);
+  ExecInfo.lpParameters := PChar(Params);
+  ExecInfo.nShow := SW_SHOWNORMAL;
+  if not ShellExecuteEx(@ExecInfo) then
+  begin
+    LogComp('UCRT: wusa не запущен - ' + SysErrorMessage(GetLastError));
+    Exit;
+  end;
+  BusyBegin('Установка ' + MingwUcrtKb);
+  try
+    while WaitForSingleObject(ExecInfo.hProcess, 100) = WAIT_TIMEOUT do
+      Application.ProcessMessages;
+    ExitCode := 0;
+    GetExitCodeProcess(ExecInfo.hProcess, ExitCode);
+    CloseHandle(ExecInfo.hProcess);
+  finally
+    BusyEnd('Установка ' + MingwUcrtKb, MingwHasUcrt);
+  end;
+  Result := MingwHasUcrt;
+  // wusa: 3010 - установлено, нужна перезагрузка; 2359302 - уже стоит
+  if Result then
+    LogComp('UCRT: установлен (код wusa ' + IntToStr(ExitCode) + ')')
+  else if ExitCode = 3010 then
+    LogComp('UCRT: установлен, Windows просит перезагрузку (код 3010)')
+  else
+    LogComp('UCRT: ucrtbase.dll после установки нет, код wusa ' +
+            IntToStr(ExitCode) + '. Обновление вручную: ' + MingwUcrtPage);
 end;
 
 // Write Image to USB: выбрать образ (предлагается собранный образ проекта
@@ -80276,6 +81220,12 @@ var
 begin
   if (FWatchWnd = nil) or (FWatchList = nil) then
     Exit;
+  // Эмулятор скетча - значения из его ответа
+  if (FDbgSession = nil) and not FRqDbgOn and ArdSimRunning then
+  begin
+    ArdDbgWatchRefresh;
+    Exit;
+  end;
   // Отладчик RapidQ - свои значения (файл состояния)
   if (FDbgSession = nil) and FRqDbgOn then
   begin
@@ -80544,6 +81494,26 @@ var
   NameIdx: Integer;
   VarText: string;
 begin
+  // Эмулятор: локальные функции остановки
+  if ArdDbgHere then
+  begin
+    if not FArdSim.DbgStopped then
+    begin
+      ShowMessage('Watch: скетч в эмуляторе не стоит на остановке.');
+      Exit;
+    end;
+    Names := TStringList.Create;
+    try
+      FArdSim.DbgLocalNames(Names);
+      for NameIdx := 0 to Names.Count - 1 do
+        if FWatchList.IndexOf(Names[NameIdx]) < 0 then
+          FWatchList.Add(Names[NameIdx]);
+    finally
+      Names.Free;
+    end;
+    DbgWatchRefresh;
+    Exit;
+  end;
   // RapidQ: параметры и локальные из файла состояния
   if (FDbgSession = nil) and FRqDbgOn then
   begin
@@ -80813,8 +81783,8 @@ var
 begin
   if (FWatchWnd = nil) or (FWatchArrPanel = nil) then
     Exit;
-  // RapidQ: панели массива нет
-  if (FDbgSession = nil) and FRqDbgOn then
+  // RapidQ и эмулятор: панели массива нет
+  if (FDbgSession = nil) and (FRqDbgOn or ArdSimRunning) then
   begin
     WatchArrShow(False);
     Exit;
@@ -81120,9 +82090,25 @@ var
   CtrlDown: Boolean;
 begin
   Result := False;
+  CtrlDown := GetKeyState(VK_CONTROL) < 0;
+  // Эмулятор: Shift+F8 - до выхода из функции (Run until return)
+  if (AKey = VK_F8) and (GetKeyState(VK_SHIFT) < 0) and not CtrlDown and
+     (GetKeyState(VK_MENU) >= 0) and ArdDbgHere then
+  begin
+    ArdDbgStep(ArdDbgOut);
+    Result := True;
+    Exit;
+  end;
   if (GetKeyState(VK_SHIFT) < 0) or (GetKeyState(VK_MENU) < 0) then
     Exit;
-  CtrlDown := GetKeyState(VK_CONTROL) < 0;
+  // Эмулятор: F9 - дальше с остановки (Ctrl+F2 - в ProgramResetClick)
+  if (AKey = VK_F9) and not CtrlDown and ArdDbgHere then
+  begin
+    if FArdSim.DbgStopped then
+      FArdSim.DbgCommand(ArdDbgRun, 0);
+    Result := True;
+    Exit;
+  end;
   if (AKey = VK_F9) and not CtrlDown then
   begin
     if (btnCompileRun <> nil) and btnCompileRun.Enabled then
@@ -81218,7 +82204,7 @@ begin
       ((FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used or
        (Length(FWindows[FWindowsIndex].Bookmarks) = 0)) and
       ((((FDbgSession = nil) or FDbgSession.Finished) and
-        (FRqDbgExe = '')) or (FCurrentFileName = ''))) then
+        (FRqDbgExe = '') and not ArdSimRunning) or (FCurrentFileName = ''))) then
     Exit;
   EdApi.GetSel(Sel);
   FDbgPreMin := Sel.cpMin;
@@ -81358,7 +82344,7 @@ begin
   // Правка за сеанс - для перевода строк .map в нынешние номера и обратно.
   // RapidQ - с отладочной сборки: номера точек копии - по её тексту.
   if (((FDbgSession <> nil) and not FDbgSession.Finished) or
-      (FRqDbgExe <> '')) and (FCurrentFileName <> '') then
+      (FRqDbgExe <> '') or ArdSimRunning) and (FCurrentFileName <> '') then
   begin
     if FDbgEdits = nil then
       FDbgEdits := TList.Create;

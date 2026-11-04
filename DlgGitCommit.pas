@@ -102,6 +102,8 @@ type
     procedure BtnIgnoreClick(Sender: TObject);
     function SelectedChanges(var APicked: TGitChanges): Integer;
     procedure FillList;
+    procedure FitColumns(AFitWindow: Boolean);
+    procedure FormShow(Sender: TObject);
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
       State: TCustomDrawState; var DefaultDraw: Boolean);
     procedure ListCustomDrawSubItem(Sender: TCustomListView; Item: TListItem;
@@ -272,12 +274,14 @@ begin
   Position := poMainFormCenter;
   BorderStyle := bsSizeable;
   BorderIcons := [biSystemMenu, biMaximize];
-  Width := 900;
-  Height := 600;
+  // Ширина окна - по длине имён файлов (FitColumns после FillList)
+  Width := 1200;
+  Height := 640;
   Constraints.MinWidth := 600;
   Constraints.MinHeight := 400;
   KeyPreview := True;
   OnKeyDown := FormKeyDown;
+  OnShow := FormShow;
 
   FLeft := TUiPanel.Create(Self);
   FLeft.Parent := Self;
@@ -436,6 +440,7 @@ begin
   FList.OnCustomDrawItem := ListCustomDrawItem;
   FList.OnCustomDrawSubItem := ListCustomDrawSubItem;
   FillList;
+  FitColumns(True);
   // Правый щелчок по строке - меню (Discard Changes, Ignore)
   FListMenu := TUiPopupMenu.Create(Self);
   MenuItem := TMenuItem.Create(Self);
@@ -547,6 +552,83 @@ begin
   UpdateCount;
 end;
 
+// Ширина столбцов - по самому длинному тексту (имя файла видно целиком).
+// AFitWindow: ещё и ширина окна и левой части - под список, но не шире
+// рабочей области экрана; справа для разницы остаётся не меньше DiffMin.
+// Не помещается - у списка горизонтальная прокрутка, имена не обрезаются;
+// помещается - столбец «Файл» занимает остаток ширины
+const
+  ColPad = 16;          // поля текста в ячейке
+  CheckPad = 24;        // флажок перед именем файла
+  DiffMin = 360;        // наименьшая ширина разницы справа
+  ScreenGap = 40;       // отступ окна от краёв рабочей области
+
+procedure TDlgGitCommit.FitColumns(AFitWindow: Boolean);
+var
+  Measure: TBitmap;
+  ColIdx, ItemIdx, TextWidth, ListWidth, SideWidth, FrameWidth: Integer;
+  NeedWidth: array[0..2] of Integer;
+  Item: TListItem;
+begin
+  if FList.Columns.Count < 3 then
+    Exit;
+  Measure := TBitmap.Create;
+  try
+    Measure.Canvas.Font.Assign(FList.Font);
+    for ColIdx := 0 to 2 do
+      NeedWidth[ColIdx] := Measure.Canvas.TextWidth(
+        FList.Columns[ColIdx].Caption) + ColPad;
+    for ItemIdx := 0 to FList.Items.Count - 1 do
+    begin
+      Item := FList.Items[ItemIdx];
+      TextWidth := Measure.Canvas.TextWidth(Item.Caption) + ColPad + CheckPad;
+      if TextWidth > NeedWidth[0] then
+        NeedWidth[0] := TextWidth;
+      for ColIdx := 1 to 2 do
+        if Item.SubItems.Count >= ColIdx then
+        begin
+          TextWidth := Measure.Canvas.TextWidth(Item.SubItems[ColIdx - 1]) +
+            ColPad;
+          if TextWidth > NeedWidth[ColIdx] then
+            NeedWidth[ColIdx] := TextWidth;
+        end;
+    end;
+  finally
+    Measure.Free;
+  end;
+  // Список целиком: столбцы, полоса прокрутки, рамка
+  ListWidth := NeedWidth[0] + NeedWidth[1] + NeedWidth[2] +
+    GetSystemMetrics(SM_CXVSCROLL) + 8;
+  if AFitWindow then
+  begin
+    FrameWidth := 2 * GetSystemMetrics(SM_CXSIZEFRAME) + 4;
+    Width := ListWidth + FSplitter.Width + DiffMin + FrameWidth;
+    if Width < 1200 then
+      Width := 1200;
+    if Width > Screen.WorkAreaWidth - ScreenGap then
+      Width := Screen.WorkAreaWidth - ScreenGap;
+    SideWidth := Width - FrameWidth - FSplitter.Width - DiffMin;
+    if SideWidth > ListWidth then
+      SideWidth := ListWidth;
+    if SideWidth < 460 then
+      SideWidth := 460;
+    FLeft.Width := SideWidth;
+  end;
+  // Столбец «Файл» - сколько нужно, но не меньше остатка ширины списка
+  SideWidth := FLeft.Width - NeedWidth[1] - NeedWidth[2] -
+    GetSystemMetrics(SM_CXVSCROLL) - 8;
+  if SideWidth > NeedWidth[0] then
+    NeedWidth[0] := SideWidth;
+  for ColIdx := 0 to 2 do
+    FList.Columns[ColIdx].Width := NeedWidth[ColIdx];
+end;
+
+// Шрифт списка мог смениться при показе (тема) - столбцы заново
+procedure TDlgGitCommit.FormShow(Sender: TObject);
+begin
+  FitColumns(False);
+end;
+
 // Цвет строки - по виду файла (clNone - цвет темы)
 function TDlgGitCommit.ItemKindColor(Item: TListItem): TColor;
 var
@@ -591,6 +673,7 @@ begin
     Exit;
   FChanges := Fresh;
   FillList;
+  FitColumns(False);
   FDiff.ShowDiff('');
   if FList.Items.Count = 0 then
     ModalResult := mrCancel;

@@ -13,6 +13,7 @@ Current set: Lazarus IDE, `general_purpose` icons by Roland Hahn
   `make_icons.py`.
 
 Arduino Verify and Upload: `Ok_07`, `Arrow_05` from the same set.
+Emulator (ArdSim) buttons: build and run `Setup_03`, run `Calculator_01`, ardsim.ini `Edit_01`, separate ArdSim window `Window_01`; stop reuses `Stop_01`.
 
 `make_icons.py` puts the icons into two 32-bit strips with premultiplied
 alpha (`icons_light.bmp`, `icons_dark.bmp`: 24*17 x 48, row 0 normal,

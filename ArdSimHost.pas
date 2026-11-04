@@ -1,0 +1,2279 @@
+unit ArdSimHost;
+
+// ---------------------------------------------------------------------------
+//  Вкладка «Эмулятор» правой панели: скетч Arduino, собранный ArdSim
+//  (ArdSim\build_sim.cmd), работает отдельным процессом без своего окна:
+//    <скетч>_sim.exe /host:<имя>
+//  Экран 480x320, вывод Serial и нажатия клавиш - через общую память
+//  "Local\ArdSim_<имя>", её создаёт эта вкладка. Раскладка - как в
+//  ArdSim\src\sim_host.cpp:
+//    смещение 0       заголовок, 32 слова по 4 байта (индексы Hdr*)
+//    смещение 128     экран 320 строк по 480 точек, RGB565 (как у UTFT)
+//    смещение 307328  кольцо вывода Serial, 65536 байт
+//    смещение 372864  область отладчика (индексы Dbg*, ArdSim\src\sim_internal.h)
+//  Сигналы (обороты, гармоники, ротор) задаются в ardsim.ini рядом с exe:
+//  эмулятор перечитывает файл, когда тот меняется. Главное из него - на
+//  панели «Сигналы» под прибором (тахометр, обороты, 1-я гармоника A0/A1,
+//  модель ротора и грузы); остальное - в самом файле.
+//
+//  Отладчик: ardprep вставляет в скетч SIM_STEP перед каждым оператором,
+//  эмулятор останавливается на точках останова (F5 в редакторе), шагает
+//  (F7, F8, Shift+F8, F4) и отдаёт значения переменных (окно Watch). Номер
+//  строки в общей памяти - (номер файла shl 20) or строка, файлы - .ino
+//  папки скетча (главный - 0, остальные по имени).
+//
+//  Отдельный процесс, а не DLL: скетч может писать за границы массивов, и
+//  тогда упадёт только эмулятор, а не unIDE с несохранёнными файлами.
+//
+//  Прибор рисуется как BS10: зелёный корпус с экраном, под ним светлая
+//  панель с клавиатурой (цвета и раскладка клавиш - с фото прибора).
+//  Экран всегда 480x320, точка в точку: так текст UTFT читается, как на
+//  приборе. Вокруг экрана - узкие зелёные поля, клавиатура подгоняется под
+//  оставшуюся высоту. Показывается в отдельном окне (TArdSimWindow): в
+//  правую панель unIDE прибор шириной 508 точек не помещался.
+// ---------------------------------------------------------------------------
+
+interface
+
+uses
+  {$IFDEF FPC} LCLType, {$ENDIF}
+  Windows, Messages, SysUtils, Classes, Controls,
+  Graphics, StdCtrls, ExtCtrls, Forms, IniFiles, UiStdCtrls, UiButton,
+  UiEditCtrls, ProcRun;
+
+const
+  ArdSimScreenW = 480;
+  ArdSimScreenH = 320;
+  ArdSimKeyRows = 5;
+  ArdSimKeyCols = 4;
+  ArdSimKeyCount = ArdSimKeyRows * ArdSimKeyCols;
+
+  // Команды отладчика эмулятора (SimCmd* в ArdSim\src\sim_internal.h).
+  // Пауза, шаг и Run to cursor во время работы - остановка на ближайшем
+  // операторе (Run to cursor - на строке)
+  ArdDbgPause = 1;
+  ArdDbgRun = 2;
+  ArdDbgInto = 3;
+  ArdDbgOver = 4;
+  ArdDbgOut = 5;
+  ArdDbgRunTo = 6;
+
+type
+  TArdSimTextEvent = procedure(Sender: TObject; const AText: string) of object;
+  // Строки точек останова: (номер файла shl 20) or строка с 1
+  TArdDbgCodes = array of Cardinal;
+
+  TArdSimPanel = class;
+
+  // Прибор целиком: корпус, экран, клавиатура. Клавиши - мышью или
+  // клавишами ПК (когда прибор в фокусе)
+  TArdSimDevice = class(TCustomControl)
+  private
+    FOwnerPanel: TArdSimPanel;
+    FScreenW: Integer;         // ширина экрана, точек (высота - 2/3)
+    FBorder: Integer;          // зелёное поле вокруг экрана, точек
+    FBodyRect: TRect;
+    FPadRect: TRect;
+    FScreenRect: TRect;
+    FKeyRects: array[0..ArdSimKeyCount - 1] of TRect;
+    FPressedKey: Integer;      // подсвеченная клавиша, -1 - нет
+    FPressTimer: TTimer;
+    FBuffer: TBitmap;
+    procedure PressTimerTick(Sender: TObject);
+    procedure ShowPressed(AKeyIdx: Integer);
+    procedure DrawKey(ACanvas: TCanvas; AKeyIdx: Integer);
+    procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
+    procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
+    procedure WMSetFocus(var Message: TWMSetFocus); message WM_SETFOCUS;
+    procedure WMKillFocus(var Message: TWMKillFocus); message WM_KILLFOCUS;
+  protected
+    procedure Paint; override;
+    procedure KeyDown(var Key: Word; Shift: TShiftState); override;
+    procedure KeyPress(var Key: Char); override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
+      PosX, PosY: Integer); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    // Разложить прибор по ширине AWidth; клавиатура - чтобы весь прибор
+    // влез в AHeight. Результат - ширина и высота прибора
+    function Arrange(AWidth, AHeight: Integer): TPoint;
+    procedure PressKey(AKeyIdx: Integer);
+    procedure InvalidateScreen;
+  end;
+
+  TArdSimPanel = class(TUiPanel)
+  private
+    FBar: TUiPanel;
+    FBtnBuild: TUiButton;
+    FBtnRun: TUiButton;
+    FBtnStop: TUiButton;
+    FBtnIni: TUiButton;
+    FBtnWindow: TUiButton;
+    FStatus: TUiLabel;
+    FDevice: TArdSimDevice;
+    FSerial: TUiMemo;
+    FTimer: TTimer;
+    FBuild: TProcRun;         // build_sim.cmd
+    FBuildLine: string;       // недописанная строка вывода сборки
+    FRunAfterBuild: Boolean;
+    FSim: TProcRun;           // <скетч>_sim.exe /host:...
+    FSimExe: string;
+    FMapName: string;
+    {$IFDEF MSWINDOWS}
+    FMapping: THandle;
+    FView: Pointer;
+    {$ENDIF}
+    FScreenVersion: Cardinal;
+    FSerialRead: Cardinal;
+    FPixels: array of Cardinal;   // экран в 32 бита для StretchDIBits
+    FHasPicture: Boolean;
+    FSketchFile: string;
+    FArdSimDir: string;
+    FMingwBin: string;
+    FOnLog: TArdSimTextEvent;
+    FOnOpenFile: TArdSimTextEvent;
+    FOnNeedSketch: TNotifyEvent;
+    FOnStateChange: TNotifyEvent;
+    // Отладчик: последние StopSeq и InfoSeq эмулятора, его ответ (строки
+    // "S/F/L/G/W<TAB>..."), пути .ino по номерам, отправленные точки и
+    // выражения Watch (для сравнения), команда при запуске
+    FDbgStopSeq: Cardinal;
+    FDbgInfoSeq: Cardinal;
+    FDbgStopped: Boolean;
+    FDbgStepping: Boolean;
+    FDbgInfo: TStringList;
+    FDbgFiles: TStringList;
+    FDbgBreaks: string;
+    FDbgWatch: string;
+    FDbgStartCmd: Integer;
+    FDbgStartArg: Cardinal;
+    FLiveWatch: Boolean;
+    FLiveTick: Cardinal;
+    FBreakTick: Cardinal;
+    FOnDbgStop: TNotifyEvent;
+    FOnDbgResume: TNotifyEvent;
+    FOnDbgInfo: TNotifyEvent;
+    FOnDbgNeedBreaks: TNotifyEvent;
+    // Панель «Сигналы»: поля - ключи ardsim.ini. FSigDirty - поля правили
+    // и не применили (тогда файл не перечитывается в поля)
+    FSigHead: TUiButton;
+    FSigPanel: TUiPanel;
+    FSigTacho: TUiCheckBox;
+    FSigRpm: TUiEdit;
+    FSigFreq: TUiLabel;
+    FSigRotor: TUiCheckBox;
+    FSigAmp: array[0..1] of TUiEdit;
+    FSigPhase: array[0..1] of TUiEdit;
+    FSigWeights: array[0..1] of TUiEdit;
+    FSigApply: TUiButton;
+    FSigNote: TUiLabel;
+    FSigShown: Boolean;
+    FSigDirty: Boolean;
+    FSigLoading: Boolean;
+    FSigIniAge: Integer;
+    FSigIniFile: string;
+    procedure BuildSignals;
+    procedure SigHeadClick(Sender: TObject);
+    procedure SigApplyClick(Sender: TObject);
+    procedure SigChange(Sender: TObject);
+    procedure SigUpdateState;
+    procedure SigLoad;
+    procedure SigPoll;
+    function DbgHeader(AIndex: Integer): Cardinal;
+    procedure SetDbgHeader(AIndex: Integer; AValue: Cardinal);
+    function DbgArea: PAnsiChar;
+    procedure DbgReset;
+    procedure DbgEnd;
+    procedure PollDebug;
+    function ReadDbgText(AOffset, AMaxBytes: Integer): string;
+    procedure ReadDbgInfo;
+    function DbgLine(const APrefix: string; var ARest: string): Boolean;
+    procedure DbgStatus;
+    procedure SetShowToolbar(AValue: Boolean);
+    function GetShowToolbar: Boolean;
+    procedure BtnBuildClick(Sender: TObject);
+    procedure BtnRunClick(Sender: TObject);
+    procedure BtnStopClick(Sender: TObject);
+    procedure BtnIniClick(Sender: TObject);
+    procedure BtnWindowClick(Sender: TObject);
+    procedure TimerTick(Sender: TObject);
+    procedure LayoutControls;
+    procedure Log(const AText: string);
+    procedure SetStatus(const AText: string);
+    procedure UpdateButtons;
+    function SketchReady: Boolean;
+    function ExeOfSketch: string;
+    function IniOfSketch: string;
+    procedure StartBuild(ARunAfter: Boolean);
+    procedure PollBuild;
+    procedure StartSim;
+    procedure StopSim;
+    procedure PollSim;
+    procedure FreeShared;
+    function Header(AIndex: Integer): Cardinal;
+    procedure SetHeader(AIndex: Integer; AValue: Cardinal);
+    procedure AppendSerial(const AText: string);
+  protected
+    procedure Resize; override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    // Нажатие клавиши прибора: строка 0..4, столбец 0..3
+    procedure PostKey(ARow, ACol: Integer);
+    // Экран прибора в прямоугольник ARect (3:2)
+    procedure PaintScreen(ACanvas: TCanvas; const ARect: TRect);
+    function Running: Boolean;
+    function Building: Boolean;
+    // Остановить эмулятор и сборку (закрытие unIDE)
+    procedure StopAll;
+    // То же, что кнопки панели (их можно спрятать - ShowToolbar - и
+    // поставить свои, как в ряду Project unIDE)
+    procedure BuildAndRun;
+    procedure RunSim;
+    procedure OpenIni;
+    procedure OpenArdSimWindow;
+
+    // ---- отладчик
+    // Эмулятор идёт и скетч собран с отладкой (SIM_STEP)
+    function DbgAvailable: Boolean;
+    // Скетч стоит (точка, шаг, пауза) и ждёт команды
+    function DbgStopped: Boolean;
+    // Шаг отдан, скетч ещё не встал
+    function DbgStepping: Boolean;
+    // Строка остановки: (файл shl 20) or строка с 1
+    function DbgStopCode: Cardinal;
+    procedure DbgCommand(ACode: Integer; AArg: Cardinal);
+    // Команда сразу после запуска (F7/F8/F4, когда эмулятор не шёл)
+    procedure SetStartCommand(ACode: Integer; AArg: Cardinal);
+    procedure DbgSetBreakpoints(const ACodes: TArdDbgCodes);
+    // Номер .ino скетча, -1 - не файл скетча
+    function DbgFileIndex(const AFileName: string): Integer;
+    function DbgFileName(AIndex: Integer): string;
+    // Выражения окна Watch: значения придут ответом (OnDbgInfo)
+    procedure DbgSetWatch(AExprs: TStrings);
+    // Значение выражения AIndex из ответа; False - ответа нет
+    function DbgWatchResult(AIndex: Integer; var AValue: string): Boolean;
+    // Переменная по имени: локальная функции остановки, потом глобальная
+    function DbgVarValue(const AName: string; var AValue: string): Boolean;
+    procedure DbgLocalNames(ANames: TStrings);
+    // Функция остановки и стек вызовов ("loop <- ...")
+    function DbgWhere: string;
+    // Окно Watch видно: значения обновляются и пока скетч идёт
+    property LiveWatch: Boolean read FLiveWatch write FLiveWatch;
+    property OnDbgStop: TNotifyEvent read FOnDbgStop write FOnDbgStop;
+    property OnDbgResume: TNotifyEvent read FOnDbgResume write FOnDbgResume;
+    property OnDbgInfo: TNotifyEvent read FOnDbgInfo write FOnDbgInfo;
+    // Раз в 250 мс, пока эмулятор идёт, и перед запуском: Unit1 отдаёт
+    // точки останова (DbgSetBreakpoints)
+    property OnDbgNeedBreaks: TNotifyEvent read FOnDbgNeedBreaks write FOnDbgNeedBreaks;
+
+    property ShowToolbar: Boolean read GetShowToolbar write SetShowToolbar;
+    // Сборка или эмулятор запустились / закончились
+    property OnStateChange: TNotifyEvent read FOnStateChange write FOnStateChange;
+    // .ino, который собирается; задаёт Unit1 (OnNeedSketch перед сборкой)
+    property SketchFile: string read FSketchFile write FSketchFile;
+    // Папка ArdSim (с build_sim.cmd); '' - искать рядом с unIDE
+    property ArdSimDir: string read FArdSimDir write FArdSimDir;
+    // Папка bin своего MinGW unIDE; '' - build_sim.cmd ищет сам
+    property MingwBin: string read FMingwBin write FMingwBin;
+    property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
+    property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
+    property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
+  end;
+
+  // Отдельное окно эмулятора. При первом показе встаёт у правого края
+  // главного окна на всю его высоту (поверх панели Git); дальше - где его
+  // оставили. Закрытие окна останавливает эмулятор
+  TArdSimWindow = class(TForm)
+  private
+    FPanel: TArdSimPanel;
+    FMainForm: TCustomForm;
+    FPlaced: Boolean;
+    FOnPlaced: TNotifyEvent;
+    FOnHidden: TNotifyEvent;
+    procedure WindowClose(Sender: TObject; var Action: TCloseAction);
+    procedure WMExitSizeMove(var Message: TMessage); message WM_EXITSIZEMOVE;
+  protected
+    procedure CreateParams(var Params: TCreateParams); override;
+  public
+    constructor CreateFor(AMainForm: TCustomForm);
+    procedure ShowAtRight;
+    property Panel: TArdSimPanel read FPanel;
+    // Окно показано или передвинуто / изменён размер: главное окно
+    // подгоняет под него редактор
+    property OnPlaced: TNotifyEvent read FOnPlaced write FOnPlaced;
+    // Окно закрыто
+    property OnHidden: TNotifyEvent read FOnHidden write FOnHidden;
+  end;
+
+// Папка ArdSim рядом с unIDE: <exe>\ArdSim, <exe>\..\ArdSim; нет - ''
+function ArdSimFindDir: string;
+
+implementation
+
+const
+  HostMagic = $4D495341;    // 'ASIM'
+  HostLayout = 2;
+  HdrMagic = 0;
+  HdrLayout = 1;
+  HdrHostPid = 2;
+  HdrSimPid = 3;
+  HdrScreenVersion = 4;
+  HdrKeyWrite = 5;
+  HdrKeyRead = 6;
+  HdrSerialWrite = 7;
+  HdrState = 8;
+  HdrStopRequest = 9;
+  HdrKeyQueue = 16;
+  KeyQueueSize = 16;
+  HeaderBytes = 128;
+  ScreenBytes = ArdSimScreenW * ArdSimScreenH * 2;
+  SerialRingBytes = 65536;
+  // Область отладчика (sim_internal.h): заголовок 64 слова, точки
+  // останова, выражения Watch, пути .ino, ответ эмулятора
+  DbgOffset = HeaderBytes + ScreenBytes + SerialRingBytes;
+  DbgCmdSeq = 0;
+  DbgCmdCode = 1;
+  DbgCmdArg = 2;
+  DbgCmdDone = 3;
+  DbgState = 4;
+  DbgStopCodeIdx = 5;
+  DbgStopSeq = 6;
+  DbgBpVersion = 7;
+  DbgBpCount = 8;
+  DbgWatchSeq = 9;
+  DbgInfoSeq = 10;
+  DbgInfoBytes = 11;
+  DbgInstrumented = 12;
+  DbgMaxBreaks = 1024;
+  DbgBreakOffset = 256;
+  DbgWatchReqOffset = 4352;
+  DbgWatchReqBytes = 4096;
+  DbgFilesOffset = 8448;
+  DbgFilesBytes = 4096;
+  DbgInfoOffset = 12544;
+  DbgInfoMax = 65536;
+  DbgAreaBytes = DbgInfoOffset + DbgInfoMax;
+  SharedBytes = DbgOffset + DbgAreaBytes;
+  SerialMaxChars = 60000;
+
+  // Корпус: зелёные поля вокруг экрана 480x320, точек. Обычно
+  // BodyBorder; в низком окне - меньше, но не меньше BodyBorderMin
+  BodyBorder = 40;
+  BodyBorderMin = 14;
+  // Клавиатура (по фото), в долях ширины экрана; умножаются на PadK -
+  // долю, при которой клавиатура влезает по высоте, не больше PadKMax
+  // (на 30% меньше, чем по фото)
+  PadKMax = 0.7;
+  PadWidthK = 1.22;       // ширина панели клавиатуры
+  PadTopK = 0.14;         // от верха панели до первого ряда
+  PadBottomK = 0.07;      // под последним рядом
+  KeyWidthK = 0.23;
+  KeyHeightK = 0.165;
+  KeyPitchXK = 0.274;
+  KeyPitchYK = 0.195;
+  MinBorder = 8;          // поля панели клавиатуры вокруг клавиш
+  MinKeyHeight = 20;      // клавиши не мельче, даже если не влезают
+  RimWidth = 3;           // чёрный кант корпуса
+
+  // Цвета (TColor - $00BBGGRR)
+  ClrRim = $00202020;
+  ClrBody = $007A9E10;      // тёмно-зелёный корпус
+  ClrPad = $00B0D676;       // светло-зелёная панель клавиатуры
+  ClrBezel = $00303030;     // рамка вокруг дисплея
+  ClrKeyWhite = $00F2F2F2;
+  ClrKeyYellow = $001ED2FF;
+  ClrKeyRed = $00463CDE;
+  ClrKeyText = $00303030;
+  ClrKeyEdge = $00808080;
+
+  KeyCaptions: array[0..ArdSimKeyRows - 1, 0..ArdSimKeyCols - 1] of string = (
+    ('F1', 'F2', '#', '*'),
+    ('1', '2', '3', '^'),
+    ('4', '5', '6', 'v'),
+    ('7', '8', '9', 'Esc'),
+    ('<', '0', '>', 'Ent'));
+
+type
+  TKeyLook = (klWhite, klYellow, klRed, klOval);
+
+var
+  MapCounter: Integer = 0;
+
+function ArdSimFindDir: string;
+var
+  ExeDir: string;
+begin
+  ExeDir := ExtractFilePath(ParamStr(0));
+  Result := ExeDir + 'ArdSim\';
+  if FileExists(Result + 'build_sim.cmd') then
+    Exit;
+  Result := ExpandFileName(ExeDir + '..\ArdSim\');
+  if FileExists(Result + 'build_sim.cmd') then
+    Exit;
+  Result := '';
+end;
+
+function KeyLookOf(AKeyIdx: Integer): TKeyLook;
+begin
+  case AKeyIdx of
+    0, 1: Result := klYellow;     // F1 F2
+    2, 3: Result := klRed;        // # *
+    15, 19: Result := klOval;     // Esc Ent
+  else
+    Result := klWhite;
+  end;
+end;
+
+// Темнее на AShift (подсветка нажатой клавиши)
+function DarkerColor(AColor: TColor; AShift: Integer): TColor;
+var
+  Red, Green, Blue: Integer;
+begin
+  AColor := ColorToRGB(AColor);
+  Red := (AColor and $FF) - AShift;
+  Green := ((AColor shr 8) and $FF) - AShift;
+  Blue := ((AColor shr 16) and $FF) - AShift;
+  if Red < 0 then Red := 0;
+  if Green < 0 then Green := 0;
+  if Blue < 0 then Blue := 0;
+  Result := TColor(Red or (Green shl 8) or (Blue shl 16));
+end;
+
+// ---------------------------------------------------------------------------
+//  TArdSimDevice
+// ---------------------------------------------------------------------------
+
+constructor TArdSimDevice.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  TabStop := True;
+  ShowHint := True;
+  ControlStyle := ControlStyle + [csOpaque];
+  FPressedKey := -1;
+  FScreenW := ArdSimScreenW;
+  FBorder := BodyBorder;
+  FBuffer := TBitmap.Create;
+  FPressTimer := TTimer.Create(Self);
+  FPressTimer.Enabled := False;
+  FPressTimer.Interval := 150;
+  FPressTimer.OnTimer := PressTimerTick;
+end;
+
+destructor TArdSimDevice.Destroy;
+begin
+  FBuffer.Free;
+  inherited Destroy;
+end;
+
+// Сверху вниз: корпус (поля и экран 480x320), под ним панель клавиатуры.
+// Прибор - по центру AWidth (не уже корпуса). Чтобы прибор влез в
+// AHeight, сначала уменьшается клавиатура (PadK <= PadKMax, клавиши не
+// ниже MinKeyHeight), потом поля корпуса (до BodyBorderMin). Экран не
+// меняется
+function TArdSimDevice.Arrange(AWidth, AHeight: Integer): TPoint;
+var
+  BodyW, BodyH, DeviceW, BodyLeft, PadW, PadLeft, PadTop: Integer;
+  GridW, GridLeft, GridTop, KeyW, KeyH, PitchX, PitchY: Integer;
+  KeyRow, KeyCol, PadUnit, PadFullH: Integer;
+  PadK, PadMinK: Double;
+begin
+  FScreenW := ArdSimScreenW;
+  // высота клавиатуры при PadK = 1, самая малая доля и доля, при которой
+  // клавиатура влезает с полными полями
+  PadFullH := Round(ArdSimScreenW * (PadTopK + PadBottomK + 4 * KeyPitchYK +
+                                     KeyHeightK));
+  PadMinK := MinKeyHeight / (ArdSimScreenW * KeyHeightK);
+  FBorder := BodyBorder;
+  PadK := PadKMax;
+  if AHeight > 0 then
+  begin
+    if ArdSimScreenH + 2 * FBorder + PadK * PadFullH > AHeight then
+      PadK := (AHeight - ArdSimScreenH - 2 * FBorder) / PadFullH;
+    if PadK < PadMinK then
+    begin
+      PadK := PadMinK;
+      FBorder := (AHeight - ArdSimScreenH - Round(PadK * PadFullH)) div 2;
+      if FBorder > BodyBorder then
+        FBorder := BodyBorder;
+      if FBorder < BodyBorderMin then
+        FBorder := BodyBorderMin;
+    end;
+  end;
+  BodyW := ArdSimScreenW + 2 * FBorder;
+  BodyH := ArdSimScreenH + 2 * FBorder;
+  DeviceW := AWidth;
+  if DeviceW < BodyW then
+    DeviceW := BodyW;
+  BodyLeft := (DeviceW - BodyW) div 2;
+  FBodyRect := Rect(BodyLeft, 0, BodyLeft + BodyW, BodyH);
+  FScreenRect := Rect(BodyLeft + FBorder, FBorder,
+                      BodyLeft + FBorder + ArdSimScreenW,
+                      FBorder + ArdSimScreenH);
+
+  PadUnit := Round(ArdSimScreenW * PadK);
+  KeyW := Round(PadUnit * KeyWidthK);
+  KeyH := Round(PadUnit * KeyHeightK);
+  PitchX := Round(PadUnit * KeyPitchXK);
+  PitchY := Round(PadUnit * KeyPitchYK);
+  // низкие клавиши - не уже, чем в 1.4 раза их высоты (иначе узкие столбики)
+  if KeyW < KeyH * 14 div 10 then
+  begin
+    KeyW := KeyH * 14 div 10;
+    if PitchX < KeyW + 6 then
+      PitchX := KeyW + 6;
+  end;
+  GridW := 3 * PitchX + KeyW;
+  PadW := Round(PadUnit * PadWidthK);
+  if PadW < GridW + 2 * MinBorder then
+    PadW := GridW + 2 * MinBorder;
+  if PadW > BodyW then
+    PadW := BodyW;
+  PadLeft := (DeviceW - PadW) div 2;
+  PadTop := FBodyRect.Bottom - RimWidth;
+  GridTop := FBodyRect.Bottom + Round(PadUnit * PadTopK);
+  GridLeft := PadLeft + (PadW - GridW) div 2;
+  FPadRect := Rect(PadLeft, PadTop, PadLeft + PadW,
+                   GridTop + 4 * PitchY + KeyH + Round(PadUnit * PadBottomK));
+  for KeyRow := 0 to ArdSimKeyRows - 1 do
+    for KeyCol := 0 to ArdSimKeyCols - 1 do
+      FKeyRects[KeyRow * ArdSimKeyCols + KeyCol] :=
+        Rect(GridLeft + KeyCol * PitchX, GridTop + KeyRow * PitchY,
+             GridLeft + KeyCol * PitchX + KeyW, GridTop + KeyRow * PitchY + KeyH);
+  Result := Point(DeviceW, FPadRect.Bottom + 1);
+end;
+
+procedure TArdSimDevice.InvalidateScreen;
+var
+  Area: TRect;
+begin
+  if not HandleAllocated then
+    Exit;
+  Area := FScreenRect;
+  InvalidateRect(Handle, @Area, False);
+end;
+
+procedure TArdSimDevice.WMGetDlgCode(var Message: TWMGetDlgCode);
+begin
+  // стрелки, Enter и Esc - прибору, а не переходу между полями
+  Message.Result := DLGC_WANTARROWS or DLGC_WANTALLKEYS or DLGC_WANTCHARS;
+end;
+
+procedure TArdSimDevice.WMEraseBkgnd(var Message: TWMEraseBkgnd);
+begin
+  Message.Result := 1;
+end;
+
+procedure TArdSimDevice.WMSetFocus(var Message: TWMSetFocus);
+begin
+  inherited;
+  Invalidate;
+end;
+
+procedure TArdSimDevice.WMKillFocus(var Message: TWMKillFocus);
+begin
+  inherited;
+  Invalidate;
+end;
+
+procedure TArdSimDevice.PressTimerTick(Sender: TObject);
+var
+  KeyIdx: Integer;
+  Area: TRect;
+begin
+  FPressTimer.Enabled := False;
+  KeyIdx := FPressedKey;
+  FPressedKey := -1;
+  if (KeyIdx >= 0) and HandleAllocated then
+  begin
+    Area := FKeyRects[KeyIdx];
+    InvalidateRect(Handle, @Area, False);
+  end;
+end;
+
+procedure TArdSimDevice.ShowPressed(AKeyIdx: Integer);
+var
+  Area: TRect;
+begin
+  if FPressedKey >= 0 then
+    PressTimerTick(nil);
+  FPressedKey := AKeyIdx;
+  if HandleAllocated then
+  begin
+    Area := FKeyRects[AKeyIdx];
+    InvalidateRect(Handle, @Area, False);
+  end;
+  FPressTimer.Enabled := False;
+  FPressTimer.Enabled := True;
+end;
+
+procedure TArdSimDevice.PressKey(AKeyIdx: Integer);
+begin
+  if (AKeyIdx < 0) or (AKeyIdx >= ArdSimKeyCount) then
+    Exit;
+  ShowPressed(AKeyIdx);
+  if FOwnerPanel <> nil then
+    FOwnerPanel.PostKey(AKeyIdx div ArdSimKeyCols, AKeyIdx mod ArdSimKeyCols);
+end;
+
+procedure TArdSimDevice.MouseDown(Button: TMouseButton; Shift: TShiftState;
+  PosX, PosY: Integer);
+var
+  KeyIdx: Integer;
+  HitPoint: TPoint;
+begin
+  inherited;
+  if CanFocus then
+    SetFocus;
+  if Button <> mbLeft then
+    Exit;
+  HitPoint := Point(PosX, PosY);
+  for KeyIdx := 0 to ArdSimKeyCount - 1 do
+    if PtInRect(FKeyRects[KeyIdx], HitPoint) then
+    begin
+      PressKey(KeyIdx);
+      Exit;
+    end;
+end;
+
+// Клавиши ПК -> клавиатура прибора (как в окне ArdSim, sim_window.cpp)
+procedure TArdSimDevice.KeyDown(var Key: Word; Shift: TShiftState);
+var
+  KeyIdx: Integer;
+begin
+  inherited;
+  // Shift+3 / Shift+8 - это '#' и '*', они придут в KeyPress
+  if (ssShift in Shift) and (Key >= Ord('0')) and (Key <= Ord('9')) then
+    Exit;
+  case Key of
+    VK_F1: KeyIdx := 0;
+    VK_F2: KeyIdx := 1;
+    VK_MULTIPLY: KeyIdx := 3;
+    Ord('1'), VK_NUMPAD1: KeyIdx := 4;
+    Ord('2'), VK_NUMPAD2: KeyIdx := 5;
+    Ord('3'), VK_NUMPAD3: KeyIdx := 6;
+    VK_UP: KeyIdx := 7;
+    Ord('4'), VK_NUMPAD4: KeyIdx := 8;
+    Ord('5'), VK_NUMPAD5: KeyIdx := 9;
+    Ord('6'), VK_NUMPAD6: KeyIdx := 10;
+    VK_DOWN: KeyIdx := 11;
+    Ord('7'), VK_NUMPAD7: KeyIdx := 12;
+    Ord('8'), VK_NUMPAD8: KeyIdx := 13;
+    Ord('9'), VK_NUMPAD9: KeyIdx := 14;
+    VK_ESCAPE, VK_BACK: KeyIdx := 15;
+    VK_LEFT: KeyIdx := 16;
+    Ord('0'), VK_NUMPAD0: KeyIdx := 17;
+    VK_RIGHT: KeyIdx := 18;
+    VK_RETURN: KeyIdx := 19;
+  else
+    KeyIdx := -1;
+  end;
+  if KeyIdx >= 0 then
+  begin
+    PressKey(KeyIdx);
+    Key := 0;
+  end;
+end;
+
+procedure TArdSimDevice.KeyPress(var Key: Char);
+begin
+  inherited;
+  if Key = '#' then
+  begin
+    PressKey(2);
+    Key := #0;
+  end
+  else if Key = '*' then
+  begin
+    PressKey(3);
+    Key := #0;
+  end;
+end;
+
+// Одна клавиша: цвет и форма как на приборе; стрелки - треугольником
+procedure TArdSimDevice.DrawKey(ACanvas: TCanvas; AKeyIdx: Integer);
+var
+  Area: TRect;
+  Look: TKeyLook;
+  Fill, TextColor: TColor;
+  Caption: string;
+  KeyW, KeyH, MidX, MidY, ArrowLen, ArrowHalf, Corner: Integer;
+  TextSize: TSize;
+  Arrow: array[0..2] of TPoint;
+  ArrowDir: Integer;   // 0 вверх, 1 вниз, 2 влево, 3 вправо, -1 не стрелка
+begin
+  Area := FKeyRects[AKeyIdx];
+  KeyW := Area.Right - Area.Left;
+  KeyH := Area.Bottom - Area.Top;
+  Look := KeyLookOf(AKeyIdx);
+  case Look of
+    klYellow: Fill := ClrKeyYellow;
+    klRed, klOval: Fill := ClrKeyRed;
+  else
+    Fill := ClrKeyWhite;
+  end;
+  if AKeyIdx = FPressedKey then
+    Fill := DarkerColor(Fill, 70);
+  if Look = klOval then
+    TextColor := clWhite
+  else
+    TextColor := ClrKeyText;
+
+  ACanvas.Pen.Color := ClrKeyEdge;
+  ACanvas.Pen.Width := 1;
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := Fill;
+  if Look = klOval then
+  begin
+    ACanvas.Pen.Color := DarkerColor(Fill, 40);
+    ACanvas.Ellipse(Area.Left, Area.Top, Area.Right, Area.Bottom);
+  end
+  else
+  begin
+    Corner := KeyH div 4;
+    ACanvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom,
+                      Corner, Corner);
+  end;
+
+  MidX := (Area.Left + Area.Right) div 2;
+  MidY := (Area.Top + Area.Bottom) div 2;
+  Caption := KeyCaptions[AKeyIdx div ArdSimKeyCols, AKeyIdx mod ArdSimKeyCols];
+  case AKeyIdx of
+    7: ArrowDir := 0;
+    11: ArrowDir := 1;
+    16: ArrowDir := 2;
+    18: ArrowDir := 3;
+  else
+    ArrowDir := -1;
+  end;
+  if ArrowDir >= 0 then
+  begin
+    ArrowLen := KeyH * 2 div 5;
+    ArrowHalf := ArrowLen div 2;
+    case ArrowDir of
+      0: begin
+           Arrow[0] := Point(MidX, MidY - ArrowHalf);
+           Arrow[1] := Point(MidX - ArrowHalf, MidY + ArrowHalf);
+           Arrow[2] := Point(MidX + ArrowHalf, MidY + ArrowHalf);
+         end;
+      1: begin
+           Arrow[0] := Point(MidX, MidY + ArrowHalf);
+           Arrow[1] := Point(MidX - ArrowHalf, MidY - ArrowHalf);
+           Arrow[2] := Point(MidX + ArrowHalf, MidY - ArrowHalf);
+         end;
+      2: begin
+           Arrow[0] := Point(MidX - ArrowHalf, MidY);
+           Arrow[1] := Point(MidX + ArrowHalf, MidY - ArrowHalf);
+           Arrow[2] := Point(MidX + ArrowHalf, MidY + ArrowHalf);
+         end;
+    else
+      Arrow[0] := Point(MidX + ArrowHalf, MidY);
+      Arrow[1] := Point(MidX - ArrowHalf, MidY - ArrowHalf);
+      Arrow[2] := Point(MidX - ArrowHalf, MidY + ArrowHalf);
+    end;
+    ACanvas.Pen.Color := TextColor;
+    ACanvas.Brush.Color := TextColor;
+    ACanvas.Polygon(Arrow);
+    Exit;
+  end;
+
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Font.Name := 'Arial';
+  ACanvas.Font.Style := [fsBold];
+  ACanvas.Font.Color := TextColor;
+  ACanvas.Font.Height := -(KeyH * 11 div 20);
+  if ACanvas.Font.Height > -8 then
+    ACanvas.Font.Height := -8;
+  TextSize := ACanvas.TextExtent(Caption);
+  // широкие подписи (Esc, Ent) - помельче, чтобы влезли в овал
+  if TextSize.cx > KeyW * 4 div 5 then
+  begin
+    ACanvas.Font.Height := ACanvas.Font.Height * (KeyW * 4 div 5) div TextSize.cx;
+    TextSize := ACanvas.TextExtent(Caption);
+  end;
+  ACanvas.TextOut(MidX - TextSize.cx div 2, MidY - TextSize.cy div 2, Caption);
+  ACanvas.Brush.Style := bsSolid;
+end;
+
+procedure TArdSimDevice.Paint;
+var
+  Draw: TCanvas;
+  Corner, KeyIdx: Integer;
+  Bezel: TRect;
+begin
+  if (FBuffer.Width <> ClientWidth) or (FBuffer.Height <> ClientHeight) then
+  begin
+    FBuffer.Width := ClientWidth;
+    FBuffer.Height := ClientHeight;
+  end;
+  Draw := FBuffer.Canvas;
+  // фон - как у панели вокруг
+  Draw.Brush.Style := bsSolid;
+  Draw.Brush.Color := Color;
+  Draw.FillRect(ClientRect);
+
+  // панель клавиатуры (под корпусом, её верх закрывает корпус)
+  Corner := (FPadRect.Right - FPadRect.Left) div 12;
+  Draw.Pen.Color := ClrRim;
+  Draw.Pen.Width := RimWidth;
+  Draw.Brush.Color := ClrPad;
+  Draw.RoundRect(FPadRect.Left + 1, FPadRect.Top + 1, FPadRect.Right - 1,
+                 FPadRect.Bottom - 1, Corner, Corner);
+  // корпус
+  Corner := FBorder * 2;   // скругление не заходит на экран
+  Draw.Brush.Color := ClrBody;
+  Draw.RoundRect(FBodyRect.Left + 1, FBodyRect.Top + 1, FBodyRect.Right - 1,
+                 FBodyRect.Bottom - 1, Corner, Corner);
+  Draw.Pen.Width := 1;
+  // рамка дисплея
+  Bezel := FScreenRect;
+  InflateRect(Bezel, 3, 3);
+  Draw.Brush.Color := ClrBezel;
+  Draw.FillRect(Bezel);
+  if FOwnerPanel <> nil then
+    FOwnerPanel.PaintScreen(Draw, FScreenRect);
+  if Focused then
+  begin
+    // в фокусе: клавиши ПК идут прибору
+    Draw.Brush.Color := clHighlight;
+    Draw.FrameRect(Bezel);
+  end;
+  for KeyIdx := 0 to ArdSimKeyCount - 1 do
+    DrawKey(Draw, KeyIdx);
+  Canvas.Draw(0, 0, FBuffer);
+end;
+
+// ---------------------------------------------------------------------------
+//  TArdSimPanel
+// ---------------------------------------------------------------------------
+
+constructor TArdSimPanel.Create(AOwner: TComponent);
+
+  function MakeButton(AParent: TWinControl; const ACaption, AHint: string;
+    AClick: TNotifyEvent): TUiButton;
+  begin
+    Result := TUiButton.Create(Self);
+    Result.Parent := AParent;
+    Result.Caption := ACaption;
+    Result.Hint := AHint;
+    Result.ShowHint := True;
+    Result.OnClick := AClick;
+    Result.TabStop := False;
+  end;
+
+begin
+  inherited Create(AOwner);
+  BevelOuter := bvNone;
+  Caption := '';
+  {$IFDEF MSWINDOWS}
+  FMapping := 0;
+  FView := nil;
+  {$ENDIF}
+  SetLength(FPixels, ArdSimScreenW * ArdSimScreenH);
+  FDbgInfo := TStringList.Create;
+  FDbgFiles := TStringList.Create;
+
+  FBar := TUiPanel.Create(Self);
+  FBar.Parent := Self;
+  FBar.BevelOuter := bvNone;
+  FBar.Caption := '';
+  FBtnBuild := MakeButton(FBar, 'Build',
+    'Собрать скетч под ПК (ArdSim\build_sim.cmd, MinGW g++) и запустить',
+    BtnBuildClick);
+  FBtnRun := MakeButton(FBar, 'Run', 'Запустить собранный скетч без сборки',
+    BtnRunClick);
+  FBtnStop := MakeButton(FBar, 'Stop', 'Остановить эмулятор', BtnStopClick);
+  FBtnIni := MakeButton(FBar, 'ini',
+    'ardsim.ini - сигналы, тахометр, модель ротора. Эмулятор перечитывает ' +
+    'его после сохранения', BtnIniClick);
+  FBtnWindow := MakeButton(FBar, 'Окно',
+    'Запустить собранный скетч в отдельном окне ArdSim (с панелью сигналов)',
+    BtnWindowClick);
+  FStatus := TUiLabel.Create(Self);
+  FStatus.Parent := Self;
+  FStatus.AutoSize := False;
+  FStatus.Caption := '';
+
+  FDevice := TArdSimDevice.Create(Self);
+  FDevice.FOwnerPanel := Self;
+  FDevice.Parent := Self;
+  FDevice.Hint := 'Щёлкните по прибору, чтобы клавиши ПК работали как ' +
+    'клавиатура: 0-9, F1, F2, #, *, стрелки, Enter, Esc';
+
+  BuildSignals;
+
+  FSerial := TUiMemo.Create(Self);
+  FSerial.Parent := Self;
+  FSerial.ReadOnly := True;
+  FSerial.ScrollBars := ssVertical;
+  FSerial.WordWrap := False;
+  FSerial.Font.Name := 'Courier New';
+  FSerial.Font.Size := 9;
+
+  FTimer := TTimer.Create(Self);
+  FTimer.Interval := 40;
+  FTimer.Enabled := False;
+  FTimer.OnTimer := TimerTick;
+
+  SetStatus('Скетч не запущен');
+  UpdateButtons;
+end;
+
+destructor TArdSimPanel.Destroy;
+begin
+  FTimer.Enabled := False;
+  StopAll;
+  inherited Destroy;
+  FDbgInfo.Free;
+  FDbgFiles.Free;
+end;
+
+procedure TArdSimPanel.Resize;
+begin
+  inherited;
+  LayoutControls;
+end;
+
+// Сверху вниз: кнопки, строка состояния, прибор, вывод Serial - всё
+// остальное (не меньше SerialMinH)
+procedure TArdSimPanel.LayoutControls;
+const
+  Gap = 4;
+  BarH = 24;
+  StatusH = 18;
+  SerialMinH = 60;
+  SigHeadH = 20;
+  SigPanelH = 184;
+var
+  AreaW, PosY, ButtonW, BtnIdx, SigH: Integer;
+  DeviceSize: TPoint;
+  Buttons: array[0..4] of TUiButton;
+begin
+  if FBar = nil then
+    Exit;
+  AreaW := ClientWidth - 2 * Gap;
+  if AreaW < 60 then
+    AreaW := 60;
+  PosY := Gap;
+  if FBar.Visible then
+    FBar.SetBounds(Gap, PosY, AreaW, BarH);
+  Buttons[0] := FBtnBuild;
+  Buttons[1] := FBtnRun;
+  Buttons[2] := FBtnStop;
+  Buttons[3] := FBtnIni;
+  Buttons[4] := FBtnWindow;
+  ButtonW := (AreaW - 4 * 2) div 5;
+  for BtnIdx := 0 to 4 do
+    Buttons[BtnIdx].SetBounds(BtnIdx * (ButtonW + 2), 0, ButtonW, BarH);
+  if FBar.Visible then
+    Inc(PosY, BarH + 2);
+  FStatus.SetBounds(Gap, PosY, AreaW, StatusH);
+  Inc(PosY, StatusH);
+  SigH := SigHeadH + Gap;
+  if FSigShown then
+    Inc(SigH, SigPanelH);
+  DeviceSize := FDevice.Arrange(AreaW,
+                                ClientHeight - PosY - SerialMinH - SigH - 2 * Gap);
+  FDevice.SetBounds(Gap, PosY, DeviceSize.X, DeviceSize.Y);
+  FDevice.Invalidate;
+  Inc(PosY, DeviceSize.Y + Gap);
+  FSigHead.SetBounds(Gap, PosY, AreaW, SigHeadH);
+  Inc(PosY, SigHeadH);
+  FSigPanel.Visible := FSigShown;
+  if FSigShown then
+  begin
+    FSigPanel.SetBounds(Gap, PosY, AreaW, SigPanelH);
+    for BtnIdx := 0 to 1 do
+      FSigWeights[BtnIdx].Width := AreaW - FSigWeights[BtnIdx].Left - 4;
+    FSigNote.Width := AreaW - FSigNote.Left - 4;
+    Inc(PosY, SigPanelH);
+  end;
+  Inc(PosY, Gap);
+  if ClientHeight - PosY - Gap > 20 then
+    FSerial.SetBounds(Gap, PosY, AreaW, ClientHeight - PosY - Gap)
+  else
+    FSerial.SetBounds(Gap, PosY, AreaW, 20);
+end;
+
+procedure TArdSimPanel.Log(const AText: string);
+begin
+  if Assigned(FOnLog) then
+    FOnLog(Self, AText);
+end;
+
+procedure TArdSimPanel.SetStatus(const AText: string);
+begin
+  FStatus.Caption := AText;
+end;
+
+procedure TArdSimPanel.UpdateButtons;
+begin
+  FBtnBuild.Enabled := not Building;
+  FBtnRun.Enabled := not Building;
+  FBtnStop.Enabled := Running or Building;
+  FBtnWindow.Enabled := not Building;
+  if Assigned(FOnStateChange) then
+    FOnStateChange(Self);
+end;
+
+procedure TArdSimPanel.BuildAndRun;
+begin
+  BtnBuildClick(Self);
+end;
+
+procedure TArdSimPanel.RunSim;
+begin
+  BtnRunClick(Self);
+end;
+
+procedure TArdSimPanel.OpenIni;
+begin
+  BtnIniClick(Self);
+end;
+
+procedure TArdSimPanel.OpenArdSimWindow;
+begin
+  BtnWindowClick(Self);
+end;
+
+procedure TArdSimPanel.SetShowToolbar(AValue: Boolean);
+begin
+  FBar.Visible := AValue;
+  LayoutControls;
+end;
+
+function TArdSimPanel.GetShowToolbar: Boolean;
+begin
+  Result := FBar.Visible;
+end;
+
+function TArdSimPanel.Running: Boolean;
+begin
+  Result := (FSim <> nil) and FSim.Running;
+end;
+
+function TArdSimPanel.Building: Boolean;
+begin
+  Result := FBuild <> nil;
+end;
+
+function TArdSimPanel.SketchReady: Boolean;
+begin
+  if Assigned(FOnNeedSketch) then
+    FOnNeedSketch(Self);
+  Result := (FSketchFile <> '') and FileExists(FSketchFile);
+  if not Result then
+  begin
+    SetStatus('Нет скетча: откройте .ino');
+    Log('ArdSim: нет скетча .ino для сборки (вкладка Arduino или проект ' +
+        'со скетчем)');
+  end;
+end;
+
+function TArdSimPanel.ExeOfSketch: string;
+begin
+  Result := ExtractFilePath(FSketchFile) + 'ardsim_build\' +
+            ChangeFileExt(ExtractFileName(FSketchFile), '') + '_sim.exe';
+end;
+
+function TArdSimPanel.IniOfSketch: string;
+begin
+  Result := ExtractFilePath(ExeOfSketch) + 'ardsim.ini';
+end;
+
+procedure TArdSimPanel.BtnBuildClick(Sender: TObject);
+begin
+  if Building or not SketchReady then
+    Exit;
+  StopSim;
+  StartBuild(True);
+end;
+
+procedure TArdSimPanel.BtnRunClick(Sender: TObject);
+begin
+  if Building or not SketchReady then
+    Exit;
+  if not FileExists(ExeOfSketch) then
+  begin
+    // ещё не собирался - собрать
+    StartBuild(True);
+    Exit;
+  end;
+  StopSim;
+  StartSim;
+end;
+
+procedure TArdSimPanel.BtnStopClick(Sender: TObject);
+begin
+  StopAll;
+end;
+
+procedure TArdSimPanel.BtnIniClick(Sender: TObject);
+var
+  IniFile: string;
+begin
+  if not SketchReady then
+    Exit;
+  IniFile := IniOfSketch;
+  if not FileExists(IniFile) then
+  begin
+    SetStatus('ardsim.ini появится после первого запуска');
+    Log('ArdSim: ' + IniFile + ' создаётся при первом запуске эмулятора');
+    Exit;
+  end;
+  if Assigned(FOnOpenFile) then
+    FOnOpenFile(Self, IniFile);
+end;
+
+procedure TArdSimPanel.BtnWindowClick(Sender: TObject);
+var
+  WindowRun: TProcRun;
+begin
+  if Building or not SketchReady then
+    Exit;
+  if not FileExists(ExeOfSketch) then
+  begin
+    SetStatus('Сначала Build+Run');
+    Exit;
+  end;
+  WindowRun := TProcRun.Create;
+  try
+    WindowRun.CommandLine := '"' + ExeOfSketch + '"';
+    WindowRun.Dir := ExtractFilePath(ExeOfSketch);
+    if not WindowRun.Start then
+      Log('ArdSim: не запустился ' + ExeOfSketch + ' - ' + WindowRun.ErrorText);
+  finally
+    WindowRun.Free;   // процесс работает дальше сам
+  end;
+end;
+
+
+// ---------------------------------------------------------------- сборка
+
+procedure TArdSimPanel.StartBuild(ARunAfter: Boolean);
+var
+  SimDir, Command: string;
+begin
+  SimDir := FArdSimDir;
+  if SimDir = '' then
+    SimDir := ArdSimFindDir;
+  if (SimDir = '') or not FileExists(IncludeTrailingPathDelimiter(SimDir) +
+     'build_sim.cmd') then
+  begin
+    SetStatus('Не найдена папка ArdSim');
+    Log('ArdSim: не найден build_sim.cmd (папка ArdSim рядом с unIDE ' +
+        'или на уровень выше)');
+    Exit;
+  end;
+  SimDir := IncludeTrailingPathDelimiter(SimDir);
+  // cmd /c ""файл" "аргумент"" - внешние кавычки снимает cmd
+  Command := '"' + SimDir + 'build_sim.cmd" "' + FSketchFile + '"';
+  if FMingwBin <> '' then
+    Command := Command + ' "' + ExcludeTrailingPathDelimiter(FMingwBin) + '"';
+  FBuild := TProcRun.Create;
+  FBuild.CommandLine := 'cmd.exe /c "' + Command + '"';
+  FBuild.Dir := SimDir;
+  FBuild.Window := pwHidden;
+  FBuild.Console := pcNoWindow;
+  FBuild.CaptureOutput := True;
+  FBuildLine := '';
+  FRunAfterBuild := ARunAfter;
+  Log('ArdSim: сборка ' + FSketchFile);
+  if not FBuild.Start then
+  begin
+    Log('ArdSim: build_sim.cmd не запустился - ' + FBuild.ErrorText);
+    FreeAndNil(FBuild);
+    SetStatus('Сборка не запустилась');
+    UpdateButtons;
+    Exit;
+  end;
+  SetStatus('Сборка...');
+  FTimer.Enabled := True;
+  UpdateButtons;
+end;
+
+procedure TArdSimPanel.PollBuild;
+var
+  Chunk: string;
+  Got, LineEnd: Integer;
+  Finished: Boolean;
+  ExitCode: Integer;
+begin
+  if FBuild = nil then
+    Exit;
+  Chunk := '';
+  Got := FBuild.Read(Chunk, 65536);
+  Finished := Got < 0;
+  if Got > 0 then
+  begin
+    FBuildLine := FBuildLine + Chunk;
+    repeat
+      LineEnd := Pos(#10, FBuildLine);
+      if LineEnd = 0 then
+        Break;
+      Log(TrimRight(Copy(FBuildLine, 1, LineEnd - 1)));
+      Delete(FBuildLine, 1, LineEnd);
+    until False;
+  end;
+  // -1: программа вышла и вывод прочитан весь
+  if not Finished then
+    Exit;
+  if Trim(FBuildLine) <> '' then
+    Log(TrimRight(FBuildLine));
+  FBuildLine := '';
+  FBuild.WaitFor(1000);
+  ExitCode := FBuild.ExitCode;
+  FreeAndNil(FBuild);
+  if ExitCode <> 0 then
+  begin
+    FDbgStartCmd := 0;
+    SetStatus('Сборка не удалась, см. журнал');
+    Log('ArdSim: сборка не удалась, код ' + IntToStr(ExitCode));
+    UpdateButtons;
+    Exit;
+  end;
+  SetStatus('Собрано');
+  if FRunAfterBuild then
+    StartSim;
+  UpdateButtons;
+end;
+
+// ---------------------------------------------------------------- эмулятор
+
+function TArdSimPanel.Header(AIndex: Integer): Cardinal;
+begin
+  {$IFDEF MSWINDOWS}
+  if FView <> nil then
+    Result := PCardinal(PAnsiChar(FView) + AIndex * 4)^
+  else
+  {$ENDIF}
+    Result := 0;
+end;
+
+procedure TArdSimPanel.SetHeader(AIndex: Integer; AValue: Cardinal);
+begin
+  {$IFDEF MSWINDOWS}
+  if FView <> nil then
+    PCardinal(PAnsiChar(FView) + AIndex * 4)^ := AValue;
+  {$ENDIF}
+end;
+
+procedure TArdSimPanel.StartSim;
+begin
+  {$IFDEF MSWINDOWS}
+  FSimExe := ExeOfSketch;
+  if not FileExists(FSimExe) then
+  begin
+    SetStatus('Нет ' + ExtractFileName(FSimExe));
+    Exit;
+  end;
+  Inc(MapCounter);
+  FMapName := IntToStr(GetCurrentProcessId) + '_' + IntToStr(MapCounter);
+  FMapping := CreateFileMapping(INVALID_HANDLE_VALUE, nil, PAGE_READWRITE, 0,
+                                SharedBytes, PChar('Local\ArdSim_' + FMapName));
+  if FMapping = 0 then
+  begin
+    Log('ArdSim: общая память не создана, код ' + IntToStr(GetLastError));
+    Exit;
+  end;
+  FView := MapViewOfFile(FMapping, FILE_MAP_ALL_ACCESS, 0, 0, SharedBytes);
+  if FView = nil then
+  begin
+    Log('ArdSim: общая память не открыта, код ' + IntToStr(GetLastError));
+    FreeShared;
+    Exit;
+  end;
+  FillChar(FView^, SharedBytes, 0);
+  SetHeader(HdrHostPid, GetCurrentProcessId);
+  SetHeader(HdrLayout, HostLayout);
+  SetHeader(HdrMagic, HostMagic);
+  DbgReset;
+  // точки - до запуска: остановка возможна и в setup()
+  if Assigned(FOnDbgNeedBreaks) then
+    FOnDbgNeedBreaks(Self);
+  if FDbgStartCmd <> 0 then
+  begin
+    SetDbgHeader(DbgCmdCode, Cardinal(FDbgStartCmd));
+    SetDbgHeader(DbgCmdArg, FDbgStartArg);
+    SetDbgHeader(DbgCmdSeq, 1);
+    FDbgStepping := True;
+    FDbgStartCmd := 0;
+  end;
+  FScreenVersion := 0;
+  FSerialRead := 0;
+  FHasPicture := False;
+  FSerial.Lines.Clear;
+
+  FSim := TProcRun.Create;
+  FSim.CommandLine := '"' + FSimExe + '" /host:' + FMapName;
+  FSim.Dir := ExtractFilePath(FSimExe);
+  FSim.Window := pwHidden;
+  if not FSim.Start then
+  begin
+    Log('ArdSim: не запустился ' + FSimExe + ' - ' + FSim.ErrorText);
+    FreeAndNil(FSim);
+    FreeShared;
+    SetStatus('Эмулятор не запустился');
+    UpdateButtons;
+    Exit;
+  end;
+  Log('ArdSim: запущен ' + FSimExe);
+  FSigIniAge := -1;   // перечитать: ini мог появиться или поменяться
+  SetStatus('Работает: ' + ExtractFileName(FSketchFile));
+  FTimer.Enabled := True;
+  FDevice.Invalidate;
+  if FDevice.CanFocus then
+    FDevice.SetFocus;
+  {$ELSE}
+  SetStatus('Эмулятор работает только в Windows');
+  {$ENDIF}
+  UpdateButtons;
+end;
+
+procedure TArdSimPanel.FreeShared;
+begin
+  {$IFDEF MSWINDOWS}
+  if FView <> nil then
+    UnmapViewOfFile(FView);
+  FView := nil;
+  if FMapping <> 0 then
+    CloseHandle(FMapping);
+  FMapping := 0;
+  {$ENDIF}
+end;
+
+procedure TArdSimPanel.StopSim;
+begin
+  if FSim = nil then
+    Exit;
+  if FSim.Running then
+  begin
+    // просьба выйти; скетч может считать без вызовов API - тогда снять
+    SetHeader(HdrStopRequest, 1);
+    if not FSim.WaitFor(500) then
+      FSim.Terminate(1);
+  end;
+  FreeAndNil(FSim);
+  FreeShared;
+  DbgEnd;
+  SetStatus('Остановлен');
+  UpdateButtons;
+end;
+
+procedure TArdSimPanel.StopAll;
+begin
+  if FBuild <> nil then
+  begin
+    FBuild.KillTree;
+    FreeAndNil(FBuild);
+    Log('ArdSim: сборка остановлена');
+  end;
+  StopSim;
+  if FTimer <> nil then
+    FTimer.Enabled := False;
+  if FBtnBuild <> nil then
+    UpdateButtons;
+end;
+
+procedure TArdSimPanel.PostKey(ARow, ACol: Integer);
+var
+  KeyWrite: Cardinal;
+begin
+  if not Running then
+    Exit;
+  KeyWrite := Header(HdrKeyWrite);
+  if KeyWrite - Header(HdrKeyRead) >= KeyQueueSize then
+    Exit;   // эмулятор не успевает разбирать
+  SetHeader(HdrKeyQueue + Integer(KeyWrite mod KeyQueueSize),
+            Cardinal(ARow * ArdSimKeyCols + ACol));
+  SetHeader(HdrKeyWrite, KeyWrite + 1);
+end;
+
+procedure TArdSimPanel.AppendSerial(const AText: string);
+var
+  Converted: string;
+  CharIdx: Integer;
+begin
+  Converted := '';
+  for CharIdx := 1 to Length(AText) do
+  begin
+    if AText[CharIdx] = #13 then
+      Continue;
+    if AText[CharIdx] = #10 then
+      Converted := Converted + #13#10
+    else
+      Converted := Converted + AText[CharIdx];
+  end;
+  if FSerial.GetTextLen > SerialMaxChars then
+  begin
+    FSerial.SelStart := 0;
+    FSerial.SelLength := SerialMaxChars div 3;
+    FSerial.SelText := '';
+  end;
+  FSerial.SelStart := FSerial.GetTextLen;
+  FSerial.SelLength := 0;
+  FSerial.SelText := Converted;
+end;
+
+procedure TArdSimPanel.PollSim;
+var
+  Version, Written, Count, ByteIdx: Cardinal;
+  Ring: PAnsiChar;
+  Text: string;
+  ExitCode: Integer;
+begin
+  {$IFDEF MSWINDOWS}
+  if (FSim = nil) or (FView = nil) then
+    Exit;
+  Version := Header(HdrScreenVersion);
+  if Version <> FScreenVersion then
+  begin
+    FScreenVersion := Version;
+    FHasPicture := True;
+    FDevice.InvalidateScreen;
+  end;
+  Written := Header(HdrSerialWrite);
+  if Written <> FSerialRead then
+  begin
+    Count := Written - FSerialRead;
+    if Count > SerialRingBytes then
+    begin
+      // кольцо обогнало чтение: старое потеряно
+      FSerialRead := Written - SerialRingBytes;
+      Count := SerialRingBytes;
+    end;
+    Ring := PAnsiChar(FView) + HeaderBytes + ScreenBytes;
+    SetLength(Text, Count);
+    for ByteIdx := 0 to Count - 1 do
+      Text[ByteIdx + 1] := Char(Ring[(FSerialRead + ByteIdx) mod SerialRingBytes]);
+    FSerialRead := Written;
+    AppendSerial(Text);
+  end;
+  PollDebug;
+  if FSim = nil then
+    Exit;   // остановлен из обработчика события отладчика
+  if not FSim.Running then
+  begin
+    ExitCode := FSim.ExitCode;
+    FreeAndNil(FSim);
+    FreeShared;
+    DbgEnd;
+    if ExitCode = 0 then
+      SetStatus('Эмулятор завершился')
+    else if ExitCode = 4 then
+    begin
+      SetStatus('Эмулятор собран старой версией ArdSim - нужна сборка');
+      Log('ArdSim: ' + ExtractFileName(FSimExe) + ' собран прежней версией ' +
+          'ArdSim (другая раскладка общей памяти) - соберите заново (Build)');
+    end
+    else
+    begin
+      SetStatus('Эмулятор завершился, код ' + IntToStr(ExitCode));
+      Log('ArdSim: ' + ExtractFileName(FSimExe) + ' завершился, код ' +
+          IntToStr(ExitCode));
+    end;
+    UpdateButtons;
+  end;
+  {$ENDIF}
+end;
+
+// ---------------------------------------------------------------- сигналы
+
+// Числа в ardsim.ini - с точкой (эмулятор читает их strtod)
+function IniFloatText(AValue: Double): string;
+begin
+  Result := StringReplace(FloatToStr(AValue), DecimalSeparator, '.', []);
+end;
+
+function IniFloat(const AText: string; ADefault: Double): Double;
+var
+  Text: string;
+begin
+  Text := Trim(AText);
+  Text := StringReplace(Text, '.', DecimalSeparator, []);
+  Text := StringReplace(Text, ',', DecimalSeparator, []);
+  Result := StrToFloatDef(Text, ADefault);
+end;
+
+// "амплитуда,фаза" ключа Hn
+procedure SplitPair(const AText: string; var AFirst, ASecond: string);
+var
+  CommaPos: Integer;
+begin
+  CommaPos := Pos(',', AText);
+  if CommaPos = 0 then
+  begin
+    AFirst := Trim(AText);
+    ASecond := '0';
+  end
+  else
+  begin
+    AFirst := Trim(Copy(AText, 1, CommaPos - 1));
+    ASecond := Trim(Copy(AText, CommaPos + 1, MaxInt));
+  end;
+end;
+
+procedure TArdSimPanel.BuildSignals;
+var
+  RowIdx: Integer;
+
+  function AddLabel(const ACaption: string; ALeft, ATop, AWidth: Integer): TUiLabel;
+  begin
+    Result := TUiLabel.Create(Self);
+    Result.Parent := FSigPanel;
+    Result.AutoSize := False;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, ATop + 3, AWidth, 16);
+  end;
+
+  function AddEdit(ALeft, ATop, AWidth: Integer; const AHint: string): TUiEdit;
+  begin
+    Result := TUiEdit.Create(Self);
+    Result.Parent := FSigPanel;
+    Result.SetBounds(ALeft, ATop, AWidth, 22);
+    Result.Hint := AHint;
+    Result.ShowHint := True;
+    Result.OnChange := SigChange;
+  end;
+
+  function AddCheck(const ACaption: string; ALeft, ATop, AWidth: Integer): TUiCheckBox;
+  begin
+    Result := TUiCheckBox.Create(Self);
+    Result.Parent := FSigPanel;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, ATop, AWidth, 20);
+    Result.OnClick := SigChange;
+  end;
+
+begin
+  FSigShown := True;
+  FSigIniAge := -1;
+  FSigHead := TUiButton.Create(Self);
+  FSigHead.Parent := Self;
+  FSigHead.Caption := 'Сигналы - скрыть';
+  FSigHead.Hint := 'Тахометр, обороты, 1-я гармоника A0/A1, модель ротора ' +
+    'и грузы (ardsim.ini)';
+  FSigHead.ShowHint := True;
+  FSigHead.TabStop := False;
+  FSigHead.OnClick := SigHeadClick;
+
+  FSigPanel := TUiPanel.Create(Self);
+  FSigPanel.Parent := Self;
+  FSigPanel.BevelOuter := bvNone;
+  FSigPanel.Caption := '';
+
+  FSigTacho := AddCheck('Тахометр', 0, 2, 96);
+  AddLabel('обороты, об/мин', 100, 2, 100);
+  FSigRpm := AddEdit(204, 2, 70, 'Обороты ротора (RPM в [Tacho])');
+  FSigFreq := AddLabel('', 282, 2, 200);
+  FSigRotor := AddCheck('Модель ротора: 1-я гармоника A0 и A1 считается ' +
+    'от дисбаланса и грузов', 0, 28, 520);
+  for RowIdx := 0 to 1 do
+  begin
+    AddLabel('A' + IntToStr(RowIdx) + ', 1x: амплитуда, В', 0, 54 + RowIdx * 26, 140);
+    FSigAmp[RowIdx] := AddEdit(144, 54 + RowIdx * 26, 70,
+      'Амплитуда 1-й гармоники, вольты (H1 в [A' + IntToStr(RowIdx) + '])');
+    AddLabel('фаза, град', 222, 54 + RowIdx * 26, 70);
+    FSigPhase[RowIdx] := AddEdit(296, 54 + RowIdx * 26, 70,
+      'Фаза пика после метки тахометра, градусы');
+  end;
+  for RowIdx := 0 to 1 do
+  begin
+    AddLabel('Грузы, плоскость ' + IntToStr(RowIdx + 1), 0, 106 + RowIdx * 26, 120);
+    FSigWeights[RowIdx] := AddEdit(124, 106 + RowIdx * 26, 300,
+      'Грузы на роторе: граммы@градусы через точку с запятой, ' +
+      'например 10@0; 5.2@137 (Weights' + IntToStr(RowIdx + 1) + ' в [Rotor])');
+  end;
+  FSigApply := TUiButton.Create(Self);
+  FSigApply.Parent := FSigPanel;
+  FSigApply.Caption := 'Применить';
+  FSigApply.Hint := 'Записать в ardsim.ini: эмулятор перечитает его за полсекунды';
+  FSigApply.ShowHint := True;
+  FSigApply.TabStop := False;
+  FSigApply.SetBounds(0, 160, 100, 22);
+  FSigApply.OnClick := SigApplyClick;
+  FSigNote := AddLabel('', 108, 160, 300);
+  SigUpdateState;
+end;
+
+procedure TArdSimPanel.SigHeadClick(Sender: TObject);
+begin
+  FSigShown := not FSigShown;
+  if FSigShown then
+    FSigHead.Caption := 'Сигналы - скрыть'
+  else
+    FSigHead.Caption := 'Сигналы - показать';
+  if FSigShown then
+    SigLoad;
+  LayoutControls;
+end;
+
+procedure TArdSimPanel.SigChange(Sender: TObject);
+begin
+  if FSigLoading then
+    Exit;
+  FSigDirty := True;
+  SigUpdateState;
+end;
+
+procedure TArdSimPanel.SigUpdateState;
+var
+  RowIdx: Integer;
+  Rpm: Double;
+begin
+  for RowIdx := 0 to 1 do
+  begin
+    FSigAmp[RowIdx].Enabled := not FSigRotor.Checked;
+    FSigPhase[RowIdx].Enabled := not FSigRotor.Checked;
+    FSigWeights[RowIdx].Enabled := FSigRotor.Checked;
+  end;
+  FSigRpm.Enabled := FSigTacho.Checked;
+  Rpm := IniFloat(FSigRpm.Text, 0);
+  if FSigTacho.Checked and (Rpm > 0) then
+    FSigFreq.Caption := 'f = ' + FormatFloat('0.00', Rpm / 60) + ' Гц'
+  else
+    FSigFreq.Caption := '';
+  FSigApply.Enabled := FSigDirty;
+  if FSigDirty then
+    FSigNote.Caption := 'изменено, не применено'
+  else if FSigIniFile = '' then
+    FSigNote.Caption := 'ardsim.ini появится после первого запуска'
+  else
+    FSigNote.Caption := 'остальное - в ardsim.ini (кнопка ini)';
+end;
+
+// Поля - из ardsim.ini (если его не правили на панели)
+procedure TArdSimPanel.SigLoad;
+var
+  Ini: TIniFile;
+  RowIdx: Integer;
+  AmpText, PhaseText: string;
+begin
+  if FSigDirty then
+    Exit;
+  if (FSketchFile = '') and Assigned(FOnNeedSketch) then
+    FOnNeedSketch(Self);
+  if (FSketchFile = '') or not FileExists(IniOfSketch) then
+  begin
+    FSigIniFile := '';
+    SigUpdateState;
+    Exit;
+  end;
+  FSigIniFile := IniOfSketch;
+  FSigIniAge := FileAge(FSigIniFile);
+  FSigLoading := True;
+  Ini := TIniFile.Create(FSigIniFile);
+  try
+    FSigTacho.Checked := Ini.ReadString('Tacho', 'Enabled', '1') <> '0';
+    FSigRpm.Text := Ini.ReadString('Tacho', 'RPM', '1500');
+    FSigRotor.Checked := Ini.ReadString('Rotor', 'Enabled', '0') <> '0';
+    for RowIdx := 0 to 1 do
+    begin
+      SplitPair(Ini.ReadString('A' + IntToStr(RowIdx), 'H1', '0,0'), AmpText, PhaseText);
+      FSigAmp[RowIdx].Text := AmpText;
+      FSigPhase[RowIdx].Text := PhaseText;
+      FSigWeights[RowIdx].Text := Ini.ReadString('Rotor', 'Weights' + IntToStr(RowIdx + 1), '');
+    end;
+  finally
+    Ini.Free;
+    FSigLoading := False;
+  end;
+  SigUpdateState;
+end;
+
+procedure TArdSimPanel.SigApplyClick(Sender: TObject);
+var
+  Ini: TIniFile;
+  RowIdx: Integer;
+begin
+  if (FSketchFile = '') and Assigned(FOnNeedSketch) then
+    FOnNeedSketch(Self);
+  if (FSketchFile = '') or not FileExists(IniOfSketch) then
+  begin
+    // неполный ini эмулятор прочёл бы с нулями вместо умолчаний
+    FSigNote.Caption := 'ardsim.ini появится после первого запуска';
+    Exit;
+  end;
+  FSigIniFile := IniOfSketch;
+  Ini := TIniFile.Create(FSigIniFile);
+  try
+    if FSigTacho.Checked then
+      Ini.WriteString('Tacho', 'Enabled', '1')
+    else
+      Ini.WriteString('Tacho', 'Enabled', '0');
+    Ini.WriteString('Tacho', 'RPM', IniFloatText(IniFloat(FSigRpm.Text, 1500)));
+    if FSigRotor.Checked then
+      Ini.WriteString('Rotor', 'Enabled', '1')
+    else
+      Ini.WriteString('Rotor', 'Enabled', '0');
+    for RowIdx := 0 to 1 do
+    begin
+      // с моделью ротора 1-ю гармонику считает эмулятор
+      if not FSigRotor.Checked then
+        Ini.WriteString('A' + IntToStr(RowIdx), 'H1',
+          IniFloatText(IniFloat(FSigAmp[RowIdx].Text, 0)) + ',' +
+          IniFloatText(IniFloat(FSigPhase[RowIdx].Text, 0)));
+      Ini.WriteString('Rotor', 'Weights' + IntToStr(RowIdx + 1),
+                      Trim(FSigWeights[RowIdx].Text));
+    end;
+    Ini.UpdateFile;
+  finally
+    Ini.Free;
+  end;
+  FSigDirty := False;
+  FSigIniAge := FileAge(FSigIniFile);
+  Log('ArdSim: сигналы записаны в ' + FSigIniFile);
+  SigUpdateState;
+end;
+
+// Файл поменялся (кнопка ini, первый запуск) - поля заново
+procedure TArdSimPanel.SigPoll;
+begin
+  if not FSigShown or FSigDirty or (FSketchFile = '') then
+    Exit;
+  if FileExists(IniOfSketch) and (FileAge(IniOfSketch) <> FSigIniAge) then
+    SigLoad;
+end;
+
+// ---------------------------------------------------------------- отладчик
+
+function TArdSimPanel.DbgArea: PAnsiChar;
+begin
+  Result := nil;
+  {$IFDEF MSWINDOWS}
+  if FView <> nil then
+    Result := PAnsiChar(FView) + DbgOffset;
+  {$ENDIF}
+end;
+
+function TArdSimPanel.DbgHeader(AIndex: Integer): Cardinal;
+begin
+  if DbgArea <> nil then
+    Result := PCardinal(DbgArea + AIndex * 4)^
+  else
+    Result := 0;
+end;
+
+procedure TArdSimPanel.SetDbgHeader(AIndex: Integer; AValue: Cardinal);
+begin
+  if DbgArea <> nil then
+    PCardinal(DbgArea + AIndex * 4)^ := AValue;
+end;
+
+// Новый запуск: общая память только что обнулена
+procedure TArdSimPanel.DbgReset;
+begin
+  FDbgStopSeq := 0;
+  FDbgInfoSeq := 0;
+  FDbgStopped := False;
+  FDbgStepping := False;
+  FDbgInfo.Clear;
+  FDbgFiles.Clear;
+  FDbgBreaks := #1;    // не совпадёт ни с одним списком: отправить
+  FDbgWatch := #1;
+  FLiveTick := GetTickCount;
+  FBreakTick := GetTickCount;
+end;
+
+// Эмулятор закончил или снят: строки остановки больше нет
+procedure TArdSimPanel.DbgEnd;
+var
+  WasStopped: Boolean;
+begin
+  WasStopped := FDbgStopped;
+  FDbgStopped := False;
+  FDbgStepping := False;
+  FDbgInfo.Clear;
+  if Assigned(FOnDbgResume) then
+    FOnDbgResume(Self);
+  if WasStopped then
+    Log('ArdSim: отладка закончилась');
+end;
+
+function TArdSimPanel.ReadDbgText(AOffset, AMaxBytes: Integer): string;
+var
+  Source: PAnsiChar;
+  TextLen: Integer;
+begin
+  Result := '';
+  if DbgArea = nil then
+    Exit;
+  Source := DbgArea + AOffset;
+  TextLen := 0;
+  while (TextLen < AMaxBytes) and (Source[TextLen] <> #0) do
+    Inc(TextLen);
+  SetString(Result, Source, TextLen);
+end;
+
+// Ответ эмулятора. Пишется под счётчиком InfoSeq: нечётный - пишет;
+// изменился за время чтения - прочитать в следующий раз
+procedure TArdSimPanel.ReadDbgInfo;
+var
+  SeqBefore, TextLen: Cardinal;
+  Text: string;
+begin
+  SeqBefore := DbgHeader(DbgInfoSeq);
+  if Odd(SeqBefore) then
+    Exit;
+  TextLen := DbgHeader(DbgInfoBytes);
+  if TextLen >= DbgInfoMax then
+    TextLen := DbgInfoMax - 1;
+  SetString(Text, DbgArea + DbgInfoOffset, TextLen);
+  if DbgHeader(DbgInfoSeq) <> SeqBefore then
+    Exit;
+  FDbgInfoSeq := SeqBefore;
+  FDbgInfo.Text := StringReplace(Text, #10, #13#10, [rfReplaceAll]);
+end;
+
+procedure TArdSimPanel.DbgStatus;
+var
+  Code: Cardinal;
+begin
+  Code := DbgHeader(DbgStopCodeIdx);
+  SetStatus('Стоит: ' + ExtractFileName(DbgFileName(Code shr 20)) +
+            ', строка ' + IntToStr(Code and $FFFFF) + ' - ' + DbgWhere);
+end;
+
+procedure TArdSimPanel.PollDebug;
+var
+  FilesText: string;
+begin
+  if DbgArea = nil then
+    Exit;
+  if (FDbgFiles.Count = 0) and (DbgHeader(DbgInstrumented) = 1) then
+  begin
+    FilesText := ReadDbgText(DbgFilesOffset, DbgFilesBytes);
+    FDbgFiles.Text := StringReplace(FilesText, #10, #13#10, [rfReplaceAll]);
+  end;
+  // точки останова (правки двигают строки) - раз в 250 мс
+  if (GetTickCount - FBreakTick >= 250) and Assigned(FOnDbgNeedBreaks) then
+  begin
+    FBreakTick := GetTickCount;
+    FOnDbgNeedBreaks(Self);
+  end;
+  if DbgHeader(DbgStopSeq) <> FDbgStopSeq then
+  begin
+    FDbgStopSeq := DbgHeader(DbgStopSeq);
+    if DbgHeader(DbgState) = 1 then
+    begin
+      ReadDbgInfo;
+      FDbgStopped := True;
+      FDbgStepping := False;
+      DbgStatus;
+      if Assigned(FOnDbgStop) then
+        FOnDbgStop(Self);
+      Exit;
+    end;
+  end;
+  if FDbgStopped and (DbgHeader(DbgState) = 0) then
+  begin
+    FDbgStopped := False;
+    SetStatus('Работает: ' + ExtractFileName(FSketchFile));
+    if Assigned(FOnDbgResume) then
+      FOnDbgResume(Self);
+  end;
+  if (DbgHeader(DbgInfoSeq) <> FDbgInfoSeq) and not Odd(DbgHeader(DbgInfoSeq)) then
+  begin
+    ReadDbgInfo;
+    if Assigned(FOnDbgInfo) then
+      FOnDbgInfo(Self);
+  end;
+  // окно Watch открыто - значения и на ходу, раз в 500 мс
+  if FLiveWatch and not FDbgStopped and (FDbgWatch <> #1) and (FDbgWatch <> '') and
+     (GetTickCount - FLiveTick >= 500) then
+  begin
+    FLiveTick := GetTickCount;
+    SetDbgHeader(DbgWatchSeq, DbgHeader(DbgWatchSeq) + 1);
+  end;
+end;
+
+function TArdSimPanel.DbgAvailable: Boolean;
+begin
+  Result := Running and (DbgHeader(DbgInstrumented) = 1);
+end;
+
+function TArdSimPanel.DbgStopped: Boolean;
+begin
+  Result := Running and FDbgStopped;
+end;
+
+function TArdSimPanel.DbgStepping: Boolean;
+begin
+  Result := Running and FDbgStepping;
+end;
+
+function TArdSimPanel.DbgStopCode: Cardinal;
+begin
+  Result := DbgHeader(DbgStopCodeIdx);
+end;
+
+procedure TArdSimPanel.DbgCommand(ACode: Integer; AArg: Cardinal);
+begin
+  if not Running then
+    Exit;
+  SetDbgHeader(DbgCmdCode, Cardinal(ACode));
+  SetDbgHeader(DbgCmdArg, AArg);
+  SetDbgHeader(DbgCmdSeq, DbgHeader(DbgCmdSeq) + 1);
+  FDbgStepping := (ACode = ArdDbgInto) or (ACode = ArdDbgOver) or
+                  (ACode = ArdDbgOut) or (ACode = ArdDbgPause);
+  if FDbgStopped and (ACode <> ArdDbgPause) then
+  begin
+    // строка остановки гаснет сразу, не дожидаясь эмулятора
+    FDbgStopped := False;
+    SetStatus('Работает: ' + ExtractFileName(FSketchFile));
+    if Assigned(FOnDbgResume) then
+      FOnDbgResume(Self);
+  end;
+end;
+
+procedure TArdSimPanel.SetStartCommand(ACode: Integer; AArg: Cardinal);
+begin
+  FDbgStartCmd := ACode;
+  FDbgStartArg := AArg;
+end;
+
+procedure TArdSimPanel.DbgSetBreakpoints(const ACodes: TArdDbgCodes);
+var
+  Text: string;
+  CodeIdx, Count: Integer;
+  List: PCardinal;
+begin
+  if DbgArea = nil then
+    Exit;
+  Text := '';
+  for CodeIdx := 0 to High(ACodes) do
+    Text := Text + IntToStr(ACodes[CodeIdx]) + ',';
+  if Text = FDbgBreaks then
+    Exit;
+  FDbgBreaks := Text;
+  Count := Length(ACodes);
+  if Count > DbgMaxBreaks then
+    Count := DbgMaxBreaks;
+  List := PCardinal(DbgArea + DbgBreakOffset);
+  for CodeIdx := 0 to Count - 1 do
+  begin
+    List^ := ACodes[CodeIdx];
+    Inc(List);
+  end;
+  SetDbgHeader(DbgBpCount, Cardinal(Count));
+  SetDbgHeader(DbgBpVersion, DbgHeader(DbgBpVersion) + 1);
+end;
+
+function ArdSimCompareNames(List: TStringList; Index1, Index2: Integer): Integer;
+begin
+  Result := CompareStr(List[Index1], List[Index2]);
+end;
+
+function TArdSimPanel.DbgFileIndex(const AFileName: string): Integer;
+var
+  FileIdx: Integer;
+  Search: TSearchRec;
+  Others: TStringList;
+  Dir: string;
+begin
+  Result := -1;
+  if AFileName = '' then
+    Exit;
+  if FDbgFiles.Count > 0 then
+  begin
+    for FileIdx := 0 to FDbgFiles.Count - 1 do
+      if CompareText(ExpandFileName(FDbgFiles[FileIdx]),
+                     ExpandFileName(AFileName)) = 0 then
+      begin
+        Result := FileIdx;
+        Exit;
+      end;
+    Exit;
+  end;
+  // эмулятор ещё не сказал: то же правило, что у ardprep
+  if FSketchFile = '' then
+    Exit;
+  if CompareText(ExpandFileName(FSketchFile), ExpandFileName(AFileName)) = 0 then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  Dir := ExtractFilePath(ExpandFileName(FSketchFile));
+  if CompareText(ExtractFilePath(ExpandFileName(AFileName)), Dir) <> 0 then
+    Exit;
+  Others := TStringList.Create;
+  try
+    if FindFirst(Dir + '*.ino', faAnyFile, Search) = 0 then
+    begin
+      repeat
+        if (CompareText(Search.Name, ExtractFileName(FSketchFile)) <> 0) and
+           (CompareText(ExtractFileExt(Search.Name), '.ino') = 0) then
+          Others.Add(Search.Name);
+      until FindNext(Search) <> 0;
+      FindClose(Search);
+    end;
+    Others.CustomSort(ArdSimCompareNames);
+    for FileIdx := 0 to Others.Count - 1 do
+      if CompareText(Others[FileIdx], ExtractFileName(AFileName)) = 0 then
+      begin
+        Result := FileIdx + 1;
+        Exit;
+      end;
+  finally
+    Others.Free;
+  end;
+end;
+
+function TArdSimPanel.DbgFileName(AIndex: Integer): string;
+begin
+  if (AIndex >= 0) and (AIndex < FDbgFiles.Count) then
+    Result := FDbgFiles[AIndex]
+  else if AIndex = 0 then
+    Result := FSketchFile
+  else
+    Result := '';
+end;
+
+procedure TArdSimPanel.DbgSetWatch(AExprs: TStrings);
+var
+  Text: string;
+  ExprIdx: Integer;
+  Target: PAnsiChar;
+begin
+  if DbgArea = nil then
+    Exit;
+  Text := '';
+  for ExprIdx := 0 to AExprs.Count - 1 do
+    Text := Text + AExprs[ExprIdx] + #10;
+  if Length(Text) >= DbgWatchReqBytes then
+    Text := Copy(Text, 1, DbgWatchReqBytes - 1);
+  if Text = FDbgWatch then
+    Exit;
+  FDbgWatch := Text;
+  Target := DbgArea + DbgWatchReqOffset;
+  if Text <> '' then
+    Move(Text[1], Target^, Length(Text));
+  Target[Length(Text)] := #0;
+  SetDbgHeader(DbgWatchSeq, DbgHeader(DbgWatchSeq) + 1);
+end;
+
+// Строка ответа "APrefix..." - в ARest остаток после префикса
+function TArdSimPanel.DbgLine(const APrefix: string; var ARest: string): Boolean;
+var
+  LineIdx: Integer;
+begin
+  Result := False;
+  for LineIdx := 0 to FDbgInfo.Count - 1 do
+    if Copy(FDbgInfo[LineIdx], 1, Length(APrefix)) = APrefix then
+    begin
+      ARest := Copy(FDbgInfo[LineIdx], Length(APrefix) + 1, MaxInt);
+      Result := True;
+      Exit;
+    end;
+end;
+
+function TArdSimPanel.DbgWatchResult(AIndex: Integer; var AValue: string): Boolean;
+var
+  Rest: string;
+begin
+  AValue := '';
+  Result := DbgLine('W'#9 + IntToStr(AIndex) + #9, Rest);
+  if not Result then
+    Exit;
+  if Copy(Rest, 1, 1) = '=' then
+    AValue := Copy(Rest, 2, MaxInt)
+  else if Rest = '?' then
+    AValue := '<нет такой переменной: Watch эмулятора показывает глобальные ' +
+              'и локальные переменные скетча, имя или имя[индекс]>'
+  else
+    AValue := '<не разобрано или индекс вне массива>';
+end;
+
+function TArdSimPanel.DbgVarValue(const AName: string; var AValue: string): Boolean;
+begin
+  Result := DbgLine('L'#9 + AName + #9, AValue) or DbgLine('G'#9 + AName + #9, AValue);
+end;
+
+procedure TArdSimPanel.DbgLocalNames(ANames: TStrings);
+var
+  LineIdx: Integer;
+  Text: string;
+begin
+  for LineIdx := 0 to FDbgInfo.Count - 1 do
+  begin
+    Text := FDbgInfo[LineIdx];
+    if Copy(Text, 1, 2) <> 'L'#9 then
+      Continue;
+    Text := Copy(Text, 3, MaxInt);
+    ANames.Add(Copy(Text, 1, Pos(#9, Text) - 1));
+  end;
+end;
+
+function TArdSimPanel.DbgWhere: string;
+var
+  LineIdx: Integer;
+  Text: string;
+begin
+  Result := '';
+  for LineIdx := 0 to FDbgInfo.Count - 1 do
+  begin
+    Text := FDbgInfo[LineIdx];
+    if Copy(Text, 1, 2) <> 'F'#9 then
+      Continue;
+    Text := Copy(Text, 3, MaxInt);
+    Text := Copy(Text, 1, Pos(#9, Text) - 1);
+    if Result = '' then
+      Result := Text
+    else
+      Result := Result + ' <- ' + Text;
+  end;
+end;
+
+procedure TArdSimPanel.TimerTick(Sender: TObject);
+begin
+  PollBuild;
+  PollSim;
+  SigPoll;
+  if (FBuild = nil) and (FSim = nil) then
+    FTimer.Enabled := False;
+end;
+
+
+// Экран: RGB565 из общей памяти -> 32 бита -> StretchDIBits в ARect
+// (3:2). Эмулятор не запущен - последняя картинка (её копия в FPixels)
+// или пустое поле
+procedure TArdSimPanel.PaintScreen(ACanvas: TCanvas; const ARect: TRect);
+var
+  {$IFDEF MSWINDOWS}
+  Info: TBitmapInfo;
+  Source: PWord;
+  PixelIdx: Integer;
+  Color, Red, Green, Blue: Cardinal;
+  {$ENDIF}
+  AreaW, AreaH, DrawW, DrawH, DrawX, DrawY: Integer;
+begin
+  AreaW := ARect.Right - ARect.Left;
+  AreaH := ARect.Bottom - ARect.Top;
+  ACanvas.Brush.Color := clBlack;
+  ACanvas.FillRect(ARect);
+  DrawW := AreaW;
+  DrawH := DrawW * ArdSimScreenH div ArdSimScreenW;
+  if DrawH > AreaH then
+  begin
+    DrawH := AreaH;
+    DrawW := DrawH * ArdSimScreenW div ArdSimScreenH;
+  end;
+  DrawX := ARect.Left + (AreaW - DrawW) div 2;
+  DrawY := ARect.Top + (AreaH - DrawH) div 2;
+  {$IFDEF MSWINDOWS}
+  if FView <> nil then
+  begin
+    Source := PWord(PAnsiChar(FView) + HeaderBytes);
+    for PixelIdx := 0 to ArdSimScreenW * ArdSimScreenH - 1 do
+    begin
+      Color := Source^;
+      Inc(Source);
+      Red := (Color shr 11) and $1F;
+      Green := (Color shr 5) and $3F;
+      Blue := Color and $1F;
+      Red := (Red shl 3) or (Red shr 2);
+      Green := (Green shl 2) or (Green shr 4);
+      Blue := (Blue shl 3) or (Blue shr 2);
+      FPixels[PixelIdx] := (Red shl 16) or (Green shl 8) or Blue;
+    end;
+  end;
+  if FHasPicture then
+  begin
+    FillChar(Info, SizeOf(Info), 0);
+    Info.bmiHeader.biSize := SizeOf(TBitmapInfoHeader);
+    Info.bmiHeader.biWidth := ArdSimScreenW;
+    Info.bmiHeader.biHeight := -ArdSimScreenH;   // сверху вниз
+    Info.bmiHeader.biPlanes := 1;
+    Info.bmiHeader.biBitCount := 32;
+    Info.bmiHeader.biCompression := BI_RGB;
+    // меньше 1:1 - HALFTONE (тонкие линии и мелкий текст не пропадают)
+    if DrawW < ArdSimScreenW then
+    begin
+      SetStretchBltMode(ACanvas.Handle, HALFTONE);
+      SetBrushOrgEx(ACanvas.Handle, 0, 0, nil);
+    end
+    else
+      SetStretchBltMode(ACanvas.Handle, COLORONCOLOR);
+    StretchDIBits(ACanvas.Handle, DrawX, DrawY, DrawW, DrawH, 0, 0,
+      ArdSimScreenW, ArdSimScreenH, @FPixels[0], Info, DIB_RGB_COLORS, SRCCOPY);
+  end
+  else
+  {$ENDIF}
+  begin
+    ACanvas.Font.Color := clGray;
+    ACanvas.Brush.Style := bsClear;
+    ACanvas.Font.Height := -11;
+    ACanvas.Font.Style := [];
+    ACanvas.TextOut(DrawX + 6, DrawY + 6, 'Build - собрать и запустить');
+    ACanvas.Brush.Style := bsSolid;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  TArdSimWindow
+// ---------------------------------------------------------------------------
+
+const
+  WindowClientW = ArdSimScreenW + 2 * BodyBorder + 2 * 4;
+
+constructor TArdSimWindow.CreateFor(AMainForm: TCustomForm);
+begin
+  FMainForm := AMainForm;
+  inherited CreateNew(AMainForm);
+  Caption := 'Emulator - ArdSim';
+  BorderStyle := bsSizeToolWin;
+  Position := poDesigned;
+  ClientWidth := WindowClientW;
+  ClientHeight := 760;
+  Constraints.MinWidth := Width - ClientWidth + WindowClientW;
+  OnClose := WindowClose;
+  FPanel := TArdSimPanel.Create(Self);
+  FPanel.Parent := Self;
+  FPanel.Align := alClient;
+end;
+
+// Владелец окна - главное окно unIDE: эмулятор всегда над ним, но не над
+// другими программами
+procedure TArdSimWindow.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  if (FMainForm <> nil) and FMainForm.HandleAllocated then
+    Params.WndParent := FMainForm.Handle;
+end;
+
+procedure TArdSimWindow.WindowClose(Sender: TObject; var Action: TCloseAction);
+begin
+  FPanel.StopAll;
+  Action := caHide;
+  if Assigned(FOnHidden) then
+    FOnHidden(Self);
+end;
+
+procedure TArdSimWindow.WMExitSizeMove(var Message: TMessage);
+begin
+  inherited;
+  if Assigned(FOnPlaced) then
+    FOnPlaced(Self);
+end;
+
+procedure TArdSimWindow.ShowAtRight;
+var
+  FrameW: Integer;
+begin
+  if not FPlaced and (FMainForm <> nil) then
+  begin
+    FPlaced := True;
+    FrameW := Width - ClientWidth;
+    Width := WindowClientW + FrameW;
+    Height := FMainForm.Height;
+    Left := FMainForm.Left + FMainForm.Width - Width;
+    Top := FMainForm.Top;
+  end;
+  Show;
+  BringToFront;
+  if Assigned(FOnPlaced) then
+    FOnPlaced(Self);
+end;
+
+end.

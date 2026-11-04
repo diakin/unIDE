@@ -24,7 +24,8 @@ SIZE = 24
 # Order = index in the strip. MUST match the constants in Unit1.pas:
 # IconOpen = 0, IconSave = 1, IconUndo = 2, IconCut = 3, IconCopy = 4,
 # IconPaste = 5, IconSavePrj = 6, IconRun = 7 ... IconStepOver = 14,
-# IconArdVerify = 15, IconArdUpload = 16
+# IconArdVerify = 15, IconArdUpload = 16, IconEmuBuild = 17,
+# IconEmuRun = 18, IconEmuIni = 19, IconEmuWindow = 20
 ICONS = [
     ('open',      'Open_01'),
     ('save',      'Save_01'),
@@ -43,6 +44,10 @@ ICONS = [
     ('stepover',  'Arrow_44'),
     ('ardverify', 'Ok_07'),       # Arduino: Verify
     ('ardupload', 'Arrow_05'),    # Arduino: Upload
+    ('emubuild',  'Setup_03'),    # emulator (ArdSim): build and run
+    ('emurun',    'Calculator_01'),  # emulator: run without building
+    ('emuini',    'Edit_01'),     # emulator: ardsim.ini
+    ('emuwindow', 'Window_01'),   # emulator: separate ArdSim window
 ]
 
 # Floppy body: black as usual instead of the original blue; on the dark
