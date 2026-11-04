@@ -32,4 +32,36 @@ std::string simExeDir();
 void simStartSketch();
 void simRequestStop();
 extern volatile bool SimStopping;
+// Time since the simulator start, microseconds (no simPoll)
+uint64_t simMicrosNow();
+
+// Signal generator (sim_signal.cpp)
+#define SIM_ANALOG_CHANNELS 12
+#define SIM_HARMONICS 10
+#define SIM_FIXED_FREQS 4
+struct SimChannel
+{
+  double Offset, Noise;                                  // volts
+  double HarmAmp[SIM_HARMONICS + 1], HarmPhase[SIM_HARMONICS + 1];  // [1..10]: volts, degrees
+  double FreqHz[SIM_FIXED_FREQS], FreqAmp[SIM_FIXED_FREQS], FreqPhase[SIM_FIXED_FREQS];
+};
+struct SimSignalConfig
+{
+  bool TachoOn;
+  double Rpm;
+  int TachoPin;          // digital pin of the tacho (falling edge = mark)
+  double PulseDeg;       // pulse length, degrees of rotation
+  int TachoAnalog;       // analog channel that repeats the tacho (-1: none)
+  double Vref;
+  SimChannel Channel[SIM_ANALOG_CHANNELS];
+};
+void simSignalDefaults(SimSignalConfig &config);
+bool simSignalLoad(const char *path, SimSignalConfig &config);
+bool simSignalSave(const char *path, const SimSignalConfig &config);
+void simSignalSet(const SimSignalConfig &config);       // window thread
+int simSignalAdvance(uint64_t now);                     // sketch thread
+double simSignalVolts(int channel, uint64_t now);
+double simSignalVref();
+int simTachoPin();
+int simTachoLevel();
 #endif

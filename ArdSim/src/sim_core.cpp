@@ -31,6 +31,8 @@ static uint64_t simMicros64()
   return (uint64_t)((now.QuadPart - SimStart.QuadPart) * 1000000LL / SimFreq.QuadPart);
 }
 
+uint64_t simMicrosNow() { return simMicros64(); }
+
 unsigned long micros() { simPoll(); return (unsigned long)(uint32_t)simMicros64(); }
 unsigned long millis() { simPoll(); return (unsigned long)(uint32_t)(simMicros64() / 1000); }
 
@@ -130,6 +132,8 @@ static int pinLevel(uint32_t pin)
   int col = keyColOfPin(pin);
   if (PinMode[pin] == OUTPUT)
     return PinOut[pin] ? HIGH : LOW;
+  if ((int)pin == simTachoPin())
+    return simTachoLevel() ? HIGH : LOW;
   // Input: a pressed key connects its row and column; the other side,
   // driven LOW, pulls this pin low; otherwise the pull-up gives HIGH
   if (PressRow >= 0)
@@ -160,8 +164,8 @@ static void checkEdges()
 {
   for (uint32_t pin = 0; pin < SIM_PIN_COUNT; pin++)
   {
-    if (!PinIsr[pin])
-      continue;
+    if (!PinIsr[pin] || (int)pin == simTachoPin())
+      continue;   // the tacho edges come from simSignalAdvance
     uint8_t level = (uint8_t)pinLevel(pin);
     uint8_t old = PinLevel[pin];
     PinLevel[pin] = level;
@@ -200,15 +204,19 @@ int digitalRead(uint32_t pin)
   return pinLevel(pin);
 }
 
-// Signal source (step 1): mid-scale with a little noise on A0 / A1, the
-// tacho input A4 at zero. Step 2 adds a generator with harmonics.
+// Analog inputs: the generator (sim_signal.cpp) gives volts, the ADC
+// turns them into counts of the current resolution (Due: 0..Vref)
 int analogRead(uint32_t pin)
 {
   simPoll();
+  int channel = pin >= A0 ? (int)(pin - A0) : (int)pin;
   int full = (1 << AnalogBits) - 1;
-  if (pin == A0 || pin == A1 || pin == 0 || pin == 1)
-    return full / 2 + (rand() % 7) - 3;
-  return 0;
+  double counts = simSignalVolts(channel, simMicros64()) / simSignalVref() * (full + 1);
+  if (counts < 0)
+    counts = 0;
+  if (counts > full)
+    counts = full;
+  return (int)counts;
 }
 
 void analogReadResolution(int bits)
@@ -328,6 +336,16 @@ void simPoll()
   }
   uint64_t now = simMicros64();
   InIsr = true;
+  // Tacho: edges since the last poll -> pin interrupt
+  int tachoEdges = simSignalAdvance(now);
+  int tachoPin = simTachoPin();
+  if (tachoEdges && tachoPin >= 0 && tachoPin < SIM_PIN_COUNT && PinIsr[tachoPin])
+  {
+    uint8_t mode = PinIsrMode[tachoPin];
+    if (((tachoEdges & 1) && (mode == FALLING || mode == CHANGE)) ||
+        ((tachoEdges & 2) && (mode == RISING || mode == CHANGE)))
+      PinIsrPending[tachoPin] = true;
+  }
   // Keypad: posted press -> matrix state; release after the hold time
   if (PostReady)
   {

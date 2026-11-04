@@ -4,7 +4,11 @@
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
+#include <shellapi.h>
 #include "sim_internal.h"
+#include <cstdio>
+#include <cstdlib>
+#include <cstring>
 #include <string>
 
 static const int KeyHoldMs = 120;          // > 50 ms period of kbdcheck2
@@ -16,6 +20,16 @@ static const int IdSerial = 900;
 static const int IdStatus = 901;
 
 static HWND MainWindow, SerialEdit, StatusText;
+
+// Signal panel (generator settings, see sim_signal.cpp)
+static const int IdTachoOn = 950, IdRpm = 951, IdApply = 952, IdEditIni = 953, IdSignalInfo = 954;
+static const int IdAmpBase = 960, IdPhaseBase = 970;   // + channel 0/1
+static const int PanelChannels = 2;                    // A0, A1 on the panel; the rest in the ini
+static HWND TachoBox, RpmEdit, SignalInfo;
+static HWND AmpEdit[PanelChannels], PhaseEdit[PanelChannels];
+static SimSignalConfig SignalConfig;
+static std::string IniPath;
+static FILETIME IniTime;
 static int Scale = 1;
 static uint32_t ShownVersion = 0xFFFFFFFF;
 static uint32_t *Pixels;                   // 32-bit copy of SimScreen
@@ -96,6 +110,135 @@ static void showPixelInfo(int mouseX, int mouseY)
   SetWindowTextA(StatusText, text);
 }
 
+
+// ---------------------------------------------------------------- signal panel
+static FILETIME iniWriteTime()
+{
+  FILETIME result = {0, 0};
+  WIN32_FILE_ATTRIBUTE_DATA data;
+  if (GetFileAttributesExA(IniPath.c_str(), GetFileExInfoStandard, &data))
+    result = data.ftLastWriteTime;
+  return result;
+}
+
+static void setEditNumber(HWND edit, double value)
+{
+  char text[32];
+  snprintf(text, sizeof(text), "%g", value);
+  SetWindowTextA(edit, text);
+}
+
+static double editNumber(HWND edit, double fallback)
+{
+  char text[32];
+  GetWindowTextA(edit, text, sizeof(text));
+  for (char *cursor = text; *cursor; cursor++)
+    if (*cursor == ',')
+      *cursor = '.';
+  char *end;
+  double value = strtod(text, &end);
+  return end == text ? fallback : value;
+}
+
+static void showSignalInfo(const char *note)
+{
+  char text[128];
+  snprintf(text, sizeof(text), "f = %.2f Hz, tacho pin %d%s%s", SignalConfig.Rpm / 60.0,
+    SignalConfig.TachoPin, note[0] ? ", " : "", note);
+  SetWindowTextA(SignalInfo, text);
+}
+
+static void configToPanel()
+{
+  SendMessageA(TachoBox, BM_SETCHECK, SignalConfig.TachoOn ? BST_CHECKED : BST_UNCHECKED, 0);
+  setEditNumber(RpmEdit, SignalConfig.Rpm);
+  for (int channel = 0; channel < PanelChannels; channel++)
+  {
+    setEditNumber(AmpEdit[channel], SignalConfig.Channel[channel].HarmAmp[1]);
+    setEditNumber(PhaseEdit[channel], SignalConfig.Channel[channel].HarmPhase[1]);
+  }
+}
+
+// ini -> generator and panel; a missing ini is created with the defaults
+static void loadSignalIni(bool first)
+{
+  if (!simSignalLoad(IniPath.c_str(), SignalConfig))
+  {
+    simSignalDefaults(SignalConfig);
+    simSignalSave(IniPath.c_str(), SignalConfig);
+  }
+  IniTime = iniWriteTime();
+  simSignalSet(SignalConfig);
+  configToPanel();
+  showSignalInfo(first ? "" : "ini reloaded");
+}
+
+static void applyPanel()
+{
+  SignalConfig.TachoOn = SendMessageA(TachoBox, BM_GETCHECK, 0, 0) == BST_CHECKED;
+  SignalConfig.Rpm = editNumber(RpmEdit, SignalConfig.Rpm);
+  if (SignalConfig.Rpm < 0)
+    SignalConfig.Rpm = 0;
+  if (SignalConfig.Rpm > 100000)
+    SignalConfig.Rpm = 100000;
+  for (int channel = 0; channel < PanelChannels; channel++)
+  {
+    SignalConfig.Channel[channel].HarmAmp[1] = editNumber(AmpEdit[channel], SignalConfig.Channel[channel].HarmAmp[1]);
+    SignalConfig.Channel[channel].HarmPhase[1] = editNumber(PhaseEdit[channel], SignalConfig.Channel[channel].HarmPhase[1]);
+  }
+  simSignalSet(SignalConfig);
+  simSignalSave(IniPath.c_str(), SignalConfig);
+  IniTime = iniWriteTime();
+  showSignalInfo("applied");
+}
+
+static bool isPanelEdit(HWND window)
+{
+  if (window == RpmEdit)
+    return true;
+  for (int channel = 0; channel < PanelChannels; channel++)
+    if (window == AmpEdit[channel] || window == PhaseEdit[channel])
+      return true;
+  return false;
+}
+
+static HWND panelControl(HWND parent, const char *className, const char *text, DWORD style,
+  int left, int top, int width, int height, int id)
+{
+  HWND control = CreateWindowExA(strcmp(className, "EDIT") == 0 ? WS_EX_CLIENTEDGE : 0, className, text,
+    WS_CHILD | WS_VISIBLE | style, left, top, width, height, parent, (HMENU)(INT_PTR)id, nullptr, nullptr);
+  SendMessageA(control, WM_SETFONT, (WPARAM)GetStockObject(DEFAULT_GUI_FONT), TRUE);
+  return control;
+}
+
+static void createSignalPanel(HWND window, int top)
+{
+  int left = keypadLeft();
+  panelControl(window, "STATIC", "Signals (A0, A1: 1st harmonic; all in ardsim.ini)", 0, left, top, 264, 16, -1);
+  top += 20;
+  TachoBox = panelControl(window, "BUTTON", "Tacho", BS_AUTOCHECKBOX, left, top, 60, 20, IdTachoOn);
+  panelControl(window, "STATIC", "RPM", 0, left + 70, top + 3, 30, 16, -1);
+  RpmEdit = panelControl(window, "EDIT", "", ES_AUTOHSCROLL, left + 100, top, 70, 20, IdRpm);
+  top += 26;
+  panelControl(window, "STATIC", "Amp, V", 0, left + 40, top, 70, 16, -1);
+  panelControl(window, "STATIC", "Phase, deg", 0, left + 120, top, 80, 16, -1);
+  top += 18;
+  for (int channel = 0; channel < PanelChannels; channel++)
+  {
+    char caption[8];
+    snprintf(caption, sizeof(caption), "A%d", channel);
+    panelControl(window, "STATIC", caption, 0, left, top + 3, 30, 16, -1);
+    AmpEdit[channel] = panelControl(window, "EDIT", "", ES_AUTOHSCROLL, left + 40, top, 70, 20, IdAmpBase + channel);
+    PhaseEdit[channel] = panelControl(window, "EDIT", "", ES_AUTOHSCROLL, left + 120, top, 70, 20, IdPhaseBase + channel);
+    top += 24;
+  }
+  top += 4;
+  panelControl(window, "BUTTON", "Apply", BS_PUSHBUTTON, left, top, 80, 24, IdApply);
+  panelControl(window, "BUTTON", "ardsim.ini...", BS_PUSHBUTTON, left + 90, top, 100, 24, IdEditIni);
+  top += 30;
+  SignalInfo = panelControl(window, "STATIC", "", 0, left, top, 264, 16, IdSignalInfo);
+}
+
 static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
   switch (message)
@@ -119,15 +262,27 @@ static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPA
     StatusText = CreateWindowA("STATIC", "", WS_CHILD | WS_VISIBLE,
       keypadLeft(), keypadBottom + 44, 4 * (KeyWidth + KeyGap), 20, window, (HMENU)IdStatus, nullptr, nullptr);
     SendMessageA(StatusText, WM_SETFONT, (WPARAM)guiFont, TRUE);
+    createSignalPanel(window, keypadBottom + 76);
+    IniPath = simExeDir() + "ardsim.ini";
+    loadSignalIni(true);
     SerialEdit = CreateWindowExA(WS_EX_CLIENTEDGE, "EDIT", "",
       WS_CHILD | WS_VISIBLE | WS_VSCROLL | ES_MULTILINE | ES_AUTOVSCROLL | ES_READONLY,
       Margin, Margin * 2 + screenHeight(), screenWidth(), SerialHeight, window, (HMENU)IdSerial, nullptr, nullptr);
     SendMessageA(SerialEdit, WM_SETFONT, (WPARAM)GetStockObject(ANSI_FIXED_FONT), TRUE);
     SetTimer(window, 1, 33, nullptr);
+    SetTimer(window, 2, 500, nullptr);
     return 0;
   }
   case WM_TIMER:
   {
+    if (wParam == 2)
+    {
+      // ardsim.ini edited outside: take the new settings
+      FILETIME current = iniWriteTime();
+      if (CompareFileTime(&current, &IniTime) != 0)
+        loadSignalIni(false);
+      return 0;
+    }
     if (SimScreenVersion != ShownVersion)
     {
       ShownVersion = SimScreenVersion;
@@ -153,6 +308,22 @@ static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPA
   case WM_COMMAND:
   {
     int id = LOWORD(wParam);
+    if (HIWORD(wParam) == EN_SETFOCUS && isPanelEdit((HWND)lParam))
+    {
+      // the whole value is selected, so typing replaces it
+      PostMessageA((HWND)lParam, EM_SETSEL, 0, -1);
+      return 0;
+    }
+    if (id == IdApply || (id == IdTachoOn && HIWORD(wParam) == BN_CLICKED))
+    {
+      applyPanel();
+      return 0;
+    }
+    if (id == IdEditIni)
+    {
+      ShellExecuteA(window, "open", "notepad.exe", IniPath.c_str(), nullptr, SW_SHOWNORMAL);
+      return 0;
+    }
     if (id >= IdKeyBase && id < IdKeyBase + SIM_KEY_ROWS * SIM_KEY_COLS)
     {
       simPostKey((id - IdKeyBase) / SIM_KEY_COLS, (id - IdKeyBase) % SIM_KEY_COLS, KeyHoldMs);
@@ -200,7 +371,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int show)
   windowClass.lpszClassName = "ArdSimWindow";
   RegisterClassA(&windowClass);
 
-  RECT frame = {0, 0, keypadLeft() + 4 * (KeyWidth + KeyGap) + Margin, Margin * 3 + screenHeight() + SerialHeight};
+  int clientHeight = Margin * 3 + screenHeight() + SerialHeight;
+  if (clientHeight < 510)
+    clientHeight = 510;   // room for the signal panel at x1
+  RECT frame = {0, 0, keypadLeft() + 4 * (KeyWidth + KeyGap) + Margin, clientHeight};
   DWORD style = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
   AdjustWindowRect(&frame, style, FALSE);
   MainWindow = CreateWindowA("ArdSimWindow", "ArdSim - BS10", style, CW_USEDEFAULT, CW_USEDEFAULT,
@@ -213,6 +387,18 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int show)
   while (GetMessageA(&message, nullptr, 0, 0) > 0)
   {
     // keypad keys work whatever control has the focus
+    // typing in the signal panel: Enter applies, other keys go to the edit
+    if (isPanelEdit(message.hwnd))
+    {
+      if (message.message == WM_KEYDOWN && message.wParam == VK_RETURN)
+      {
+        applyPanel();
+        continue;
+      }
+      TranslateMessage(&message);
+      DispatchMessageA(&message);
+      continue;
+    }
     if (message.message == WM_KEYDOWN)
     {
       int row, col;
