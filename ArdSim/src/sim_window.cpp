@@ -398,6 +398,15 @@ static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPA
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE, LPSTR, int show)
 {
+  // /host:<name> - no window, the screen goes to the host (sim_host.cpp)
+  if (const char *hostArg = strstr(GetCommandLineA(), "/host:"))
+  {
+    std::string hostName(hostArg + 6);
+    size_t nameEnd = hostName.find_first_of(" \t\"");
+    if (nameEnd != std::string::npos)
+      hostName.resize(nameEnd);
+    return simHostRun(hostName.c_str());
+  }
   // x2 when the screen has room for it
   int clientWidth2 = Margin + SIM_SCREEN_W * 2 + Margin * 3 + 4 * (KeyWidth + KeyGap);
   int clientHeight2 = Margin * 3 + SIM_SCREEN_H * 2 + SerialHeight;

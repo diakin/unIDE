@@ -119,6 +119,7 @@ uses
   GitTool in 'GitTool.pas',
   RufusTool in 'RufusTool.pas',
   MingwTool in 'MingwTool.pas',
+  ArdSimHost in 'ArdSimHost.pas',
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',

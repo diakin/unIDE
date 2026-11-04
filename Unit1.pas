@@ -70,6 +70,7 @@ uses
   GitTool,        // Git: найти в системе или свой (tools\git), Git Bash
   RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
   MingwTool,      // свой MinGW-w64 GCC (tools\mingw): сборка скетча под ПК
+  ArdSimHost,     // вкладка Emulator: скетч, собранный ArdSim, в правой панели
   GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
   UiCaptionTabs,  // вкладки Components | Git на месте подписи рамки палитры
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
@@ -735,6 +736,10 @@ type
     FTabObjects: TTabSheet;
     FTabCode: TTabSheet;
     FTabIncludes: TTabSheet;
+    // Вкладка Emulator (скетч Arduino, собранный ArdSim): создаётся в
+    // BuildRightPanel, видна у Arduino
+    FTabEmu: TTabSheet;
+    FArdSim: TArdSimPanel;
     FCodeTree: TUiTreeView;
     FObjSource: TLabel;
     FDeclPanel: TPanel;
@@ -1112,6 +1117,10 @@ type
     procedure ApplyRightPanelWidth(ANewWidth: Integer);
     procedure RightPanelCollapse(ACollapse: Boolean);
     procedure RightPanelBtnClick(Sender: TObject);
+    // Вкладка Emulator (ArdSimHost)
+    procedure ArdSimNeedSketch(Sender: TObject);
+    procedure ArdSimLog(Sender: TObject; const AText: string);
+    procedure ArdSimOpenFile(Sender: TObject; const AText: string);
     procedure RightPanelPlaceButtons;
     procedure PaletteTabRows(Sender: TObject);
     procedure SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
@@ -26995,6 +27004,9 @@ begin
   // свои объекты
   FreeAndNil(FGitBashProc);
   FreeAndNil(FRosQemuProc);
+  // Эмулятор скетча (ArdSim) без unIDE не нужен: остановить
+  if FArdSim <> nil then
+    FArdSim.StopAll;
   // Окно History (немодальное) - его положение в editor.ini, пока главное
   // окно цело
   if FGitHistWin <> nil then
@@ -27722,7 +27734,38 @@ begin
   if FIncTree <> nil then
     FIncTree.OnDblClick := IncludesDblClick;
 
+  // Emulator: экран, клавиатура и Serial скетча, собранного ArdSim
+  FTabEmu := TTabSheet.Create(Self);
+  FTabEmu.PageControl := FRightPages;
+  FTabEmu.Caption := 'Emulator';
+  FTabEmu.TabVisible := False;
+  FArdSim := TArdSimPanel.Create(Self);
+  FArdSim.Parent := FTabEmu;
+  FArdSim.Align := alClient;
+  FArdSim.OnNeedSketch := ArdSimNeedSketch;
+  FArdSim.OnLog := ArdSimLog;
+  FArdSim.OnOpenFile := ArdSimOpenFile;
+
   BuildObjectInspector;
+end;
+
+// Перед сборкой и запуском: скетч - цель сборки Arduino, g++ - свой MinGW
+// unIDE (нет - build_sim.cmd ищет сам)
+procedure TForm1.ArdSimNeedSketch(Sender: TObject);
+begin
+  FArdSim.SketchFile := BuildTargetOf(bkArduino);
+  FArdSim.MingwBin := ExtractFilePath(string(MingwLocalGpp));
+end;
+
+procedure TForm1.ArdSimLog(Sender: TObject; const AText: string);
+begin
+  ShowCompLog;
+  LogComp(AText);
+end;
+
+procedure TForm1.ArdSimOpenFile(Sender: TObject; const AText: string);
+begin
+  OpenNamedFile(AText);
 end;
 
 // Палитре нужна другая высота (ряды вкладок, ряды кнопок): тулбар на ту же
@@ -63461,6 +63504,8 @@ begin
   ShowTab(FTabCode, not Basic or (Kind = bkLazarus));
   // RapidQ ($INCLUDE) и FreeBASIC (#include)
   ShowTab(FTabIncludes, RqMode or (Kind = bkFreeBasic));
+  // Эмулятор скетча (ArdSim) - у Arduino
+  ShowTab(FTabEmu, Kind = bkArduino);
 
   // Ряд кнопок Project: видимые - подряд, на места кнопок из .dfm
   RunRow[0] := btnCompileRun;

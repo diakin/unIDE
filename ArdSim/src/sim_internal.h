@@ -37,6 +37,10 @@ extern volatile bool SimStopping;
 // Time since the simulator start, microseconds (no simPoll)
 uint64_t simMicrosNow();
 
+// Host mode: no own window, shared memory "Local\ArdSim_<name>"
+// (sim_host.cpp); returns the exit code
+int simHostRun(const char *name);
+
 // Signal generator (sim_signal.cpp)
 #define SIM_ANALOG_CHANNELS 12
 #define SIM_HARMONICS 10
