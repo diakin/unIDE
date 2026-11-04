@@ -1119,6 +1119,8 @@ type
     procedure RightPanelBtnClick(Sender: TObject);
     // Окно Emulator (ArdSimHost)
     procedure ArdSimShowClick(Sender: TObject);
+    procedure ArdSimPlaced(Sender: TObject);
+    procedure ArdSimHidden(Sender: TObject);
     procedure ArdSimNeedSketch(Sender: TObject);
     procedure ArdSimLog(Sender: TObject; const AText: string);
     procedure ArdSimOpenFile(Sender: TObject; const AText: string);
@@ -2095,6 +2097,9 @@ type
     FCompDfmKey: string;
     FCompDfmNames: TStringList;
     FRightPanelWidth: Integer;
+    // Ширина правой панели до того, как её растянули под окно эмулятора;
+    // -1 - не растягивали
+    FArdSimKeepWidth: Integer;
     // Кнопки свернуть / развернуть правую панель (справа в строке вкладок)
     // и её состояние: свёрнута - видны только разделитель и кнопка [];
     // ширина до сворачивания - в FRightPanelWidth (она и пишется в ini)
@@ -27749,8 +27754,50 @@ begin
     FArdSim.OnNeedSketch := ArdSimNeedSketch;
     FArdSim.OnLog := ArdSimLog;
     FArdSim.OnOpenFile := ArdSimOpenFile;
+    FArdSimWin.OnPlaced := ArdSimPlaced;
+    FArdSimWin.OnHidden := ArdSimHidden;
+    FArdSimKeepWidth := -1;
   end;
   FArdSimWin.ShowAtRight;
+end;
+
+// Окно эмулятора показано или передвинуто: если оно над правой частью
+// главного окна, правая панель растягивается до его левого края, и
+// редактор кончается там, где начинается эмулятор. Окно ушло с главного -
+// прежняя ширина панели. FRightPanelWidth (сохраняется в editor.ini) не
+// меняется
+procedure TForm1.ArdSimPlaced(Sender: TObject);
+var
+  EmuLeft, NewWidth: Integer;
+begin
+  if (FArdSimWin = nil) or (FRightPanel = nil) then
+    Exit;
+  EmuLeft := ScreenToClient(Point(FArdSimWin.Left, FArdSimWin.Top)).X;
+  NewWidth := ClientWidth - EmuLeft;
+  if (EmuLeft <= 0) or (NewWidth <= 0) or
+     (FArdSimWin.Left > ClientToScreen(Point(ClientWidth, 0)).X) then
+  begin
+    ArdSimHidden(Sender);
+    Exit;
+  end;
+  if NewWidth > ClientWidth - RightPanelMinLeft then
+    NewWidth := ClientWidth - RightPanelMinLeft;
+  if NewWidth < RightPanelMinWidth then
+    NewWidth := RightPanelMinWidth;
+  if FArdSimKeepWidth < 0 then
+    FArdSimKeepWidth := FRightPanel.Width;
+  FRightPanel.Width := NewWidth;
+  FormResizeEvent(Self);
+end;
+
+// Окно эмулятора закрыто: правой панели - прежняя ширина
+procedure TForm1.ArdSimHidden(Sender: TObject);
+begin
+  if (FArdSimKeepWidth < 0) or (FRightPanel = nil) then
+    Exit;
+  FRightPanel.Width := FArdSimKeepWidth;
+  FArdSimKeepWidth := -1;
+  FormResizeEvent(Self);
 end;
 
 // Перед сборкой и запуском: скетч - цель сборки Arduino, g++ - свой MinGW

@@ -167,13 +167,21 @@ type
     FPanel: TArdSimPanel;
     FMainForm: TCustomForm;
     FPlaced: Boolean;
+    FOnPlaced: TNotifyEvent;
+    FOnHidden: TNotifyEvent;
     procedure WindowClose(Sender: TObject; var Action: TCloseAction);
+    procedure WMExitSizeMove(var Message: TMessage); message WM_EXITSIZEMOVE;
   protected
     procedure CreateParams(var Params: TCreateParams); override;
   public
     constructor CreateFor(AMainForm: TCustomForm);
     procedure ShowAtRight;
     property Panel: TArdSimPanel read FPanel;
+    // Окно показано или передвинуто / изменён размер: главное окно
+    // подгоняет под него редактор
+    property OnPlaced: TNotifyEvent read FOnPlaced write FOnPlaced;
+    // Окно закрыто
+    property OnHidden: TNotifyEvent read FOnHidden write FOnHidden;
   end;
 
 // Папка ArdSim рядом с unIDE: <exe>\ArdSim, <exe>\..\ArdSim; нет - ''
@@ -1357,6 +1365,15 @@ procedure TArdSimWindow.WindowClose(Sender: TObject; var Action: TCloseAction);
 begin
   FPanel.StopAll;
   Action := caHide;
+  if Assigned(FOnHidden) then
+    FOnHidden(Self);
+end;
+
+procedure TArdSimWindow.WMExitSizeMove(var Message: TMessage);
+begin
+  inherited;
+  if Assigned(FOnPlaced) then
+    FOnPlaced(Self);
 end;
 
 procedure TArdSimWindow.ShowAtRight;
@@ -1374,6 +1391,8 @@ begin
   end;
   Show;
   BringToFront;
+  if Assigned(FOnPlaced) then
+    FOnPlaced(Self);
 end;
 
 end.
