@@ -12,7 +12,9 @@ unit ArdSimHost;
 //    смещение 307328  кольцо вывода Serial, 65536 байт
 //    смещение 372864  область отладчика (индексы Dbg*, ArdSim\src\sim_internal.h)
 //  Сигналы (обороты, гармоники, ротор) задаются в ardsim.ini рядом с exe:
-//  эмулятор перечитывает файл, когда тот меняется.
+//  эмулятор перечитывает файл, когда тот меняется. Главное из него - на
+//  панели «Сигналы» под прибором (тахометр, обороты, 1-я гармоника A0/A1,
+//  модель ротора и грузы); остальное - в самом файле.
 //
 //  Отладчик: ardprep вставляет в скетч SIM_STEP перед каждым оператором,
 //  эмулятор останавливается на точках останова (F5 в редакторе), шагает
@@ -36,8 +38,8 @@ interface
 uses
   {$IFDEF FPC} LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Controls,
-  Graphics, StdCtrls, ExtCtrls, Forms, UiStdCtrls, UiButton, UiEditCtrls,
-  ProcRun;
+  Graphics, StdCtrls, ExtCtrls, Forms, IniFiles, UiStdCtrls, UiButton,
+  UiEditCtrls, ProcRun;
 
 const
   ArdSimScreenW = 480;
@@ -153,6 +155,31 @@ type
     FOnDbgResume: TNotifyEvent;
     FOnDbgInfo: TNotifyEvent;
     FOnDbgNeedBreaks: TNotifyEvent;
+    // Панель «Сигналы»: поля - ключи ardsim.ini. FSigDirty - поля правили
+    // и не применили (тогда файл не перечитывается в поля)
+    FSigHead: TUiButton;
+    FSigPanel: TUiPanel;
+    FSigTacho: TUiCheckBox;
+    FSigRpm: TUiEdit;
+    FSigFreq: TUiLabel;
+    FSigRotor: TUiCheckBox;
+    FSigAmp: array[0..1] of TUiEdit;
+    FSigPhase: array[0..1] of TUiEdit;
+    FSigWeights: array[0..1] of TUiEdit;
+    FSigApply: TUiButton;
+    FSigNote: TUiLabel;
+    FSigShown: Boolean;
+    FSigDirty: Boolean;
+    FSigLoading: Boolean;
+    FSigIniAge: Integer;
+    FSigIniFile: string;
+    procedure BuildSignals;
+    procedure SigHeadClick(Sender: TObject);
+    procedure SigApplyClick(Sender: TObject);
+    procedure SigChange(Sender: TObject);
+    procedure SigUpdateState;
+    procedure SigLoad;
+    procedure SigPoll;
     function DbgHeader(AIndex: Integer): Cardinal;
     procedure SetDbgHeader(AIndex: Integer; AValue: Cardinal);
     function DbgArea: PAnsiChar;
@@ -874,6 +901,8 @@ begin
   FDevice.Hint := 'Щёлкните по прибору, чтобы клавиши ПК работали как ' +
     'клавиатура: 0-9, F1, F2, #, *, стрелки, Enter, Esc';
 
+  BuildSignals;
+
   FSerial := TUiMemo.Create(Self);
   FSerial.Parent := Self;
   FSerial.ReadOnly := True;
@@ -914,8 +943,10 @@ const
   BarH = 24;
   StatusH = 18;
   SerialMinH = 60;
+  SigHeadH = 20;
+  SigPanelH = 184;
 var
-  AreaW, PosY, ButtonW, BtnIdx: Integer;
+  AreaW, PosY, ButtonW, BtnIdx, SigH: Integer;
   DeviceSize: TPoint;
   Buttons: array[0..4] of TUiButton;
 begin
@@ -939,11 +970,26 @@ begin
     Inc(PosY, BarH + 2);
   FStatus.SetBounds(Gap, PosY, AreaW, StatusH);
   Inc(PosY, StatusH);
+  SigH := SigHeadH + Gap;
+  if FSigShown then
+    Inc(SigH, SigPanelH);
   DeviceSize := FDevice.Arrange(AreaW,
-                                ClientHeight - PosY - SerialMinH - 2 * Gap);
+                                ClientHeight - PosY - SerialMinH - SigH - 2 * Gap);
   FDevice.SetBounds(Gap, PosY, DeviceSize.X, DeviceSize.Y);
   FDevice.Invalidate;
   Inc(PosY, DeviceSize.Y + Gap);
+  FSigHead.SetBounds(Gap, PosY, AreaW, SigHeadH);
+  Inc(PosY, SigHeadH);
+  FSigPanel.Visible := FSigShown;
+  if FSigShown then
+  begin
+    FSigPanel.SetBounds(Gap, PosY, AreaW, SigPanelH);
+    for BtnIdx := 0 to 1 do
+      FSigWeights[BtnIdx].Width := AreaW - FSigWeights[BtnIdx].Left - 4;
+    FSigNote.Width := AreaW - FSigNote.Left - 4;
+    Inc(PosY, SigPanelH);
+  end;
+  Inc(PosY, Gap);
   if ClientHeight - PosY - Gap > 20 then
     FSerial.SetBounds(Gap, PosY, AreaW, ClientHeight - PosY - Gap)
   else
@@ -1273,6 +1319,7 @@ begin
     Exit;
   end;
   Log('ArdSim: запущен ' + FSimExe);
+  FSigIniAge := -1;   // перечитать: ini мог появиться или поменяться
   SetStatus('Работает: ' + ExtractFileName(FSketchFile));
   FTimer.Enabled := True;
   FDevice.Invalidate;
@@ -1429,6 +1476,264 @@ begin
     UpdateButtons;
   end;
   {$ENDIF}
+end;
+
+// ---------------------------------------------------------------- сигналы
+
+// Числа в ardsim.ini - с точкой (эмулятор читает их strtod)
+function IniFloatText(AValue: Double): string;
+begin
+  Result := StringReplace(FloatToStr(AValue), DecimalSeparator, '.', []);
+end;
+
+function IniFloat(const AText: string; ADefault: Double): Double;
+var
+  Text: string;
+begin
+  Text := Trim(AText);
+  Text := StringReplace(Text, '.', DecimalSeparator, []);
+  Text := StringReplace(Text, ',', DecimalSeparator, []);
+  Result := StrToFloatDef(Text, ADefault);
+end;
+
+// "амплитуда,фаза" ключа Hn
+procedure SplitPair(const AText: string; var AFirst, ASecond: string);
+var
+  CommaPos: Integer;
+begin
+  CommaPos := Pos(',', AText);
+  if CommaPos = 0 then
+  begin
+    AFirst := Trim(AText);
+    ASecond := '0';
+  end
+  else
+  begin
+    AFirst := Trim(Copy(AText, 1, CommaPos - 1));
+    ASecond := Trim(Copy(AText, CommaPos + 1, MaxInt));
+  end;
+end;
+
+procedure TArdSimPanel.BuildSignals;
+var
+  RowIdx: Integer;
+
+  function AddLabel(const ACaption: string; ALeft, ATop, AWidth: Integer): TUiLabel;
+  begin
+    Result := TUiLabel.Create(Self);
+    Result.Parent := FSigPanel;
+    Result.AutoSize := False;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, ATop + 3, AWidth, 16);
+  end;
+
+  function AddEdit(ALeft, ATop, AWidth: Integer; const AHint: string): TUiEdit;
+  begin
+    Result := TUiEdit.Create(Self);
+    Result.Parent := FSigPanel;
+    Result.SetBounds(ALeft, ATop, AWidth, 22);
+    Result.Hint := AHint;
+    Result.ShowHint := True;
+    Result.OnChange := SigChange;
+  end;
+
+  function AddCheck(const ACaption: string; ALeft, ATop, AWidth: Integer): TUiCheckBox;
+  begin
+    Result := TUiCheckBox.Create(Self);
+    Result.Parent := FSigPanel;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, ATop, AWidth, 20);
+    Result.OnClick := SigChange;
+  end;
+
+begin
+  FSigShown := True;
+  FSigIniAge := -1;
+  FSigHead := TUiButton.Create(Self);
+  FSigHead.Parent := Self;
+  FSigHead.Caption := 'Сигналы - скрыть';
+  FSigHead.Hint := 'Тахометр, обороты, 1-я гармоника A0/A1, модель ротора ' +
+    'и грузы (ardsim.ini)';
+  FSigHead.ShowHint := True;
+  FSigHead.TabStop := False;
+  FSigHead.OnClick := SigHeadClick;
+
+  FSigPanel := TUiPanel.Create(Self);
+  FSigPanel.Parent := Self;
+  FSigPanel.BevelOuter := bvNone;
+  FSigPanel.Caption := '';
+
+  FSigTacho := AddCheck('Тахометр', 0, 2, 96);
+  AddLabel('обороты, об/мин', 100, 2, 100);
+  FSigRpm := AddEdit(204, 2, 70, 'Обороты ротора (RPM в [Tacho])');
+  FSigFreq := AddLabel('', 282, 2, 200);
+  FSigRotor := AddCheck('Модель ротора: 1-я гармоника A0 и A1 считается ' +
+    'от дисбаланса и грузов', 0, 28, 520);
+  for RowIdx := 0 to 1 do
+  begin
+    AddLabel('A' + IntToStr(RowIdx) + ', 1x: амплитуда, В', 0, 54 + RowIdx * 26, 140);
+    FSigAmp[RowIdx] := AddEdit(144, 54 + RowIdx * 26, 70,
+      'Амплитуда 1-й гармоники, вольты (H1 в [A' + IntToStr(RowIdx) + '])');
+    AddLabel('фаза, град', 222, 54 + RowIdx * 26, 70);
+    FSigPhase[RowIdx] := AddEdit(296, 54 + RowIdx * 26, 70,
+      'Фаза пика после метки тахометра, градусы');
+  end;
+  for RowIdx := 0 to 1 do
+  begin
+    AddLabel('Грузы, плоскость ' + IntToStr(RowIdx + 1), 0, 106 + RowIdx * 26, 120);
+    FSigWeights[RowIdx] := AddEdit(124, 106 + RowIdx * 26, 300,
+      'Грузы на роторе: граммы@градусы через точку с запятой, ' +
+      'например 10@0; 5.2@137 (Weights' + IntToStr(RowIdx + 1) + ' в [Rotor])');
+  end;
+  FSigApply := TUiButton.Create(Self);
+  FSigApply.Parent := FSigPanel;
+  FSigApply.Caption := 'Применить';
+  FSigApply.Hint := 'Записать в ardsim.ini: эмулятор перечитает его за полсекунды';
+  FSigApply.ShowHint := True;
+  FSigApply.TabStop := False;
+  FSigApply.SetBounds(0, 160, 100, 22);
+  FSigApply.OnClick := SigApplyClick;
+  FSigNote := AddLabel('', 108, 160, 300);
+  SigUpdateState;
+end;
+
+procedure TArdSimPanel.SigHeadClick(Sender: TObject);
+begin
+  FSigShown := not FSigShown;
+  if FSigShown then
+    FSigHead.Caption := 'Сигналы - скрыть'
+  else
+    FSigHead.Caption := 'Сигналы - показать';
+  if FSigShown then
+    SigLoad;
+  LayoutControls;
+end;
+
+procedure TArdSimPanel.SigChange(Sender: TObject);
+begin
+  if FSigLoading then
+    Exit;
+  FSigDirty := True;
+  SigUpdateState;
+end;
+
+procedure TArdSimPanel.SigUpdateState;
+var
+  RowIdx: Integer;
+  Rpm: Double;
+begin
+  for RowIdx := 0 to 1 do
+  begin
+    FSigAmp[RowIdx].Enabled := not FSigRotor.Checked;
+    FSigPhase[RowIdx].Enabled := not FSigRotor.Checked;
+    FSigWeights[RowIdx].Enabled := FSigRotor.Checked;
+  end;
+  FSigRpm.Enabled := FSigTacho.Checked;
+  Rpm := IniFloat(FSigRpm.Text, 0);
+  if FSigTacho.Checked and (Rpm > 0) then
+    FSigFreq.Caption := 'f = ' + FormatFloat('0.00', Rpm / 60) + ' Гц'
+  else
+    FSigFreq.Caption := '';
+  FSigApply.Enabled := FSigDirty;
+  if FSigDirty then
+    FSigNote.Caption := 'изменено, не применено'
+  else if FSigIniFile = '' then
+    FSigNote.Caption := 'ardsim.ini появится после первого запуска'
+  else
+    FSigNote.Caption := 'остальное - в ardsim.ini (кнопка ini)';
+end;
+
+// Поля - из ardsim.ini (если его не правили на панели)
+procedure TArdSimPanel.SigLoad;
+var
+  Ini: TIniFile;
+  RowIdx: Integer;
+  AmpText, PhaseText: string;
+begin
+  if FSigDirty then
+    Exit;
+  if (FSketchFile = '') and Assigned(FOnNeedSketch) then
+    FOnNeedSketch(Self);
+  if (FSketchFile = '') or not FileExists(IniOfSketch) then
+  begin
+    FSigIniFile := '';
+    SigUpdateState;
+    Exit;
+  end;
+  FSigIniFile := IniOfSketch;
+  FSigIniAge := FileAge(FSigIniFile);
+  FSigLoading := True;
+  Ini := TIniFile.Create(FSigIniFile);
+  try
+    FSigTacho.Checked := Ini.ReadString('Tacho', 'Enabled', '1') <> '0';
+    FSigRpm.Text := Ini.ReadString('Tacho', 'RPM', '1500');
+    FSigRotor.Checked := Ini.ReadString('Rotor', 'Enabled', '0') <> '0';
+    for RowIdx := 0 to 1 do
+    begin
+      SplitPair(Ini.ReadString('A' + IntToStr(RowIdx), 'H1', '0,0'), AmpText, PhaseText);
+      FSigAmp[RowIdx].Text := AmpText;
+      FSigPhase[RowIdx].Text := PhaseText;
+      FSigWeights[RowIdx].Text := Ini.ReadString('Rotor', 'Weights' + IntToStr(RowIdx + 1), '');
+    end;
+  finally
+    Ini.Free;
+    FSigLoading := False;
+  end;
+  SigUpdateState;
+end;
+
+procedure TArdSimPanel.SigApplyClick(Sender: TObject);
+var
+  Ini: TIniFile;
+  RowIdx: Integer;
+begin
+  if (FSketchFile = '') and Assigned(FOnNeedSketch) then
+    FOnNeedSketch(Self);
+  if (FSketchFile = '') or not FileExists(IniOfSketch) then
+  begin
+    // неполный ini эмулятор прочёл бы с нулями вместо умолчаний
+    FSigNote.Caption := 'ardsim.ini появится после первого запуска';
+    Exit;
+  end;
+  FSigIniFile := IniOfSketch;
+  Ini := TIniFile.Create(FSigIniFile);
+  try
+    if FSigTacho.Checked then
+      Ini.WriteString('Tacho', 'Enabled', '1')
+    else
+      Ini.WriteString('Tacho', 'Enabled', '0');
+    Ini.WriteString('Tacho', 'RPM', IniFloatText(IniFloat(FSigRpm.Text, 1500)));
+    if FSigRotor.Checked then
+      Ini.WriteString('Rotor', 'Enabled', '1')
+    else
+      Ini.WriteString('Rotor', 'Enabled', '0');
+    for RowIdx := 0 to 1 do
+    begin
+      // с моделью ротора 1-ю гармонику считает эмулятор
+      if not FSigRotor.Checked then
+        Ini.WriteString('A' + IntToStr(RowIdx), 'H1',
+          IniFloatText(IniFloat(FSigAmp[RowIdx].Text, 0)) + ',' +
+          IniFloatText(IniFloat(FSigPhase[RowIdx].Text, 0)));
+      Ini.WriteString('Rotor', 'Weights' + IntToStr(RowIdx + 1),
+                      Trim(FSigWeights[RowIdx].Text));
+    end;
+    Ini.UpdateFile;
+  finally
+    Ini.Free;
+  end;
+  FSigDirty := False;
+  FSigIniAge := FileAge(FSigIniFile);
+  Log('ArdSim: сигналы записаны в ' + FSigIniFile);
+  SigUpdateState;
+end;
+
+// Файл поменялся (кнопка ini, первый запуск) - поля заново
+procedure TArdSimPanel.SigPoll;
+begin
+  if not FSigShown or FSigDirty or (FSketchFile = '') then
+    Exit;
+  if FileExists(IniOfSketch) and (FileAge(IniOfSketch) <> FSigIniAge) then
+    SigLoad;
 end;
 
 // ---------------------------------------------------------------- отладчик
@@ -1824,6 +2129,7 @@ procedure TArdSimPanel.TimerTick(Sender: TObject);
 begin
   PollBuild;
   PollSim;
+  SigPoll;
   if (FBuild = nil) and (FSim = nil) then
     FTimer.Enabled := False;
 end;
