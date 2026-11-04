@@ -50,6 +50,7 @@ type
   private
     FOwnerPanel: TArdSimPanel;
     FScreenW: Integer;         // ширина экрана, точек (высота - 2/3)
+    FBorder: Integer;          // зелёное поле вокруг экрана, точек
     FBodyRect: TRect;
     FPadRect: TRect;
     FScreenRect: TRect;
@@ -201,10 +202,14 @@ const
   SharedBytes = HeaderBytes + ScreenBytes + SerialRingBytes;
   SerialMaxChars = 60000;
 
-  // Корпус: зелёные поля вокруг экрана 480x320, точек
-  BodyBorder = 14;
+  // Корпус: зелёные поля вокруг экрана 480x320, точек. Обычно
+  // BodyBorder; в низком окне - меньше, но не меньше BodyBorderMin
+  BodyBorder = 40;
+  BodyBorderMin = 14;
   // Клавиатура (по фото), в долях ширины экрана; умножаются на PadK -
-  // долю, при которой клавиатура влезает по высоте
+  // долю, при которой клавиатура влезает по высоте, не больше PadKMax
+  // (на 30% меньше, чем по фото)
+  PadKMax = 0.7;
   PadWidthK = 1.22;       // ширина панели клавиатуры
   PadTopK = 0.14;         // от верха панели до первого ряда
   PadBottomK = 0.07;      // под последним рядом
@@ -292,6 +297,7 @@ begin
   ControlStyle := ControlStyle + [csOpaque];
   FPressedKey := -1;
   FScreenW := ArdSimScreenW;
+  FBorder := BodyBorder;
   FBuffer := TBitmap.Create;
   FPressTimer := TTimer.Create(Self);
   FPressTimer.Enabled := False;
@@ -305,39 +311,50 @@ begin
   inherited Destroy;
 end;
 
-// Сверху вниз: корпус (узкие поля и экран 480x320), под ним панель
-// клавиатуры. Прибор - по центру AWidth (не уже корпуса). Клавиатура
-// уменьшается (PadK <= 1), чтобы прибор влез в AHeight, но клавиши не
-// ниже MinKeyHeight
+// Сверху вниз: корпус (поля и экран 480x320), под ним панель клавиатуры.
+// Прибор - по центру AWidth (не уже корпуса). Чтобы прибор влез в
+// AHeight, сначала уменьшается клавиатура (PadK <= PadKMax, клавиши не
+// ниже MinKeyHeight), потом поля корпуса (до BodyBorderMin). Экран не
+// меняется
 function TArdSimDevice.Arrange(AWidth, AHeight: Integer): TPoint;
 var
   BodyW, BodyH, DeviceW, BodyLeft, PadW, PadLeft, PadTop: Integer;
   GridW, GridLeft, GridTop, KeyW, KeyH, PitchX, PitchY: Integer;
   KeyRow, KeyCol, PadUnit, PadFullH: Integer;
-  PadK: Double;
+  PadK, PadMinK: Double;
 begin
   FScreenW := ArdSimScreenW;
-  BodyW := ArdSimScreenW + 2 * BodyBorder;
-  BodyH := ArdSimScreenH + 2 * BodyBorder;
+  // высота клавиатуры при PadK = 1, самая малая доля и доля, при которой
+  // клавиатура влезает с полными полями
+  PadFullH := Round(ArdSimScreenW * (PadTopK + PadBottomK + 4 * KeyPitchYK +
+                                     KeyHeightK));
+  PadMinK := MinKeyHeight / (ArdSimScreenW * KeyHeightK);
+  FBorder := BodyBorder;
+  PadK := PadKMax;
+  if AHeight > 0 then
+  begin
+    if ArdSimScreenH + 2 * FBorder + PadK * PadFullH > AHeight then
+      PadK := (AHeight - ArdSimScreenH - 2 * FBorder) / PadFullH;
+    if PadK < PadMinK then
+    begin
+      PadK := PadMinK;
+      FBorder := (AHeight - ArdSimScreenH - Round(PadK * PadFullH)) div 2;
+      if FBorder > BodyBorder then
+        FBorder := BodyBorder;
+      if FBorder < BodyBorderMin then
+        FBorder := BodyBorderMin;
+    end;
+  end;
+  BodyW := ArdSimScreenW + 2 * FBorder;
+  BodyH := ArdSimScreenH + 2 * FBorder;
   DeviceW := AWidth;
   if DeviceW < BodyW then
     DeviceW := BodyW;
   BodyLeft := (DeviceW - BodyW) div 2;
   FBodyRect := Rect(BodyLeft, 0, BodyLeft + BodyW, BodyH);
-  FScreenRect := Rect(BodyLeft + BodyBorder, BodyBorder,
-                      BodyLeft + BodyBorder + ArdSimScreenW,
-                      BodyBorder + ArdSimScreenH);
-
-  // высота клавиатуры при PadK = 1 - и доля, при которой она влезает
-  PadFullH := Round(ArdSimScreenW * (PadTopK + PadBottomK + 4 * KeyPitchYK +
-                                     KeyHeightK));
-  PadK := 1.0;
-  if (AHeight > 0) and (BodyH + PadFullH > AHeight) then
-    PadK := (AHeight - BodyH) / PadFullH;
-  if ArdSimScreenW * PadK * KeyHeightK < MinKeyHeight then
-    PadK := MinKeyHeight / (ArdSimScreenW * KeyHeightK);
-  if PadK > 1.0 then
-    PadK := 1.0;
+  FScreenRect := Rect(BodyLeft + FBorder, FBorder,
+                      BodyLeft + FBorder + ArdSimScreenW,
+                      FBorder + ArdSimScreenH);
 
   PadUnit := Round(ArdSimScreenW * PadK);
   KeyW := Round(PadUnit * KeyWidthK);
@@ -648,7 +665,7 @@ begin
   Draw.RoundRect(FPadRect.Left + 1, FPadRect.Top + 1, FPadRect.Right - 1,
                  FPadRect.Bottom - 1, Corner, Corner);
   // корпус
-  Corner := BodyBorder * 2;   // скругление не заходит на экран
+  Corner := FBorder * 2;   // скругление не заходит на экран
   Draw.Brush.Color := ClrBody;
   Draw.RoundRect(FBodyRect.Left + 1, FBodyRect.Top + 1, FBodyRect.Right - 1,
                  FBodyRect.Bottom - 1, Corner, Corner);
