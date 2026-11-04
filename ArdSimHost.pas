@@ -15,30 +15,50 @@ unit ArdSimHost;
 //
 //  Отдельный процесс, а не DLL: скетч может писать за границы массивов, и
 //  тогда упадёт только эмулятор, а не unIDE с несохранёнными файлами.
+//
+//  Прибор рисуется как BS10: зелёный корпус с экраном, под ним светлая
+//  панель с клавиатурой (пропорции сняты с фото прибора). Экран по
+//  умолчанию в размер настоящего дисплея 3.5" (73.44 x 48.96 мм, типовая
+//  активная область 480x320); кнопка «Размер» переключает на «по ширине
+//  панели». Если панель узкая или низкая, сначала уменьшаются зелёные поля
+//  корпуса, потом сам экран.
 // ---------------------------------------------------------------------------
 
 interface
 
 uses
   Windows, Messages, SysUtils, Classes, Controls,
-  Graphics, StdCtrls, ExtCtrls, Forms, UiStdCtrls, UiButton, UiEditCtrls, ProcRun;
+  Graphics, StdCtrls, ExtCtrls, Forms, UiStdCtrls, UiButton, UiEditCtrls,
+  ProcRun;
 
 const
   ArdSimScreenW = 480;
   ArdSimScreenH = 320;
   ArdSimKeyRows = 5;
   ArdSimKeyCols = 4;
+  ArdSimKeyCount = ArdSimKeyRows * ArdSimKeyCols;
 
 type
   TArdSimTextEvent = procedure(Sender: TObject; const AText: string) of object;
 
   TArdSimPanel = class;
 
-  // Экран прибора: картинка 480x320 в масштабе по размеру; в фокусе -
-  // клавиши ПК работают как клавиатура прибора
-  TArdSimScreen = class(TCustomControl)
+  // Прибор целиком: корпус, экран, клавиатура. Клавиши - мышью или
+  // клавишами ПК (когда прибор в фокусе)
+  TArdSimDevice = class(TCustomControl)
   private
     FOwnerPanel: TArdSimPanel;
+    FScreenW: Integer;         // ширина экрана, точек (высота - 2/3)
+    FBodyRect: TRect;
+    FPadRect: TRect;
+    FScreenRect: TRect;
+    FKeyRects: array[0..ArdSimKeyCount - 1] of TRect;
+    FPressedKey: Integer;      // подсвеченная клавиша, -1 - нет
+    FPressTimer: TTimer;
+    FBuffer: TBitmap;
+    procedure PressTimerTick(Sender: TObject);
+    procedure ShowPressed(AKeyIdx: Integer);
+    procedure DrawKey(ACanvas: TCanvas; AKeyIdx: Integer);
     procedure WMGetDlgCode(var Message: TWMGetDlgCode); message WM_GETDLGCODE;
     procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
     procedure WMSetFocus(var Message: TWMSetFocus); message WM_SETFOCUS;
@@ -51,6 +71,12 @@ type
       PosX, PosY: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    // Разложить корпус в AWidth x AHeight; экран шириной не больше
+    // AScreenW. Результат - высота, которая нужна прибору
+    function Arrange(AWidth, AHeight, AScreenW: Integer): Integer;
+    procedure PressKey(AKeyIdx: Integer);
+    procedure InvalidateScreen;
   end;
 
   TArdSimPanel = class(TUiPanel)
@@ -61,12 +87,12 @@ type
     FBtnStop: TUiButton;
     FBtnIni: TUiButton;
     FBtnWindow: TUiButton;
+    FBtnSize: TUiButton;
     FStatus: TUiLabel;
-    FScreen: TArdSimScreen;
-    FKeypad: TUiPanel;
-    FKeys: array[0..ArdSimKeyRows * ArdSimKeyCols - 1] of TUiButton;
+    FDevice: TArdSimDevice;
     FSerial: TUiMemo;
     FTimer: TTimer;
+    FFitWidth: Boolean;       // экран по ширине панели, иначе - как дисплей
     FBuild: TProcRun;         // build_sim.cmd
     FBuildLine: string;       // недописанная строка вывода сборки
     FRunAfterBuild: Boolean;
@@ -92,7 +118,7 @@ type
     procedure BtnStopClick(Sender: TObject);
     procedure BtnIniClick(Sender: TObject);
     procedure BtnWindowClick(Sender: TObject);
-    procedure KeyClick(Sender: TObject);
+    procedure BtnSizeClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure LayoutControls;
     procedure Log(const AText: string);
@@ -117,6 +143,7 @@ type
     destructor Destroy; override;
     // Нажатие клавиши прибора: строка 0..4, столбец 0..3
     procedure PostKey(ARow, ACol: Integer);
+    // Экран прибора в прямоугольник ARect (3:2)
     procedure PaintScreen(ACanvas: TCanvas; const ARect: TRect);
     function Running: Boolean;
     function Building: Boolean;
@@ -128,6 +155,8 @@ type
     property ArdSimDir: string read FArdSimDir write FArdSimDir;
     // Папка bin своего MinGW unIDE; '' - build_sim.cmd ищет сам
     property MingwBin: string read FMingwBin write FMingwBin;
+    // Экран по ширине панели (True) или в размер настоящего дисплея
+    property FitWidth: Boolean read FFitWidth;
     property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
     property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
     property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
@@ -159,12 +188,44 @@ const
   SharedBytes = HeaderBytes + ScreenBytes + SerialRingBytes;
   SerialMaxChars = 60000;
 
+  // Активная область дисплея 3.5" 480x320 (типовая по документации на
+  // такие модули), мм
+  DisplayWidthMm = 73.44;
+
+  // Пропорции корпуса BS10 (по фото), в долях ширины экрана
+  BodySideK = 0.40;       // зелёное поле слева и справа от экрана
+  BodyTopK = 0.27;        // над экраном
+  BodyBottomK = 0.26;     // под экраном
+  PadWidthK = 1.22;       // ширина панели клавиатуры
+  PadTopK = 0.14;         // от верха панели до первого ряда
+  PadBottomK = 0.07;      // под последним рядом
+  KeyWidthK = 0.23;
+  KeyHeightK = 0.165;
+  KeyPitchXK = 0.274;
+  KeyPitchYK = 0.195;
+  MinBorder = 8;          // поле корпуса, меньше которого не ужимать
+  RimWidth = 3;           // чёрный кант корпуса
+
+  // Цвета (TColor - $00BBGGRR)
+  ClrRim = $00202020;
+  ClrBody = $007A9E10;      // тёмно-зелёный корпус
+  ClrPad = $00B0D676;       // светло-зелёная панель клавиатуры
+  ClrBezel = $00303030;     // рамка вокруг дисплея
+  ClrKeyWhite = $00F2F2F2;
+  ClrKeyYellow = $001ED2FF;
+  ClrKeyRed = $00463CDE;
+  ClrKeyText = $00303030;
+  ClrKeyEdge = $00808080;
+
   KeyCaptions: array[0..ArdSimKeyRows - 1, 0..ArdSimKeyCols - 1] of string = (
     ('F1', 'F2', '#', '*'),
     ('1', '2', '3', '^'),
     ('4', '5', '6', 'v'),
     ('7', '8', '9', 'Esc'),
     ('<', '0', '>', 'Ent'));
+
+type
+  TKeyLook = (klWhite, klYellow, klRed, klOval);
 
 var
   MapCounter: Integer = 0;
@@ -183,111 +244,445 @@ begin
   Result := '';
 end;
 
+function KeyLookOf(AKeyIdx: Integer): TKeyLook;
+begin
+  case AKeyIdx of
+    0, 1: Result := klYellow;     // F1 F2
+    2, 3: Result := klRed;        // # *
+    15, 19: Result := klOval;     // Esc Ent
+  else
+    Result := klWhite;
+  end;
+end;
+
+// Темнее на AShift (подсветка нажатой клавиши)
+function DarkerColor(AColor: TColor; AShift: Integer): TColor;
+var
+  Red, Green, Blue: Integer;
+begin
+  AColor := ColorToRGB(AColor);
+  Red := (AColor and $FF) - AShift;
+  Green := ((AColor shr 8) and $FF) - AShift;
+  Blue := ((AColor shr 16) and $FF) - AShift;
+  if Red < 0 then Red := 0;
+  if Green < 0 then Green := 0;
+  if Blue < 0 then Blue := 0;
+  Result := TColor(Red or (Green shl 8) or (Blue shl 16));
+end;
+
 // ---------------------------------------------------------------------------
-//  TArdSimScreen
+//  TArdSimDevice
 // ---------------------------------------------------------------------------
 
-constructor TArdSimScreen.Create(AOwner: TComponent);
+constructor TArdSimDevice.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   TabStop := True;
   ShowHint := True;
   ControlStyle := ControlStyle + [csOpaque];
+  FPressedKey := -1;
+  FScreenW := ArdSimScreenW;
+  FBuffer := TBitmap.Create;
+  FPressTimer := TTimer.Create(Self);
+  FPressTimer.Enabled := False;
+  FPressTimer.Interval := 150;
+  FPressTimer.OnTimer := PressTimerTick;
 end;
 
-procedure TArdSimScreen.WMGetDlgCode(var Message: TWMGetDlgCode);
+destructor TArdSimDevice.Destroy;
 begin
-  // стрелки, Enter и Esc - экрану, а не переходу между полями
+  FBuffer.Free;
+  inherited Destroy;
+end;
+
+// Сверху вниз: корпус (поля, экран, поля), под ним панель клавиатуры.
+// Экран - не шире AScreenW; поля корпуса по бокам ужимаются до MinBorder,
+// когда не хватает ширины; если не хватает высоты - сначала поля сверху и
+// снизу, потом уменьшается всё
+function TArdSimDevice.Arrange(AWidth, AHeight, AScreenW: Integer): Integer;
+
+  function NeedHeight(AScreen: Integer; ACompact: Boolean): Integer;
+  var
+    Borders: Integer;
+  begin
+    if ACompact then
+      Borders := 2 * MinBorder
+    else
+      Borders := Round(AScreen * (BodyTopK + BodyBottomK));
+    Result := Borders + AScreen * ArdSimScreenH div ArdSimScreenW +
+              Round(AScreen * (PadTopK + PadBottomK + 4 * KeyPitchYK +
+                               KeyHeightK));
+  end;
+
+var
+  ScreenW, ScreenH, SideBorder, TopBorder, BottomBorder: Integer;
+  BodyW, BodyLeft, PadW, PadLeft, PadTop, GridW, GridLeft, GridTop: Integer;
+  KeyW, KeyH, PitchX, PitchY, KeyRow, KeyCol: Integer;
+  Compact: Boolean;
+begin
+  ScreenW := AScreenW;
+  if ScreenW > AWidth - 2 * MinBorder then
+    ScreenW := AWidth - 2 * MinBorder;
+  Compact := False;
+  if (AHeight > 0) and (NeedHeight(ScreenW, False) > AHeight) then
+  begin
+    Compact := True;
+    while (ScreenW > 120) and (NeedHeight(ScreenW, True) > AHeight) do
+      Dec(ScreenW, 4);
+  end;
+  if ScreenW < 120 then
+    ScreenW := 120;
+  FScreenW := ScreenW;
+  ScreenH := ScreenW * ArdSimScreenH div ArdSimScreenW;
+
+  SideBorder := Round(ScreenW * BodySideK);
+  if ScreenW + 2 * SideBorder > AWidth then
+    SideBorder := (AWidth - ScreenW) div 2;
+  if SideBorder < MinBorder then
+    SideBorder := MinBorder;
+  if Compact then
+  begin
+    TopBorder := MinBorder;
+    BottomBorder := MinBorder;
+  end
+  else
+  begin
+    TopBorder := Round(ScreenW * BodyTopK);
+    BottomBorder := Round(ScreenW * BodyBottomK);
+  end;
+  BodyW := ScreenW + 2 * SideBorder;
+  BodyLeft := (AWidth - BodyW) div 2;
+  if BodyLeft < 0 then
+    BodyLeft := 0;
+  FBodyRect := Rect(BodyLeft, 0, BodyLeft + BodyW,
+                    TopBorder + ScreenH + BottomBorder);
+  FScreenRect := Rect(BodyLeft + SideBorder, TopBorder,
+                      BodyLeft + SideBorder + ScreenW, TopBorder + ScreenH);
+
+  KeyW := Round(ScreenW * KeyWidthK);
+  KeyH := Round(ScreenW * KeyHeightK);
+  PitchX := Round(ScreenW * KeyPitchXK);
+  PitchY := Round(ScreenW * KeyPitchYK);
+  GridW := 3 * PitchX + KeyW;
+  PadW := Round(ScreenW * PadWidthK);
+  if PadW < GridW + 2 * MinBorder then
+    PadW := GridW + 2 * MinBorder;
+  if PadW > BodyW then
+    PadW := BodyW;
+  PadLeft := (AWidth - PadW) div 2;
+  if PadLeft < 0 then
+    PadLeft := 0;
+  PadTop := FBodyRect.Bottom - RimWidth;
+  GridTop := FBodyRect.Bottom + Round(ScreenW * PadTopK);
+  GridLeft := PadLeft + (PadW - GridW) div 2;
+  FPadRect := Rect(PadLeft, PadTop, PadLeft + PadW,
+                   GridTop + 4 * PitchY + KeyH + Round(ScreenW * PadBottomK));
+  for KeyRow := 0 to ArdSimKeyRows - 1 do
+    for KeyCol := 0 to ArdSimKeyCols - 1 do
+      FKeyRects[KeyRow * ArdSimKeyCols + KeyCol] :=
+        Rect(GridLeft + KeyCol * PitchX, GridTop + KeyRow * PitchY,
+             GridLeft + KeyCol * PitchX + KeyW, GridTop + KeyRow * PitchY + KeyH);
+  Result := FPadRect.Bottom + 1;
+end;
+
+procedure TArdSimDevice.InvalidateScreen;
+var
+  Area: TRect;
+begin
+  if not HandleAllocated then
+    Exit;
+  Area := FScreenRect;
+  InvalidateRect(Handle, @Area, False);
+end;
+
+procedure TArdSimDevice.WMGetDlgCode(var Message: TWMGetDlgCode);
+begin
+  // стрелки, Enter и Esc - прибору, а не переходу между полями
   Message.Result := DLGC_WANTARROWS or DLGC_WANTALLKEYS or DLGC_WANTCHARS;
 end;
 
-procedure TArdSimScreen.WMEraseBkgnd(var Message: TWMEraseBkgnd);
+procedure TArdSimDevice.WMEraseBkgnd(var Message: TWMEraseBkgnd);
 begin
   Message.Result := 1;
 end;
 
-procedure TArdSimScreen.WMSetFocus(var Message: TWMSetFocus);
+procedure TArdSimDevice.WMSetFocus(var Message: TWMSetFocus);
 begin
   inherited;
   Invalidate;
 end;
 
-procedure TArdSimScreen.WMKillFocus(var Message: TWMKillFocus);
+procedure TArdSimDevice.WMKillFocus(var Message: TWMKillFocus);
 begin
   inherited;
   Invalidate;
 end;
 
-procedure TArdSimScreen.Paint;
+procedure TArdSimDevice.PressTimerTick(Sender: TObject);
+var
+  KeyIdx: Integer;
+  Area: TRect;
 begin
+  FPressTimer.Enabled := False;
+  KeyIdx := FPressedKey;
+  FPressedKey := -1;
+  if (KeyIdx >= 0) and HandleAllocated then
+  begin
+    Area := FKeyRects[KeyIdx];
+    InvalidateRect(Handle, @Area, False);
+  end;
+end;
+
+procedure TArdSimDevice.ShowPressed(AKeyIdx: Integer);
+var
+  Area: TRect;
+begin
+  if FPressedKey >= 0 then
+    PressTimerTick(nil);
+  FPressedKey := AKeyIdx;
+  if HandleAllocated then
+  begin
+    Area := FKeyRects[AKeyIdx];
+    InvalidateRect(Handle, @Area, False);
+  end;
+  FPressTimer.Enabled := False;
+  FPressTimer.Enabled := True;
+end;
+
+procedure TArdSimDevice.PressKey(AKeyIdx: Integer);
+begin
+  if (AKeyIdx < 0) or (AKeyIdx >= ArdSimKeyCount) then
+    Exit;
+  ShowPressed(AKeyIdx);
   if FOwnerPanel <> nil then
-    FOwnerPanel.PaintScreen(Canvas, ClientRect);
+    FOwnerPanel.PostKey(AKeyIdx div ArdSimKeyCols, AKeyIdx mod ArdSimKeyCols);
 end;
 
-procedure TArdSimScreen.MouseDown(Button: TMouseButton; Shift: TShiftState;
+procedure TArdSimDevice.MouseDown(Button: TMouseButton; Shift: TShiftState;
   PosX, PosY: Integer);
+var
+  KeyIdx: Integer;
+  HitPoint: TPoint;
 begin
   inherited;
   if CanFocus then
     SetFocus;
+  if Button <> mbLeft then
+    Exit;
+  HitPoint := Point(PosX, PosY);
+  for KeyIdx := 0 to ArdSimKeyCount - 1 do
+    if PtInRect(FKeyRects[KeyIdx], HitPoint) then
+    begin
+      PressKey(KeyIdx);
+      Exit;
+    end;
 end;
 
 // Клавиши ПК -> клавиатура прибора (как в окне ArdSim, sim_window.cpp)
-procedure TArdSimScreen.KeyDown(var Key: Word; Shift: TShiftState);
+procedure TArdSimDevice.KeyDown(var Key: Word; Shift: TShiftState);
 var
-  KeyRow, KeyCol: Integer;
+  KeyIdx: Integer;
 begin
   inherited;
-  if FOwnerPanel = nil then
-    Exit;
-  KeyRow := -1;
-  KeyCol := -1;
   // Shift+3 / Shift+8 - это '#' и '*', они придут в KeyPress
   if (ssShift in Shift) and (Key >= Ord('0')) and (Key <= Ord('9')) then
     Exit;
   case Key of
-    VK_F1: begin KeyRow := 0; KeyCol := 0; end;
-    VK_F2: begin KeyRow := 0; KeyCol := 1; end;
-    VK_MULTIPLY: begin KeyRow := 0; KeyCol := 3; end;
-    Ord('1'), VK_NUMPAD1: begin KeyRow := 1; KeyCol := 0; end;
-    Ord('2'), VK_NUMPAD2: begin KeyRow := 1; KeyCol := 1; end;
-    Ord('3'), VK_NUMPAD3: begin KeyRow := 1; KeyCol := 2; end;
-    VK_UP: begin KeyRow := 1; KeyCol := 3; end;
-    Ord('4'), VK_NUMPAD4: begin KeyRow := 2; KeyCol := 0; end;
-    Ord('5'), VK_NUMPAD5: begin KeyRow := 2; KeyCol := 1; end;
-    Ord('6'), VK_NUMPAD6: begin KeyRow := 2; KeyCol := 2; end;
-    VK_DOWN: begin KeyRow := 2; KeyCol := 3; end;
-    Ord('7'), VK_NUMPAD7: begin KeyRow := 3; KeyCol := 0; end;
-    Ord('8'), VK_NUMPAD8: begin KeyRow := 3; KeyCol := 1; end;
-    Ord('9'), VK_NUMPAD9: begin KeyRow := 3; KeyCol := 2; end;
-    VK_ESCAPE, VK_BACK: begin KeyRow := 3; KeyCol := 3; end;
-    VK_LEFT: begin KeyRow := 4; KeyCol := 0; end;
-    Ord('0'), VK_NUMPAD0: begin KeyRow := 4; KeyCol := 1; end;
-    VK_RIGHT: begin KeyRow := 4; KeyCol := 2; end;
-    VK_RETURN: begin KeyRow := 4; KeyCol := 3; end;
+    VK_F1: KeyIdx := 0;
+    VK_F2: KeyIdx := 1;
+    VK_MULTIPLY: KeyIdx := 3;
+    Ord('1'), VK_NUMPAD1: KeyIdx := 4;
+    Ord('2'), VK_NUMPAD2: KeyIdx := 5;
+    Ord('3'), VK_NUMPAD3: KeyIdx := 6;
+    VK_UP: KeyIdx := 7;
+    Ord('4'), VK_NUMPAD4: KeyIdx := 8;
+    Ord('5'), VK_NUMPAD5: KeyIdx := 9;
+    Ord('6'), VK_NUMPAD6: KeyIdx := 10;
+    VK_DOWN: KeyIdx := 11;
+    Ord('7'), VK_NUMPAD7: KeyIdx := 12;
+    Ord('8'), VK_NUMPAD8: KeyIdx := 13;
+    Ord('9'), VK_NUMPAD9: KeyIdx := 14;
+    VK_ESCAPE, VK_BACK: KeyIdx := 15;
+    VK_LEFT: KeyIdx := 16;
+    Ord('0'), VK_NUMPAD0: KeyIdx := 17;
+    VK_RIGHT: KeyIdx := 18;
+    VK_RETURN: KeyIdx := 19;
+  else
+    KeyIdx := -1;
   end;
-  if KeyRow >= 0 then
+  if KeyIdx >= 0 then
   begin
-    FOwnerPanel.PostKey(KeyRow, KeyCol);
+    PressKey(KeyIdx);
     Key := 0;
   end;
 end;
 
-procedure TArdSimScreen.KeyPress(var Key: Char);
+procedure TArdSimDevice.KeyPress(var Key: Char);
 begin
   inherited;
-  if FOwnerPanel = nil then
-    Exit;
   if Key = '#' then
   begin
-    FOwnerPanel.PostKey(0, 2);
+    PressKey(2);
     Key := #0;
   end
   else if Key = '*' then
   begin
-    FOwnerPanel.PostKey(0, 3);
+    PressKey(3);
     Key := #0;
   end;
+end;
+
+// Одна клавиша: цвет и форма как на приборе; стрелки - треугольником
+procedure TArdSimDevice.DrawKey(ACanvas: TCanvas; AKeyIdx: Integer);
+var
+  Area: TRect;
+  Look: TKeyLook;
+  Fill, TextColor: TColor;
+  Caption: string;
+  KeyW, KeyH, MidX, MidY, ArrowLen, ArrowHalf, Corner: Integer;
+  TextSize: TSize;
+  Arrow: array[0..2] of TPoint;
+  ArrowDir: Integer;   // 0 вверх, 1 вниз, 2 влево, 3 вправо, -1 не стрелка
+begin
+  Area := FKeyRects[AKeyIdx];
+  KeyW := Area.Right - Area.Left;
+  KeyH := Area.Bottom - Area.Top;
+  Look := KeyLookOf(AKeyIdx);
+  case Look of
+    klYellow: Fill := ClrKeyYellow;
+    klRed, klOval: Fill := ClrKeyRed;
+  else
+    Fill := ClrKeyWhite;
+  end;
+  if AKeyIdx = FPressedKey then
+    Fill := DarkerColor(Fill, 70);
+  if Look = klOval then
+    TextColor := clWhite
+  else
+    TextColor := ClrKeyText;
+
+  ACanvas.Pen.Color := ClrKeyEdge;
+  ACanvas.Pen.Width := 1;
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := Fill;
+  if Look = klOval then
+  begin
+    ACanvas.Pen.Color := DarkerColor(Fill, 40);
+    ACanvas.Ellipse(Area.Left, Area.Top, Area.Right, Area.Bottom);
+  end
+  else
+  begin
+    Corner := KeyH div 4;
+    ACanvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom,
+                      Corner, Corner);
+  end;
+
+  MidX := (Area.Left + Area.Right) div 2;
+  MidY := (Area.Top + Area.Bottom) div 2;
+  Caption := KeyCaptions[AKeyIdx div ArdSimKeyCols, AKeyIdx mod ArdSimKeyCols];
+  case AKeyIdx of
+    7: ArrowDir := 0;
+    11: ArrowDir := 1;
+    16: ArrowDir := 2;
+    18: ArrowDir := 3;
+  else
+    ArrowDir := -1;
+  end;
+  if ArrowDir >= 0 then
+  begin
+    ArrowLen := KeyH * 2 div 5;
+    ArrowHalf := ArrowLen div 2;
+    case ArrowDir of
+      0: begin
+           Arrow[0] := Point(MidX, MidY - ArrowHalf);
+           Arrow[1] := Point(MidX - ArrowHalf, MidY + ArrowHalf);
+           Arrow[2] := Point(MidX + ArrowHalf, MidY + ArrowHalf);
+         end;
+      1: begin
+           Arrow[0] := Point(MidX, MidY + ArrowHalf);
+           Arrow[1] := Point(MidX - ArrowHalf, MidY - ArrowHalf);
+           Arrow[2] := Point(MidX + ArrowHalf, MidY - ArrowHalf);
+         end;
+      2: begin
+           Arrow[0] := Point(MidX - ArrowHalf, MidY);
+           Arrow[1] := Point(MidX + ArrowHalf, MidY - ArrowHalf);
+           Arrow[2] := Point(MidX + ArrowHalf, MidY + ArrowHalf);
+         end;
+    else
+      Arrow[0] := Point(MidX + ArrowHalf, MidY);
+      Arrow[1] := Point(MidX - ArrowHalf, MidY - ArrowHalf);
+      Arrow[2] := Point(MidX - ArrowHalf, MidY + ArrowHalf);
+    end;
+    ACanvas.Pen.Color := TextColor;
+    ACanvas.Brush.Color := TextColor;
+    ACanvas.Polygon(Arrow);
+    Exit;
+  end;
+
+  ACanvas.Brush.Style := bsClear;
+  ACanvas.Font.Name := 'Arial';
+  ACanvas.Font.Style := [fsBold];
+  ACanvas.Font.Color := TextColor;
+  ACanvas.Font.Height := -(KeyH * 11 div 20);
+  if ACanvas.Font.Height > -8 then
+    ACanvas.Font.Height := -8;
+  TextSize := ACanvas.TextExtent(Caption);
+  // широкие подписи (Esc, Ent) - помельче, чтобы влезли в овал
+  if TextSize.cx > KeyW * 4 div 5 then
+  begin
+    ACanvas.Font.Height := ACanvas.Font.Height * (KeyW * 4 div 5) div TextSize.cx;
+    TextSize := ACanvas.TextExtent(Caption);
+  end;
+  ACanvas.TextOut(MidX - TextSize.cx div 2, MidY - TextSize.cy div 2, Caption);
+  ACanvas.Brush.Style := bsSolid;
+end;
+
+procedure TArdSimDevice.Paint;
+var
+  Draw: TCanvas;
+  Corner, KeyIdx: Integer;
+  Bezel: TRect;
+begin
+  if (FBuffer.Width <> ClientWidth) or (FBuffer.Height <> ClientHeight) then
+  begin
+    FBuffer.Width := ClientWidth;
+    FBuffer.Height := ClientHeight;
+  end;
+  Draw := FBuffer.Canvas;
+  // фон - как у панели вокруг
+  Draw.Brush.Style := bsSolid;
+  Draw.Brush.Color := Color;
+  Draw.FillRect(ClientRect);
+
+  // панель клавиатуры (под корпусом, её верх закрывает корпус)
+  Corner := (FPadRect.Right - FPadRect.Left) div 12;
+  Draw.Pen.Color := ClrRim;
+  Draw.Pen.Width := RimWidth;
+  Draw.Brush.Color := ClrPad;
+  Draw.RoundRect(FPadRect.Left + 1, FPadRect.Top + 1, FPadRect.Right - 1,
+                 FPadRect.Bottom - 1, Corner, Corner);
+  // корпус
+  Corner := (FBodyRect.Right - FBodyRect.Left) div 16;
+  Draw.Brush.Color := ClrBody;
+  Draw.RoundRect(FBodyRect.Left + 1, FBodyRect.Top + 1, FBodyRect.Right - 1,
+                 FBodyRect.Bottom - 1, Corner, Corner);
+  Draw.Pen.Width := 1;
+  // рамка дисплея
+  Bezel := FScreenRect;
+  InflateRect(Bezel, 3, 3);
+  Draw.Brush.Color := ClrBezel;
+  Draw.FillRect(Bezel);
+  if FOwnerPanel <> nil then
+    FOwnerPanel.PaintScreen(Draw, FScreenRect);
+  if Focused then
+  begin
+    // в фокусе: клавиши ПК идут прибору
+    Draw.Brush.Color := clHighlight;
+    Draw.FrameRect(Bezel);
+  end;
+  for KeyIdx := 0 to ArdSimKeyCount - 1 do
+    DrawKey(Draw, KeyIdx);
+  Canvas.Draw(0, 0, FBuffer);
 end;
 
 // ---------------------------------------------------------------------------
@@ -308,8 +703,6 @@ constructor TArdSimPanel.Create(AOwner: TComponent);
     Result.TabStop := False;
   end;
 
-var
-  KeyRow, KeyCol, KeyIdx: Integer;
 begin
   inherited Create(AOwner);
   BevelOuter := bvNone;
@@ -324,7 +717,7 @@ begin
   FBar.Parent := Self;
   FBar.BevelOuter := bvNone;
   FBar.Caption := '';
-  FBtnBuild := MakeButton(FBar, 'Build+Run',
+  FBtnBuild := MakeButton(FBar, 'Build',
     'Собрать скетч под ПК (ArdSim\build_sim.cmd, MinGW g++) и запустить',
     BtnBuildClick);
   FBtnRun := MakeButton(FBar, 'Run', 'Запустить собранный скетч без сборки',
@@ -336,29 +729,18 @@ begin
   FBtnWindow := MakeButton(FBar, 'Окно',
     'Запустить собранный скетч в отдельном окне ArdSim (с панелью сигналов)',
     BtnWindowClick);
+  FBtnSize := MakeButton(FBar, 'Размер',
+    'Экран как настоящий дисплей 3.5" / по ширине панели', BtnSizeClick);
   FStatus := TUiLabel.Create(Self);
   FStatus.Parent := Self;
   FStatus.AutoSize := False;
   FStatus.Caption := '';
 
-  FScreen := TArdSimScreen.Create(Self);
-  FScreen.FOwnerPanel := Self;
-  FScreen.Parent := Self;
-  FScreen.Hint := 'Экран прибора. Щёлкните, чтобы клавиши ПК работали как ' +
+  FDevice := TArdSimDevice.Create(Self);
+  FDevice.FOwnerPanel := Self;
+  FDevice.Parent := Self;
+  FDevice.Hint := 'Щёлкните по прибору, чтобы клавиши ПК работали как ' +
     'клавиатура: 0-9, F1, F2, #, *, стрелки, Enter, Esc';
-
-  FKeypad := TUiPanel.Create(Self);
-  FKeypad.Parent := Self;
-  FKeypad.BevelOuter := bvNone;
-  FKeypad.Caption := '';
-  for KeyRow := 0 to ArdSimKeyRows - 1 do
-    for KeyCol := 0 to ArdSimKeyCols - 1 do
-    begin
-      KeyIdx := KeyRow * ArdSimKeyCols + KeyCol;
-      FKeys[KeyIdx] := MakeButton(FKeypad, KeyCaptions[KeyRow, KeyCol], '',
-        KeyClick);
-      FKeys[KeyIdx].Tag := KeyIdx;
-    end;
 
   FSerial := TUiMemo.Create(Self);
   FSerial.Parent := Self;
@@ -390,18 +772,17 @@ begin
   LayoutControls;
 end;
 
-// Сверху вниз: кнопки, строка состояния, экран (по ширине, 3:2),
-// клавиатура прибора, вывод Serial - всё остальное
+// Сверху вниз: кнопки, строка состояния, прибор, вывод Serial - всё
+// остальное (не меньше SerialMinH)
 procedure TArdSimPanel.LayoutControls;
 const
   Gap = 4;
   BarH = 24;
   StatusH = 18;
-  KeyH = 26;
+  SerialMinH = 60;
 var
-  AreaW, PosY, ScreenH, ButtonW, KeyW, KeyRow, KeyCol: Integer;
-  Buttons: array[0..4] of TUiButton;
-  BtnIdx: Integer;
+  AreaW, PosY, ButtonW, BtnIdx, ScreenW, DeviceH: Integer;
+  Buttons: array[0..5] of TUiButton;
 begin
   if FBar = nil then
     Exit;
@@ -415,29 +796,32 @@ begin
   Buttons[2] := FBtnStop;
   Buttons[3] := FBtnIni;
   Buttons[4] := FBtnWindow;
-  ButtonW := (AreaW - 4 * 2) div 5;
-  for BtnIdx := 0 to 4 do
+  Buttons[5] := FBtnSize;
+  ButtonW := (AreaW - 5 * 2) div 6;
+  for BtnIdx := 0 to 5 do
     Buttons[BtnIdx].SetBounds(BtnIdx * (ButtonW + 2), 0, ButtonW, BarH);
   Inc(PosY, BarH + 2);
   FStatus.SetBounds(Gap, PosY, AreaW, StatusH);
   Inc(PosY, StatusH);
-  ScreenH := AreaW * ArdSimScreenH div ArdSimScreenW;
-  FScreen.SetBounds(Gap, PosY, AreaW, ScreenH);
-  Inc(PosY, ScreenH + Gap);
-  KeyW := (AreaW - (ArdSimKeyCols - 1) * 2) div ArdSimKeyCols;
-  if KeyW > 70 then
-    KeyW := 70;
-  FKeypad.SetBounds(Gap, PosY, ArdSimKeyCols * (KeyW + 2),
-                    ArdSimKeyRows * (KeyH + 2));
-  for KeyRow := 0 to ArdSimKeyRows - 1 do
-    for KeyCol := 0 to ArdSimKeyCols - 1 do
-      FKeys[KeyRow * ArdSimKeyCols + KeyCol].SetBounds(KeyCol * (KeyW + 2),
-        KeyRow * (KeyH + 2), KeyW, KeyH);
-  Inc(PosY, FKeypad.Height + Gap);
+  if FFitWidth then
+    ScreenW := AreaW
+  else
+    ScreenW := Round(DisplayWidthMm * Screen.PixelsPerInch / 25.4);
+  DeviceH := FDevice.Arrange(AreaW, ClientHeight - PosY - SerialMinH - 2 * Gap,
+                             ScreenW);
+  FDevice.SetBounds(Gap, PosY, AreaW, DeviceH);
+  FDevice.Invalidate;
+  Inc(PosY, DeviceH + Gap);
   if ClientHeight - PosY - Gap > 20 then
     FSerial.SetBounds(Gap, PosY, AreaW, ClientHeight - PosY - Gap)
   else
     FSerial.SetBounds(Gap, PosY, AreaW, 20);
+end;
+
+procedure TArdSimPanel.BtnSizeClick(Sender: TObject);
+begin
+  FFitWidth := not FFitWidth;
+  LayoutControls;
 end;
 
 procedure TArdSimPanel.Log(const AText: string);
@@ -559,15 +943,6 @@ begin
   end;
 end;
 
-procedure TArdSimPanel.KeyClick(Sender: TObject);
-var
-  KeyIdx: Integer;
-begin
-  KeyIdx := (Sender as TComponent).Tag;
-  PostKey(KeyIdx div ArdSimKeyCols, KeyIdx mod ArdSimKeyCols);
-  if FScreen.CanFocus then
-    FScreen.SetFocus;
-end;
 
 // ---------------------------------------------------------------- сборка
 
@@ -728,9 +1103,9 @@ begin
   Log('ArdSim: запущен ' + FSimExe);
   SetStatus('Работает: ' + ExtractFileName(FSketchFile));
   FTimer.Enabled := True;
-  FScreen.Invalidate;
-  if FScreen.CanFocus then
-    FScreen.SetFocus;
+  FDevice.Invalidate;
+  if FDevice.CanFocus then
+    FDevice.SetFocus;
   {$ELSE}
   SetStatus('Эмулятор работает только в Windows');
   {$ENDIF}
@@ -834,7 +1209,7 @@ begin
   begin
     FScreenVersion := Version;
     FHasPicture := True;
-    FScreen.Invalidate;
+    FDevice.InvalidateScreen;
   end;
   Written := Header(HdrSerialWrite);
   if Written <> FSerialRead then
@@ -879,9 +1254,10 @@ begin
     FTimer.Enabled := False;
 end;
 
-// Экран: RGB565 из общей памяти -> 32 бита -> StretchDIBits по размеру,
-// с сохранением 3:2. Эмулятор не запущен - последняя картинка (её копия в
-// FPixels) или пустое поле
+
+// Экран: RGB565 из общей памяти -> 32 бита -> StretchDIBits в ARect
+// (3:2). Эмулятор не запущен - последняя картинка (её копия в FPixels)
+// или пустое поле
 procedure TArdSimPanel.PaintScreen(ACanvas: TCanvas; const ARect: TRect);
 var
   {$IFDEF MSWINDOWS}
@@ -947,13 +1323,10 @@ begin
   begin
     ACanvas.Font.Color := clGray;
     ACanvas.Brush.Style := bsClear;
-    ACanvas.TextOut(DrawX + 8, DrawY + 8, 'Build+Run - собрать и запустить');
+    ACanvas.Font.Height := -11;
+    ACanvas.Font.Style := [];
+    ACanvas.TextOut(DrawX + 6, DrawY + 6, 'Build - собрать и запустить');
     ACanvas.Brush.Style := bsSolid;
-  end;
-  if FScreen.Focused then
-  begin
-    ACanvas.Brush.Color := clHighlight;
-    ACanvas.FrameRect(Rect(DrawX, DrawY, DrawX + DrawW, DrawY + DrawH));
   end;
 end;
 
