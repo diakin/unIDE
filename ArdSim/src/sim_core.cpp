@@ -23,12 +23,30 @@ volatile bool SimStopping = false;
 
 // ---------------------------------------------------------------- time
 static LARGE_INTEGER SimFreq, SimStart;
+// Time the debugger held the sketch (QPC ticks): not counted
+static volatile LONGLONG PausedTicks = 0;
+static LONGLONG PauseStart = 0;
 
 static uint64_t simMicros64()
 {
   LARGE_INTEGER now;
   QueryPerformanceCounter(&now);
-  return (uint64_t)((now.QuadPart - SimStart.QuadPart) * 1000000LL / SimFreq.QuadPart);
+  LONGLONG ticks = now.QuadPart - SimStart.QuadPart - PausedTicks;
+  return (uint64_t)(ticks / SimFreq.QuadPart * 1000000LL +
+                    ticks % SimFreq.QuadPart * 1000000LL / SimFreq.QuadPart);
+}
+
+void simClockPause(bool paused)
+{
+  LARGE_INTEGER now;
+  QueryPerformanceCounter(&now);
+  if (paused)
+    PauseStart = now.QuadPart;
+  else if (PauseStart != 0)
+  {
+    PausedTicks = PausedTicks + (now.QuadPart - PauseStart);
+    PauseStart = 0;
+  }
 }
 
 uint64_t simMicrosNow() { return simMicros64(); }
@@ -79,6 +97,7 @@ static uint8_t PinIsrMode[SIM_PIN_COUNT];
 static volatile bool PinIsrPending[SIM_PIN_COUNT];
 static bool IrqEnabled = true;
 static bool InIsr = false;
+bool simInIsr() { return InIsr; }
 static int AnalogBits = 10;
 
 // Pressed key (sketch thread state): -1 - none

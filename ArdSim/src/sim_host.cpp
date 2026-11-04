@@ -7,6 +7,7 @@
 //   offset 0     uint32[32] header (indexes below)
 //   offset 128   uint16 screen[320][480], RGB565, as UTFT
 //   offset 307328 char serial[65536], ring buffer
+//   offset 372864 debug area (sim_internal.h, SimDbg*)
 // The signal settings stay in ardsim.ini next to the exe: it is reloaded
 // when it changes, so the host edits the file.
 #define WIN32_LEAN_AND_MEAN
@@ -19,7 +20,7 @@
 namespace
 {
 const uint32_t HostMagic = 0x4D495341;   // 'ASIM'
-const uint32_t HostLayout = 1;
+const uint32_t HostLayout = 2;
 enum HeaderIndex
 {
   HdrMagic = 0,         // host
@@ -38,7 +39,8 @@ const int KeyQueueSize = 16;
 const size_t HeaderBytes = 128;
 const size_t ScreenBytes = SIM_SCREEN_W * SIM_SCREEN_H * 2;
 const size_t SerialRingBytes = 65536;
-const size_t SharedBytes = HeaderBytes + ScreenBytes + SerialRingBytes;
+const size_t DebugOffset = HeaderBytes + ScreenBytes + SerialRingBytes;
+const size_t SharedBytes = DebugOffset + SimDbgAreaBytes;
 const int KeyHoldMs = 300;
 const DWORD KeyGapMs = 150;   // one key per scan; the next waits a little
 
@@ -97,6 +99,7 @@ int simHostRun(const char *name)
   loadIni(iniPath);
   FILETIME iniTime = iniWriteTime(iniPath);
 
+  simDebugAttach((char *)view + DebugOffset);
   Header[HdrSimPid] = GetCurrentProcessId();
   Header[HdrState] = 1;
   simStartSketch();
@@ -116,6 +119,7 @@ int simHostRun(const char *name)
       MemoryBarrier();
       Header[HdrScreenVersion] = Header[HdrScreenVersion] + 1;
     }
+    simDebugHostTick();
     std::string serial = simSerialTake();
     if (!serial.empty())
       putSerial(serial);

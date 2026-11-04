@@ -41,6 +41,54 @@ uint64_t simMicrosNow();
 // (sim_host.cpp); returns the exit code
 int simHostRun(const char *name);
 
+// Clock of the sketch stops while the debugger holds it (sim_core.cpp)
+void simClockPause(bool paused);
+bool simInIsr();
+
+// Debugger (sim_debug.cpp). The debug area follows the Serial ring in
+// the shared memory of host mode; offsets from its start:
+//   0      uint32[64] header (SimDbg* indexes)
+//   256    uint32[1024] breakpoints, (file << 20) | line   host
+//   4352   char[4096] Watch expressions, one per line      host
+//   8448   char[4096] .ino paths by file index, "\n"       simulator
+//   12544  char[65536] stop info (sim_debug.cpp, writeInfo)  simulator
+enum SimDbgIndex
+{
+  SimDbgCmdSeq = 0,        // host: +1 with each command
+  SimDbgCmdCode = 1,       // host: SimCmd*
+  SimDbgCmdArg = 2,        // host: code of the line for SimCmdRunTo
+  SimDbgCmdDone = 3,       // simulator: CmdSeq of the last command taken
+  SimDbgState = 4,         // simulator: 1 - stopped
+  SimDbgStopCode = 5,      // simulator: (file << 20) | line of the stop
+  SimDbgStopSeq = 6,       // simulator: +1 with each stop
+  SimDbgBpVersion = 7,     // host: +1 when the list changes
+  SimDbgBpCount = 8,       // host
+  SimDbgWatchSeq = 9,      // host: +1 - write the info again
+  SimDbgInfoSeq = 10,      // simulator: odd while writing the info
+  SimDbgInfoBytesIdx = 11, // simulator
+  SimDbgInstrumented = 12  // simulator: 1 - the sketch has the hooks
+};
+enum SimDbgCommand
+{
+  SimCmdPause = 1,
+  SimCmdRun = 2,
+  SimCmdInto = 3,
+  SimCmdOver = 4,
+  SimCmdOut = 5,
+  SimCmdRunTo = 6
+};
+const unsigned SimDbgMaxBreakpoints = 1024;
+const size_t SimDbgBreakOffset = 256;
+const size_t SimDbgWatchReqOffset = 4352;
+const size_t SimDbgWatchReqBytes = 4096;
+const size_t SimDbgFilesOffset = 8448;
+const size_t SimDbgFilesBytes = 4096;
+const size_t SimDbgInfoOffset = 12544;
+const size_t SimDbgInfoBytes = 65536;
+const size_t SimDbgAreaBytes = SimDbgInfoOffset + SimDbgInfoBytes;
+void simDebugAttach(void *area);
+void simDebugHostTick();
+
 // Signal generator (sim_signal.cpp)
 #define SIM_ANALOG_CHANNELS 12
 #define SIM_HARMONICS 10

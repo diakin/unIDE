@@ -1128,6 +1128,18 @@ type
     procedure ArdSimNeedSketch(Sender: TObject);
     procedure ArdSimLog(Sender: TObject; const AText: string);
     procedure ArdSimOpenFile(Sender: TObject; const AText: string);
+    // Отладчик эмулятора: F5/F7/F8/Shift+F8/F4/F9/Ctrl+F2 и окно Watch
+    // идут эмулятору, пока он работает со скетчем, собранным с отладкой
+    function ArdDbgHere: Boolean;
+    function ArdSimRunning: Boolean;
+    function ArdDbgCodeAt(const AFileName: string; ALine: Integer): Cardinal;
+    procedure ArdDbgStep(ACode: Integer);
+    function ArdDbgLaunch(ACode: Integer; AArg: Cardinal): Boolean;
+    procedure ArdDbgStop(Sender: TObject);
+    procedure ArdDbgResume(Sender: TObject);
+    procedure ArdDbgInfo(Sender: TObject);
+    procedure ArdDbgNeedBreaks(Sender: TObject);
+    procedure ArdDbgWatchRefresh;
     procedure RightPanelPlaceButtons;
     procedure PaletteTabRows(Sender: TObject);
     procedure SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
@@ -2104,6 +2116,7 @@ type
     // Ширина правой панели до того, как её растянули под окно эмулятора;
     // -1 - не растягивали
     FArdSimKeepWidth: Integer;
+    FArdSimWasRunning: Boolean;   // для ArdSimStateChange: запуск эмулятора
     // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
     // Program reset; создаются в FormCreate
     btnEmuBuild: TUiIconButton;
@@ -27794,6 +27807,10 @@ begin
   FArdSim.OnLog := ArdSimLog;
   FArdSim.OnOpenFile := ArdSimOpenFile;
   FArdSim.OnStateChange := ArdSimStateChange;
+  FArdSim.OnDbgStop := ArdDbgStop;
+  FArdSim.OnDbgResume := ArdDbgResume;
+  FArdSim.OnDbgInfo := ArdDbgInfo;
+  FArdSim.OnDbgNeedBreaks := ArdDbgNeedBreaks;
   FArdSimWin.OnPlaced := ArdSimPlaced;
   FArdSimWin.OnHidden := ArdSimHidden;
   FArdSimKeepWidth := -1;
@@ -27851,6 +27868,12 @@ begin
   btnEmuRun.Enabled := not Busy;
   btnEmuWindow.Enabled := not Busy;
   btnEmuStop.Enabled := Busy or FArdSim.Running;
+  // Эмулятор запущен: номера строк сборки = нынешние, правки - с этой
+  // минуты (FDbgEdits), как у отладочной сборки
+  if FArdSim.Running and not FArdSimWasRunning and (FDbgSession = nil) and
+     not FRqDbgOn then
+    DbgClearEdits;
+  FArdSimWasRunning := FArdSim.Running;
 end;
 
 // Окно эмулятора показано или передвинуто: если оно над правой частью
@@ -27909,6 +27932,217 @@ end;
 procedure TForm1.ArdSimOpenFile(Sender: TObject; const AText: string);
 begin
   OpenNamedFile(AText);
+end;
+
+// ---------------------------------------------------------------------------
+//  Отладчик эмулятора (ArdSim). ardprep ставит перед каждым оператором
+//  скетча SIM_STEP: эмулятор сам останавливается на точках останова и
+//  шагах и ждёт команды в общей памяти (TArdSimPanel.Dbg*). Строки - по
+//  тексту сборки; правки после запуска эмулятора сдвигают их (FDbgEdits).
+//  Пока скетч идёт, F7/F8 - пауза на ближайшем операторе.
+// ---------------------------------------------------------------------------
+
+function TForm1.ArdSimRunning: Boolean;
+begin
+  Result := (FArdSim <> nil) and FArdSim.Running;
+end;
+
+// Клавиши отладчика - эмулятору: он идёт со скетчем, собранным с
+// отладкой, другого сеанса нет, активна вкладка Arduino
+function TForm1.ArdDbgHere: Boolean;
+begin
+  Result := (FDbgSession = nil) and not FRqDbgOn and (FArdSim <> nil) and
+            FArdSim.DbgAvailable and (CurBuildKind = bkArduino);
+end;
+
+// Строка ALine (с 0, по нынешнему тексту) файла скетча - в номер для
+// эмулятора; 0 - не файл скетча или строка вставлена после сборки
+function TForm1.ArdDbgCodeAt(const AFileName: string; ALine: Integer): Cardinal;
+var
+  FileIdx, BuildLine: Integer;
+begin
+  Result := 0;
+  if FArdSim = nil then
+    Exit;
+  FileIdx := FArdSim.DbgFileIndex(AFileName);
+  if FileIdx < 0 then
+    Exit;
+  BuildLine := DbgLineThen(AFileName, ALine);
+  if BuildLine < 0 then
+    Exit;
+  Result := (Cardinal(FileIdx) shl 20) or Cardinal(BuildLine + 1);
+end;
+
+// F7, F8, Shift+F8: на остановке - шаг; на ходу - пауза (если прошлый
+// шаг уже дошёл)
+procedure TForm1.ArdDbgStep(ACode: Integer);
+begin
+  if FArdSim.DbgStopped then
+    FArdSim.DbgCommand(ACode, 0)
+  else if (ACode <> ArdDbgOut) and not FArdSim.DbgStepping then
+    FArdSim.DbgCommand(ArdDbgPause, 0);
+end;
+
+// F7/F8/F4 на вкладке Arduino, эмулятор не идёт: собрать, запустить и
+// встать на первом операторе (F4 - на строке). False - не наш случай
+function TForm1.ArdDbgLaunch(ACode: Integer; AArg: Cardinal): Boolean;
+begin
+  Result := False;
+  if (FDbgSession <> nil) or FRqDbgOn or (CurBuildKind <> bkArduino) then
+    Exit;
+  Result := True;
+  ArdSimEnsure;
+  if FArdSim.Building then
+    Exit;
+  if FArdSim.Running then
+  begin
+    // идёт, но без отладки (собран прежней версией ArdSim)
+    ShowCompLog;
+    LogComp('Эмулятор: скетч собран без отладочных вставок - соберите его ' +
+            'заново (кнопка сборки эмулятора)');
+    Exit;
+  end;
+  ArdSimShowClick(Self);
+  FArdSim.SetStartCommand(ACode, AArg);
+  FArdSim.BuildAndRun;
+end;
+
+procedure TForm1.ArdDbgStop(Sender: TObject);
+var
+  Code: Cardinal;
+  SrcFile: string;
+  SrcLine: Integer;
+begin
+  Code := FArdSim.DbgStopCode;
+  SrcFile := FArdSim.DbgFileName(Code shr 20);
+  SrcLine := Integer(Code and $FFFFF) - 1;
+  if (SrcFile = '') or (SrcLine < 0) then
+  begin
+    LogComp('--- Эмулятор: остановка, файл ' + IntToStr(Code shr 20) +
+            ', строка ' + IntToStr(SrcLine + 1) + ' - файла нет в списке');
+    Exit;
+  end;
+  if IsIconic(Application.Handle) then
+    Application.Restore;
+  SetForegroundWindow(Handle);
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) <> 0 then
+    OpenNamedFile(SrcFile);
+  // путь - как у вкладки: так его сравнивают точки и правки
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) = 0 then
+    SrcFile := FCurrentFileName;
+  SrcLine := DbgLineNow(SrcFile, SrcLine);
+  LogComp('--- Эмулятор: остановка ' + ExtractFileName(SrcFile) + ', строка ' +
+          IntToStr(SrcLine + 1) + ' (' + FArdSim.DbgWhere + '). F9 - дальше, ' +
+          'F8 - шаг, F7 - шаг с заходом, Shift+F8 - выйти из функции, ' +
+          'F4 - до каретки, Ctrl+F2 - стоп');
+  FDbgExecFile := SrcFile;
+  FDbgExecLine := SrcLine;
+  if CompareText(FCurrentFileName, SrcFile) = 0 then
+    GotoLine(SrcLine);
+  DbgRepaint;
+  DbgWatchRefresh;
+  // значение под мышью - подсказкой, пока скетч стоит
+  if FDbgHintTimer = nil then
+  begin
+    FDbgHintTimer := TTimer.Create(Self);
+    FDbgHintTimer.Interval := CiTickMs;
+    FDbgHintTimer.OnTimer := DbgHintTimerTick;
+  end;
+  FDbgHintTimer.Enabled := True;
+end;
+
+procedure TForm1.ArdDbgResume(Sender: TObject);
+begin
+  if (FDbgSession = nil) and not FRqDbgOn then
+    DbgClearExec;
+  DbgWatchRefresh;
+end;
+
+procedure TForm1.ArdDbgInfo(Sender: TObject);
+begin
+  DbgWatchRefresh;
+end;
+
+// Точки останова файлов скетча - эмулятору (он сравнивает со своими)
+procedure TForm1.ArdDbgNeedBreaks(Sender: TObject);
+var
+  Codes: TArdDbgCodes;
+  MarkIdx, Count: Integer;
+  Code: Cardinal;
+begin
+  Count := 0;
+  if FBreakMarks <> nil then
+  begin
+    SetLength(Codes, FBreakMarks.Count);
+    for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    begin
+      Code := ArdDbgCodeAt(TBreakMark(FBreakMarks[MarkIdx]).FileName,
+                           TBreakMark(FBreakMarks[MarkIdx]).Line);
+      if Code <> 0 then
+      begin
+        Codes[Count] := Code;
+        Inc(Count);
+      end;
+    end;
+  end;
+  SetLength(Codes, Count);
+  FArdSim.DbgSetBreakpoints(Codes);
+end;
+
+// Окно Watch при эмуляторе: выражения уходят эмулятору, значения - из
+// его ответа (имя или имя[индекс]; глобальные и локальные переменные)
+procedure TForm1.ArdDbgWatchRefresh;
+var
+  ExprIdx: Integer;
+  State, ValueText, Where: string;
+  Item: TListItem;
+
+  procedure SetSub(AItem: TListItem; ASubIdx: Integer; const AText: string);
+  begin
+    while AItem.SubItems.Count <= ASubIdx do
+      AItem.SubItems.Add('');
+    if AItem.SubItems[ASubIdx] <> AText then
+      AItem.SubItems[ASubIdx] := AText;
+  end;
+
+begin
+  FArdSim.LiveWatch := FWatchWnd.Visible;
+  FArdSim.DbgSetWatch(FWatchList);
+  State := '';
+  if not FArdSim.DbgAvailable then
+  begin
+    State := '<эмулятор: скетч собран без отладки - соберите заново>';
+    Where := 'Эмулятор работает без отладки';
+  end
+  else if FArdSim.DbgStopped then
+    Where := 'Эмулятор стоит: ' + FArdSim.DbgWhere
+  else
+    Where := 'Эмулятор работает: значения на ходу';
+  if FWatchWnd.lblWhere.Caption <> ' ' + Where then
+    FWatchWnd.lblWhere.Caption := ' ' + Where;
+  FWatchWnd.lvWatch.Items.BeginUpdate;
+  try
+    while FWatchWnd.lvWatch.Items.Count > FWatchList.Count do
+      FWatchWnd.lvWatch.Items.Delete(FWatchWnd.lvWatch.Items.Count - 1);
+    while FWatchWnd.lvWatch.Items.Count < FWatchList.Count do
+      FWatchWnd.lvWatch.Items.Add;
+    for ExprIdx := 0 to FWatchList.Count - 1 do
+    begin
+      Item := FWatchWnd.lvWatch.Items[ExprIdx];
+      if Item.Caption <> FWatchList[ExprIdx] then
+        Item.Caption := FWatchList[ExprIdx];
+      if State <> '' then
+        ValueText := State
+      else if not FArdSim.DbgWatchResult(ExprIdx, ValueText) then
+        ValueText := '<ждём ответа эмулятора>';
+      SetSub(Item, 0, ValueText);
+      SetSub(Item, 1, WatchCondGet(FWatchList[ExprIdx]));
+      SetSub(Item, 2, '');
+    end;
+  finally
+    FWatchWnd.lvWatch.Items.EndUpdate;
+  end;
+  WatchArrUpdate;
 end;
 
 // Палитре нужна другая высота (ряды вкладок, ряды кнопок): тулбар на ту же
@@ -63308,6 +63542,13 @@ begin
     FArdCancel := True;
     Exit;
   end;
+  // Эмулятор скетча (Arduino): остановить его
+  if (FDbgSession = nil) and not FRqDbgOn and ArdSimRunning and
+     (CurBuildKind = bkArduino) then
+  begin
+    FArdSim.StopAll;
+    Exit;
+  end;
   // Под отладчиком: процесс снимается, конец сеанса - в DbgExited
   if FDbgSession <> nil then
   begin
@@ -67908,7 +68149,9 @@ end;
 // стоит. Пока идёт свободно - нельзя, как в Delphi.
 function TForm1.DbgCanStep: Boolean;
 begin
-  if RqDbgHere then
+  if ArdDbgHere then
+    Result := True
+  else if RqDbgHere then
     Result := FRqDbgPaused
   else if FDbgSession <> nil then
     Result := FDbgSession.Paused
@@ -67951,6 +68194,11 @@ end;
 // есть номера строк
 procedure TForm1.DbgStepInto;
 begin
+  if ArdDbgHere then
+  begin
+    ArdDbgStep(ArdDbgInto);
+    Exit;
+  end;
   if RqDbgHere then
   begin
     RqDbgCommand(RqDbgModeInto, 0);
@@ -67958,6 +68206,8 @@ begin
   end;
   if FDbgSession = nil then
   begin
+    if ArdDbgLaunch(ArdDbgInto, 0) then
+      Exit;
     DbgLaunch(DbgStartStep);
     Exit;
   end;
@@ -67971,6 +68221,11 @@ end;
 // Step over (F8): до следующей строки, вызовы целиком
 procedure TForm1.DbgStepOver;
 begin
+  if ArdDbgHere then
+  begin
+    ArdDbgStep(ArdDbgOver);
+    Exit;
+  end;
   if RqDbgHere then
   begin
     RqDbgCommand(RqDbgModeOver, 0);
@@ -67978,6 +68233,8 @@ begin
   end;
   if FDbgSession = nil then
   begin
+    if ArdDbgLaunch(ArdDbgInto, 0) then
+      Exit;
     DbgLaunch(DbgStartStep);
     Exit;
   end;
@@ -68004,6 +68261,23 @@ begin
   LineIdx := CurrentLineIndex;
   if LineIdx < 0 then
     Exit;
+  // Эмулятор: до строки (на ходу - тоже)
+  if ArdDbgHere or ((FDbgSession = nil) and not FRqDbgOn and
+                    (CurBuildKind = bkArduino) and not ArdSimRunning) then
+  begin
+    ArdSimEnsure;
+    if ArdDbgCodeAt(FCurrentFileName, LineIdx) = 0 then
+    begin
+      LogComp('Run to cursor: ' + ExtractFileName(FCurrentFileName) +
+              ' - не файл скетча эмулятора или строка добавлена после сборки');
+      Exit;
+    end;
+    if ArdDbgHere then
+      FArdSim.DbgCommand(ArdDbgRunTo, ArdDbgCodeAt(FCurrentFileName, LineIdx))
+    else
+      ArdDbgLaunch(ArdDbgRunTo, ArdDbgCodeAt(FCurrentFileName, LineIdx));
+    Exit;
+  end;
   // RapidQ: точка строки по копии сеанса
   if RqDbgHere then
   begin
@@ -69503,6 +69777,12 @@ var
 begin
   Result := False;
   AValue := '';
+  if ArdDbgHere then
+  begin
+    if FArdSim.DbgStopped then
+      Result := FArdSim.DbgVarValue(AExpr, AValue);
+    Exit;
+  end;
   if (FDbgSession = nil) and FRqDbgOn then
   begin
     if FRqDbgPaused then
@@ -69544,6 +69824,7 @@ begin
     Exit;
   end;
   if not (FRqDbgOn and FRqDbgPaused) and
+     not (ArdDbgHere and FArdSim.DbgStopped) and
      ((FDbgSession = nil) or FDbgSession.Finished or
       not FDbgSession.Paused) then
   begin
@@ -80939,6 +81220,12 @@ var
 begin
   if (FWatchWnd = nil) or (FWatchList = nil) then
     Exit;
+  // Эмулятор скетча - значения из его ответа
+  if (FDbgSession = nil) and not FRqDbgOn and ArdSimRunning then
+  begin
+    ArdDbgWatchRefresh;
+    Exit;
+  end;
   // Отладчик RapidQ - свои значения (файл состояния)
   if (FDbgSession = nil) and FRqDbgOn then
   begin
@@ -81207,6 +81494,26 @@ var
   NameIdx: Integer;
   VarText: string;
 begin
+  // Эмулятор: локальные функции остановки
+  if ArdDbgHere then
+  begin
+    if not FArdSim.DbgStopped then
+    begin
+      ShowMessage('Watch: скетч в эмуляторе не стоит на остановке.');
+      Exit;
+    end;
+    Names := TStringList.Create;
+    try
+      FArdSim.DbgLocalNames(Names);
+      for NameIdx := 0 to Names.Count - 1 do
+        if FWatchList.IndexOf(Names[NameIdx]) < 0 then
+          FWatchList.Add(Names[NameIdx]);
+    finally
+      Names.Free;
+    end;
+    DbgWatchRefresh;
+    Exit;
+  end;
   // RapidQ: параметры и локальные из файла состояния
   if (FDbgSession = nil) and FRqDbgOn then
   begin
@@ -81476,8 +81783,8 @@ var
 begin
   if (FWatchWnd = nil) or (FWatchArrPanel = nil) then
     Exit;
-  // RapidQ: панели массива нет
-  if (FDbgSession = nil) and FRqDbgOn then
+  // RapidQ и эмулятор: панели массива нет
+  if (FDbgSession = nil) and (FRqDbgOn or ArdSimRunning) then
   begin
     WatchArrShow(False);
     Exit;
@@ -81783,9 +82090,25 @@ var
   CtrlDown: Boolean;
 begin
   Result := False;
+  CtrlDown := GetKeyState(VK_CONTROL) < 0;
+  // Эмулятор: Shift+F8 - до выхода из функции (Run until return)
+  if (AKey = VK_F8) and (GetKeyState(VK_SHIFT) < 0) and not CtrlDown and
+     (GetKeyState(VK_MENU) >= 0) and ArdDbgHere then
+  begin
+    ArdDbgStep(ArdDbgOut);
+    Result := True;
+    Exit;
+  end;
   if (GetKeyState(VK_SHIFT) < 0) or (GetKeyState(VK_MENU) < 0) then
     Exit;
-  CtrlDown := GetKeyState(VK_CONTROL) < 0;
+  // Эмулятор: F9 - дальше с остановки (Ctrl+F2 - в ProgramResetClick)
+  if (AKey = VK_F9) and not CtrlDown and ArdDbgHere then
+  begin
+    if FArdSim.DbgStopped then
+      FArdSim.DbgCommand(ArdDbgRun, 0);
+    Result := True;
+    Exit;
+  end;
   if (AKey = VK_F9) and not CtrlDown then
   begin
     if (btnCompileRun <> nil) and btnCompileRun.Enabled then
@@ -81881,7 +82204,7 @@ begin
       ((FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used or
        (Length(FWindows[FWindowsIndex].Bookmarks) = 0)) and
       ((((FDbgSession = nil) or FDbgSession.Finished) and
-        (FRqDbgExe = '')) or (FCurrentFileName = ''))) then
+        (FRqDbgExe = '') and not ArdSimRunning) or (FCurrentFileName = ''))) then
     Exit;
   EdApi.GetSel(Sel);
   FDbgPreMin := Sel.cpMin;
@@ -82021,7 +82344,7 @@ begin
   // Правка за сеанс - для перевода строк .map в нынешние номера и обратно.
   // RapidQ - с отладочной сборки: номера точек копии - по её тексту.
   if (((FDbgSession <> nil) and not FDbgSession.Finished) or
-      (FRqDbgExe <> '')) and (FCurrentFileName <> '') then
+      (FRqDbgExe <> '') or ArdSimRunning) and (FCurrentFileName <> '') then
   begin
     if FDbgEdits = nil then
       FDbgEdits := TList.Create;

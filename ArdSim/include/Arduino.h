@@ -14,6 +14,7 @@
 #include <vector>
 #endif
 #include "WString.h"
+#include "ardsim_debug.h"
 #include "avr/pgmspace.h"
 
 typedef uint8_t byte;

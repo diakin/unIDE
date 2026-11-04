@@ -10,8 +10,15 @@ unit ArdSimHost;
 //    смещение 0       заголовок, 32 слова по 4 байта (индексы Hdr*)
 //    смещение 128     экран 320 строк по 480 точек, RGB565 (как у UTFT)
 //    смещение 307328  кольцо вывода Serial, 65536 байт
+//    смещение 372864  область отладчика (индексы Dbg*, ArdSim\src\sim_internal.h)
 //  Сигналы (обороты, гармоники, ротор) задаются в ardsim.ini рядом с exe:
 //  эмулятор перечитывает файл, когда тот меняется.
+//
+//  Отладчик: ardprep вставляет в скетч SIM_STEP перед каждым оператором,
+//  эмулятор останавливается на точках останова (F5 в редакторе), шагает
+//  (F7, F8, Shift+F8, F4) и отдаёт значения переменных (окно Watch). Номер
+//  строки в общей памяти - (номер файла shl 20) or строка, файлы - .ino
+//  папки скетча (главный - 0, остальные по имени).
 //
 //  Отдельный процесс, а не DLL: скетч может писать за границы массивов, и
 //  тогда упадёт только эмулятор, а не unIDE с несохранёнными файлами.
@@ -39,8 +46,20 @@ const
   ArdSimKeyCols = 4;
   ArdSimKeyCount = ArdSimKeyRows * ArdSimKeyCols;
 
+  // Команды отладчика эмулятора (SimCmd* в ArdSim\src\sim_internal.h).
+  // Пауза, шаг и Run to cursor во время работы - остановка на ближайшем
+  // операторе (Run to cursor - на строке)
+  ArdDbgPause = 1;
+  ArdDbgRun = 2;
+  ArdDbgInto = 3;
+  ArdDbgOver = 4;
+  ArdDbgOut = 5;
+  ArdDbgRunTo = 6;
+
 type
   TArdSimTextEvent = procedure(Sender: TObject; const AText: string) of object;
+  // Строки точек останова: (номер файла shl 20) or строка с 1
+  TArdDbgCodes = array of Cardinal;
 
   TArdSimPanel = class;
 
@@ -114,6 +133,36 @@ type
     FOnOpenFile: TArdSimTextEvent;
     FOnNeedSketch: TNotifyEvent;
     FOnStateChange: TNotifyEvent;
+    // Отладчик: последние StopSeq и InfoSeq эмулятора, его ответ (строки
+    // "S/F/L/G/W<TAB>..."), пути .ino по номерам, отправленные точки и
+    // выражения Watch (для сравнения), команда при запуске
+    FDbgStopSeq: Cardinal;
+    FDbgInfoSeq: Cardinal;
+    FDbgStopped: Boolean;
+    FDbgStepping: Boolean;
+    FDbgInfo: TStringList;
+    FDbgFiles: TStringList;
+    FDbgBreaks: string;
+    FDbgWatch: string;
+    FDbgStartCmd: Integer;
+    FDbgStartArg: Cardinal;
+    FLiveWatch: Boolean;
+    FLiveTick: Cardinal;
+    FBreakTick: Cardinal;
+    FOnDbgStop: TNotifyEvent;
+    FOnDbgResume: TNotifyEvent;
+    FOnDbgInfo: TNotifyEvent;
+    FOnDbgNeedBreaks: TNotifyEvent;
+    function DbgHeader(AIndex: Integer): Cardinal;
+    procedure SetDbgHeader(AIndex: Integer; AValue: Cardinal);
+    function DbgArea: PAnsiChar;
+    procedure DbgReset;
+    procedure DbgEnd;
+    procedure PollDebug;
+    function ReadDbgText(AOffset, AMaxBytes: Integer): string;
+    procedure ReadDbgInfo;
+    function DbgLine(const APrefix: string; var ARest: string): Boolean;
+    procedure DbgStatus;
     procedure SetShowToolbar(AValue: Boolean);
     function GetShowToolbar: Boolean;
     procedure BtnBuildClick(Sender: TObject);
@@ -157,6 +206,41 @@ type
     procedure RunSim;
     procedure OpenIni;
     procedure OpenArdSimWindow;
+
+    // ---- отладчик
+    // Эмулятор идёт и скетч собран с отладкой (SIM_STEP)
+    function DbgAvailable: Boolean;
+    // Скетч стоит (точка, шаг, пауза) и ждёт команды
+    function DbgStopped: Boolean;
+    // Шаг отдан, скетч ещё не встал
+    function DbgStepping: Boolean;
+    // Строка остановки: (файл shl 20) or строка с 1
+    function DbgStopCode: Cardinal;
+    procedure DbgCommand(ACode: Integer; AArg: Cardinal);
+    // Команда сразу после запуска (F7/F8/F4, когда эмулятор не шёл)
+    procedure SetStartCommand(ACode: Integer; AArg: Cardinal);
+    procedure DbgSetBreakpoints(const ACodes: TArdDbgCodes);
+    // Номер .ino скетча, -1 - не файл скетча
+    function DbgFileIndex(const AFileName: string): Integer;
+    function DbgFileName(AIndex: Integer): string;
+    // Выражения окна Watch: значения придут ответом (OnDbgInfo)
+    procedure DbgSetWatch(AExprs: TStrings);
+    // Значение выражения AIndex из ответа; False - ответа нет
+    function DbgWatchResult(AIndex: Integer; var AValue: string): Boolean;
+    // Переменная по имени: локальная функции остановки, потом глобальная
+    function DbgVarValue(const AName: string; var AValue: string): Boolean;
+    procedure DbgLocalNames(ANames: TStrings);
+    // Функция остановки и стек вызовов ("loop <- ...")
+    function DbgWhere: string;
+    // Окно Watch видно: значения обновляются и пока скетч идёт
+    property LiveWatch: Boolean read FLiveWatch write FLiveWatch;
+    property OnDbgStop: TNotifyEvent read FOnDbgStop write FOnDbgStop;
+    property OnDbgResume: TNotifyEvent read FOnDbgResume write FOnDbgResume;
+    property OnDbgInfo: TNotifyEvent read FOnDbgInfo write FOnDbgInfo;
+    // Раз в 250 мс, пока эмулятор идёт, и перед запуском: Unit1 отдаёт
+    // точки останова (DbgSetBreakpoints)
+    property OnDbgNeedBreaks: TNotifyEvent read FOnDbgNeedBreaks write FOnDbgNeedBreaks;
+
     property ShowToolbar: Boolean read GetShowToolbar write SetShowToolbar;
     // Сборка или эмулятор запустились / закончились
     property OnStateChange: TNotifyEvent read FOnStateChange write FOnStateChange;
@@ -203,7 +287,7 @@ implementation
 
 const
   HostMagic = $4D495341;    // 'ASIM'
-  HostLayout = 1;
+  HostLayout = 2;
   HdrMagic = 0;
   HdrLayout = 1;
   HdrHostPid = 2;
@@ -219,7 +303,32 @@ const
   HeaderBytes = 128;
   ScreenBytes = ArdSimScreenW * ArdSimScreenH * 2;
   SerialRingBytes = 65536;
-  SharedBytes = HeaderBytes + ScreenBytes + SerialRingBytes;
+  // Область отладчика (sim_internal.h): заголовок 64 слова, точки
+  // останова, выражения Watch, пути .ino, ответ эмулятора
+  DbgOffset = HeaderBytes + ScreenBytes + SerialRingBytes;
+  DbgCmdSeq = 0;
+  DbgCmdCode = 1;
+  DbgCmdArg = 2;
+  DbgCmdDone = 3;
+  DbgState = 4;
+  DbgStopCodeIdx = 5;
+  DbgStopSeq = 6;
+  DbgBpVersion = 7;
+  DbgBpCount = 8;
+  DbgWatchSeq = 9;
+  DbgInfoSeq = 10;
+  DbgInfoBytes = 11;
+  DbgInstrumented = 12;
+  DbgMaxBreaks = 1024;
+  DbgBreakOffset = 256;
+  DbgWatchReqOffset = 4352;
+  DbgWatchReqBytes = 4096;
+  DbgFilesOffset = 8448;
+  DbgFilesBytes = 4096;
+  DbgInfoOffset = 12544;
+  DbgInfoMax = 65536;
+  DbgAreaBytes = DbgInfoOffset + DbgInfoMax;
+  SharedBytes = DbgOffset + DbgAreaBytes;
   SerialMaxChars = 60000;
 
   // Корпус: зелёные поля вокруг экрана 480x320, точек. Обычно
@@ -735,6 +844,8 @@ begin
   FView := nil;
   {$ENDIF}
   SetLength(FPixels, ArdSimScreenW * ArdSimScreenH);
+  FDbgInfo := TStringList.Create;
+  FDbgFiles := TStringList.Create;
 
   FBar := TUiPanel.Create(Self);
   FBar.Parent := Self;
@@ -785,6 +896,8 @@ begin
   FTimer.Enabled := False;
   StopAll;
   inherited Destroy;
+  FDbgInfo.Free;
+  FDbgFiles.Free;
 end;
 
 procedure TArdSimPanel.Resize;
@@ -1068,6 +1181,7 @@ begin
   FreeAndNil(FBuild);
   if ExitCode <> 0 then
   begin
+    FDbgStartCmd := 0;
     SetStatus('Сборка не удалась, см. журнал');
     Log('ArdSim: сборка не удалась, код ' + IntToStr(ExitCode));
     UpdateButtons;
@@ -1128,6 +1242,18 @@ begin
   SetHeader(HdrHostPid, GetCurrentProcessId);
   SetHeader(HdrLayout, HostLayout);
   SetHeader(HdrMagic, HostMagic);
+  DbgReset;
+  // точки - до запуска: остановка возможна и в setup()
+  if Assigned(FOnDbgNeedBreaks) then
+    FOnDbgNeedBreaks(Self);
+  if FDbgStartCmd <> 0 then
+  begin
+    SetDbgHeader(DbgCmdCode, Cardinal(FDbgStartCmd));
+    SetDbgHeader(DbgCmdArg, FDbgStartArg);
+    SetDbgHeader(DbgCmdSeq, 1);
+    FDbgStepping := True;
+    FDbgStartCmd := 0;
+  end;
   FScreenVersion := 0;
   FSerialRead := 0;
   FHasPicture := False;
@@ -1183,6 +1309,7 @@ begin
   end;
   FreeAndNil(FSim);
   FreeShared;
+  DbgEnd;
   SetStatus('Остановлен');
   UpdateButtons;
 end;
@@ -1276,13 +1403,23 @@ begin
     FSerialRead := Written;
     AppendSerial(Text);
   end;
+  PollDebug;
+  if FSim = nil then
+    Exit;   // остановлен из обработчика события отладчика
   if not FSim.Running then
   begin
     ExitCode := FSim.ExitCode;
     FreeAndNil(FSim);
     FreeShared;
+    DbgEnd;
     if ExitCode = 0 then
       SetStatus('Эмулятор завершился')
+    else if ExitCode = 4 then
+    begin
+      SetStatus('Эмулятор собран старой версией ArdSim - нужна сборка');
+      Log('ArdSim: ' + ExtractFileName(FSimExe) + ' собран прежней версией ' +
+          'ArdSim (другая раскладка общей памяти) - соберите заново (Build)');
+    end
     else
     begin
       SetStatus('Эмулятор завершился, код ' + IntToStr(ExitCode));
@@ -1292,6 +1429,395 @@ begin
     UpdateButtons;
   end;
   {$ENDIF}
+end;
+
+// ---------------------------------------------------------------- отладчик
+
+function TArdSimPanel.DbgArea: PAnsiChar;
+begin
+  Result := nil;
+  {$IFDEF MSWINDOWS}
+  if FView <> nil then
+    Result := PAnsiChar(FView) + DbgOffset;
+  {$ENDIF}
+end;
+
+function TArdSimPanel.DbgHeader(AIndex: Integer): Cardinal;
+begin
+  if DbgArea <> nil then
+    Result := PCardinal(DbgArea + AIndex * 4)^
+  else
+    Result := 0;
+end;
+
+procedure TArdSimPanel.SetDbgHeader(AIndex: Integer; AValue: Cardinal);
+begin
+  if DbgArea <> nil then
+    PCardinal(DbgArea + AIndex * 4)^ := AValue;
+end;
+
+// Новый запуск: общая память только что обнулена
+procedure TArdSimPanel.DbgReset;
+begin
+  FDbgStopSeq := 0;
+  FDbgInfoSeq := 0;
+  FDbgStopped := False;
+  FDbgStepping := False;
+  FDbgInfo.Clear;
+  FDbgFiles.Clear;
+  FDbgBreaks := #1;    // не совпадёт ни с одним списком: отправить
+  FDbgWatch := #1;
+  FLiveTick := GetTickCount;
+  FBreakTick := GetTickCount;
+end;
+
+// Эмулятор закончил или снят: строки остановки больше нет
+procedure TArdSimPanel.DbgEnd;
+var
+  WasStopped: Boolean;
+begin
+  WasStopped := FDbgStopped;
+  FDbgStopped := False;
+  FDbgStepping := False;
+  FDbgInfo.Clear;
+  if Assigned(FOnDbgResume) then
+    FOnDbgResume(Self);
+  if WasStopped then
+    Log('ArdSim: отладка закончилась');
+end;
+
+function TArdSimPanel.ReadDbgText(AOffset, AMaxBytes: Integer): string;
+var
+  Source: PAnsiChar;
+  TextLen: Integer;
+begin
+  Result := '';
+  if DbgArea = nil then
+    Exit;
+  Source := DbgArea + AOffset;
+  TextLen := 0;
+  while (TextLen < AMaxBytes) and (Source[TextLen] <> #0) do
+    Inc(TextLen);
+  SetString(Result, Source, TextLen);
+end;
+
+// Ответ эмулятора. Пишется под счётчиком InfoSeq: нечётный - пишет;
+// изменился за время чтения - прочитать в следующий раз
+procedure TArdSimPanel.ReadDbgInfo;
+var
+  SeqBefore, TextLen: Cardinal;
+  Text: string;
+begin
+  SeqBefore := DbgHeader(DbgInfoSeq);
+  if Odd(SeqBefore) then
+    Exit;
+  TextLen := DbgHeader(DbgInfoBytes);
+  if TextLen >= DbgInfoMax then
+    TextLen := DbgInfoMax - 1;
+  SetString(Text, DbgArea + DbgInfoOffset, TextLen);
+  if DbgHeader(DbgInfoSeq) <> SeqBefore then
+    Exit;
+  FDbgInfoSeq := SeqBefore;
+  FDbgInfo.Text := StringReplace(Text, #10, #13#10, [rfReplaceAll]);
+end;
+
+procedure TArdSimPanel.DbgStatus;
+var
+  Code: Cardinal;
+begin
+  Code := DbgHeader(DbgStopCodeIdx);
+  SetStatus('Стоит: ' + ExtractFileName(DbgFileName(Code shr 20)) +
+            ', строка ' + IntToStr(Code and $FFFFF) + ' - ' + DbgWhere);
+end;
+
+procedure TArdSimPanel.PollDebug;
+var
+  FilesText: string;
+begin
+  if DbgArea = nil then
+    Exit;
+  if (FDbgFiles.Count = 0) and (DbgHeader(DbgInstrumented) = 1) then
+  begin
+    FilesText := ReadDbgText(DbgFilesOffset, DbgFilesBytes);
+    FDbgFiles.Text := StringReplace(FilesText, #10, #13#10, [rfReplaceAll]);
+  end;
+  // точки останова (правки двигают строки) - раз в 250 мс
+  if (GetTickCount - FBreakTick >= 250) and Assigned(FOnDbgNeedBreaks) then
+  begin
+    FBreakTick := GetTickCount;
+    FOnDbgNeedBreaks(Self);
+  end;
+  if DbgHeader(DbgStopSeq) <> FDbgStopSeq then
+  begin
+    FDbgStopSeq := DbgHeader(DbgStopSeq);
+    if DbgHeader(DbgState) = 1 then
+    begin
+      ReadDbgInfo;
+      FDbgStopped := True;
+      FDbgStepping := False;
+      DbgStatus;
+      if Assigned(FOnDbgStop) then
+        FOnDbgStop(Self);
+      Exit;
+    end;
+  end;
+  if FDbgStopped and (DbgHeader(DbgState) = 0) then
+  begin
+    FDbgStopped := False;
+    SetStatus('Работает: ' + ExtractFileName(FSketchFile));
+    if Assigned(FOnDbgResume) then
+      FOnDbgResume(Self);
+  end;
+  if (DbgHeader(DbgInfoSeq) <> FDbgInfoSeq) and not Odd(DbgHeader(DbgInfoSeq)) then
+  begin
+    ReadDbgInfo;
+    if Assigned(FOnDbgInfo) then
+      FOnDbgInfo(Self);
+  end;
+  // окно Watch открыто - значения и на ходу, раз в 500 мс
+  if FLiveWatch and not FDbgStopped and (FDbgWatch <> #1) and (FDbgWatch <> '') and
+     (GetTickCount - FLiveTick >= 500) then
+  begin
+    FLiveTick := GetTickCount;
+    SetDbgHeader(DbgWatchSeq, DbgHeader(DbgWatchSeq) + 1);
+  end;
+end;
+
+function TArdSimPanel.DbgAvailable: Boolean;
+begin
+  Result := Running and (DbgHeader(DbgInstrumented) = 1);
+end;
+
+function TArdSimPanel.DbgStopped: Boolean;
+begin
+  Result := Running and FDbgStopped;
+end;
+
+function TArdSimPanel.DbgStepping: Boolean;
+begin
+  Result := Running and FDbgStepping;
+end;
+
+function TArdSimPanel.DbgStopCode: Cardinal;
+begin
+  Result := DbgHeader(DbgStopCodeIdx);
+end;
+
+procedure TArdSimPanel.DbgCommand(ACode: Integer; AArg: Cardinal);
+begin
+  if not Running then
+    Exit;
+  SetDbgHeader(DbgCmdCode, Cardinal(ACode));
+  SetDbgHeader(DbgCmdArg, AArg);
+  SetDbgHeader(DbgCmdSeq, DbgHeader(DbgCmdSeq) + 1);
+  FDbgStepping := (ACode = ArdDbgInto) or (ACode = ArdDbgOver) or
+                  (ACode = ArdDbgOut) or (ACode = ArdDbgPause);
+  if FDbgStopped and (ACode <> ArdDbgPause) then
+  begin
+    // строка остановки гаснет сразу, не дожидаясь эмулятора
+    FDbgStopped := False;
+    SetStatus('Работает: ' + ExtractFileName(FSketchFile));
+    if Assigned(FOnDbgResume) then
+      FOnDbgResume(Self);
+  end;
+end;
+
+procedure TArdSimPanel.SetStartCommand(ACode: Integer; AArg: Cardinal);
+begin
+  FDbgStartCmd := ACode;
+  FDbgStartArg := AArg;
+end;
+
+procedure TArdSimPanel.DbgSetBreakpoints(const ACodes: TArdDbgCodes);
+var
+  Text: string;
+  CodeIdx, Count: Integer;
+  List: PCardinal;
+begin
+  if DbgArea = nil then
+    Exit;
+  Text := '';
+  for CodeIdx := 0 to High(ACodes) do
+    Text := Text + IntToStr(ACodes[CodeIdx]) + ',';
+  if Text = FDbgBreaks then
+    Exit;
+  FDbgBreaks := Text;
+  Count := Length(ACodes);
+  if Count > DbgMaxBreaks then
+    Count := DbgMaxBreaks;
+  List := PCardinal(DbgArea + DbgBreakOffset);
+  for CodeIdx := 0 to Count - 1 do
+  begin
+    List^ := ACodes[CodeIdx];
+    Inc(List);
+  end;
+  SetDbgHeader(DbgBpCount, Cardinal(Count));
+  SetDbgHeader(DbgBpVersion, DbgHeader(DbgBpVersion) + 1);
+end;
+
+function ArdSimCompareNames(List: TStringList; Index1, Index2: Integer): Integer;
+begin
+  Result := CompareStr(List[Index1], List[Index2]);
+end;
+
+function TArdSimPanel.DbgFileIndex(const AFileName: string): Integer;
+var
+  FileIdx: Integer;
+  Search: TSearchRec;
+  Others: TStringList;
+  Dir: string;
+begin
+  Result := -1;
+  if AFileName = '' then
+    Exit;
+  if FDbgFiles.Count > 0 then
+  begin
+    for FileIdx := 0 to FDbgFiles.Count - 1 do
+      if CompareText(ExpandFileName(FDbgFiles[FileIdx]),
+                     ExpandFileName(AFileName)) = 0 then
+      begin
+        Result := FileIdx;
+        Exit;
+      end;
+    Exit;
+  end;
+  // эмулятор ещё не сказал: то же правило, что у ardprep
+  if FSketchFile = '' then
+    Exit;
+  if CompareText(ExpandFileName(FSketchFile), ExpandFileName(AFileName)) = 0 then
+  begin
+    Result := 0;
+    Exit;
+  end;
+  Dir := ExtractFilePath(ExpandFileName(FSketchFile));
+  if CompareText(ExtractFilePath(ExpandFileName(AFileName)), Dir) <> 0 then
+    Exit;
+  Others := TStringList.Create;
+  try
+    if FindFirst(Dir + '*.ino', faAnyFile, Search) = 0 then
+    begin
+      repeat
+        if (CompareText(Search.Name, ExtractFileName(FSketchFile)) <> 0) and
+           (CompareText(ExtractFileExt(Search.Name), '.ino') = 0) then
+          Others.Add(Search.Name);
+      until FindNext(Search) <> 0;
+      FindClose(Search);
+    end;
+    Others.CustomSort(ArdSimCompareNames);
+    for FileIdx := 0 to Others.Count - 1 do
+      if CompareText(Others[FileIdx], ExtractFileName(AFileName)) = 0 then
+      begin
+        Result := FileIdx + 1;
+        Exit;
+      end;
+  finally
+    Others.Free;
+  end;
+end;
+
+function TArdSimPanel.DbgFileName(AIndex: Integer): string;
+begin
+  if (AIndex >= 0) and (AIndex < FDbgFiles.Count) then
+    Result := FDbgFiles[AIndex]
+  else if AIndex = 0 then
+    Result := FSketchFile
+  else
+    Result := '';
+end;
+
+procedure TArdSimPanel.DbgSetWatch(AExprs: TStrings);
+var
+  Text: string;
+  ExprIdx: Integer;
+  Target: PAnsiChar;
+begin
+  if DbgArea = nil then
+    Exit;
+  Text := '';
+  for ExprIdx := 0 to AExprs.Count - 1 do
+    Text := Text + AExprs[ExprIdx] + #10;
+  if Length(Text) >= DbgWatchReqBytes then
+    Text := Copy(Text, 1, DbgWatchReqBytes - 1);
+  if Text = FDbgWatch then
+    Exit;
+  FDbgWatch := Text;
+  Target := DbgArea + DbgWatchReqOffset;
+  if Text <> '' then
+    Move(Text[1], Target^, Length(Text));
+  Target[Length(Text)] := #0;
+  SetDbgHeader(DbgWatchSeq, DbgHeader(DbgWatchSeq) + 1);
+end;
+
+// Строка ответа "APrefix..." - в ARest остаток после префикса
+function TArdSimPanel.DbgLine(const APrefix: string; var ARest: string): Boolean;
+var
+  LineIdx: Integer;
+begin
+  Result := False;
+  for LineIdx := 0 to FDbgInfo.Count - 1 do
+    if Copy(FDbgInfo[LineIdx], 1, Length(APrefix)) = APrefix then
+    begin
+      ARest := Copy(FDbgInfo[LineIdx], Length(APrefix) + 1, MaxInt);
+      Result := True;
+      Exit;
+    end;
+end;
+
+function TArdSimPanel.DbgWatchResult(AIndex: Integer; var AValue: string): Boolean;
+var
+  Rest: string;
+begin
+  AValue := '';
+  Result := DbgLine('W'#9 + IntToStr(AIndex) + #9, Rest);
+  if not Result then
+    Exit;
+  if Copy(Rest, 1, 1) = '=' then
+    AValue := Copy(Rest, 2, MaxInt)
+  else if Rest = '?' then
+    AValue := '<нет такой переменной: Watch эмулятора показывает глобальные ' +
+              'и локальные переменные скетча, имя или имя[индекс]>'
+  else
+    AValue := '<не разобрано или индекс вне массива>';
+end;
+
+function TArdSimPanel.DbgVarValue(const AName: string; var AValue: string): Boolean;
+begin
+  Result := DbgLine('L'#9 + AName + #9, AValue) or DbgLine('G'#9 + AName + #9, AValue);
+end;
+
+procedure TArdSimPanel.DbgLocalNames(ANames: TStrings);
+var
+  LineIdx: Integer;
+  Text: string;
+begin
+  for LineIdx := 0 to FDbgInfo.Count - 1 do
+  begin
+    Text := FDbgInfo[LineIdx];
+    if Copy(Text, 1, 2) <> 'L'#9 then
+      Continue;
+    Text := Copy(Text, 3, MaxInt);
+    ANames.Add(Copy(Text, 1, Pos(#9, Text) - 1));
+  end;
+end;
+
+function TArdSimPanel.DbgWhere: string;
+var
+  LineIdx: Integer;
+  Text: string;
+begin
+  Result := '';
+  for LineIdx := 0 to FDbgInfo.Count - 1 do
+  begin
+    Text := FDbgInfo[LineIdx];
+    if Copy(Text, 1, 2) <> 'F'#9 then
+      Continue;
+    Text := Copy(Text, 3, MaxInt);
+    Text := Copy(Text, 1, Pos(#9, Text) - 1);
+    if Result = '' then
+      Result := Text
+    else
+      Result := Result + ' <- ' + Text;
+  end;
 end;
 
 procedure TArdSimPanel.TimerTick(Sender: TObject);
