@@ -1119,6 +1119,7 @@ type
     procedure RightPanelBtnClick(Sender: TObject);
     // Окно Emulator (ArdSimHost)
     procedure ArdSimShowClick(Sender: TObject);
+    procedure ArdFontViewerClick(Sender: TObject);
     procedure ArdSimEnsure;
     procedure ArdSimStateChange(Sender: TObject);
     procedure EmuButtonClick(Sender: TObject);
@@ -4584,6 +4585,7 @@ var
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
     DlgFileCompare, // сравнение двух файлов (File - Compare Files...)
+    DlgFontViewer, // просмотр шрифтов UTFT (Arduino - Font Viewer)
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
     DlgChooseList, // выбор строки из списка - ChooseFromList
@@ -27792,6 +27794,43 @@ procedure TForm1.ArdSimShowClick(Sender: TObject);
 begin
   ArdSimEnsure;
   FArdSimWin.ShowAtRight;
+end;
+
+// Arduino - Font Viewer (UTFT): шрифты UTFT. Папка по умолчанию -
+// libraries\UTFT в скетчбуке, в папке библиотек или у Arduino IDE; дальше
+// окно помнит последнюю папку (editor.ini, [FontViewer])
+procedure TForm1.ArdFontViewerClick(Sender: TObject);
+var
+  Settings: TArdSettings;
+  Candidates: TStringList;
+  Folder: string;
+  Index: Integer;
+begin
+  Settings := ArdCurSettings;
+  Candidates := TStringList.Create;
+  try
+    if Settings.SketchPath <> '' then
+      Candidates.Add(IncludeTrailingPathDelimiter(Settings.SketchPath) +
+        'libraries' + PathDelim + 'UTFT');
+    if Settings.LibPath <> '' then
+      Candidates.Add(IncludeTrailingPathDelimiter(Settings.LibPath) + 'UTFT');
+    if Settings.IdePath <> '' then
+      Candidates.Add(IncludeTrailingPathDelimiter(Settings.IdePath) +
+        'libraries' + PathDelim + 'UTFT');
+    if Settings.Arduino15Path <> '' then
+      Candidates.Add(IncludeTrailingPathDelimiter(Settings.Arduino15Path) +
+        'libraries' + PathDelim + 'UTFT');
+    Folder := '';
+    for Index := 0 to Candidates.Count - 1 do
+      if DirectoryExists(Candidates[Index]) then
+      begin
+        Folder := Candidates[Index];
+        Break;
+      end;
+  finally
+    Candidates.Free;
+  end;
+  ShowFontViewer(Self, SettingsFileName, Folder, OpenNamedFile);
 end;
 
 // Окно эмулятора создано (ещё не показано). Кнопки панели прибора
@@ -70223,6 +70262,9 @@ begin
   NewItem('Emulator (ArdSim)', ArdSimShowClick, False).Hint :=
     'Окно эмулятора: скетч, собранный под ПК (ArdSim), экран прибора, ' +
     'клавиатура и Serial';
+  NewItem('Font Viewer (UTFT)...', ArdFontViewerClick, False).Hint :=
+    'Шрифты UTFT (.c из libraries\UTFT): образец, имя, размер символа в ' +
+    'точках; окно шириной 480 точек, как экран прибора';
   NewItem('-', nil, False);
   // В конце меню (после пунктов из .dfm): свой компилятор для ПК
   InsertIdx := mArduino.Count;

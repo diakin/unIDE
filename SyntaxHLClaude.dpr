@@ -58,6 +58,7 @@ uses
   TextMerge in 'TextMerge.pas',
   TextDiff in 'TextDiff.pas',
   DlgFileCompare in 'DlgFileCompare.pas',
+  DlgFontViewer in 'DlgFontViewer.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
   DelphiOpts in 'DelphiOpts.pas',
