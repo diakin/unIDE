@@ -1119,6 +1119,10 @@ type
     procedure RightPanelBtnClick(Sender: TObject);
     // Окно Emulator (ArdSimHost)
     procedure ArdSimShowClick(Sender: TObject);
+    procedure ArdSimEnsure;
+    procedure ArdSimStateChange(Sender: TObject);
+    procedure EmuButtonClick(Sender: TObject);
+    function MakeEmuButton(const AHint: string; ATag: Integer): TUiIconButton;
     procedure ArdSimPlaced(Sender: TObject);
     procedure ArdSimHidden(Sender: TObject);
     procedure ArdSimNeedSketch(Sender: TObject);
@@ -2100,6 +2104,13 @@ type
     // Ширина правой панели до того, как её растянули под окно эмулятора;
     // -1 - не растягивали
     FArdSimKeepWidth: Integer;
+    // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
+    // Program reset; создаются в FormCreate
+    btnEmuBuild: TUiIconButton;
+    btnEmuRun: TUiIconButton;
+    btnEmuStop: TUiIconButton;
+    btnEmuIni: TUiIconButton;
+    btnEmuWindow: TUiIconButton;
     // Кнопки свернуть / развернуть правую панель (справа в строке вкладок)
     // и её состояние: свёрнута - видны только разделитель и кнопка [];
     // ширина до сворачивания - в FRightPanelWidth (она и пишется в ini)
@@ -7011,6 +7022,10 @@ const
   IconStepOver  = 14;
   IconArdVerify = 15;   // Arduino: Verify
   IconArdUpload = 16;   // Arduino: Upload
+  IconEmuBuild  = 17;   // эмулятор (ArdSim): собрать и запустить
+  IconEmuRun    = 18;   // эмулятор: запустить без сборки
+  IconEmuIni    = 19;   // эмулятор: ardsim.ini
+  IconEmuWindow = 20;   // эмулятор: отдельное окно ArdSim
 
   // Лента из ресурсов программы. Нет ресурса - лента остаётся пустой, и
   // кнопки останутся без значков, но программа запустится.
@@ -26585,6 +26600,16 @@ begin
   // Значки тулбара и ряда Delphi: ленты 24x24 для светлой и тёмной темы
   // (см. SetToolIcon). У каждой кнопки остаются свои копии, ленты после
   // этого не нужны.
+  // Кнопки эмулятора (ряд Project у Arduino): значки ставятся ниже
+  btnEmuBuild := MakeEmuButton('Эмулятор: собрать скетч под ПК (ArdSim) ' +
+    'и запустить в окне эмулятора', 0);
+  btnEmuRun := MakeEmuButton('Эмулятор: запустить собранный скетч без ' +
+    'сборки', 1);
+  btnEmuStop := MakeEmuButton('Эмулятор: остановить', 2);
+  btnEmuIni := MakeEmuButton('Эмулятор: ardsim.ini - сигналы, тахометр, ' +
+    'модель ротора (перечитывается после сохранения)', 3);
+  btnEmuWindow := MakeEmuButton('Эмулятор: отдельное окно ArdSim с панелью ' +
+    'сигналов', 4);
   IconsLight := TBitmap.Create;
   IconsDark := TBitmap.Create;
   try
@@ -26607,6 +26632,11 @@ begin
     SetToolIcon(btnStepOver, IconStepOver, IconsLight, IconsDark);
     SetToolIcon(btnArdVerify, IconArdVerify, IconsLight, IconsDark);
     SetToolIcon(btnArdUpload, IconArdUpload, IconsLight, IconsDark);
+    SetToolIcon(btnEmuBuild, IconEmuBuild, IconsLight, IconsDark);
+    SetToolIcon(btnEmuRun, IconEmuRun, IconsLight, IconsDark);
+    SetToolIcon(btnEmuStop, IconReset, IconsLight, IconsDark);
+    SetToolIcon(btnEmuIni, IconEmuIni, IconsLight, IconsDark);
+    SetToolIcon(btnEmuWindow, IconEmuWindow, IconsLight, IconsDark);
   finally
     IconsDark.Free;
     IconsLight.Free;
@@ -27747,18 +27777,80 @@ end;
 // скетча, собранного ArdSim
 procedure TForm1.ArdSimShowClick(Sender: TObject);
 begin
-  if FArdSimWin = nil then
-  begin
-    FArdSimWin := TArdSimWindow.CreateFor(Self);
-    FArdSim := FArdSimWin.Panel;
-    FArdSim.OnNeedSketch := ArdSimNeedSketch;
-    FArdSim.OnLog := ArdSimLog;
-    FArdSim.OnOpenFile := ArdSimOpenFile;
-    FArdSimWin.OnPlaced := ArdSimPlaced;
-    FArdSimWin.OnHidden := ArdSimHidden;
-    FArdSimKeepWidth := -1;
-  end;
+  ArdSimEnsure;
   FArdSimWin.ShowAtRight;
+end;
+
+// Окно эмулятора создано (ещё не показано). Кнопки панели прибора
+// спрятаны: они - в ряду Project (btnEmu*)
+procedure TForm1.ArdSimEnsure;
+begin
+  if FArdSimWin <> nil then
+    Exit;
+  FArdSimWin := TArdSimWindow.CreateFor(Self);
+  FArdSim := FArdSimWin.Panel;
+  FArdSim.ShowToolbar := False;
+  FArdSim.OnNeedSketch := ArdSimNeedSketch;
+  FArdSim.OnLog := ArdSimLog;
+  FArdSim.OnOpenFile := ArdSimOpenFile;
+  FArdSim.OnStateChange := ArdSimStateChange;
+  FArdSimWin.OnPlaced := ArdSimPlaced;
+  FArdSimWin.OnHidden := ArdSimHidden;
+  FArdSimKeepWidth := -1;
+  ArdSimStateChange(FArdSim);
+end;
+
+function TForm1.MakeEmuButton(const AHint: string; ATag: Integer): TUiIconButton;
+begin
+  Result := TUiIconButton.Create(Self);
+  Result.Parent := btnArdVerify.Parent;
+  Result.SetBounds(btnArdVerify.Left, btnArdVerify.Top, btnArdVerify.Width,
+                   btnArdVerify.Height);
+  Result.Hint := AHint;
+  Result.ShowHint := True;
+  Result.Visible := False;
+  Result.Tag := ATag;
+  Result.OnClick := EmuButtonClick;
+end;
+
+// Кнопки эмулятора: 0 сборка и запуск, 1 запуск, 2 стоп, 3 ardsim.ini,
+// 4 отдельное окно ArdSim. Сборка и запуск открывают окно эмулятора
+procedure TForm1.EmuButtonClick(Sender: TObject);
+begin
+  case (Sender as TComponent).Tag of
+    0: begin
+         ArdSimShowClick(Sender);
+         FArdSim.BuildAndRun;
+       end;
+    1: begin
+         ArdSimShowClick(Sender);
+         FArdSim.RunSim;
+       end;
+    2: if FArdSim <> nil then
+         FArdSim.StopAll;
+    3: begin
+         ArdSimEnsure;
+         FArdSim.OpenIni;
+       end;
+    4: begin
+         ArdSimEnsure;
+         FArdSim.OpenArdSimWindow;
+       end;
+  end;
+end;
+
+// Сборка или эмулятор начались / кончились: доступность кнопок
+procedure TForm1.ArdSimStateChange(Sender: TObject);
+var
+  Busy: Boolean;
+begin
+  if (btnEmuBuild = nil) or (FArdSim = nil) then
+    Exit;
+  Busy := FArdSim.Building;
+  btnEmuBuild.Enabled := not Busy;
+  btnEmuRun.Enabled := not Busy;
+  btnEmuWindow.Enabled := not Busy;
+  btnEmuStop.Enabled := Busy or FArdSim.Running;
 end;
 
 // Окно эмулятора показано или передвинуто: если оно над правой частью
@@ -63589,6 +63681,14 @@ begin
     btnArdVerify.Visible := ArdRow;
   if btnArdUpload <> nil then
     btnArdUpload.Visible := ArdRow;
+  if btnEmuBuild <> nil then
+  begin
+    btnEmuBuild.Visible := ArdRow;
+    btnEmuRun.Visible := ArdRow;
+    btnEmuStop.Visible := ArdRow;
+    btnEmuIni.Visible := ArdRow;
+    btnEmuWindow.Visible := ArdRow;
+  end;
   if cmbArdPort <> nil then
     cmbArdPort.Visible := ArdRow;
   // Списки FreeBASIC и компилятора RapidQ показывает UpdateBuildBar: их
@@ -63598,6 +63698,12 @@ begin
     btnArdVerify.Left := FRunRowLefts[1];        // места View Unit,
     btnArdUpload.Left := FRunRowLefts[2];        // View Form
     btnProgReset.Left := FRunRowLefts[3];        // и New Form
+    // за ними, с промежутком, - кнопки эмулятора
+    btnEmuBuild.Left := btnProgReset.Left + btnProgReset.Width + 6;
+    btnEmuRun.Left := btnEmuBuild.Left + 35;
+    btnEmuStop.Left := btnEmuRun.Left + 35;
+    btnEmuIni.Left := btnEmuStop.Left + 35;
+    btnEmuWindow.Left := btnEmuIni.Left + 35;
   end
   else
   begin

@@ -113,6 +113,9 @@ type
     FOnLog: TArdSimTextEvent;
     FOnOpenFile: TArdSimTextEvent;
     FOnNeedSketch: TNotifyEvent;
+    FOnStateChange: TNotifyEvent;
+    procedure SetShowToolbar(AValue: Boolean);
+    function GetShowToolbar: Boolean;
     procedure BtnBuildClick(Sender: TObject);
     procedure BtnRunClick(Sender: TObject);
     procedure BtnStopClick(Sender: TObject);
@@ -148,6 +151,15 @@ type
     function Building: Boolean;
     // Остановить эмулятор и сборку (закрытие unIDE)
     procedure StopAll;
+    // То же, что кнопки панели (их можно спрятать - ShowToolbar - и
+    // поставить свои, как в ряду Project unIDE)
+    procedure BuildAndRun;
+    procedure RunSim;
+    procedure OpenIni;
+    procedure OpenArdSimWindow;
+    property ShowToolbar: Boolean read GetShowToolbar write SetShowToolbar;
+    // Сборка или эмулятор запустились / закончились
+    property OnStateChange: TNotifyEvent read FOnStateChange write FOnStateChange;
     // .ino, который собирается; задаёт Unit1 (OnNeedSketch перед сборкой)
     property SketchFile: string read FSketchFile write FSketchFile;
     // Папка ArdSim (с build_sim.cmd); '' - искать рядом с unIDE
@@ -800,7 +812,8 @@ begin
   if AreaW < 60 then
     AreaW := 60;
   PosY := Gap;
-  FBar.SetBounds(Gap, PosY, AreaW, BarH);
+  if FBar.Visible then
+    FBar.SetBounds(Gap, PosY, AreaW, BarH);
   Buttons[0] := FBtnBuild;
   Buttons[1] := FBtnRun;
   Buttons[2] := FBtnStop;
@@ -809,7 +822,8 @@ begin
   ButtonW := (AreaW - 4 * 2) div 5;
   for BtnIdx := 0 to 4 do
     Buttons[BtnIdx].SetBounds(BtnIdx * (ButtonW + 2), 0, ButtonW, BarH);
-  Inc(PosY, BarH + 2);
+  if FBar.Visible then
+    Inc(PosY, BarH + 2);
   FStatus.SetBounds(Gap, PosY, AreaW, StatusH);
   Inc(PosY, StatusH);
   DeviceSize := FDevice.Arrange(AreaW,
@@ -840,6 +854,39 @@ begin
   FBtnRun.Enabled := not Building;
   FBtnStop.Enabled := Running or Building;
   FBtnWindow.Enabled := not Building;
+  if Assigned(FOnStateChange) then
+    FOnStateChange(Self);
+end;
+
+procedure TArdSimPanel.BuildAndRun;
+begin
+  BtnBuildClick(Self);
+end;
+
+procedure TArdSimPanel.RunSim;
+begin
+  BtnRunClick(Self);
+end;
+
+procedure TArdSimPanel.OpenIni;
+begin
+  BtnIniClick(Self);
+end;
+
+procedure TArdSimPanel.OpenArdSimWindow;
+begin
+  BtnWindowClick(Self);
+end;
+
+procedure TArdSimPanel.SetShowToolbar(AValue: Boolean);
+begin
+  FBar.Visible := AValue;
+  LayoutControls;
+end;
+
+function TArdSimPanel.GetShowToolbar: Boolean;
+begin
+  Result := FBar.Visible;
 end;
 
 function TArdSimPanel.Running: Boolean;
@@ -1151,6 +1198,8 @@ begin
   StopSim;
   if FTimer <> nil then
     FTimer.Enabled := False;
+  if FBtnBuild <> nil then
+    UpdateButtons;
 end;
 
 procedure TArdSimPanel.PostKey(ARow, ACol: Integer);
