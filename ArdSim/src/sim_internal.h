@@ -66,8 +66,18 @@ enum SimDbgIndex
   SimDbgWatchSeq = 9,      // host: +1 - write the info again
   SimDbgInfoSeq = 10,      // simulator: odd while writing the info
   SimDbgInfoBytesIdx = 11, // simulator
-  SimDbgInstrumented = 12  // simulator: 1 - the sketch has the hooks
+  SimDbgInstrumented = 12, // simulator: 1 - the sketch has the hooks
+  // "where is this text drawn": a click on the screen in the host
+  SimDbgWhereSeq = 13,     // host: +1 with each question
+  SimDbgWhereXY = 14,      // host: x | (y << 16), screen point
+  SimDbgWhereDone = 15,    // simulator: WhereSeq answered (after the fields below)
+  SimDbgWhereCount = 16,   // simulator: number of codes, 0 - no text there
+  SimDbgWhereCodes = 17,   // simulator: SimDbgWhereMax codes, the drawing statement first,
+                           // then the calls that led to it (callers outwards)
+  SimDbgWhereText = 23     // simulator: the text drawn, up to the end of the header, 0-ended
 };
+const int SimDbgWhereMax = 6;
+const size_t SimDbgWhereTextBytes = (64 - SimDbgWhereText) * 4;
 enum SimDbgCommand
 {
   SimCmdPause = 1,
@@ -88,6 +98,15 @@ const size_t SimDbgInfoBytes = 65536;
 const size_t SimDbgAreaBytes = SimDbgInfoOffset + SimDbgInfoBytes;
 void simDebugAttach(void *area);
 void simDebugHostTick();
+// Screen texts for "where is this drawn" (sim_utft.cpp -> sim_debug.cpp):
+// a text with its rectangle and the call stack; a filled area forgets
+// the texts lying wholly inside it
+void simTextDrawn(int x1, int y1, int x2, int y2, const char *text);
+// graphic entry that the pixels being drawn now belong to (0: text or none)
+extern uint32_t SimPixelOwner;
+extern uint32_t SimOwnerMap[SIM_SCREEN_H][SIM_SCREEN_W];
+void simGraphicDrawn(int x1, int y1, int x2, int y2, bool filled);
+void simAreaFilled(int x1, int y1, int x2, int y2);
 
 // Signal generator (sim_signal.cpp)
 #define SIM_ANALOG_CHANNELS 12

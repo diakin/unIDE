@@ -3,9 +3,12 @@ rem ArdSim: builds an Arduino sketch (.ino) as a Windows program.
 rem Usage: build_sim.cmd path\to\sketch.ino [mingw_bin_folder]
 rem MinGW: the second argument, %ARDSIM_MINGW%, the unIDE tools\mingw
 rem (Arduino menu - Install MinGW-w64) or g++ on PATH.
-rem Fonts: *.c in the sketch folder, %ARDSIM_FONTS% (a folder) and
-rem Arduino\libraries\UTFT\DefaultFonts.c; fonts not found there are
-rem taken from ArdSim\fonts (stand-ins: the size is right, the look is not).
+rem Fonts: *.c in the sketch folder, %ARDSIM_FONTS% (a folder) and the
+rem files listed in ardsim_build\ardsim_fonts.txt (unIDE writes it before
+rem the build: .c from the libraries folders that define the fonts the
+rem sketch declares extern). Without that list (build from the command
+rem line) - Documents\Arduino\libraries\UTFT\DefaultFonts.c. Fonts not found
+rem are taken from ArdSim\fonts (stand-ins: the size is right, the look is not).
 rem Result: <sketch folder>\ardsim_build\<sketch>_sim.exe
 setlocal enabledelayedexpansion
 
@@ -102,7 +105,21 @@ if not "%ARDSIM_FONTS%"=="" (
     set FONTOBJS=!FONTOBJS! "%OBJDIR%\userlib_%%~nF.o"
   )
   popd
-) else (
+)
+rem unIDE list: fonts from the libraries folders. The number in the object
+rem name: two libraries may have files with the same name
+set FONTLIST=%OUTDIR%\ardsim_fonts.txt
+set FONTNUM=0
+if exist "%FONTLIST%" (
+  for /f "usebackq delims=" %%F in ("%FONTLIST%") do (
+    set /a FONTNUM+=1
+    echo   font %%F
+    "%GCC%" %FONTFLAGS% -c "%%F" -o "%OBJDIR%\lib!FONTNUM!_%%~nF.o"
+    if errorlevel 1 exit /b 1
+    set FONTOBJS=!FONTOBJS! "%OBJDIR%\lib!FONTNUM!_%%~nF.o"
+  )
+)
+if not exist "%FONTLIST%" if "%ARDSIM_FONTS%"=="" (
   set UTFTFONTS=%USERPROFILE%\Documents\Arduino\libraries\UTFT\DefaultFonts.c
   if exist "!UTFTFONTS!" (
     echo   font !UTFTFONTS!
