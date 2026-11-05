@@ -67,6 +67,9 @@ type
     Style: TFontStyles;
   end;
   TEdRuns = array of TEdRun;
+  // Именованный тип: в Delphi 7 два 'array of Integer' несовместимы при
+  // присваивании
+  TEdIntArray = array of Integer;
 
   // Куски строки ARow (текст - ALine). Куски - по возрастанию Start, без
   // наложений; не покрытое кусками - цветом текста. ARuns растёт по
@@ -97,8 +100,8 @@ type
     FTopRow: Integer;          // первая видимая строка экрана
     // Строки экрана (SetDisplayMap): FDispMap - строка буфера каждой строки
     // экрана (-1 - заполнитель), FRowDisp - обратно; пусто - один к одному
-    FDispMap: array of Integer;
-    FRowDisp: array of Integer;
+    FDispMap: TEdIntArray;
+    FRowDisp: TEdIntArray;
     FFillerColor: TColor;
     FOnMarkRuns: TEdLineRunsEvent;
     FMarkRuns: TEdRuns;
@@ -848,7 +851,7 @@ end;
 // заполнители остаются на своих местах
 procedure TEdView.AdjustDispMap(AFirst, AOldCount, ANewCount: Integer);
 var
-  NewMap: array of Integer;
+  NewMap: TEdIntArray;
   OutCount, DispIdx, RowVal, Delta: Integer;
   Added: Boolean;
 
