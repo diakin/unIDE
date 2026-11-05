@@ -27213,6 +27213,7 @@ begin
   OpenDialog1.Filter :=
   'All Files *.*|*.*|' +
   'Source Code *.pas;*.dpr;*.cpp;*.c;*.h;*.cs;*.java|*.pas;*.dpr;*.cpp;*.c;*.h;*.cs;*.java|' +
+  'Projects Delphi, Lazarus *.dpr;*.dpk;*.lpi;*.lpr;*.lpk|*.dpr;*.dpk;*.lpi;*.lpr;*.lpk|' +
   'Bas Files *.bas;*.rqb;*.vbs|*.bas;*.rqb;*.vbs|' +
   'Arduino Files *.ino;*.pde;*.h;*.c;*.cpp|*.ino;*.pde;*.h;*.c;*.cpp|' +
   'Script Files *.js;*.ts;*.py;*.r;*.rs;*.go;*.ps1;*.bat;*.cmd;*.ahk|*.js;*.ts;*.py;*.r;*.rs;*.go;*.ps1;*.bat;*.cmd;*.ahk|' +

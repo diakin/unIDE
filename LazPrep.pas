@@ -6,7 +6,7 @@ unit LazPrep;
 //
 //  Исходники unIDE лежат в CP1251 (так их читает Delphi 7), а LCL ждёт
 //  строки в UTF-8. Lazarus-сборка идёт из отдельной папки (обычно
-//  <папка .dpr>\laz): туда копируются .pas, .inc, .dpr, .dfm с переводом
+//  <папка .dpr>\laz): туда копируются .pas, .inc, .dfm (и .dpr без .lpr) с переводом
 //  CP1251 -> UTF-8 и без изменений - .res, .rc, .manifest, .ico. Файлы
 //  папки lazarus\ рядом с .dpr (свои .lpi, .lpr, .lpk) копируются в
 //  корень папки сборки как есть.
@@ -32,7 +32,8 @@ unit LazPrep;
 //  пишется .lpr - главный файл проекта Lazarus. Это та же .dpr: первым
 //  модулем добавлен Interfaces (виджеты LCL), модули из LazPrepLprSkipUnits
 //  убраны (FastMM4 - менеджер памяти Delphi 7). Список модулей проекта
-//  ведётся только в .dpr.
+//  ведётся только в .dpr. Сама .dpr в папку сборки тогда не копируется
+//  (прежняя копия удаляется): по ней папку принимали за проект Delphi.
 //
 //  Без VCL и без WinAPI: собирается Delphi 7 и Free Pascal.
 // ---------------------------------------------------------------------------
@@ -629,16 +630,27 @@ begin
       Ext := ExtractFileExt(SearchRec.Name);
       if ExtIn(Ext, LazPrepTextExts) then
       begin
-        PrepFile(SrcDir + SearchRec.Name, DstDir + SearchRec.Name, True,
-                 ALog, AStats);
         if SameText(Ext, '.dpr') then
         begin
           PrepDprUnits(SrcDir + SearchRec.Name, SrcDir, DstDir, ALog, AStats);
+          // Есть .lpi - проект Lazarus это .lpr, копия .dpr не нужна
           if FileExists(SrcDir + LazPrepTemplateDir + PathDelim +
                         ChangeFileExt(SearchRec.Name, '.lpi')) then
+          begin
             PrepLpr(SrcDir + SearchRec.Name,
                     DstDir + ChangeFileExt(SearchRec.Name, '.lpr'), ALog, AStats);
-        end;
+            if FileExists(DstDir + SearchRec.Name) and
+               DeleteFile(DstDir + SearchRec.Name) and (ALog <> nil) then
+              ALog.Add('удалена прежняя копия ' + SearchRec.Name +
+                       ' (проект Lazarus - .lpr)');
+          end
+          else
+            PrepFile(SrcDir + SearchRec.Name, DstDir + SearchRec.Name, True,
+                     ALog, AStats);
+        end
+        else
+          PrepFile(SrcDir + SearchRec.Name, DstDir + SearchRec.Name, True,
+                   ALog, AStats);
         if SameText(Ext, '.dfm') then
           PrepLfm(SrcDir + SearchRec.Name,
                   DstDir + ChangeFileExt(SearchRec.Name, '.lfm'), ALog, AStats);
