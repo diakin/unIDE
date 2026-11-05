@@ -3684,6 +3684,7 @@ type
     function  CmpViewMode: Boolean;
     function  CmpViewActive: Boolean;
     function  CmpIsDark: Boolean;
+    procedure CmpApplyColors;
     procedure CmpViewShow;
     procedure CmpViewHide(AToEditor: Boolean);
     procedure CmpViewChange(Sender: TObject);
@@ -5987,6 +5988,13 @@ begin
   // активна: оранжевый, текст чёрный
   UiDefault('Pane.OwnEdBG', $0000A5FF, $000080D0);
   UiDefault('Pane.OwnEdText', clBlack, clBlack);
+  // Сравнение панелей (Diff): строка отличия, место отличия в строке,
+  // текущее отличие и место в нём, строка-заполнитель
+  UiDefault('Diff.LineBG', $0090F4FF, $00005A6E);
+  UiDefault('Diff.InlineBG', $0030BCFF, $00008CB4);
+  UiDefault('Diff.CurBG', $00FFDCA0, $00805418);
+  UiDefault('Diff.CurInlineBG', $00FFA040, $00C88C18);
+  UiDefault('Diff.FillerBG', $00E0E0E0, $00404040);
   UiDefault('Decl.Text', clWindowText, $00DCDCDC);
 
   // Роли элементов окна (UiPaintControl): светлый цвет - системный, как у
@@ -6316,6 +6324,16 @@ begin
     Result := 'Заголовок активной панели своего редактора: фон'
   else if AKey = 'Pane.OwnEdText' then
     Result := 'Заголовок активной панели своего редактора: текст'
+  else if AKey = 'Diff.LineBG' then
+    Result := 'Сравнение (Diff): фон строки отличия'
+  else if AKey = 'Diff.InlineBG' then
+    Result := 'Сравнение (Diff): места отличия внутри строки'
+  else if AKey = 'Diff.CurBG' then
+    Result := 'Сравнение (Diff): фон текущего отличия'
+  else if AKey = 'Diff.CurInlineBG' then
+    Result := 'Сравнение (Diff): места в текущем отличии'
+  else if AKey = 'Diff.FillerBG' then
+    Result := 'Сравнение (Diff): пустая строка напротив недостающих'
   else if AKey = 'Decl.Text' then
     Result := 'Панель объявления: текст'
   else if AKey = 'Ide.WindowBG' then
@@ -6595,6 +6613,15 @@ begin
     Application.HintColor := UiColor('Hint.BG');
     Screen.HintFont.Color := UiColor('Hint.Text');
   end;
+
+  // Сравнение панелей (Diff) - в новых цветах
+  if CmpViewActive then
+  begin
+    CmpApplyColors;
+    FCmpDiff.ApplyMaps;
+  end
+  else if FCmpOn then
+    CmpRepaint;
 
   // Своя форма в конструкторе - в цветах темы и в живом виде: после смены
   // режима IDE перекрашивается на месте, без перестройки (DsgRetheme)
@@ -91933,26 +91960,14 @@ begin
     FSplit.EdView.Invalidate;
 end;
 
-// Фон строки отличия: по фону редактора - для тёмной или светлой схемы
+// Фон строки отличия (сравнение без выравнивания, RichEdit)
 function TForm1.CmpColor(AMark: Byte): TColor;
-var
-  BackRgb: Longint;
-  IsDark: Boolean;
 begin
-  BackRgb := ColorToRGB(RichEdit1.Color);
-  IsDark := (GetRValue(BackRgb) * 299 + GetGValue(BackRgb) * 587 +
-             GetBValue(BackRgb) * 114) div 1000 < 128;
-  if IsDark then
-  begin
-    if AMark = 2 then
-      Result := $00584A20
-    else
-      Result := $00284050;
-  end
-  else if AMark = 2 then
-    Result := $00FFF0B4
+  // Цвета - из настроек (Diff.*), как у сравнения с выравниванием строк
+  if AMark = 2 then
+    Result := UiColor('Diff.CurBG')
   else
-    Result := $00C8F0FF;
+    Result := UiColor('Diff.LineBG');
 end;
 
 // Строка другой панели, парная строке ALine (AFromEditor - ALine из
@@ -92215,8 +92230,18 @@ begin
   FCmpView.Anchors := [akLeft, akTop, akRight, akBottom];
   FCmpView.Visible := True;
   FCmpView.BringToFront;
-  FCmpDiff.Dark := CmpIsDark;
+  CmpApplyColors;
   FCmpDiff.Attach(FCmpView, FSplit.EdView);
+end;
+
+// Цвета сравнения - из настроек (Options, цвета Diff.*)
+procedure TForm1.CmpApplyColors;
+begin
+  if FCmpDiff = nil then
+    Exit;
+  FCmpDiff.SetColors(UiColor('Diff.LineBG'), UiColor('Diff.InlineBG'),
+    UiColor('Diff.CurBG'), UiColor('Diff.CurInlineBG'),
+    UiColor('Diff.FillerBG'));
 end;
 
 // Убрать левое окно сравнения. AToEditor - каретку редактора на строку

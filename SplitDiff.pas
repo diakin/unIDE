@@ -36,6 +36,9 @@ type
     FRight: TEdView;
     FOptions: TDiffOptions;
     FDark: Boolean;
+    // Цвета: строка отличия, место в ней, текущее отличие, место в нём,
+    // заполнитель
+    FColDiff, FColInline, FColCur, FColCurInline, FColFiller: TColor;
     FBlocks: TDiffBlocks;
     FRows: TDiffRows;
     FLeftMap, FRightMap: array of Integer;
@@ -48,6 +51,7 @@ type
     FCount: Integer;
     FCur: Integer;
     FSyncBusy: Boolean;
+    procedure SetDark(AValue: Boolean);
     function ViewOf(ASide: TSplitDiffSide): TEdView;
     function DiffOfRow(ASide: TSplitDiffSide; ARow: Integer): Integer;
     procedure MarkRuns(ASide: TSplitDiffSide; ARow: Integer;
@@ -82,9 +86,11 @@ type
     // AFocus. False - дальше отличий нет
     function Go(ADir: Integer; AFocus: TEdView): Boolean;
     function FillerColor: TColor;
+    // Свои цвета (настройки владельца); Dark ставит цвета по умолчанию
+    procedure SetColors(ADiff, AInline, ACur, ACurInline, AFiller: TColor);
     property Options: TDiffOptions read FOptions write FOptions;
     // Тёмная тема: цвета отличий для тёмного фона
-    property Dark: Boolean read FDark write FDark;
+    property Dark: Boolean read FDark write SetDark;
     property Count: Integer read FCount;
     property Current: Integer read FCur;
     property LeftView: TEdView read FLeft;
@@ -101,8 +107,8 @@ const
   LightCurBack = $00FFDCA0;        // светло-голубой
   LightCurInline = $00FFA040;      // голубой
   LightFiller = $00E0E0E0;
-  DarkDiffBack = $00105C78;        // коричнево-жёлтый
-  DarkInlineBack = $00108CC8;      // оранжевый
+  DarkDiffBack = $00005A6E;        // тёмно-жёлтый
+  DarkInlineBack = $00008CB4;      // жёлтый
   DarkCurBack = $00805418;         // синий
   DarkCurInline = $00C88C18;       // голубой
   DarkFiller = $00404040;
@@ -115,6 +121,29 @@ begin
   FOptions := DiffDefaultOptions;
   FOptions.IgnoreSpaceSmart := True;
   FCur := -1;
+  FDark := True;
+  SetDark(False);
+end;
+
+procedure TSplitDiff.SetDark(AValue: Boolean);
+begin
+  FDark := AValue;
+  if AValue then
+    SetColors(DarkDiffBack, DarkInlineBack, DarkCurBack, DarkCurInline,
+      DarkFiller)
+  else
+    SetColors(LightDiffBack, LightInlineBack, LightCurBack, LightCurInline,
+      LightFiller);
+end;
+
+procedure TSplitDiff.SetColors(ADiff, AInline, ACur, ACurInline,
+  AFiller: TColor);
+begin
+  FColDiff := ADiff;
+  FColInline := AInline;
+  FColCur := ACur;
+  FColCurInline := ACurInline;
+  FColFiller := AFiller;
 end;
 
 destructor TSplitDiff.Destroy;
@@ -157,10 +186,7 @@ end;
 
 function TSplitDiff.FillerColor: TColor;
 begin
-  if FDark then
-    Result := DarkFiller
-  else
-    Result := LightFiller;
+  Result := FColFiller;
 end;
 
 procedure TSplitDiff.Clear;
@@ -326,16 +352,9 @@ begin
   if DiffIdx < 0 then
     Exit;
   if DiffIdx = FCur then
-  begin
-    if FDark then
-      Result := DarkCurBack
-    else
-      Result := LightCurBack;
-  end
-  else if FDark then
-    Result := DarkDiffBack
+    Result := FColCur
   else
-    Result := LightDiffBack;
+    Result := FColDiff;
 end;
 
 procedure TSplitDiff.LeftRowStyle(Sender: TObject; ARow: Integer;
@@ -374,16 +393,9 @@ begin
   if Length(Ranges) = 0 then
     Exit;
   if DiffIdx = FCur then
-  begin
-    if FDark then
-      Back := DarkCurInline
-    else
-      Back := LightCurInline;
-  end
-  else if FDark then
-    Back := DarkInlineBack
+    Back := FColCurInline
   else
-    Back := LightInlineBack;
+    Back := FColInline;
   if Length(ARuns) < Length(Ranges) then
     SetLength(ARuns, Length(Ranges));
   for RangeIdx := 0 to High(Ranges) do
