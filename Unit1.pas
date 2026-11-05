@@ -2148,6 +2148,7 @@ type
     btnEmuStop: TUiIconButton;
     btnEmuIni: TUiIconButton;
     btnEmuWindow: TUiIconButton;
+    btnEmuContinue: TUiIconButton;   // отладка в эмуляторе: продолжить (F9)
     // Кнопки свернуть / развернуть правую панель (справа в строке вкладок)
     // и её состояние: свёрнута - видны только разделитель и кнопка [];
     // ширина до сворачивания - в FRightPanelWidth (она и пишется в ini)
@@ -26911,6 +26912,7 @@ begin
     'модель ротора (перечитывается после сохранения)', 3);
   btnEmuWindow := MakeEmuButton('Эмулятор: отдельное окно ArdSim с панелью ' +
     'сигналов', 4);
+  btnEmuContinue := MakeEmuButton('Эмулятор: продолжить с остановки (F9)', 5);
   IconsLight := TBitmap.Create;
   IconsDark := TBitmap.Create;
   try
@@ -26938,6 +26940,7 @@ begin
     SetToolIcon(btnEmuStop, IconReset, IconsLight, IconsDark);
     SetToolIcon(btnEmuIni, IconEmuIni, IconsLight, IconsDark);
     SetToolIcon(btnEmuWindow, IconEmuWindow, IconsLight, IconsDark);
+    SetToolIcon(btnEmuContinue, IconRun, IconsLight, IconsDark);
   finally
     IconsDark.Free;
     IconsLight.Free;
@@ -28193,7 +28196,9 @@ begin
 end;
 
 // Кнопки эмулятора: 0 сборка и запуск, 1 запуск, 2 стоп, 3 ardsim.ini,
-// 4 отдельное окно ArdSim. Сборка и запуск открывают окно эмулятора
+// 4 отдельное окно ArdSim, 5 продолжить с остановки (как F9). Сборка и
+// запуск открывают окно эмулятора. Шаги - btnTraceInto и btnStepOver ряда
+// Delphi, они видны и у Arduino
 procedure TForm1.EmuButtonClick(Sender: TObject);
 begin
   case (Sender as TComponent).Tag of
@@ -28214,6 +28219,11 @@ begin
     4: begin
          ArdSimEnsure;
          FArdSim.OpenArdSimWindow;
+       end;
+    5: if ArdDbgHere and FArdSim.DbgStopped then
+       begin
+         FArdSim.DbgCommand(ArdDbgRun, 0);
+         DbgWatchRefresh;
        end;
   end;
 end;
@@ -64861,6 +64871,9 @@ begin
     btnTraceInto.Enabled := DbgCanStep;
   if btnStepOver <> nil then
     btnStepOver.Enabled := DbgCanStep;
+  // Эмулятор: продолжить - только на остановке
+  if btnEmuContinue <> nil then
+    btnEmuContinue.Enabled := ArdDbgHere and FArdSim.DbgStopped;
 
   // Правка текста
   if (btnUndo <> nil) and RichEdit1.HandleAllocated then
@@ -65075,8 +65088,8 @@ begin
   end;
   // Пауза - только у отладчика Delphi; шаги и Run to cursor - у обоих
   btnPause.Visible := not Basic;
-  btnTraceInto.Visible := CanStep;
-  btnStepOver.Visible := CanStep;
+  btnTraceInto.Visible := CanStep or (Kind = bkArduino);   // и эмулятор
+  btnStepOver.Visible := CanStep or (Kind = bkArduino);
   // Условия точек останова - только у отладчика RapidQ
   if pmuBreakCond <> nil then
     pmuBreakCond.Visible := RqMode;
@@ -65098,6 +65111,7 @@ begin
     btnEmuStop.Visible := ArdRow;
     btnEmuIni.Visible := ArdRow;
     btnEmuWindow.Visible := ArdRow;
+    btnEmuContinue.Visible := ArdRow;
   end;
   if cmbArdPort <> nil then
     cmbArdPort.Visible := ArdRow;
@@ -65114,6 +65128,10 @@ begin
     btnEmuStop.Left := btnEmuRun.Left + 35;
     btnEmuIni.Left := btnEmuStop.Left + 35;
     btnEmuWindow.Left := btnEmuIni.Left + 35;
+    // отладка в эмуляторе: продолжить, шаг с заходом, шаг в обход
+    btnEmuContinue.Left := btnEmuWindow.Left + 35 + 6;
+    btnTraceInto.Left := btnEmuContinue.Left + 35;
+    btnStepOver.Left := btnTraceInto.Left + 35;
   end
   else
   begin
