@@ -3740,6 +3740,7 @@ type
     procedure ObjScheduleRefresh(AObj: TObject; const AProp: string);
     procedure ObjPointUpdate(AObj: TObject; const AProp, ARaw: string;
                              AInsLine: Integer; ACode: Boolean);
+    procedure ObjSetFontSizeRow(const AName, AText: string);
     procedure ObjShiftLines(AFrom: Integer; ACode: Boolean);
     procedure ObjScheduleRelines(AObj: TObject; const AProp: string);
     procedure ObjPostRefresh(AObj: TObject; const AProp: string);
@@ -38687,6 +38688,7 @@ procedure TForm1.ObjApplyEdit;
 var
   Obj: TDfmNode;
   PName, NewRaw, NewLine, Cur, Dfm, Txt, Msg, Str: string;
+  FontSizeName, FontSizeText: string; // правка Font.Size: строка Size в таблице
   Line, WinIdx, LS, LL, CharPos, K: Integer;
   SL: TStringList;
   EndsWithBreak: Boolean;
@@ -38813,9 +38815,13 @@ begin
   Obj := TDfmNode(FObjCurNode);
   // Font.Size в .dfm не пишется: вместо него - Font.Height в пикселях,
   // как делает Delphi (TFont.SetSize: Height = -Size * PixelsPerInch / 72)
+  FontSizeName := '';
+  FontSizeText := '';
   if not FObjEditCode and not FObjEditArray and FObjEditInsert and
      (ObjFontHeightName(FObjEditName) <> '') then
   begin
+    FontSizeName := FObjEditName;
+    FontSizeText := IntToStr(StrToIntDef(NewRaw, 0));
     FObjEditName := ObjFontHeightName(FObjEditName);
     NewRaw := IntToStr(-MulDiv(StrToIntDef(NewRaw, 0), Screen.PixelsPerInch, 72));
     K := Obj.PropN.IndexOf(FObjEditName);
@@ -38824,6 +38830,17 @@ begin
       FObjEditInsert := False;
       FObjEditIdx := K;
       FObjEditOld := Obj.PropRaw[K];
+    end
+    else
+    begin
+      // Height в .dfm нет: обновить его серую строку, а не строку Size
+      K := -1;
+      if FObjMissing <> nil then
+        K := FObjMissing.IndexOfName(FObjEditName);
+      if K >= 0 then
+        FObjEditIdx := -K - 1
+      else
+        FObjEditIdx := High(Integer);
     end;
   end;
   PName := FObjEditName;
@@ -39071,6 +39088,8 @@ begin
     else
     begin
       ObjPointUpdate(Obj, PName, NewRaw, InsLine, False);
+      if FontSizeName <> '' then
+        ObjSetFontSizeRow(FontSizeName, FontSizeText);
       // Номера остальных узлов - разбором, форма конструктора остаётся
       if Relined then
         ObjScheduleRelines(Obj, PName);
@@ -39109,6 +39128,32 @@ end;
 //  расхождения текста при сверке и для случая, когда конструктор не нашёл
 //  компонент.
 // ---------------------------------------------------------------------------
+
+// После записи Font.Height - новое значение в серую строку Font.Size
+procedure TForm1.ObjSetFontSizeRow(const AName, AText: string);
+var
+  I, MisIdx: Integer;
+  It: TListItem;
+begin
+  if FObjProps = nil then
+    Exit;
+  for I := 0 to FObjProps.Items.Count - 1 do
+  begin
+    It := FObjProps.Items[I];
+    if CompareText(It.Caption, AName) <> 0 then
+      Continue;
+    if It.SubItems.Count > 0 then
+      It.SubItems[0] := AText
+    else
+      It.SubItems.Add(AText);
+    MisIdx := -Integer(It.Data) - 1;
+    if (Integer(It.Data) < 0) and (FObjMissing <> nil) and
+       (MisIdx < FObjMissing.Count) then
+      FObjMissing[MisIdx] := AName + '=' + AText;
+    FObjProps.UpdateItems(I, I);
+    Break;
+  end;
+end;
 
 procedure TForm1.ObjPointUpdate(AObj: TObject; const AProp, ARaw: string;
                                 AInsLine: Integer; ACode: Boolean);
