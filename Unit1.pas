@@ -6288,9 +6288,9 @@ begin
   else if AKey = 'Decl.OwnEdBG' then
     Result := 'Панель объявления: пусто, работает свой редактор'
   else if AKey = 'Pane.OwnEdBG' then
-    Result := 'Заголовок панели своего редактора (не активной): фон'
+    Result := 'Заголовок активной панели своего редактора: фон'
   else if AKey = 'Pane.OwnEdText' then
-    Result := 'Заголовок панели своего редактора (не активной): текст'
+    Result := 'Заголовок активной панели своего редактора: текст'
   else if AKey = 'Decl.Text' then
     Result := 'Панель объявления: текст'
   else if AKey = 'Ide.WindowBG' then
@@ -91185,8 +91185,8 @@ end;
 procedure TForm1.SplitUpdateHeaders;
 var
   EditKind: TFmtKind;
-  ActiveBack, IdleBack, TextColor, EditIdle, SplitIdle, EditIdleText,
-  SplitIdleText: TColor;
+  ActiveBack, IdleBack, TextColor, EditActive, SplitActive, EditActiveText,
+  SplitActiveText: TColor;
   EditFile: string;
 begin
   if (FSplit = nil) or (FEditHeader = nil) or not FSplit.Shown then
@@ -91206,24 +91206,25 @@ begin
   ActiveBack := UiColor('Tabs.ActiveBG');
   IdleBack := UiColor('Tabs.InactiveBG');
   TextColor := UiColor('Tabs.Text');
-  // Свой редактор: панель, где он работает, - оранжевым, когда не активна
-  // (активная - цветом активной вкладки, как всегда), и с подписью
-  EditIdle := IdleBack;
-  SplitIdle := IdleBack;
-  EditIdleText := TextColor;
-  SplitIdleText := TextColor;
+  // Активная панель (последний щелчок или набор - в ней): со своим
+  // редактором - оранжевым (Pane.OwnEdBG), иначе цветом активной вкладки;
+  // неактивная - цветом неактивной вкладки. Подпись - где свой редактор
+  EditActive := ActiveBack;
+  SplitActive := ActiveBack;
+  EditActiveText := TextColor;
+  SplitActiveText := TextColor;
   if FEdEmu <> nil then
   begin
-    EditIdle := UiColor('Pane.OwnEdBG');
-    EditIdleText := UiColor('Pane.OwnEdText');
+    EditActive := UiColor('Pane.OwnEdBG');
+    EditActiveText := UiColor('Pane.OwnEdText');
     FEditHeader.SetTitleMark('   [свой редактор]');
   end
   else
     FEditHeader.SetTitleMark('');
   if SplitOwnEdText then
   begin
-    SplitIdle := UiColor('Pane.OwnEdBG');
-    SplitIdleText := UiColor('Pane.OwnEdText');
+    SplitActive := UiColor('Pane.OwnEdBG');
+    SplitActiveText := UiColor('Pane.OwnEdText');
     if FEdEmu <> nil then
       FSplit.Header.SetTitleMark('   [свой редактор, EdView]')
     else
@@ -91233,13 +91234,13 @@ begin
     FSplit.Header.SetTitleMark('');
   if FSplitActive then
   begin
-    FSplit.Header.SetColors(ActiveBack, TextColor);
-    FEditHeader.SetColors(EditIdle, EditIdleText);
+    FSplit.Header.SetColors(SplitActive, SplitActiveText);
+    FEditHeader.SetColors(IdleBack, TextColor);
   end
   else
   begin
-    FSplit.Header.SetColors(SplitIdle, SplitIdleText);
-    FEditHeader.SetColors(ActiveBack, TextColor);
+    FSplit.Header.SetColors(IdleBack, TextColor);
+    FEditHeader.SetColors(EditActive, EditActiveText);
   end;
 end;
 
