@@ -3696,6 +3696,7 @@ type
     procedure SplitSwapMenuClick(Sender: TObject);
     function  SplitPaneEditing: Boolean;
     function  SplitSaveWin: Boolean;
+    procedure SplitShowTab(AWinIdx: Integer);
     procedure SplitShowTabsMenu(ACurrent: Integer; AHandler: TNotifyEvent);
     procedure EditHeaderTitleClick(Sender: TObject);
     procedure EditTabMenuClick(Sender: TObject);
@@ -20681,10 +20682,47 @@ begin
     Exit;
 
   WinIdx := FTabWin[FTabs.TabIndex];
+  // Окно разделено и активна вторая панель (оранжевый заголовок) -
+  // вкладка открывается в ней; в панели редактора остаётся своя
+  if (FSplit <> nil) and FSplit.Shown and FSplitActive then
+  begin
+    SplitShowTab(WinIdx);
+    Exit;
+  end;
   if WinIdx = FWindowsIndex then
     Exit;
 
   ActivateWindow(WinIdx);
+end;
+
+// Вкладку AWinIdx - во вторую панель (щелчок по вкладке, когда активна
+// она). Выделенной на полосе вкладок остаётся вкладка редактора; вкладка
+// второй панели отмечена своей отметкой (TabsDrawTab)
+procedure TForm1.SplitShowTab(AWinIdx: Integer);
+var
+  EditTab: Integer;
+begin
+  if not SplitWinValid(AWinIdx) then
+    Exit;
+  if AWinIdx <> FSplitWin then
+  begin
+    FSplitWin := AWinIdx;
+    SplitRefresh(0);
+  end;
+  EditTab := TabIndexOfWindow(FWindowsIndex);
+  if (EditTab >= 0) and (FTabs.TabIndex <> EditTab) then
+  begin
+    FLockTabs := True;
+    try
+      FTabs.TabIndex := EditTab;
+    finally
+      FLockTabs := False;
+    end;
+  end;
+  FTabs.Invalidate;
+  if (FSplit.View = svEdText) and (FSplit.EdView <> nil) and
+     FSplit.EdView.CanFocus then
+    FSplit.EdView.SetFocus;
 end;
 
 
