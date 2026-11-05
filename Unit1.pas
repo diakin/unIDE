@@ -26908,6 +26908,9 @@ begin
   btnEmuRun := MakeEmuButton('Эмулятор: запустить собранный скетч без ' +
     'сборки', 1);
   btnEmuStop := MakeEmuButton('Эмулятор: остановить', 2);
+  // эмулятора ещё нет (FArdSim создаётся при первом запуске) - стоп не
+  // нужен; дальше доступность ставит ArdSimStateChange
+  btnEmuStop.Enabled := False;
   btnEmuIni := MakeEmuButton('Эмулятор: ardsim.ini - сигналы, тахометр, ' +
     'модель ротора (перечитывается после сохранения)', 3);
   btnEmuWindow := MakeEmuButton('Эмулятор: отдельное окно ArdSim с панелью ' +
