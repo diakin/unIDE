@@ -102,6 +102,10 @@ void simDebugHostTick();
 // a text with its rectangle and the call stack; a filled area forgets
 // the texts lying wholly inside it
 void simTextDrawn(int x1, int y1, int x2, int y2, const char *text);
+// graphic entry that the pixels being drawn now belong to (0: text or none)
+extern uint32_t SimPixelOwner;
+extern uint32_t SimOwnerMap[SIM_SCREEN_H][SIM_SCREEN_W];
+void simGraphicDrawn(int x1, int y1, int x2, int y2, bool filled);
 void simAreaFilled(int x1, int y1, int x2, int y2);
 
 // Signal generator (sim_signal.cpp)

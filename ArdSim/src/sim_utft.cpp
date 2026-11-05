@@ -57,6 +57,7 @@ void UTFT::putPixel(int x, int y, word color)
   if (x < 0 || y < 0 || x >= SIM_SCREEN_W || y >= SIM_SCREEN_H)
     return;
   SimScreen[y][x] = color;
+  SimOwnerMap[y][x] = SimPixelOwner;
   lcdPixels(1);
 }
 
@@ -88,6 +89,7 @@ void UTFT::clrScr()
 {
   simPoll();
   memset(SimScreen, 0, sizeof(SimScreen));
+  memset(SimOwnerMap, 0, sizeof(SimOwnerMap));
   simAreaFilled(0, 0, SIM_SCREEN_W - 1, SIM_SCREEN_H - 1);
   lcdPixels(SIM_SCREEN_W * SIM_SCREEN_H);
   lcdDone();
@@ -104,6 +106,7 @@ void UTFT::fillScr(word color)
   for (int y = 0; y < SIM_SCREEN_H; y++)
     for (int x = 0; x < SIM_SCREEN_W; x++)
       SimScreen[y][x] = color;
+  memset(SimOwnerMap, 0, sizeof(SimOwnerMap));
   simAreaFilled(0, 0, SIM_SCREEN_W - 1, SIM_SCREEN_H - 1);
   lcdPixels(SIM_SCREEN_W * SIM_SCREEN_H);
   lcdDone();
@@ -111,6 +114,7 @@ void UTFT::fillScr(word color)
 
 void UTFT::drawPixel(int x, int y)
 {
+  simGraphicDrawn(x, y, x, y, false);
   putPixel(x, y, FrontColor);
   lcdDone();
 }
@@ -118,6 +122,7 @@ void UTFT::drawPixel(int x, int y)
 void UTFT::drawLine(int x1, int y1, int x2, int y2)
 {
   simPoll();
+  simGraphicDrawn(x1, y1, x2, y2, false);
   if (y1 == y2)
   {
     if (x1 > x2)
@@ -177,6 +182,7 @@ void UTFT::drawRect(int x1, int y1, int x2, int y2)
 {
   simPoll();
   orderRect(x1, y1, x2, y2);
+  simGraphicDrawn(x1, y1, x2, y2, false);
   hLine(x1, y1, x2 - x1);
   hLine(x1, y2, x2 - x1);
   vLine(x1, y1, y2 - y1);
@@ -189,6 +195,7 @@ void UTFT::drawRoundRect(int x1, int y1, int x2, int y2)
   orderRect(x1, y1, x2, y2);
   if ((x2 - x1) > 4 && (y2 - y1) > 4)
   {
+    simGraphicDrawn(x1, y1, x2, y2, false);
     putPixel(x1 + 1, y1 + 1, FrontColor);
     putPixel(x2 - 1, y1 + 1, FrontColor);
     putPixel(x1 + 1, y2 - 1, FrontColor);
@@ -204,10 +211,10 @@ void UTFT::fillRect(int x1, int y1, int x2, int y2)
 {
   simPoll();
   orderRect(x1, y1, x2, y2);
+  simGraphicDrawn(x1, y1, x2, y2, true);
   for (int y = y1; y <= y2; y++)
     for (int x = x1; x <= x2; x++)
       putPixel(x, y, FrontColor);
-  simAreaFilled(x1, y1, x2, y2);
   lcdDone();
 }
 
@@ -217,6 +224,7 @@ void UTFT::fillRoundRect(int x1, int y1, int x2, int y2)
   orderRect(x1, y1, x2, y2);
   if ((x2 - x1) > 4 && (y2 - y1) > 4)
   {
+    simGraphicDrawn(x1, y1, x2, y2, true);
     for (int row = 0; row < ((y2 - y1) / 2) + 1; row++)
     {
       switch (row)
@@ -234,13 +242,13 @@ void UTFT::fillRoundRect(int x1, int y1, int x2, int y2)
         hLine(x1, y2 - row, x2 - x1);
       }
     }
-    simAreaFilled(x1, y1, x2, y2);
   }
 }
 
 void UTFT::drawCircle(int x, int y, int radius)
 {
   simPoll();
+  simGraphicDrawn(x - radius, y - radius, x + radius, y + radius, false);
   int balance = 1 - radius;
   int deltaX = 1;
   int deltaY = -2 * radius;
@@ -276,6 +284,7 @@ void UTFT::drawCircle(int x, int y, int radius)
 void UTFT::fillCircle(int x, int y, int radius)
 {
   simPoll();
+  simGraphicDrawn(x - radius, y - radius, x + radius, y + radius, true);
   for (int offsetY = -radius; offsetY <= 0; offsetY++)
     for (int offsetX = -radius; offsetX <= 0; offsetX++)
       if (offsetX * offsetX + offsetY * offsetY <= radius * radius)
@@ -320,6 +329,7 @@ uint8_t UTFT::getFontYsize() { return Font ? Font[1] : 0; }
 
 void UTFT::printChar(byte character, int x, int y)
 {
+  SimPixelOwner = 0;   // text pixels: the text entry answers for them
   simPoll();
   if (!Font)
     return;
@@ -424,6 +434,7 @@ void UTFT::drawBitmap(int x, int y, int sx, int sy, const uint16_t *data, int sc
     return;
   if (scale < 1)
     scale = 1;
+  simGraphicDrawn(x, y, x + sx * scale - 1, y + sy * scale - 1, true);
   for (int row = 0; row < sy; row++)
     for (int col = 0; col < sx; col++)
     {

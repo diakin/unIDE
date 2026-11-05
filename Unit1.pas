@@ -28218,7 +28218,7 @@ var
   Codes: TArdDbgCodes;
   Code: Cardinal;
   Level, CodeIdx, SrcLine: Integer;
-  SrcFile, Chain: string;
+  SrcFile, Chain, WhereKey, What: string;
 begin
   Codes := FArdSim.WhereCodes;
   if Length(Codes) = 0 then
@@ -28227,12 +28227,14 @@ begin
     Exit;
   end;
   // повторный клик по той же надписи - строка вызова на уровень выше
-  if (FArdSim.WhereText = FArdWhereText) and
+  // у графики текста нет - ключ повтора включает строку, которая рисовала
+  WhereKey := FArdSim.WhereText + #1 + IntToStr(Codes[0]);
+  if (WhereKey = FArdWhereText) and
      (GetTickCount - FArdWhereTick < 3000) then
     Level := (FArdWhereLevel + 1) mod Length(Codes)
   else
     Level := ArdWhereGuess(Codes, FArdSim.WhereText);
-  FArdWhereText := FArdSim.WhereText;
+  FArdWhereText := WhereKey;
   FArdWhereTick := GetTickCount;
   FArdWhereLevel := Level;
   Chain := '';
@@ -28247,7 +28249,11 @@ begin
     if CodeIdx = Level then
       Chain := Chain + ']';
   end;
-  LogComp('--- Эмулятор: "' + FArdSim.WhereText + '" - ' + Chain +
+  if FArdSim.WhereText <> '' then
+    What := '"' + FArdSim.WhereText + '"'
+  else
+    What := 'графика';
+  LogComp('--- Эмулятор: ' + What + ' - ' + Chain +
           '. Повторный клик - строка вызова выше');
   Code := Codes[Level];
   SrcFile := FArdSim.DbgFileName(Code shr 20);

@@ -523,9 +523,17 @@ void simFmtArray(std::string &out, const void *first, size_t count, size_t elemS
 
 // ---------------------------------------------------------------- screen texts
 // Each print() of UTFT: the rectangle, the text and the statements that
-// drew it (SimTopLine and the call lines outwards). The host asks for a
-// screen point; the answer is the last text drawn there that is still on
-// the screen (not covered by a later fill or text).
+// drew it (SimTopLine and the call lines outwards). Graphic primitives
+// (lines, rects, circles, pixels) are kept the same way without text;
+// consecutive primitives from the same statement and call chain are merged
+// into one entry (a chart curve drawn in a loop is one entry). Each screen
+// pixel remembers the graphic entry that painted it last (SimOwnerMap). The
+// host asks for a screen point; the answer is the last text drawn there that
+// is still on the screen (not covered by a later fill or text), otherwise a
+// line or dot within GraphicMargin pixels, otherwise the fill under the point.
+uint32_t SimPixelOwner = 0;
+uint32_t SimOwnerMap[SIM_SCREEN_H][SIM_SCREEN_W];
+
 namespace
 {
 struct ScreenText
@@ -533,14 +541,21 @@ struct ScreenText
   short X1, Y1, X2, Y2;
   uint32_t Codes[SimDbgWhereMax];
   int CodeCount;
+  bool Graphic;
+  bool Filled;
+  uint32_t Id;
   char Text[SimDbgWhereTextBytes];
 };
+
+const int GraphicMargin = 2;      // a click this close to a thin line hits it
+const size_t MergeLookBack = 32;  // how far back a primitive looks for its entry
 
 const size_t MaxScreenTexts = 4096;
 std::vector<ScreenText> ScreenTexts;
 CRITICAL_SECTION TextLock;
 bool TextLockReady = false;
 uint32_t AnsweredWhere = 0;
+uint32_t LastOwnerId = 0;
 
 void textLock()
 {
@@ -567,6 +582,44 @@ void forgetInside(int x1, int y1, int x2, int y2)
   }
   ScreenTexts.resize(kept);
 }
+
+// the statement being executed and the call lines outwards
+bool collectCodes(ScreenText &item)
+{
+  item.CodeCount = 0;
+  if (SimTopLine != 0)
+    item.Codes[item.CodeCount++] = (uint32_t)SimTopLine;
+  int depth = FrameDepth < MaxFrames ? FrameDepth : MaxFrames;
+  for (int index = depth - 1; index >= 0 && item.CodeCount < SimDbgWhereMax; index--)
+    if (Frames[index].CallerLine != 0)
+      item.Codes[item.CodeCount++] = (uint32_t)Frames[index].CallerLine;
+  return item.CodeCount != 0;   // zero: not an instrumented sketch
+}
+
+const ScreenText *findOwner(uint32_t owner)
+{
+  for (size_t index = ScreenTexts.size(); index-- > 0;)
+    if (ScreenTexts[index].Graphic && ScreenTexts[index].Id == owner)
+      return &ScreenTexts[index];
+  return nullptr;
+}
+
+void pushEntry(const ScreenText &item)
+{
+  if (ScreenTexts.size() >= MaxScreenTexts)
+    ScreenTexts.erase(ScreenTexts.begin(), ScreenTexts.begin() + MaxScreenTexts / 4);
+  ScreenTexts.push_back(item);
+}
+
+bool sameCodes(const ScreenText &left, const ScreenText &right)
+{
+  if (left.CodeCount != right.CodeCount)
+    return false;
+  for (int index = 0; index < left.CodeCount; index++)
+    if (left.Codes[index] != right.Codes[index])
+      return false;
+  return true;
+}
 }
 
 void simTextDrawn(int x1, int y1, int x2, int y2, const char *text)
@@ -578,22 +631,72 @@ void simTextDrawn(int x1, int y1, int x2, int y2, const char *text)
   item.Y1 = (short)y1;
   item.X2 = (short)x2;
   item.Y2 = (short)y2;
-  item.CodeCount = 0;
-  if (SimTopLine != 0)
-    item.Codes[item.CodeCount++] = (uint32_t)SimTopLine;
-  int depth = FrameDepth < MaxFrames ? FrameDepth : MaxFrames;
-  for (int index = depth - 1; index >= 0 && item.CodeCount < SimDbgWhereMax; index--)
-    if (Frames[index].CallerLine != 0)
-      item.Codes[item.CodeCount++] = (uint32_t)Frames[index].CallerLine;
-  if (item.CodeCount == 0)
-    return;   // not an instrumented sketch
+  item.Graphic = false;
+  item.Filled = false;
+  item.Id = 0;
+  if (!collectCodes(item))
+    return;
   strncpy(item.Text, text, sizeof(item.Text) - 1);
   item.Text[sizeof(item.Text) - 1] = 0;
   textLock();
   forgetInside(x1, y1, x2, y2);
-  if (ScreenTexts.size() >= MaxScreenTexts)
-    ScreenTexts.erase(ScreenTexts.begin(), ScreenTexts.begin() + MaxScreenTexts / 4);
-  ScreenTexts.push_back(item);
+  pushEntry(item);
+  textUnlock();
+}
+
+void simGraphicDrawn(int x1, int y1, int x2, int y2, bool filled)
+{
+  SimPixelOwner = 0;
+  if (!DbgHeader)
+    return;
+  if (x1 > x2)
+    std::swap(x1, x2);
+  if (y1 > y2)
+    std::swap(y1, y2);
+  if (x2 < 0 || y2 < 0 || x1 >= SIM_SCREEN_W || y1 >= SIM_SCREEN_H)
+    return;
+  x1 = x1 < 0 ? 0 : x1;
+  y1 = y1 < 0 ? 0 : y1;
+  x2 = x2 >= SIM_SCREEN_W ? SIM_SCREEN_W - 1 : x2;
+  y2 = y2 >= SIM_SCREEN_H ? SIM_SCREEN_H - 1 : y2;
+  ScreenText item;
+  item.Graphic = true;
+  item.Filled = filled;
+  item.Text[0] = 0;
+  if (!collectCodes(item))
+    return;
+  textLock();
+  if (filled)
+    forgetInside(x1, y1, x2, y2);
+  // the same statement in the same call chain: widen its entry, move it last
+  size_t stop = ScreenTexts.size() > MergeLookBack ? ScreenTexts.size() - MergeLookBack : 0;
+  for (size_t index = ScreenTexts.size(); index-- > stop;)
+  {
+    ScreenText &prev = ScreenTexts[index];
+    if (prev.Graphic && sameCodes(prev, item))
+    {
+      item.X1 = prev.X1 < x1 ? prev.X1 : (short)x1;
+      item.Y1 = prev.Y1 < y1 ? prev.Y1 : (short)y1;
+      item.X2 = prev.X2 > x2 ? prev.X2 : (short)x2;
+      item.Y2 = prev.Y2 > y2 ? prev.Y2 : (short)y2;
+      item.Id = prev.Id;
+      item.Filled = prev.Filled || filled;
+      SimPixelOwner = item.Id;
+      ScreenTexts.erase(ScreenTexts.begin() + index);
+      ScreenTexts.push_back(item);
+      textUnlock();
+      return;
+    }
+  }
+  item.X1 = (short)x1;
+  item.Y1 = (short)y1;
+  item.X2 = (short)x2;
+  item.Y2 = (short)y2;
+  if (++LastOwnerId == 0)
+    LastOwnerId = 1;
+  item.Id = LastOwnerId;
+  SimPixelOwner = item.Id;
+  pushEntry(item);
   textUnlock();
 }
 
@@ -618,16 +721,48 @@ void answerWhere()
   char text[SimDbgWhereTextBytes] = {0};
   uint32_t codes[SimDbgWhereMax] = {0};
   textLock();
-  for (size_t index = ScreenTexts.size(); index-- > 0;)
+  // texts first: the last one whose rectangle holds the point
+  const ScreenText *found = nullptr;
+  for (size_t index = ScreenTexts.size(); index-- > 0 && !found;)
   {
     const ScreenText &item = ScreenTexts[index];
-    if (px >= item.X1 && px <= item.X2 && py >= item.Y1 && py <= item.Y2)
+    if (!item.Graphic && px >= item.X1 && px <= item.X2 && py >= item.Y1 && py <= item.Y2)
+      found = &item;
+  }
+  // then the pixel owners: the nearest line or dot, otherwise the fill there
+  const ScreenText *fill = nullptr;
+  int bestDistance = 1 << 30;
+  for (int dy = -GraphicMargin; dy <= GraphicMargin && !found; dy++)
+    for (int dx = -GraphicMargin; dx <= GraphicMargin; dx++)
     {
-      count = item.CodeCount;
-      memcpy(codes, item.Codes, sizeof(codes));
-      memcpy(text, item.Text, sizeof(text));
-      break;
+      int cx = px + dx, cy = py + dy;
+      if (cx < 0 || cy < 0 || cx >= SIM_SCREEN_W || cy >= SIM_SCREEN_H)
+        continue;
+      uint32_t owner = SimOwnerMap[cy][cx];
+      if (owner == 0)
+        continue;
+      const ScreenText *entry = findOwner(owner);
+      if (!entry)
+        continue;
+      int distance = dx * dx + dy * dy;
+      if (entry->Filled)
+      {
+        if (distance == 0)
+          fill = entry;
+      }
+      else if (distance < bestDistance)
+      {
+        bestDistance = distance;
+        found = entry;
+      }
     }
+  if (!found)
+    found = fill;
+  if (found)
+  {
+    count = found->CodeCount;
+    memcpy(codes, found->Codes, sizeof(codes));
+    memcpy(text, found->Text, sizeof(text));
   }
   textUnlock();
   for (int index = 0; index < SimDbgWhereMax; index++)
