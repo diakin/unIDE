@@ -2716,6 +2716,9 @@ type
     // Кнопка Txt / Fmt слева на вкладке файла с видом "по формату"
     function  TabHasFmtView(WinIdx: Integer): Boolean;
     function  TabFmtWidth: Integer;
+    // Рамка вкладки цветом проекта, которому принадлежит файл
+    function  TabProjectOf(WinIdx: Integer): string;
+    function  TabFrameColor(WinIdx: Integer): TColor;
     procedure TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
                           AActive: Boolean);
     procedure CloseTab(TabIdx: Integer);
@@ -20807,6 +20810,7 @@ end;
 function TForm1.TabHintFor(WinIdx: Integer): string;
 var
   IsMod: Boolean;
+  PrjName: string;
 begin
   Result := '';
   if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used then
@@ -20823,6 +20827,97 @@ begin
     Result := Result + #13#10'Изменён, не сохранён';
   if TabHasFmtView(WinIdx) then
     Result := Result + #13#10'Txt / Fmt слева - текст / по формату (F12)';
+  PrjName := TabProjectOf(WinIdx);
+  if (PrjName <> '') and (CompareText(PrjName, FCurrentProject) <> 0) then
+    Result := Result + #13#10'Проект: ' + PrjName;
+end;
+
+// Проект, в папке которого лежит файл окна: из списка проектов ([Projects]
+// editor.ini). Папки проектов бывают вложены одна в другую (uniFAR внутри
+// unIDE) - берётся самая длинная подходящая; при равных - текущий проект.
+// '' - файл ни в одной папке проекта.
+function TForm1.TabProjectOf(WinIdx: Integer): string;
+var
+  Index, BestLen: Integer;
+  FilePath, PrjDir, PrjName: string;
+begin
+  Result := '';
+  if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or
+     not FWindows[WinIdx].Used then
+    Exit;
+  if FProjectReg = nil then
+    LoadProjectReg;
+  FilePath := PathNative(FWindows[WinIdx].FileName);
+  BestLen := 0;
+  for Index := 0 to FProjectReg.Count - 1 do
+  begin
+    PrjName := FProjectReg.Names[Index];
+    PrjDir := PathNative(FProjectReg.ValueFromIndex[Index]);
+    if (PrjName = '') or (PrjDir = '') then
+      Continue;
+    PrjDir := IncludeTrailingPathDelimiter(PrjDir);
+    if Length(PrjDir) > Length(FilePath) then
+      Continue;
+    {$IFDEF UNIX}
+    if Copy(FilePath, 1, Length(PrjDir)) <> PrjDir then
+      Continue;
+    {$ELSE}
+    if CompareText(Copy(FilePath, 1, Length(PrjDir)), PrjDir) <> 0 then
+      Continue;
+    {$ENDIF}
+    if (Length(PrjDir) > BestLen) or
+       ((Length(PrjDir) = BestLen) and
+        (CompareText(PrjName, FCurrentProject) = 0)) then
+    begin
+      BestLen := Length(PrjDir);
+      Result := PrjName;
+    end;
+  end;
+end;
+
+// Цвет рамки вкладки. Файлы текущего проекта и файлы вне проектов - цвет
+// из настроек (Tabs.Border), clNone. Файлы других проектов - цвет из
+// набора, выбранный по имени проекта: у проекта он один и тот же при
+// каждом запуске. Набор - светлый или тёмный, по фону вкладок.
+function TForm1.TabFrameColor(WinIdx: Integer): TColor;
+const
+  FramePalCount = 10;
+  // RGB: оранжевый, зелёный, малиновый, синий, жёлтый, красный, бирюзовый,
+  // фиолетовый, коричневый, салатовый
+  FramePalLight: array[0..FramePalCount - 1] of Cardinal = (
+    $E67800, $00963C, $C800A0, $0078D7, $B48C00,
+    $DC1E1E, $00A0A0, $783CC8, $8C5A28, $5A9600);
+  FramePalDark: array[0..FramePalCount - 1] of Cardinal = (
+    $FFA03C, $50D26E, $F064DC, $5AAAFF, $F0D23C,
+    $FF6464, $3CDCDC, $AA82FF, $D2A06E, $AAE646);
+var
+  PrjName, NameKey: string;
+  CharIdx: Integer;
+  HashVal: Cardinal;
+  BackRgb, PalRgb: Cardinal;
+  IsDark: Boolean;
+begin
+  Result := clNone;
+  PrjName := TabProjectOf(WinIdx);
+  if (PrjName = '') or (CompareText(PrjName, FCurrentProject) = 0) then
+    Exit;
+
+  NameKey := AnsiUpperCase(PrjName);
+  HashVal := 0;
+  for CharIdx := 1 to Length(NameKey) do
+    HashVal := (HashVal * 31 + Ord(NameKey[CharIdx])) and $00FFFFFF;
+
+  // Тёмный фон - яркий набор: на нём тёмные рамки теряются
+  BackRgb := ColorToRGB(UiColor('Tabs.InactiveBG'));
+  IsDark := (GetRValue(BackRgb) * 30 + GetGValue(BackRgb) * 59 +
+             GetBValue(BackRgb) * 11) div 100 < 128;
+  if IsDark then
+    PalRgb := FramePalDark[HashVal mod FramePalCount]
+  else
+    PalRgb := FramePalLight[HashVal mod FramePalCount];
+  // TColor - $00BBGGRR
+  Result := TColor(RGB((PalRgb shr 16) and $FF, (PalRgb shr 8) and $FF,
+                       PalRgb and $FF));
 end;
 
 // Подсказка - у вкладки под мышью. Сменилась вкладка - прежнюю подсказку
@@ -20855,7 +20950,8 @@ var
   HasFmt, ShowFmt: Boolean;
   BtnRect: TRect;
   BtnText: string;
-  TextColor, BackColor: TColor;
+  TextColor, BackColor, FrameColor: TColor;
+  FrameBox: TRect;
 begin
   Cnv := TCanvas.Create;
   try
@@ -20994,6 +21090,20 @@ begin
       Cnv.Brush.Color := UiColor('Tabs.FmtBtn');
       Cnv.FillRect(Rect(ARect.Left + 2, ARect.Bottom - 3, ARect.Right - 2,
                       ARect.Bottom - 1));
+    end;
+
+    // Файл другого проекта - рамка цветом проекта (TabFrameColor), в две
+    // точки: внешняя ложится на общую рамку ярлычка (ARect - ярлычок без
+    // неё, см. UiPaintTabs), внутренняя - по краю ARect
+    FrameColor := TabFrameColor(TabWin);
+    if FrameColor <> clNone then
+    begin
+      Cnv.Brush.Style := bsSolid;
+      Cnv.Brush.Color := FrameColor;
+      FrameBox := ARect;
+      InflateRect(FrameBox, 1, 1);
+      Cnv.FrameRect(FrameBox);
+      Cnv.FrameRect(ARect);
     end;
   finally
     Cnv.Handle := 0;
