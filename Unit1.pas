@@ -38672,6 +38672,17 @@ begin
   UpdateLineNumbers;
 end;
 
+// Font.Size в .dfm не пишется: Delphi хранит Font.Height в пикселях, а
+// Size считает из него по разрешению экрана (TFont.GetSize/SetSize).
+// Для имени ...Font.Size - имя ...Font.Height, для остальных - ''.
+function ObjFontHeightName(const AName: string): string;
+begin
+  Result := '';
+  if (Length(AName) >= 9) and
+     (CompareText(Copy(AName, Length(AName) - 8, 9), 'Font.Size') = 0) then
+    Result := Copy(AName, 1, Length(AName) - 4) + 'Height';
+end;
+
 procedure TForm1.ObjApplyEdit;
 var
   Obj: TDfmNode;
@@ -38800,6 +38811,21 @@ begin
   if FObjCurNode = nil then
     Exit;
   Obj := TDfmNode(FObjCurNode);
+  // Font.Size в .dfm не пишется: вместо него - Font.Height в пикселях,
+  // как делает Delphi (TFont.SetSize: Height = -Size * PixelsPerInch / 72)
+  if not FObjEditCode and not FObjEditArray and FObjEditInsert and
+     (ObjFontHeightName(FObjEditName) <> '') then
+  begin
+    FObjEditName := ObjFontHeightName(FObjEditName);
+    NewRaw := IntToStr(-MulDiv(StrToIntDef(NewRaw, 0), Screen.PixelsPerInch, 72));
+    K := Obj.PropN.IndexOf(FObjEditName);
+    if K >= 0 then
+    begin
+      FObjEditInsert := False;
+      FObjEditIdx := K;
+      FObjEditOld := Obj.PropRaw[K];
+    end;
+  end;
   PName := FObjEditName;
   Relined := False;
   // Текст .dfm до правки: по нему спрятанный второй вид конструктора
@@ -49225,6 +49251,7 @@ var
   DescCls: string;
   Defs: TStringList;
   Nm: string;
+  FontHIdx: Integer;
   TI: TDsgTypeDesc;
   Events: TStringList;
   FlagW: Boolean;
@@ -49372,8 +49399,15 @@ begin
           TI := DescPropType(DescCls, Nm, FlagW);
           if (TI = nil) or not FlagW or (TI.Kind in [dtkClass, dtkMethod]) then
             Continue;
+          // Font.Size - из Font.Height этого объекта, как в инспекторе Delphi
+          FontHIdx := -1;
+          if ObjFontHeightName(Nm) <> '' then
+            FontHIdx := Obj.PropN.IndexOf(ObjFontHeightName(Nm));
           // Горячую клавишу снимок пишет текстом, а .dfm хранит числом
-          if TI.Name = 'TShortCut' then
+          if FontHIdx >= 0 then
+            FObjMissing.Add(Nm + '=' + IntToStr(-MulDiv(StrToIntDef(
+              Trim(Obj.PropRaw[FontHIdx]), 0), 72, Screen.PixelsPerInch)))
+          else if TI.Name = 'TShortCut' then
             FObjMissing.Add(Nm + '=0')
           else
             FObjMissing.Add(Defs[I]);
