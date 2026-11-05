@@ -157,6 +157,12 @@ type
     FOnDbgResume: TNotifyEvent;
     FOnDbgInfo: TNotifyEvent;
     FOnDbgNeedBreaks: TNotifyEvent;
+    // Клик по экрану: ждём ответа эмулятора, где нарисована надпись
+    FWhereWait: Boolean;
+    FWhereTick: Cardinal;
+    FWhereCodes: TArdDbgCodes;
+    FWhereText: string;
+    FOnScreenWhere: TNotifyEvent;
     // Панель «Сигналы»: поля - ключи ardsim.ini. FSigDirty - поля правили
     // и не применили (тогда файл не перечитывается в поля)
     FSigHead: TUiButton;
@@ -182,6 +188,7 @@ type
     procedure SigUpdateState;
     procedure SigLoad;
     procedure SigPoll;
+    procedure PollWhere;
     function DbgHeader(AIndex: Integer): Cardinal;
     procedure SetDbgHeader(AIndex: Integer; AValue: Cardinal);
     function DbgArea: PAnsiChar;
@@ -261,6 +268,15 @@ type
     procedure DbgLocalNames(ANames: TStrings);
     // Функция остановки и стек вызовов ("loop <- ...")
     function DbgWhere: string;
+    // Клик по экрану прибора (точка экрана 480x320): спросить эмулятор,
+    // какая надпись там нарисована и какими строками. Ответ - OnScreenWhere
+    procedure ScreenWhere(AX, AY: Integer);
+    // Ответ: строки (файл shl 20 or строка с 1) - оператор, который
+    // нарисовал надпись, затем вызовы, которые к нему привели (наружу);
+    // пусто - в этой точке надписи нет
+    property WhereCodes: TArdDbgCodes read FWhereCodes;
+    property WhereText: string read FWhereText;
+    property OnScreenWhere: TNotifyEvent read FOnScreenWhere write FOnScreenWhere;
     // Окно Watch видно: значения обновляются и пока скетч идёт
     property LiveWatch: Boolean read FLiveWatch write FLiveWatch;
     property OnDbgStop: TNotifyEvent read FOnDbgStop write FOnDbgStop;
@@ -351,6 +367,16 @@ const
   DbgInfoSeq = 10;
   DbgInfoBytes = 11;
   DbgInstrumented = 12;
+  // «где нарисована надпись»: клик по экрану (sim_internal.h, SimDbgWhere*)
+  DbgWhereSeq = 13;
+  DbgWhereXY = 14;
+  DbgWhereDone = 15;
+  DbgWhereCount = 16;
+  DbgWhereCodes = 17;
+  DbgWhereMax = 6;
+  DbgWhereText = 23;
+  DbgWhereTextBytes = (64 - DbgWhereText) * 4;
+  DbgWhereTimeoutMs = 1500;
   DbgMaxBreaks = 1024;
   DbgBreakOffset = 256;
   DbgWatchReqOffset = 4352;
@@ -634,6 +660,12 @@ begin
   if Button <> mbLeft then
     Exit;
   HitPoint := Point(PosX, PosY);
+  // экран: где в скетче нарисована надпись под мышью
+  if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) then
+  begin
+    FOwnerPanel.ScreenWhere(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
+    Exit;
+  end;
   for KeyIdx := 0 to ArdSimKeyCount - 1 do
     if PtInRect(FKeyRects[KeyIdx], HitPoint) then
     begin
@@ -1784,6 +1816,7 @@ end;
 // Новый запуск: общая память только что обнулена
 procedure TArdSimPanel.DbgReset;
 begin
+  FWhereWait := False;
   FDbgStopSeq := 0;
   FDbgInfoSeq := 0;
   FDbgStopped := False;
@@ -1861,6 +1894,8 @@ var
 begin
   if DbgArea = nil then
     Exit;
+  if FWhereWait then
+    PollWhere;
   if (FDbgFiles.Count = 0) and (DbgHeader(DbgInstrumented) = 1) then
   begin
     FilesText := ReadDbgText(DbgFilesOffset, DbgFilesBytes);
@@ -1906,6 +1941,51 @@ begin
     FLiveTick := GetTickCount;
     SetDbgHeader(DbgWatchSeq, DbgHeader(DbgWatchSeq) + 1);
   end;
+end;
+
+procedure TArdSimPanel.ScreenWhere(AX, AY: Integer);
+begin
+  if not Running or (DbgArea = nil) then
+    Exit;
+  if DbgHeader(DbgInstrumented) <> 1 then
+  begin
+    Log('Эмулятор: скетч собран без отладочных вставок - строку надписи ' +
+        'не узнать (соберите заново)');
+    Exit;
+  end;
+  SetDbgHeader(DbgWhereXY, Cardinal(AX) or (Cardinal(AY) shl 16));
+  SetDbgHeader(DbgWhereSeq, DbgHeader(DbgWhereSeq) + 1);
+  FWhereWait := True;
+  FWhereTick := GetTickCount;
+end;
+
+// Ответ эмулятора на клик по экрану: поля пишутся до WhereDone
+procedure TArdSimPanel.PollWhere;
+var
+  Count, CodeIdx: Integer;
+begin
+  if DbgHeader(DbgWhereDone) <> DbgHeader(DbgWhereSeq) then
+  begin
+    if GetTickCount - FWhereTick > DbgWhereTimeoutMs then
+    begin
+      FWhereWait := False;
+      Log('Эмулятор не ответил, где нарисована надпись: скетч собран ' +
+          'прежней версией ArdSim - соберите его заново');
+    end;
+    Exit;
+  end;
+  FWhereWait := False;
+  Count := Integer(DbgHeader(DbgWhereCount));
+  if Count > DbgWhereMax then
+    Count := DbgWhereMax;
+  if Count < 0 then
+    Count := 0;
+  SetLength(FWhereCodes, Count);
+  for CodeIdx := 0 to Count - 1 do
+    FWhereCodes[CodeIdx] := DbgHeader(DbgWhereCodes + CodeIdx);
+  FWhereText := ReadDbgText(DbgWhereText * 4, DbgWhereTextBytes);
+  if Assigned(FOnScreenWhere) then
+    FOnScreenWhere(Self);
 end;
 
 function TArdSimPanel.DbgAvailable: Boolean;

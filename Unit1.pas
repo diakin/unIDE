@@ -1144,6 +1144,10 @@ type
     procedure ArdDbgInfo(Sender: TObject);
     procedure ArdDbgNeedBreaks(Sender: TObject);
     procedure ArdDbgWatchRefresh;
+    // Клик по надписи на экране эмулятора - строка .ino, где она нарисована
+    procedure ArdSimScreenWhere(Sender: TObject);
+    function ArdWhereGuess(const ACodes: TArdDbgCodes; const AText: string): Integer;
+    function ArdWhereLineText(ACode: Cardinal): string;
     procedure RightPanelPlaceButtons;
     procedure PaletteTabRows(Sender: TObject);
     procedure SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
@@ -2120,6 +2124,10 @@ type
     // Ширина правой панели до того, как её растянули под окно эмулятора;
     // -1 - не растягивали
     FArdSimKeepWidth: Integer;
+    // последний клик по надписи эмулятора: повтор - на вызов выше
+    FArdWhereText: string;
+    FArdWhereTick: Cardinal;
+    FArdWhereLevel: Integer;
     FArdSimWasRunning: Boolean;   // для ArdSimStateChange: запуск эмулятора
     // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
     // Program reset; создаются в FormCreate
@@ -27884,6 +27892,7 @@ begin
   FArdSim.OnDbgResume := ArdDbgResume;
   FArdSim.OnDbgInfo := ArdDbgInfo;
   FArdSim.OnDbgNeedBreaks := ArdDbgNeedBreaks;
+  FArdSim.OnScreenWhere := ArdSimScreenWhere;
   FArdSimWin.OnPlaced := ArdSimPlaced;
   FArdSimWin.OnHidden := ArdSimHidden;
   FArdSimKeepWidth := -1;
@@ -28139,6 +28148,123 @@ begin
     FDbgHintTimer.OnTimer := DbgHintTimerTick;
   end;
   FDbgHintTimer.Enabled := True;
+end;
+
+// Строка исходника по номеру эмулятора (файл с диска, как при сборке)
+function TForm1.ArdWhereLineText(ACode: Cardinal): string;
+var
+  SrcFile: string;
+  SrcLines: TStringList;
+  LineIdx: Integer;
+begin
+  Result := '';
+  SrcFile := FArdSim.DbgFileName(ACode shr 20);
+  LineIdx := Integer(ACode and $FFFFF) - 1;
+  if (SrcFile = '') or (LineIdx < 0) or not FileExists(SrcFile) then
+    Exit;
+  SrcLines := TStringList.Create;
+  try
+    SrcLines.LoadFromFile(SrcFile);
+    if LineIdx < SrcLines.Count then
+      Result := SrcLines[LineIdx];
+  finally
+    SrcLines.Free;
+  end;
+end;
+
+// С какой строки стека начать: первая (от рисующего оператора наружу), в
+// которой есть строковая константа из этой надписи. Label("V1s=" + ...)
+// рисует через myGLCD.print(Caption, ...) - нужна строка вызова Label.
+// Нет такой - сам рисующий оператор
+function TForm1.ArdWhereGuess(const ACodes: TArdDbgCodes; const AText: string): Integer;
+var
+  CodeIdx, CharIdx, QuoteStart: Integer;
+  LineText, Literal: string;
+begin
+  Result := 0;
+  for CodeIdx := 0 to High(ACodes) do
+  begin
+    LineText := ArdWhereLineText(ACodes[CodeIdx]);
+    CharIdx := 1;
+    while CharIdx <= Length(LineText) do
+    begin
+      if (LineText[CharIdx] = '/') and (CharIdx < Length(LineText)) and
+         (LineText[CharIdx + 1] = '/') then
+        Break;   // комментарий
+      if LineText[CharIdx] = '"' then
+      begin
+        QuoteStart := CharIdx + 1;
+        Inc(CharIdx);
+        while (CharIdx <= Length(LineText)) and (LineText[CharIdx] <> '"') do
+        begin
+          if LineText[CharIdx] = '\' then
+            Inc(CharIdx);
+          Inc(CharIdx);
+        end;
+        Literal := Trim(Copy(LineText, QuoteStart, CharIdx - QuoteStart));
+        if (Length(Literal) >= 2) and (Pos(Literal, AText) > 0) then
+        begin
+          Result := CodeIdx;
+          Exit;
+        end;
+      end;
+      Inc(CharIdx);
+    end;
+  end;
+end;
+
+procedure TForm1.ArdSimScreenWhere(Sender: TObject);
+var
+  Codes: TArdDbgCodes;
+  Code: Cardinal;
+  Level, CodeIdx, SrcLine: Integer;
+  SrcFile, Chain: string;
+begin
+  Codes := FArdSim.WhereCodes;
+  if Length(Codes) = 0 then
+  begin
+    LogComp('--- Эмулятор: в этой точке экрана нет надписи');
+    Exit;
+  end;
+  // повторный клик по той же надписи - строка вызова на уровень выше
+  if (FArdSim.WhereText = FArdWhereText) and
+     (GetTickCount - FArdWhereTick < 3000) then
+    Level := (FArdWhereLevel + 1) mod Length(Codes)
+  else
+    Level := ArdWhereGuess(Codes, FArdSim.WhereText);
+  FArdWhereText := FArdSim.WhereText;
+  FArdWhereTick := GetTickCount;
+  FArdWhereLevel := Level;
+  Chain := '';
+  for CodeIdx := 0 to High(Codes) do
+  begin
+    if Chain <> '' then
+      Chain := Chain + ' <- ';
+    if CodeIdx = Level then
+      Chain := Chain + '[';
+    Chain := Chain + ExtractFileName(FArdSim.DbgFileName(Codes[CodeIdx] shr 20)) +
+             ':' + IntToStr(Codes[CodeIdx] and $FFFFF);
+    if CodeIdx = Level then
+      Chain := Chain + ']';
+  end;
+  LogComp('--- Эмулятор: "' + FArdSim.WhereText + '" - ' + Chain +
+          '. Повторный клик - строка вызова выше');
+  Code := Codes[Level];
+  SrcFile := FArdSim.DbgFileName(Code shr 20);
+  SrcLine := Integer(Code and $FFFFF) - 1;
+  if (SrcFile = '') or (SrcLine < 0) then
+    Exit;
+  if IsIconic(Application.Handle) then
+    Application.Restore;
+  SetForegroundWindow(Handle);
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) <> 0 then
+    OpenNamedFile(SrcFile);
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) <> 0 then
+    Exit;
+  SrcFile := FCurrentFileName;
+  // номер строки - на момент сборки; правки после сборки его сдвигают
+  SrcLine := DbgLineNow(SrcFile, SrcLine);
+  GotoLine(SrcLine);
 end;
 
 procedure TForm1.ArdDbgResume(Sender: TObject);

@@ -3,7 +3,8 @@
 // ardprep puts the hooks into the sketch (ardsim_debug.h); the debug
 // area of the shared memory (sim_internal.h, SimDbg*) carries commands
 // and answers. Everything here runs in the sketch thread, except
-// simDebugHostTick (host loop thread).
+// simDebugHostTick (host loop thread). The screen text map is shared by
+// both and guarded by TextLock.
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -520,6 +521,130 @@ void simFmtArray(std::string &out, const void *first, size_t count, size_t elemS
   out += "} [" + std::to_string(count) + "]";
 }
 
+// ---------------------------------------------------------------- screen texts
+// Each print() of UTFT: the rectangle, the text and the statements that
+// drew it (SimTopLine and the call lines outwards). The host asks for a
+// screen point; the answer is the last text drawn there that is still on
+// the screen (not covered by a later fill or text).
+namespace
+{
+struct ScreenText
+{
+  short X1, Y1, X2, Y2;
+  uint32_t Codes[SimDbgWhereMax];
+  int CodeCount;
+  char Text[SimDbgWhereTextBytes];
+};
+
+const size_t MaxScreenTexts = 4096;
+std::vector<ScreenText> ScreenTexts;
+CRITICAL_SECTION TextLock;
+bool TextLockReady = false;
+uint32_t AnsweredWhere = 0;
+
+void textLock()
+{
+  if (!TextLockReady)
+  {
+    InitializeCriticalSection(&TextLock);
+    TextLockReady = true;
+  }
+  EnterCriticalSection(&TextLock);
+}
+
+void textUnlock() { LeaveCriticalSection(&TextLock); }
+
+// drop the texts lying wholly inside x1..x2, y1..y2 (caller holds the lock)
+void forgetInside(int x1, int y1, int x2, int y2)
+{
+  size_t kept = 0;
+  for (size_t index = 0; index < ScreenTexts.size(); index++)
+  {
+    const ScreenText &item = ScreenTexts[index];
+    bool inside = item.X1 >= x1 && item.X2 <= x2 && item.Y1 >= y1 && item.Y2 <= y2;
+    if (!inside)
+      ScreenTexts[kept++] = item;
+  }
+  ScreenTexts.resize(kept);
+}
+}
+
+void simTextDrawn(int x1, int y1, int x2, int y2, const char *text)
+{
+  if (!DbgHeader || !text || !*text)
+    return;
+  ScreenText item;
+  item.X1 = (short)x1;
+  item.Y1 = (short)y1;
+  item.X2 = (short)x2;
+  item.Y2 = (short)y2;
+  item.CodeCount = 0;
+  if (SimTopLine != 0)
+    item.Codes[item.CodeCount++] = (uint32_t)SimTopLine;
+  int depth = FrameDepth < MaxFrames ? FrameDepth : MaxFrames;
+  for (int index = depth - 1; index >= 0 && item.CodeCount < SimDbgWhereMax; index--)
+    if (Frames[index].CallerLine != 0)
+      item.Codes[item.CodeCount++] = (uint32_t)Frames[index].CallerLine;
+  if (item.CodeCount == 0)
+    return;   // not an instrumented sketch
+  strncpy(item.Text, text, sizeof(item.Text) - 1);
+  item.Text[sizeof(item.Text) - 1] = 0;
+  textLock();
+  forgetInside(x1, y1, x2, y2);
+  if (ScreenTexts.size() >= MaxScreenTexts)
+    ScreenTexts.erase(ScreenTexts.begin(), ScreenTexts.begin() + MaxScreenTexts / 4);
+  ScreenTexts.push_back(item);
+  textUnlock();
+}
+
+void simAreaFilled(int x1, int y1, int x2, int y2)
+{
+  if (!DbgHeader)
+    return;
+  textLock();
+  forgetInside(x1, y1, x2, y2);
+  textUnlock();
+}
+
+namespace
+{
+// host thread: answer the question about a screen point
+void answerWhere()
+{
+  uint32_t seq = DbgHeader[SimDbgWhereSeq];
+  uint32_t point = DbgHeader[SimDbgWhereXY];
+  int px = (int)(point & 0xFFFF), py = (int)(point >> 16);
+  int count = 0;
+  char text[SimDbgWhereTextBytes] = {0};
+  uint32_t codes[SimDbgWhereMax] = {0};
+  textLock();
+  for (size_t index = ScreenTexts.size(); index-- > 0;)
+  {
+    const ScreenText &item = ScreenTexts[index];
+    if (px >= item.X1 && px <= item.X2 && py >= item.Y1 && py <= item.Y2)
+    {
+      count = item.CodeCount;
+      memcpy(codes, item.Codes, sizeof(codes));
+      memcpy(text, item.Text, sizeof(text));
+      break;
+    }
+  }
+  textUnlock();
+  for (int index = 0; index < SimDbgWhereMax; index++)
+    DbgHeader[SimDbgWhereCodes + index] = codes[index];
+  for (size_t word = 0; word < SimDbgWhereTextBytes / 4; word++)
+  {
+    uint32_t value;
+    memcpy(&value, text + word * 4, 4);
+    DbgHeader[SimDbgWhereText + word] = value;
+  }
+  DbgHeader[SimDbgWhereCount] = (uint32_t)count;
+  MemoryBarrier();
+  DbgHeader[SimDbgWhereDone] = seq;
+  AnsweredWhere = seq;
+}
+}
+
 // ---------------------------------------------------------------- host side
 void simDebugAttach(void *area)
 {
@@ -538,6 +663,8 @@ void simDebugAttach(void *area)
     DbgFiles[index] = list[index];
   DbgFiles[list.size()] = 0;
   DbgHeader[SimDbgInstrumented] = files().empty() ? 0 : 1;
+  AnsweredWhere = DbgHeader[SimDbgWhereSeq];
+  DbgHeader[SimDbgWhereDone] = AnsweredWhere;
   SimDebugWanted = 1;
 }
 
@@ -546,6 +673,8 @@ void simDebugHostTick()
 {
   if (!DbgHeader)
     return;
+  if (DbgHeader[SimDbgWhereSeq] != AnsweredWhere)
+    answerWhere();
   if (DbgHeader[SimDbgBpCount] != 0 || DbgHeader[SimDbgBpVersion] != SeenBpVersion ||
       commandPending() || DbgHeader[SimDbgWatchSeq] != AnsweredWatch)
     SimDebugWanted = 1;

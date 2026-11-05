@@ -88,6 +88,7 @@ void UTFT::clrScr()
 {
   simPoll();
   memset(SimScreen, 0, sizeof(SimScreen));
+  simAreaFilled(0, 0, SIM_SCREEN_W - 1, SIM_SCREEN_H - 1);
   lcdPixels(SIM_SCREEN_W * SIM_SCREEN_H);
   lcdDone();
 }
@@ -103,6 +104,7 @@ void UTFT::fillScr(word color)
   for (int y = 0; y < SIM_SCREEN_H; y++)
     for (int x = 0; x < SIM_SCREEN_W; x++)
       SimScreen[y][x] = color;
+  simAreaFilled(0, 0, SIM_SCREEN_W - 1, SIM_SCREEN_H - 1);
   lcdPixels(SIM_SCREEN_W * SIM_SCREEN_H);
   lcdDone();
 }
@@ -205,6 +207,7 @@ void UTFT::fillRect(int x1, int y1, int x2, int y2)
   for (int y = y1; y <= y2; y++)
     for (int x = x1; x <= x2; x++)
       putPixel(x, y, FrontColor);
+  simAreaFilled(x1, y1, x2, y2);
   lcdDone();
 }
 
@@ -231,6 +234,7 @@ void UTFT::fillRoundRect(int x1, int y1, int x2, int y2)
         hLine(x1, y2 - row, x2 - x1);
       }
     }
+    simAreaFilled(x1, y1, x2, y2);
   }
 }
 
@@ -364,6 +368,8 @@ void UTFT::print(const char *text, int x, int y, int deg)
     x = (SIM_SCREEN_W - length * sizeX) / 2;
   for (int index = 0; index < length; index++)
     printChar((byte)text[index], x + index * sizeX, y);
+  if (length > 0)
+    simTextDrawn(x, y, x + length * sizeX - 1, y + Font[1] - 1, text);
 }
 
 void UTFT::print(const String &text, int x, int y, int deg)
