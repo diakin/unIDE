@@ -30435,10 +30435,12 @@ begin
       begin
         if (Depth = 0) and (Open < 0) then
         begin
-          // Назад до ')' через пробелы и переводы строк
+          // Назад до ')' через пробелы, переводы строк и комментарии: между
+          // ')' и '{' бывают строки // с описанием параметров (Label в BS10)
           Idx2 := Idx - 1;
           while (Idx2 >= 1) and ((AText[Idx2] = ' ') or (AText[Idx2] = #9) or
-                              (AText[Idx2] = #13) or (AText[Idx2] = #10)) do
+                              (AText[Idx2] = #13) or (AText[Idx2] = #10) or
+                              InRanges(CommentRanges, Idx2 - 1)) do
             Dec(Idx2);
 
           if (Idx2 >= 1) and (AText[Idx2] = ')') and not Skip(Idx2) then
