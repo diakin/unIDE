@@ -72700,7 +72700,7 @@ end;
 function TForm1.MingwInstallUcrt: Boolean;
 var
   Target, Msu, ErrText, Wusa, Params: string;
-  ExecInfo: TShellExecuteInfo;
+  ExecInfo: TShellExecuteInfoA;
   ExitCode: DWORD;
   WinDir: array[0..MAX_PATH] of Char;
 begin
@@ -72748,7 +72748,7 @@ begin
   ExecInfo.lpFile := PChar(Wusa);
   ExecInfo.lpParameters := PChar(Params);
   ExecInfo.nShow := SW_SHOWNORMAL;
-  if not ShellExecuteEx(@ExecInfo) then
+  if not ShellExecuteExA(@ExecInfo) then
   begin
     LogComp('UCRT: wusa не запущен - ' + SysErrorMessage(GetLastError));
     Exit;
