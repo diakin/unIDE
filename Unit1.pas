@@ -15288,7 +15288,7 @@ begin
   else if (Ext = '.pas') and LazFolder(ExtractFilePath(FileNm)) then
   begin
     Result := bkLazarus;
-    FBuildReason := 'в папке есть .lpi, .dpr нет';
+    FBuildReason := 'в папке проект Lazarus (.lpi; .dpr нет или рядом его .lpr)';
   end
   else if (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dfm') or
           (Ext = '.dpk') then
@@ -15354,7 +15354,12 @@ begin
     begin
       Dprs := TStringList.Create;
       try
-        if DelphiDprList(ExtractFilePath(FileNm), Dprs) > 0 then
+        if LazFolder(ExtractFilePath(FileNm)) then
+        begin
+          Result := bkLazarus;
+          FBuildReason := 'в папке проект Lazarus (.lpi; .dpr нет или рядом его .lpr)';
+        end
+        else if DelphiDprList(ExtractFilePath(FileNm), Dprs) > 0 then
         begin
           Result := bkDelphi;
           FBuildReason := 'в папке есть .dpr';
@@ -57375,11 +57380,15 @@ begin
     ChangeFileExt(ExtractFileName(FCurrentFileName), ''));
 end;
 
-// В папке ADir есть .lpi, а .dpr нет: .pas там - модуль Lazarus
+// В папке ADir есть .lpi, а .dpr нет или у каждого .dpr рядом .lpr того же
+// имени (папка, подготовленная LazPrep: .dpr там - копия, проект - .lpr):
+// .pas там - модуль Lazarus. Проекты Delphi и Lazarus в одной папке
+// вперемешку не лежат.
 function TForm1.LazFolder(const ADir: string): Boolean;
 var
   SR: TSearchRec;
   Dprs: TStringList;
+  DprIdx: Integer;
 begin
   Result := False;
   if ADir = '' then
@@ -57398,7 +57407,11 @@ begin
     Exit;
   Dprs := TStringList.Create;
   try
-    Result := DelphiDprList(ADir, Dprs) = 0;
+    DelphiDprList(ADir, Dprs);
+    for DprIdx := 0 to Dprs.Count - 1 do
+      if not FileExists(ChangeFileExt(IncludeTrailingPathDelimiter(ADir) +
+                        ExtractFileName(Dprs[DprIdx]), '.lpr')) then
+        Result := False;
   finally
     Dprs.Free;
   end;
