@@ -2161,6 +2161,7 @@ type
     // цвета" для проектов открытых вкладок; ключ - состав вкладок
     FTabPrjSlots: TStringList;
     FTabPrjSlotsKey: string;
+    FTabWinKeys: array of string; // ключ цвета (TabColorKey) по номеру окна
     FInFitTabs: Boolean;
     // Вкладки в несколько рядов (MultiLine в .dfm): высота полосы с одним
     // рядом - из .dfm; на каждый следующий ряд полоса выше (UpdateTabsHeight)
@@ -2727,6 +2728,7 @@ type
     function  TabFrameColor(WinIdx: Integer): TColor;
     function  TabColorKey(WinIdx: Integer): string;
     function  TabProjectSlot(const APrjName: string; ASlotCount: Integer): Integer;
+    procedure TabColorsRefresh(ASlotCount: Integer);
     procedure TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
                           AActive: Boolean);
     procedure CloseTab(TabIdx: Integer);
@@ -3983,6 +3985,7 @@ type
     // Сборка RapidQ Basic (rc.exe) и выбор между ней и Delphi
     function  BuildIsRapidQ: Boolean;
     function  CurBuildKind: Integer;
+    function  WinBuildKind(AWinIdx: Integer; const AFileNm: string): Integer;
     function  ManualBuildKind(const AFile: string): Integer;
     procedure SetManualBuildKind(const AFile: string; AKind: Integer);
     function  BuildTargetOf(AKind: Integer): string;
@@ -15248,21 +15251,29 @@ begin
   FBasDialects.AddObject(Key, TObject(Result + 10));
 end;
 
+// Сборщик активной вкладки
 function TForm1.CurBuildKind: Integer;
+begin
+  Result := WinBuildKind(FWindowsIndex, FCurrentFileName);
+end;
+
+// Сборщик файла AFileNm окна AWinIdx (главный .bas - по окну); почему -
+// в FBuildReason
+function TForm1.WinBuildKind(AWinIdx: Integer; const AFileNm: string): Integer;
 var
   FileNm, Ext, Owner, PrjName, PrjNote: string;
   Dprs: TStringList;
   PrjKind: Integer;
 begin
   // Выбран вручную в переключателе - он
-  Result := ManualBuildKind(FCurrentFileName);
+  Result := ManualBuildKind(AFileNm);
   if Result <> bkNone then
   begin
     FBuildReason := 'выбрано вручную';
     Exit;
   end;
 
-  FileNm := FCurrentFileName;
+  FileNm := AFileNm;
   Ext := LowerCase(ExtractFileExt(FileNm));
   PrjName := BuildProject;
   PrjKind := ProjectBuildKind(PrjName);
@@ -15317,7 +15328,7 @@ begin
     // .bas, подключённый в главный файл (вкладка из Includes), - по
     // главному: у подключаемого .bas FreeBASIC #-директив часто нет
     Result := bkNone;
-    Owner := CurIncOwner;
+    Owner := WinIncOwner(AWinIdx);
     if Owner <> '' then
     begin
       Result := BasDialectOf(Owner);
@@ -15343,7 +15354,7 @@ begin
   end
   else if (Ext = '.inc') or (Ext = '.bi') then
   begin
-    Owner := CurIncOwner;
+    Owner := WinIncOwner(AWinIdx);
     if Owner <> '' then
     begin
       Result := BasDialectOf(Owner);
@@ -20895,6 +20906,11 @@ begin
   PrjName := TabProjectOf(WinIdx);
   if PrjName <> '' then
     Result := Result + #13#10'Проект: ' + PrjName;
+  // Сборщик - из ключа цвета рамки (TabColorKey: "...|Delphi")
+  if (WinIdx <= High(FTabWinKeys)) and
+     (Pos('|', FTabWinKeys[WinIdx]) > 0) then
+    Result := Result + #13#10'Сборщик: ' + Copy(FTabWinKeys[WinIdx],
+      LastDelimiter('|', FTabWinKeys[WinIdx]) + 1, MaxInt);
 end;
 
 // Проект, в папке которого лежит файл окна: из списка проектов ([Projects]
@@ -20940,21 +20956,23 @@ begin
   end;
 end;
 
-// Цвет рамки вкладки - из набора, по проекту файла (TabColorKey): у
-// проекта он один и тот же при каждом запуске. Файлы вне проектов - так
+// Цвет рамки вкладки - из набора, по проекту файла и его сборщику
+// (TabColorKey): у пары проект + сборщик он один и тот же при каждом
+// запуске. Файлы вне проектов - так
 // же, по их папке. clNone - вкладки без окна (цвет из настроек,
 // Tabs.Border). Набор - светлый или тёмный, по фону вкладок.
 function TForm1.TabFrameColor(WinIdx: Integer): TColor;
 const
   FramePalCount = 10;
   // RGB: оранжевый, зелёный, малиновый, синий, оливковый (в тёмном -
-  // жёлтый), красный, бирюзовый, фиолетовый, коричневый, салатовый
+  // жёлтый), красный, бирюзовый, фиолетовый, коричневый, серый (салатовый
+  // рядом с зелёным не отличался)
   FramePalLight: array[0..FramePalCount - 1] of Cardinal = (
     $E67800, $00963C, $C800A0, $0078D7, $808000,
-    $DC1E1E, $00A0A0, $783CC8, $8C5A28, $5A9600);
+    $DC1E1E, $00A0A0, $783CC8, $8C5A28, $505050);
   FramePalDark: array[0..FramePalCount - 1] of Cardinal = (
     $FFA03C, $50D26E, $F064DC, $5AAAFF, $F0D23C,
-    $FF6464, $3CDCDC, $AA82FF, $D2A06E, $AAE646);
+    $FF6464, $3CDCDC, $AA82FF, $D2A06E, $D2D2D2);
 var
   PrjName: string;
   SlotIdx: Integer;
@@ -20962,7 +20980,12 @@ var
   IsDark: Boolean;
 begin
   Result := clNone;
-  PrjName := TabColorKey(WinIdx);
+  // Ключ - из раскладки (сборщик файла ищется по диску, на каждую
+  // отрисовку его не считаем)
+  TabColorsRefresh(FramePalCount);
+  if (WinIdx < 0) or (WinIdx > High(FTabWinKeys)) then
+    Exit;
+  PrjName := FTabWinKeys[WinIdx];
   if PrjName = '' then
     Exit;
   SlotIdx := TabProjectSlot(PrjName, FramePalCount);
@@ -20981,8 +21004,13 @@ begin
 end;
 
 // Ключ цвета рамки: имя проекта файла; файл вне проектов - его папка
-// (с приставкой '>', чтобы не совпасть с именем проекта). '' - нет окна.
+// (с приставкой '>', чтобы не совпасть с именем проекта). Через '|' -
+// сборщик файла (WinBuildKind): в одном проекте .pas под Delphi и под
+// Lazarus - разные цвета. '' - нет окна.
 function TForm1.TabColorKey(WinIdx: Integer): string;
+var
+  Kind: Integer;
+  SavedReason: string;
 begin
   Result := '';
   if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or
@@ -20991,6 +21019,12 @@ begin
   Result := TabProjectOf(WinIdx);
   if Result = '' then
     Result := '>' + ExtractFileDir(PathNative(FWindows[WinIdx].FileName));
+  // FBuildReason - причина для лога сборки активной вкладки, не трогаем
+  SavedReason := FBuildReason;
+  Kind := WinBuildKind(WinIdx, FWindows[WinIdx].FileName);
+  FBuildReason := SavedReason;
+  if Kind <> bkNone then
+    Result := Result + '|' + BuildKindName(Kind);
 end;
 
 // Номер цвета проекта в наборе из ASlotCount цветов. Основной - по имени
@@ -20999,10 +21033,15 @@ end;
 // свободный: пока проектов на вкладках не больше, чем цветов, у каждого
 // свой цвет. Раскладка считается заново, только когда меняется состав
 // вкладок (ключ - файлы вкладок по порядку).
-function TForm1.TabProjectSlot(const APrjName: string;
-  ASlotCount: Integer): Integer;
+// Раскладка цветов по ключам открытых вкладок (TabColorKey) из ASlotCount
+// цветов. Основной номер - по ключу (хеш), он постоянный. Если у двух
+// ключей номер совпал, второй по алфавиту берёт следующий свободный: пока
+// ключей на вкладках не больше, чем цветов, у каждого свой цвет.
+// Считается заново, только когда меняются вкладки, проект, список
+// проектов или сборщики, выбранные вручную.
+procedure TForm1.TabColorsRefresh(ASlotCount: Integer);
 var
-  TabIdx, PrjIdx, SlotIdx, Probe, CharIdx: Integer;
+  TabIdx, PrjIdx, SlotIdx, Probe, CharIdx, WinIdx: Integer;
   SlotKey, PrjName, NameKey: string;
   PrjNames: TStringList;
   SlotUsed: array of Boolean;
@@ -21011,60 +21050,77 @@ begin
   SlotKey := IntToStr(ASlotCount) + '|' + FCurrentProject + '|';
   if FProjectReg <> nil then
     SlotKey := SlotKey + IntToStr(FProjectReg.Count) + '|';
+  if FBuildKindManual <> nil then
+    SlotKey := SlotKey + FBuildKindManual.Text + '|';
   for TabIdx := 0 to High(FTabWin) do
     if (FTabWin[TabIdx] >= 0) and (FTabWin[TabIdx] < WindowsItemCount) and
        FWindows[FTabWin[TabIdx]].Used then
       SlotKey := SlotKey + FWindows[FTabWin[TabIdx]].FileName + '|';
 
-  if (FTabPrjSlots = nil) or (SlotKey <> FTabPrjSlotsKey) then
-  begin
-    if FTabPrjSlots = nil then
-      FTabPrjSlots := TStringList.Create;
-    FTabPrjSlots.Clear;
-    FTabPrjSlotsKey := SlotKey;
+  if (FTabPrjSlots <> nil) and (SlotKey = FTabPrjSlotsKey) then
+    Exit;
+  if FTabPrjSlots = nil then
+    FTabPrjSlots := TStringList.Create;
+  FTabPrjSlots.Clear;
+  FTabPrjSlotsKey := SlotKey;
+  SetLength(FTabWinKeys, WindowsItemCount);
+  for WinIdx := 0 to High(FTabWinKeys) do
+    FTabWinKeys[WinIdx] := '';
 
-    PrjNames := TStringList.Create;
-    try
-      PrjNames.Sorted := True;
-      PrjNames.Duplicates := dupIgnore;
-      PrjNames.CaseSensitive := False;
-      for TabIdx := 0 to High(FTabWin) do
-      begin
-        PrjName := TabColorKey(FTabWin[TabIdx]);
-        if PrjName <> '' then
-          PrjNames.Add(PrjName);
-      end;
-
-      SetLength(SlotUsed, ASlotCount);
-      for SlotIdx := 0 to ASlotCount - 1 do
-        SlotUsed[SlotIdx] := False;
-      for PrjIdx := 0 to PrjNames.Count - 1 do
-      begin
-        NameKey := AnsiUpperCase(PrjNames[PrjIdx]);
-        HashVal := 0;
-        for CharIdx := 1 to Length(NameKey) do
-          HashVal := (HashVal * 31 + Ord(NameKey[CharIdx])) and $00FFFFFF;
-        SlotIdx := Integer(HashVal mod Cardinal(ASlotCount));
-        // Все цвета заняты - повтор основного
-        for Probe := 0 to ASlotCount - 1 do
-          if not SlotUsed[(SlotIdx + Probe) mod ASlotCount] then
-          begin
-            SlotIdx := (SlotIdx + Probe) mod ASlotCount;
-            Break;
-          end;
-        SlotUsed[SlotIdx] := True;
-        FTabPrjSlots.Add(NameKey + '=' + IntToStr(SlotIdx));
-      end;
-    finally
-      PrjNames.Free;
+  PrjNames := TStringList.Create;
+  try
+    PrjNames.Sorted := True;
+    PrjNames.Duplicates := dupIgnore;
+    PrjNames.CaseSensitive := False;
+    for TabIdx := 0 to High(FTabWin) do
+    begin
+      WinIdx := FTabWin[TabIdx];
+      PrjName := TabColorKey(WinIdx);
+      if PrjName = '' then
+        Continue;
+      FTabWinKeys[WinIdx] := PrjName;
+      PrjNames.Add(PrjName);
     end;
-  end;
 
+    SetLength(SlotUsed, ASlotCount);
+    for SlotIdx := 0 to ASlotCount - 1 do
+      SlotUsed[SlotIdx] := False;
+    for PrjIdx := 0 to PrjNames.Count - 1 do
+    begin
+      NameKey := AnsiUpperCase(PrjNames[PrjIdx]);
+      HashVal := 0;
+      for CharIdx := 1 to Length(NameKey) do
+        HashVal := (HashVal * 31 + Ord(NameKey[CharIdx])) and $00FFFFFF;
+      SlotIdx := Integer(HashVal mod Cardinal(ASlotCount));
+      // Все цвета заняты - повтор основного
+      for Probe := 0 to ASlotCount - 1 do
+        if not SlotUsed[(SlotIdx + Probe) mod ASlotCount] then
+        begin
+          SlotIdx := (SlotIdx + Probe) mod ASlotCount;
+          Break;
+        end;
+      SlotUsed[SlotIdx] := True;
+      FTabPrjSlots.Add(NameKey + '=' + IntToStr(SlotIdx));
+    end;
+  finally
+    PrjNames.Free;
+  end;
+end;
+
+// Номер цвета ключа APrjName (TabColorKey) по раскладке TabColorsRefresh
+function TForm1.TabProjectSlot(const APrjName: string;
+  ASlotCount: Integer): Integer;
+var
+  CharIdx: Integer;
+  NameKey: string;
+  HashVal: Cardinal;
+begin
+  TabColorsRefresh(ASlotCount);
   NameKey := AnsiUpperCase(APrjName);
   Result := StrToIntDef(FTabPrjSlots.Values[NameKey], -1);
   if Result < 0 then
   begin
-    // Проекта нет среди вкладок (подсказка и т.п.) - основной номер
+    // Ключа нет среди вкладок - основной номер
     HashVal := 0;
     for CharIdx := 1 to Length(NameKey) do
       HashVal := (HashVal * 31 + Ord(NameKey[CharIdx])) and $00FFFFFF;
