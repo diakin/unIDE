@@ -3039,6 +3039,9 @@ type
 
     procedure UpdateStatusBarInfo; // Заказать обновление статус-бара
     procedure RefreshStatusBar;    // Собственно пересчёт полей
+    function  StatusEdView(out AWinIdx: Integer): TEdView;
+    procedure RefreshStatusBarView(AView: TEdView; AWinIdx: Integer);
+    procedure StatusViewCaretMove(Sender: TObject);
     function  CharAt(APos: Integer): Char;
     procedure TrimWordSelection;
     function  BracketColorAt(APos: Integer): TColor;
@@ -18575,12 +18578,17 @@ procedure TForm1.UpdatePathBar;
 var
   FN: string;
   SR: TSearchRec;
+  StatusWin: Integer;
 begin
   if FStatus2 = nil then
     Exit;
 
   FN := '';
-  if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
+  // Активна вторая панель - её файл
+  StatusEdView(StatusWin);
+  if (StatusWin >= 0) and (StatusWin <> FWindowsIndex) then
+    FN := FWindows[StatusWin].FileName
+  else if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
   begin
     if FCurrentFileName <> '' then
       FN := FCurrentFileName
@@ -26123,10 +26131,20 @@ var
   Selection: TCharRange;
   CurrentChar: Char;
   SubIdx: Integer;
+  StatusView: TEdView;
+  StatusWin: Integer;
 begin
   // ЗАЩИТА: Если статус-бар не создан или в нем нет панелей, выходим, чтобы не было Access Violation
   if (StatusBar1 = nil) or (StatusBar1.Panels.Count < 5) then
     Exit;
+  // Активна вторая панель (или окно сравнения поверх редактора) - поля по
+  // ней
+  StatusView := StatusEdView(StatusWin);
+  if StatusWin >= 0 then
+  begin
+    RefreshStatusBarView(StatusView, StatusWin);
+    Exit;
+  end;
 
   // 1. Общее число строк
   TotalLines := EdApi.LineCount;
@@ -91018,6 +91036,8 @@ begin
     FRtfView.SetHostTop(SplitEditTop);
   SplitUpdateHeaders;
   SplitUpdateMenu;
+  UpdatePathBar;
+  UpdateStatusBarInfo;
   if FTabs <> nil then
     FTabs.Invalidate;
 end;
@@ -91165,6 +91185,8 @@ begin
     finally
       FSplitSyncBusy := False;
     end;
+    if FSplit.EdView <> nil then
+      FSplit.EdView.OnCaretMove := StatusViewCaretMove;
     if FCmpOn and CmpViewMode then
     begin
       FCmpRelook := True;
@@ -91363,6 +91385,9 @@ var
   SplitActiveText: TColor;
   EditFile: string;
 begin
+  // Статус-бар и путь - по активной панели
+  UpdatePathBar;
+  UpdateStatusBarInfo;
   if (FSplit = nil) or (FEditHeader = nil) or not FSplit.Shown then
     Exit;
   if SplitWinValid(FWindowsIndex) then
@@ -92145,6 +92170,7 @@ begin
     FCmpView.Align := alNone;
     FCmpView.OnChange := CmpViewChange;
     FCmpView.OnViewScroll := CmpViewScroll;
+    FCmpView.OnCaretMove := StatusViewCaretMove;
     FCmpDiff := TSplitDiff.Create;
   end;
   NewBind := (FCmpViewBuf <> LeftBuf) or (FCmpView.Buffer <> LeftBuf) or
@@ -92214,6 +92240,7 @@ begin
   FCmpView.Buffer := nil;
   FreeAndNil(FCmpHigh);
   FCmpViewBuf := nil;
+  UpdateStatusBarInfo;
   if AToEditor and (WasBuf <> nil) and (FEdEmu <> nil) and
      (FEdEmu.Buffer = WasBuf) and (CaretLine >= 0) then
     GotoLine(CaretLine);
@@ -92253,6 +92280,138 @@ begin
   if (FSplit <> nil) and (FSplit.EdView <> nil) and
      (FSplit.EdView.Focused or FSplitActive) then
     Result := FSplit.EdView;
+end;
+
+// ---------------------------------------------------------------------------
+//  Статус-бар по активной панели
+// ---------------------------------------------------------------------------
+
+// Активна не панель основного редактора: AWinIdx - окно (вкладка) активной
+// панели, Result - её окно TEdView (nil - в панели просмотр по формату).
+// Активна вторая панель или поверх редактора окно сравнения - тогда
+// AWinIdx - вкладка редактора. AWinIdx = -1 - поля по основному редактору
+function TForm1.StatusEdView(out AWinIdx: Integer): TEdView;
+begin
+  Result := nil;
+  AWinIdx := -1;
+  if (FSplit <> nil) and FSplit.Shown and FSplitActive and
+     SplitWinValid(FSplitWin) then
+  begin
+    AWinIdx := FSplitWin;
+    if SplitOwnEdText and (FSplit.EdView <> nil) and
+       (FSplit.EdView.Buffer <> nil) then
+      Result := FSplit.EdView;
+    Exit;
+  end;
+  if CmpViewActive and (FCmpView.Buffer <> nil) then
+  begin
+    AWinIdx := FWindowsIndex;
+    Result := FCmpView;
+  end;
+end;
+
+// Поля статус-бара по окну TEdView активной панели (вкладка AWinIdx), как
+// RefreshStatusBar по редактору. Позиция в файле - с переводами строк
+// файла (CR LF - 2, LF - 1); у большого файла на отображении - не
+// считается (пришлось бы пройти все строки)
+procedure TForm1.RefreshStatusBarView(AView: TEdView; AWinIdx: Integer);
+var
+  ViewBuf: TEdBuffer;
+  RowIdx, CaretRow, CaretCol, LineLen, EolLen, CursorPos, TotalChars: Integer;
+  LineStr: WideString;
+  CharStr: string;
+  EncText: string;
+begin
+  ViewBuf := nil;
+  if AView <> nil then
+    ViewBuf := AView.Buffer;
+  if ViewBuf = nil then
+  begin
+    StatusBar1.Panels[0].Text := 'Строк: -';
+    StatusBar1.Panels[1].Text := 'Стр: -';
+    StatusBar1.Panels[2].Text := 'Поз в строке: -';
+    StatusBar1.Panels[3].Text := 'Поз.: -';
+    StatusBar1.Panels[4].Text := 'ASCII: ---';
+  end
+  else
+  begin
+    CaretRow := AView.CaretRow;
+    CaretCol := AView.CaretCol;
+    StatusBar1.Panels[0].Text := 'Строк:' + IntToStr(ViewBuf.Count);
+    StatusBar1.Panels[1].Text := 'Стр: ' + IntToStr(CaretRow + 1);
+    LineStr := '';
+    if (CaretRow >= 0) and (CaretRow < ViewBuf.Count) then
+      LineStr := ViewBuf[CaretRow];
+    LineLen := Length(LineStr);
+    StatusBar1.Panels[2].Text := 'Поз в строке: ' + IntToStr(CaretCol) +
+      '/' + IntToStr(LineLen);
+    if ViewBuf.IsMapped then
+      StatusBar1.Panels[3].Text := 'Поз.: -'
+    else
+    begin
+      EolLen := 2;
+      if FWindows[AWinIdx].LineEnd = EdLineEndLF then
+        EolLen := 1;
+      CursorPos := 0;
+      TotalChars := 0;
+      for RowIdx := 0 to ViewBuf.Count - 1 do
+      begin
+        if RowIdx = CaretRow then
+          CursorPos := TotalChars + CaretCol;
+        Inc(TotalChars, Length(ViewBuf[RowIdx]));
+        if RowIdx < ViewBuf.Count - 1 then
+          Inc(TotalChars, EolLen);
+      end;
+      StatusBar1.Panels[3].Text := 'Поз.: ' + IntToStr(CursorPos) +
+        '/' + IntToStr(TotalChars);
+    end;
+    if (CaretCol >= 0) and (CaretCol < LineLen) then
+    begin
+      CharStr := EdAnsiLine(Copy(LineStr, CaretCol + 1, 1));
+      StatusBar1.Panels[4].Text := 'ASCII: ' + IntToStr(Ord(CharStr[1])) +
+        ' (''' + EdUiText(CharStr) + ''')';
+    end
+    else
+      StatusBar1.Panels[4].Text := 'ASCII: ---';
+  end;
+  if StatusBar1.Panels.Count > 5 then
+  begin
+    if FWindows[AWinIdx].IsUtf8 then
+    begin
+      if FWindows[AWinIdx].HasBom then
+        EncText := 'UTF-8 BOM'
+      else
+        EncText := 'UTF-8';
+    end
+    else
+      EncText := 'ANSI';
+    if FWindows[AWinIdx].LineEnd = EdLineEndLF then
+      EncText := EncText + ' LF';
+    StatusBar1.Panels[5].Text := EncText;
+  end;
+  // Подпрограмма у каретки - только для вкладки редактора (её разбор)
+  if (FSubLabel <> nil) and (AWinIdx <> FWindowsIndex) then
+    SubLabelShow('');
+end;
+
+// Каретка окна TEdView второй панели или окна сравнения сдвинулась. Окно
+// в фокусе - его панель активная (в Linux-сборке щелчок по панели
+// AppMessage не ловит)
+procedure TForm1.StatusViewCaretMove(Sender: TObject);
+var
+  PaneFocus: Boolean;
+begin
+  if (Sender is TEdView) and TEdView(Sender).Focused and (FSplit <> nil) and
+     FSplit.Shown then
+  begin
+    PaneFocus := Sender = FSplit.EdView;
+    if (PaneFocus or (Sender = FCmpView)) and (PaneFocus <> FSplitActive) then
+    begin
+      FSplitActive := PaneFocus;
+      SplitUpdateHeaders;
+    end;
+  end;
+  UpdateStatusBarInfo;
 end;
 
 // Нажатие мыши в окне AWnd (AppMessage): в какой панели теперь работают
