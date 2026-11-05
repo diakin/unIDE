@@ -2157,8 +2157,9 @@ type
     FRightStartCollapsed: Boolean;   // из editor.ini, ставится в FormCreate
     FTabsOldProc: TWndMethod;
     FTabsHostProc: TWndMethod; // прежний обработчик панели-родителя вкладок
-    // Цвета рамок вкладок по проектам (TabProjectSlot): "Проект=номер
-    // цвета" для проектов открытых вкладок; ключ - состав вкладок
+    // Цвета рамок вкладок (TabColorsRefresh): "КЛЮЧ=цвет" для ключей
+    // открытых вкладок (TabColorKey); FTabPrjSlotsKey - состав вкладок и
+    // фон темы, при которых раскладка посчитана
     FTabPrjSlots: TStringList;
     FTabPrjSlotsKey: string;
     FTabWinKeys: array of string; // ключ цвета (TabColorKey) по номеру окна
@@ -2727,8 +2728,7 @@ type
     function  TabProjectOf(WinIdx: Integer): string;
     function  TabFrameColor(WinIdx: Integer): TColor;
     function  TabColorKey(WinIdx: Integer): string;
-    function  TabProjectSlot(const APrjName: string; ASlotCount: Integer): Integer;
-    procedure TabColorsRefresh(ASlotCount: Integer);
+    procedure TabColorsRefresh;
     procedure TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
                           AActive: Boolean);
     procedure CloseTab(TabIdx: Integer);
@@ -20956,51 +20956,96 @@ begin
   end;
 end;
 
-// Цвет рамки вкладки - из набора, по проекту файла и его сборщику
-// (TabColorKey): у пары проект + сборщик он один и тот же при каждом
-// запуске. Файлы вне проектов - так
-// же, по их папке. clNone - вкладки без окна (цвет из настроек,
-// Tabs.Border). Набор - светлый или тёмный, по фону вкладок.
+// Цвет рамки вкладки - по проекту файла и его сборщику (TabColorKey), из
+// набора в 256 цветов: см. TabColorsRefresh. clNone - вкладка без окна
+// (цвет из настроек, Tabs.Border).
 function TForm1.TabFrameColor(WinIdx: Integer): TColor;
-const
-  FramePalCount = 10;
-  // RGB: оранжевый, зелёный, малиновый, синий, оливковый (в тёмном -
-  // жёлтый), красный, бирюзовый, фиолетовый, коричневый, серый (салатовый
-  // рядом с зелёным не отличался)
-  FramePalLight: array[0..FramePalCount - 1] of Cardinal = (
-    $E67800, $00963C, $C800A0, $0078D7, $808000,
-    $DC1E1E, $00A0A0, $783CC8, $8C5A28, $505050);
-  FramePalDark: array[0..FramePalCount - 1] of Cardinal = (
-    $FFA03C, $50D26E, $F064DC, $5AAAFF, $F0D23C,
-    $FF6464, $3CDCDC, $AA82FF, $D2A06E, $D2D2D2);
 var
-  PrjName: string;
-  SlotIdx: Integer;
-  BackRgb, PalRgb: Cardinal;
-  IsDark: Boolean;
+  ColorKey: string;
+  ListIdx: Integer;
 begin
   Result := clNone;
   // Ключ - из раскладки (сборщик файла ищется по диску, на каждую
   // отрисовку его не считаем)
-  TabColorsRefresh(FramePalCount);
+  TabColorsRefresh;
   if (WinIdx < 0) or (WinIdx > High(FTabWinKeys)) then
     Exit;
-  PrjName := FTabWinKeys[WinIdx];
-  if PrjName = '' then
+  ColorKey := FTabWinKeys[WinIdx];
+  if ColorKey = '' then
     Exit;
-  SlotIdx := TabProjectSlot(PrjName, FramePalCount);
+  ListIdx := FTabPrjSlots.IndexOfName(AnsiUpperCase(ColorKey));
+  if ListIdx >= 0 then
+    Result := TColor(StrToIntDef(FTabPrjSlots.ValueFromIndex[ListIdx],
+      Integer(clNone)));
+end;
 
-  // Тёмный фон - яркий набор: на нём тёмные рамки теряются
-  BackRgb := ColorToRGB(UiColor('Tabs.InactiveBG'));
-  IsDark := (GetRValue(BackRgb) * 30 + GetGValue(BackRgb) * 59 +
-             GetBValue(BackRgb) * 11) div 100 < 128;
-  if IsDark then
-    PalRgb := FramePalDark[SlotIdx]
+// Набор цветов рамок: 32 оттенка по кругу, у каждого 4 насыщенности
+// (100, 85, 70, 55 %) и 2 яркости (100, 80 %) - 256 цветов. Тёмных,
+// серых и чёрных в наборе нет: насыщенность и яркость не ниже этих.
+const
+  TabPalHues = 32;
+  TabPalSats: array[0..3] of Integer = (100, 85, 70, 55);
+  TabPalVals: array[0..1] of Integer = (100, 80);
+  TabPalCount = 256;   // TabPalHues * 4 * 2
+
+// Цвет набора номер APalIdx как TColor ($00BBGGRR)
+function TabPalColor(APalIdx: Integer): TColor;
+var
+  HueIdx, SatIdx, ValIdx, Sector: Integer;
+  HuePos, Frac, SatF, ValF, PartP, PartQ, PartT: Double;
+  RedF, GreenF, BlueF: Double;
+begin
+  HueIdx := APalIdx mod TabPalHues;
+  SatIdx := (APalIdx div TabPalHues) mod 4;
+  ValIdx := (APalIdx div (TabPalHues * 4)) mod 2;
+  SatF := TabPalSats[SatIdx] / 100;
+  ValF := TabPalVals[ValIdx] / 100;
+  HuePos := HueIdx * 6 / TabPalHues;      // 0..6, сектор круга
+  Sector := Trunc(HuePos);
+  Frac := HuePos - Sector;
+  PartP := ValF * (1 - SatF);
+  PartQ := ValF * (1 - SatF * Frac);
+  PartT := ValF * (1 - SatF * (1 - Frac));
+  case Sector of
+    0: begin RedF := ValF;  GreenF := PartT; BlueF := PartP; end;
+    1: begin RedF := PartQ; GreenF := ValF;  BlueF := PartP; end;
+    2: begin RedF := PartP; GreenF := ValF;  BlueF := PartT; end;
+    3: begin RedF := PartP; GreenF := PartQ; BlueF := ValF;  end;
+    4: begin RedF := PartT; GreenF := PartP; BlueF := ValF;  end;
   else
-    PalRgb := FramePalLight[SlotIdx];
-  // TColor - $00BBGGRR
-  Result := TColor(RGB((PalRgb shr 16) and $FF, (PalRgb shr 8) and $FF,
-                       PalRgb and $FF));
+    begin RedF := ValF; GreenF := PartP; BlueF := PartQ; end;
+  end;
+  Result := TColor(RGB(Round(RedF * 255), Round(GreenF * 255),
+                       Round(BlueF * 255)));
+end;
+
+// Различие двух цветов на глаз: евклидово расстояние RGB с весами
+// "redmean" (зелёный глазу заметнее, вес красного и синего зависит от
+// доли красного). 0 - одинаковые, около 765 - чёрный и белый
+function TabColorDistance(AColorA, AColorB: TColor): Double;
+var
+  RgbA, RgbB: Cardinal;
+  RedMean, DeltaR, DeltaG, DeltaB: Double;
+begin
+  RgbA := ColorToRGB(AColorA);
+  RgbB := ColorToRGB(AColorB);
+  RedMean := (GetRValue(RgbA) + GetRValue(RgbB)) / 2;
+  DeltaR := GetRValue(RgbA) - GetRValue(RgbB);
+  DeltaG := GetGValue(RgbA) - GetGValue(RgbB);
+  DeltaB := GetBValue(RgbA) - GetBValue(RgbB);
+  Result := Sqrt((2 + RedMean / 256) * DeltaR * DeltaR +
+                 4 * DeltaG * DeltaG +
+                 (2 + (255 - RedMean) / 256) * DeltaB * DeltaB);
+end;
+
+// Яркость цвета на глаз, 0..255
+function TabColorLuma(AColor: TColor): Integer;
+var
+  RgbVal: Cardinal;
+begin
+  RgbVal := ColorToRGB(AColor);
+  Result := (GetRValue(RgbVal) * 2126 + GetGValue(RgbVal) * 7152 +
+             GetBValue(RgbVal) * 722) div 10000;
 end;
 
 // Ключ цвета рамки: имя проекта файла; файл вне проектов - его папка
@@ -21033,21 +21078,43 @@ end;
 // свободный: пока проектов на вкладках не больше, чем цветов, у каждого
 // свой цвет. Раскладка считается заново, только когда меняется состав
 // вкладок (ключ - файлы вкладок по порядку).
-// Раскладка цветов по ключам открытых вкладок (TabColorKey) из ASlotCount
-// цветов. Основной номер - по ключу (хеш), он постоянный. Если у двух
-// ключей номер совпал, второй по алфавиту берёт следующий свободный: пока
-// ключей на вкладках не больше, чем цветов, у каждого свой цвет.
+// Раскладка цветов по ключам открытых вкладок (TabColorKey).
+//
+// Кандидаты - цвета набора (TabPalColor), заметные на фоне вкладок
+// текущей темы: по яркости отличаются от фона не меньше чем на
+// TabMinLumaGap. На светлом фоне так отпадают светло-жёлтые и
+// светло-голубые, на тёмном - тёмно-синие.
+//
+// Ключи берутся по алфавиту. Каждому - цвет, который сильнее всего
+// отличается от уже выбранных и от фона обеих вкладок (активной и
+// остальных): у кандидата считается наименьшее расстояние до них
+// (TabColorDistance), берутся кандидаты, у которых оно не меньше 95 % от
+// наилучшего, и из них - ближайший по номеру к номеру ключа (хеш имени).
+// Так цвета на вкладках максимально разные, а у одного и того же набора
+// вкладок цвет проекта при каждом запуске тот же.
+//
 // Считается заново, только когда меняются вкладки, проект, список
-// проектов или сборщики, выбранные вручную.
-procedure TForm1.TabColorsRefresh(ASlotCount: Integer);
+// проектов, сборщики, выбранные вручную, или цвета вкладок в теме.
+procedure TForm1.TabColorsRefresh;
+const
+  TabMinLumaGap = 70;
+  TabNearBestPct = 95;
 var
-  TabIdx, PrjIdx, SlotIdx, Probe, CharIdx, WinIdx: Integer;
-  SlotKey, PrjName, NameKey: string;
-  PrjNames: TStringList;
-  SlotUsed: array of Boolean;
+  TabIdx, KeyIdx, PalIdx, CharIdx, WinIdx, CandCount, ChosenCount: Integer;
+  PrefIdx, BestIdx, BestDist, PalDist: Integer;
+  SlotKey, ColorKey, NameKey: string;
+  KeyNames: TStringList;
+  Cands, Chosen: array of TColor;
+  CandMinDist: array of Double;
   HashVal: Cardinal;
+  BackColor, ActiveColor: TColor;
+  BackLuma, ChosenIdx: Integer;
+  MaxMin, DistVal: Double;
 begin
-  SlotKey := IntToStr(ASlotCount) + '|' + FCurrentProject + '|';
+  BackColor := UiColor('Tabs.InactiveBG');
+  ActiveColor := UiColor('Tabs.ActiveBG');
+  SlotKey := IntToStr(ColorToRGB(BackColor)) + '|' +
+             IntToStr(ColorToRGB(ActiveColor)) + '|' + FCurrentProject + '|';
   if FProjectReg <> nil then
     SlotKey := SlotKey + IntToStr(FProjectReg.Count) + '|';
   if FBuildKindManual <> nil then
@@ -21067,64 +21134,98 @@ begin
   for WinIdx := 0 to High(FTabWinKeys) do
     FTabWinKeys[WinIdx] := '';
 
-  PrjNames := TStringList.Create;
+  // Кандидаты под фон темы. Если фон такой, что не подходит ни один
+  // (серый средней яркости), - весь набор
+  BackLuma := TabColorLuma(BackColor);
+  SetLength(Cands, TabPalCount);
+  CandCount := 0;
+  for PalIdx := 0 to TabPalCount - 1 do
+    if Abs(TabColorLuma(TabPalColor(PalIdx)) - BackLuma) >= TabMinLumaGap then
+    begin
+      Cands[CandCount] := TabPalColor(PalIdx);
+      Inc(CandCount);
+    end;
+  if CandCount = 0 then
+  begin
+    for PalIdx := 0 to TabPalCount - 1 do
+      Cands[PalIdx] := TabPalColor(PalIdx);
+    CandCount := TabPalCount;
+  end;
+  SetLength(Cands, CandCount);
+
+  // От чего отличаться: фон вкладок, затем уже выбранные цвета
+  SetLength(Chosen, 2);
+  Chosen[0] := BackColor;
+  Chosen[1] := ActiveColor;
+  ChosenCount := 2;
+  SetLength(CandMinDist, CandCount);
+  for PalIdx := 0 to CandCount - 1 do
+    CandMinDist[PalIdx] := 1.0E9;
+
+  KeyNames := TStringList.Create;
   try
-    PrjNames.Sorted := True;
-    PrjNames.Duplicates := dupIgnore;
-    PrjNames.CaseSensitive := False;
+    KeyNames.Sorted := True;
+    KeyNames.Duplicates := dupIgnore;
+    KeyNames.CaseSensitive := False;
     for TabIdx := 0 to High(FTabWin) do
     begin
       WinIdx := FTabWin[TabIdx];
-      PrjName := TabColorKey(WinIdx);
-      if PrjName = '' then
+      ColorKey := TabColorKey(WinIdx);
+      if ColorKey = '' then
         Continue;
-      FTabWinKeys[WinIdx] := PrjName;
-      PrjNames.Add(PrjName);
+      FTabWinKeys[WinIdx] := ColorKey;
+      KeyNames.Add(ColorKey);
     end;
 
-    SetLength(SlotUsed, ASlotCount);
-    for SlotIdx := 0 to ASlotCount - 1 do
-      SlotUsed[SlotIdx] := False;
-    for PrjIdx := 0 to PrjNames.Count - 1 do
+    for KeyIdx := 0 to KeyNames.Count - 1 do
     begin
-      NameKey := AnsiUpperCase(PrjNames[PrjIdx]);
+      // Расстояния до выбранных - добавляем только новые
+      for PalIdx := 0 to CandCount - 1 do
+        for ChosenIdx := 0 to ChosenCount - 1 do
+        begin
+          DistVal := TabColorDistance(Cands[PalIdx], Chosen[ChosenIdx]);
+          if DistVal < CandMinDist[PalIdx] then
+            CandMinDist[PalIdx] := DistVal;
+        end;
+      // Уже учтённые больше не сравниваем: в Chosen остаётся только
+      // последний выбранный
+      ChosenCount := 0;
+
+      MaxMin := 0;
+      for PalIdx := 0 to CandCount - 1 do
+        if CandMinDist[PalIdx] > MaxMin then
+          MaxMin := CandMinDist[PalIdx];
+
+      NameKey := AnsiUpperCase(KeyNames[KeyIdx]);
       HashVal := 0;
       for CharIdx := 1 to Length(NameKey) do
         HashVal := (HashVal * 31 + Ord(NameKey[CharIdx])) and $00FFFFFF;
-      SlotIdx := Integer(HashVal mod Cardinal(ASlotCount));
-      // Все цвета заняты - повтор основного
-      for Probe := 0 to ASlotCount - 1 do
-        if not SlotUsed[(SlotIdx + Probe) mod ASlotCount] then
+      PrefIdx := Integer(HashVal mod Cardinal(CandCount));
+
+      BestIdx := -1;
+      BestDist := MaxInt;
+      for PalIdx := 0 to CandCount - 1 do
+        if CandMinDist[PalIdx] * 100 >= MaxMin * TabNearBestPct then
         begin
-          SlotIdx := (SlotIdx + Probe) mod ASlotCount;
-          Break;
+          PalDist := Abs(PalIdx - PrefIdx);
+          if CandCount - PalDist < PalDist then
+            PalDist := CandCount - PalDist;
+          if PalDist < BestDist then
+          begin
+            BestDist := PalDist;
+            BestIdx := PalIdx;
+          end;
         end;
-      SlotUsed[SlotIdx] := True;
-      FTabPrjSlots.Add(NameKey + '=' + IntToStr(SlotIdx));
+      if BestIdx < 0 then
+        BestIdx := PrefIdx;
+
+      FTabPrjSlots.Add(NameKey + '=' + IntToStr(Integer(Cands[BestIdx])));
+      SetLength(Chosen, 1);
+      Chosen[0] := Cands[BestIdx];
+      ChosenCount := 1;
     end;
   finally
-    PrjNames.Free;
-  end;
-end;
-
-// Номер цвета ключа APrjName (TabColorKey) по раскладке TabColorsRefresh
-function TForm1.TabProjectSlot(const APrjName: string;
-  ASlotCount: Integer): Integer;
-var
-  CharIdx: Integer;
-  NameKey: string;
-  HashVal: Cardinal;
-begin
-  TabColorsRefresh(ASlotCount);
-  NameKey := AnsiUpperCase(APrjName);
-  Result := StrToIntDef(FTabPrjSlots.Values[NameKey], -1);
-  if Result < 0 then
-  begin
-    // Ключа нет среди вкладок - основной номер
-    HashVal := 0;
-    for CharIdx := 1 to Length(NameKey) do
-      HashVal := (HashVal * 31 + Ord(NameKey[CharIdx])) and $00FFFFFF;
-    Result := Integer(HashVal mod Cardinal(ASlotCount));
+    KeyNames.Free;
   end;
 end;
 
