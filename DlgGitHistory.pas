@@ -838,10 +838,10 @@ function TDlgGitHistory.BranchColor(AIndex: Integer): TColor;
 const
   // $00BBGGRR
   DarkColors: array[0..GitBranchColorCount - 1] of TColor = (
-    $005A5AFF, $0070D070, $00FFA050, $0040E0F0, $00FF80D0, $00E0D060,
+    $0080C0D8, $0070D070, $00FFA050, $0040E0F0, $00FF80D0, $00E0D060,
     $0060A0FF, $00C0C0C0);
   LightColors: array[0..GitBranchColorCount - 1] of TColor = (
-    $000000C8, $00008000, $00C04000, $000088A8, $00A00080, $00A06000,
+    $00204080, $00008000, $00C04000, $000088A8, $00A00080, $00A06000,
     $000060D0, $00606060);
 var
   BackRgb: Longint;
