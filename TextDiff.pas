@@ -34,6 +34,10 @@ type
     IgnoreCase: Boolean;         // без учёта регистра
     IgnoreSpaceChange: Boolean;  // пробелы и табуляции: только есть / нет
     IgnoreAllSpace: Boolean;     // пробелы и табуляции не учитываются
+    // Пробелы и табуляции - только там, где они меняют смысл: между двумя
+    // словами (буквы, цифры, '_') - есть / нет; внутри строк в кавычках
+    // ('...' и "...") - как есть; остальные не учитываются
+    IgnoreSpaceSmart: Boolean;
   end;
 
   TDiffKind = (dkEqual, dkChange, dkLeftOnly, dkRightOnly);
@@ -119,6 +123,7 @@ begin
   Result.IgnoreCase := False;
   Result.IgnoreSpaceChange := False;
   Result.IgnoreAllSpace := False;
+  Result.IgnoreSpaceSmart := False;
 end;
 
 function IsSpaceChar(ACh: Char): Boolean;
@@ -126,12 +131,69 @@ begin
   Result := (ACh = ' ') or (ACh = #9);
 end;
 
+function IsWordChar(ACh: Char): Boolean;
+begin
+  Result := (ACh = '_') or (ACh in ['0'..'9', 'A'..'Z', 'a'..'z']) or
+            (Ord(ACh) >= 128);
+end;
+
+// Ключ строки при IgnoreSpaceSmart: пробелы вне кавычек - один пробел
+// между двумя словами, иначе ничего; в кавычках - как есть
+function SmartSpaceKey(const ALine: string): string;
+var
+  SrcIdx, OutLen: Integer;
+  InSpace: Boolean;
+  Quote: Char;
+begin
+  SetLength(Result, Length(ALine));
+  OutLen := 0;
+  InSpace := False;
+  Quote := #0;
+  SrcIdx := 1;
+  while SrcIdx <= Length(ALine) do
+  begin
+    if Quote <> #0 then
+    begin
+      Inc(OutLen);
+      Result[OutLen] := ALine[SrcIdx];
+      if (ALine[SrcIdx] = '\') and (SrcIdx < Length(ALine)) then
+      begin
+        Inc(SrcIdx);
+        Inc(OutLen);
+        Result[OutLen] := ALine[SrcIdx];
+      end
+      else if ALine[SrcIdx] = Quote then
+        Quote := #0;
+    end
+    else if IsSpaceChar(ALine[SrcIdx]) then
+      InSpace := True
+    else
+    begin
+      if InSpace and (OutLen > 0) and IsWordChar(Result[OutLen]) and
+         IsWordChar(ALine[SrcIdx]) then
+      begin
+        Inc(OutLen);
+        Result[OutLen] := ' ';
+      end;
+      InSpace := False;
+      Inc(OutLen);
+      Result[OutLen] := ALine[SrcIdx];
+      if (ALine[SrcIdx] = '''') or (ALine[SrcIdx] = '"') then
+        Quote := ALine[SrcIdx];
+    end;
+    Inc(SrcIdx);
+  end;
+  SetLength(Result, OutLen);
+end;
+
 function DiffLineKey(const ALine: string; const AOptions: TDiffOptions): string;
 var
   SrcIdx, OutLen: Integer;
   InSpace: Boolean;
 begin
-  if AOptions.IgnoreAllSpace or AOptions.IgnoreSpaceChange then
+  if AOptions.IgnoreSpaceSmart and not AOptions.IgnoreAllSpace then
+    Result := SmartSpaceKey(ALine)
+  else if AOptions.IgnoreAllSpace or AOptions.IgnoreSpaceChange then
   begin
     SetLength(Result, Length(ALine));
     OutLen := 0;
@@ -549,7 +611,7 @@ var
   PlainKeys: Boolean;
 begin
   PlainKeys := not AOptions.IgnoreCase and not AOptions.IgnoreSpaceChange and
-    not AOptions.IgnoreAllSpace;
+    not AOptions.IgnoreAllSpace and not AOptions.IgnoreSpaceSmart;
   LeftKeys := nil;
   RightKeys := nil;
   try
@@ -660,8 +722,14 @@ var
   CharIdx, TokStart, Count: Integer;
   TokClass: TCharClass;
   Token: string;
+  Quote: Char;
+  Escaped: Boolean;
 begin
   ATokens.Clear;
+  // IgnoreSpaceSmart: строка в кавычках (как в SmartSpaceKey) - пробелы
+  // в ней как есть
+  Quote := #0;
+  Escaped := False;
   SetLength(AStarts, Length(AStr) + 1);
   Count := 0;
   CharIdx := 1;
@@ -679,11 +747,37 @@ begin
     begin
       if AOptions.IgnoreAllSpace then
         Token := ''
+      else if AOptions.IgnoreSpaceSmart and (Quote <> #0) then
+        // в кавычках - как есть
+      else if AOptions.IgnoreSpaceSmart then
+      begin
+        // Между двумя словами - есть / нет, иначе не учитывается
+        if (TokStart > 1) and (CharIdx <= Length(AStr)) and
+           IsWordChar(AStr[TokStart - 1]) and IsWordChar(AStr[CharIdx]) then
+          Token := ' '
+        else
+          Token := '';
+      end
       else if AOptions.IgnoreSpaceChange then
         Token := ' ';
     end
     else if AOptions.IgnoreCase then
       Token := AnsiLowerCase(Token);
+    if AOptions.IgnoreSpaceSmart and (TokClass <> ccSpace) and
+       (CharIdx - TokStart = 1) then
+    begin
+      if Escaped then
+        Escaped := False
+      else if (Quote <> #0) and (AStr[TokStart] = '\') then
+        Escaped := True
+      else if (Quote = #0) and ((AStr[TokStart] = '''') or
+              (AStr[TokStart] = '"')) then
+        Quote := AStr[TokStart]
+      else if AStr[TokStart] = Quote then
+        Quote := #0;
+    end
+    else
+      Escaped := False;
     ATokens.Add(Token);
     AStarts[Count] := TokStart;
     Inc(Count);

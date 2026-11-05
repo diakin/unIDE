@@ -57,6 +57,7 @@ uses
   RqDeclFind in 'RqDeclFind.pas',
   TextMerge in 'TextMerge.pas',
   TextDiff in 'TextDiff.pas',
+  SplitDiff in 'SplitDiff.pas',
   DlgFileCompare in 'DlgFileCompare.pas',
   DlgFontViewer in 'DlgFontViewer.pas',
   DlgTtfToUtft in 'DlgTtfToUtft.pas',

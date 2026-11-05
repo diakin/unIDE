@@ -58,6 +58,7 @@ uses
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
   TextDiff,       // разница по строкам - сравнение панелей (TDiffBlocks)
+  SplitDiff,      // сравнение панелей с выравниванием строк (как WinMerge)
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
   FileSearch,     // Find In Files: маски, чтение файлов, обход папок (TFifFileFound)
   UnFar,          // unIDE FAR: двухпанельный файловый менеджер (Utils)
@@ -3677,6 +3678,14 @@ type
     procedure CmpPrevClick(Sender: TObject);
     procedure CmpNextClick(Sender: TObject);
     procedure CmpWithTab(AWinIdx: Integer);
+    function  CmpViewMode: Boolean;
+    function  CmpViewActive: Boolean;
+    function  CmpIsDark: Boolean;
+    procedure CmpViewShow;
+    procedure CmpViewHide(AToEditor: Boolean);
+    procedure CmpViewChange(Sender: TObject);
+    procedure CmpViewScroll(Sender: TObject);
+    function  CmpFocusView: TEdView;
     function LineCommentStart(const ALineStr: string; ALineLen,
       ALineStart: Integer): Integer;
     function LineMarkGroupOf(const ALineStr: string; ALineLen,
@@ -4248,6 +4257,15 @@ type
     FCmpTickSerial: Cardinal;
     FCmpEdWin: Integer;
     FCmpPaneWin: Integer;
+    // Сравнение с выравниванием строк (свой редактор): окно TEdView
+    // поверх редактора над буфером его вкладки, его подсветка, разница и
+    // её показ в обеих панелях; буфер, над которым окно; оформление окна
+    // - заново (тема, шрифт)
+    FCmpView: TEdView;
+    FCmpHigh: TEdSchemeHighlighter;
+    FCmpDiff: TSplitDiff;
+    FCmpViewBuf: TEdBuffer;
+    FCmpRelook: Boolean;
     // Отметки строк и направляющие второй панели (та же вкладка) - по
     // данным редактора; с этими данными панель нарисована в последний раз
     FSplitDecoMapVer: Cardinal;
@@ -25467,6 +25485,8 @@ begin
     Exit;
   if FMapBuffer = OldBuffer then
     MapBind(nil);
+  if (FCmpViewBuf <> nil) and (FCmpViewBuf = OldBuffer) then
+    CmpViewHide(False);
   if (FSplit <> nil) and (FSplit.SharedBuffer = OldBuffer) then
     FSplit.DetachShared;
   if (FEdEmu <> nil) and (FEdEmu.Buffer = OldBuffer) then
@@ -91117,8 +91137,9 @@ begin
     Shared := PaneBuf <> nil;
     Editable := Shared and not PaneBuf.IsMapped and
                 not RqFbIsGenerated(FileName);
-    // Сравнение панелей - по текстам, которые сейчас покажут
-    if FCmpOn then
+    // Сравнение панелей - по текстам, которые сейчас покажут (с
+    // выравниванием строк - после показа, по окнам обеих панелей)
+    if FCmpOn and not CmpViewMode then
       CmpRecalc;
     // Синхронная прокрутка - с той же строки, что в редакторе (при
     // сравнении - с парной строки)
@@ -91143,6 +91164,11 @@ begin
       FSplit.SetEdEditable(Editable);
     finally
       FSplitSyncBusy := False;
+    end;
+    if FCmpOn and CmpViewMode then
+    begin
+      FCmpRelook := True;
+      CmpRecalc;
     end;
     if FCmpOn and FSplitSync and RichEdit1.HandleAllocated then
       FSplitSyncTop := EdApi.FirstVisibleLine
@@ -91490,7 +91516,16 @@ procedure TForm1.SplitRowStyle(Sender: TObject; ARow: Integer;
 var
   MarkFore, MarkBack: TColor;
   PaneBuf: TEdBuffer;
+  DiffBack: TColor;
 begin
+  // Сравнение с выравниванием строк: фон отличия - от FCmpDiff
+  if CmpViewActive and (Sender = FCmpDiff.RightView) then
+  begin
+    DiffBack := FCmpDiff.RowBack(sdsRight, ARow);
+    if DiffBack <> clNone then
+      ABack := DiffBack;
+    Exit;
+  end;
   // Сравнение панелей: строка отличия - фоном отличия
   if FCmpOn and (ARow >= 0) and (ARow < Length(FCmpPaneMark)) and
      (FCmpPaneMark[ARow] > 0) then
@@ -91648,6 +91683,13 @@ end;
 // Вторую панель прокрутили (окно TEdView) - редактор на ту же строку
 procedure TForm1.SplitTextScroll(ATopLine: Integer);
 begin
+  // Сравнение с выравниванием строк: левое окно - на ту же строку экрана
+  if CmpViewActive then
+  begin
+    if not FSplitSyncBusy then
+      FCmpDiff.SyncFrom(FCmpDiff.RightView);
+    Exit;
+  end;
   if FSplitSyncBusy or not FSplitSync or not SplitOwnEdText or
      not RichEdit1.HandleAllocated then
     Exit;
@@ -91668,6 +91710,10 @@ end;
 // посчитанной FirstVisibleLine) - вторую панель на ту же строку
 procedure TForm1.SplitSyncFromEditor;
 begin
+  // Сравнение с выравниванием строк: редактор закрыт левым окном
+  // сравнения, панели прокручиваются вместе сами (FCmpDiff)
+  if CmpViewActive then
+    Exit;
   if FSplitSyncBusy or not FSplitSync or not SplitOwnEdText then
     Exit;
   if FirstVisibleLine = FSplitSyncTop then
@@ -91692,9 +91738,19 @@ end;
 //  панели по строкам (TextDiff). Строки отличий - жёлтым фоном в обеих
 //  панелях, текущее отличие - голубым. Прокрутка - по парам строк:
 //  верхняя строка одной панели переводится в парную строку другой
-//  (CmpMapLine). Пустых строк-вставок нет: в текст редактора их не
+//  (CmpMapLine). Пустых строк-вставок нет: в текст RichEdit их не
 //  вставить, он правится как обычно; после паузы в наборе разница
 //  считается заново (SplitTimerTick).
+//
+//  Свой редактор (FEdEmu) - как WinMerge, с выравниванием строк: поверх
+//  редактора - окно TEdView (FCmpView) над буфером его вкладки, справа -
+//  окно второй панели над буфером её вкладки. Против строк, которых нет в
+//  другой панели, - строки-заполнители; места отличий внутри строки -
+//  ярче; пробелы и табуляции учитываются только между словами и в строках
+//  в кавычках (SplitDiff, TextDiff.IgnoreSpaceSmart). Обе панели
+//  прокручиваются вместе. Правка - в обоих окнах; в левом окне нет Code
+//  Insight и поиска редактора: выключить Diff - снова редактор, каретка
+//  на той же строке.
 //
 //  < > в заголовке и Alt+Up / Alt+Down - предыдущее / следующее отличие:
 //  каретка редактора встаёт на его первую строку.
@@ -91717,9 +91773,12 @@ begin
     CmpRecalc;
     if FCmpCount > 0 then
       CmpGoTo(0);
+    if CmpViewActive and FCmpView.CanFocus then
+      FCmpView.SetFocus;
   end
   else
   begin
+    CmpViewHide(True);
     FCmpBlocks := nil;
     SetLength(FCmpEdMark, 0);
     SetLength(FCmpPaneMark, 0);
@@ -91751,6 +91810,17 @@ begin
   FCmpTickSerial := FEditSerial;
   FCmpEdWin := FWindowsIndex;
   FCmpPaneWin := FSplitWin;
+  // Свой редактор - с выравниванием строк, в окнах TEdView
+  if CmpViewMode then
+  begin
+    CmpViewShow;
+    FCmpDiff.Recalc;
+    FCmpCount := FCmpDiff.Count;
+    FCmpCur := FCmpDiff.Current;
+    CmpUpdateHeader;
+    Exit;
+  end;
+  CmpViewHide(True);
   if FCmpOn and CmpPossible then
   begin
     LeftLines := TStringList.Create;
@@ -91830,6 +91900,8 @@ end;
 
 procedure TForm1.CmpRepaint;
 begin
+  if (FCmpView <> nil) and FCmpView.Visible then
+    FCmpView.Invalidate;
   if RichEdit1.HandleAllocated then
     RichEdit1.Invalidate;
   if (FSplit <> nil) and (FSplit.EdView <> nil) then
@@ -91921,6 +91993,13 @@ begin
     ADiffIdx := 0;
   if ADiffIdx > FCmpCount - 1 then
     ADiffIdx := FCmpCount - 1;
+  if CmpViewActive then
+  begin
+    FCmpDiff.GoToDiff(ADiffIdx, CmpFocusView);
+    FCmpCur := FCmpDiff.Current;
+    CmpUpdateHeader;
+    Exit;
+  end;
   FCmpCur := ADiffIdx;
   CmpMarkCurrent;
   CmpUpdateHeader;
@@ -91944,6 +92023,14 @@ begin
     CmpRecalc;
   if FCmpCount = 0 then
     Exit;
+  if CmpViewActive then
+  begin
+    if not FCmpDiff.Go(ADir, CmpFocusView) then
+      MessageBeep(0);
+    FCmpCur := FCmpDiff.Current;
+    CmpUpdateHeader;
+    Exit;
+  end;
   CaretLine := CurrentLineIndex;
   Target := -1;
   // Каретка на начале текущего отличия - соседнее с ним (у отличия без
@@ -92002,6 +92089,170 @@ begin
   FSplitWin := AWinIdx;
   SplitRefresh(0);
   CmpSet(True);
+end;
+
+// ---------------------------------------------------------------------------
+//  Сравнение с выравниванием строк (свой редактор): окно FCmpView поверх
+//  редактора и окно второй панели, разница - FCmpDiff (SplitDiff)
+// ---------------------------------------------------------------------------
+
+// Сравнение включено, и обе вкладки - буферы своего редактора
+function TForm1.CmpViewMode: Boolean;
+begin
+  Result := FCmpOn and (FEdEmu <> nil) and (FEdEmu.Buffer <> nil) and
+            CmpPossible and (FWindows[FSplitWin].Buffer <> nil) and
+            (FSplit.EdView <> nil);
+end;
+
+// Левое окно сравнения показано и связано с разницей
+function TForm1.CmpViewActive: Boolean;
+begin
+  Result := (FCmpView <> nil) and FCmpView.Visible and (FCmpDiff <> nil) and
+            (FCmpDiff.LeftView = FCmpView) and (FCmpDiff.RightView <> nil);
+end;
+
+// Тёмный фон текста: цвета отличий для тёмной темы
+function TForm1.CmpIsDark: Boolean;
+var
+  BackRgb: Longint;
+begin
+  if FCmpHigh <> nil then
+    BackRgb := ColorToRGB(FCmpHigh.BackColor)
+  else
+    BackRgb := ColorToRGB(RichEdit1.Color);
+  Result := (GetRValue(BackRgb) * 299 + GetGValue(BackRgb) * 587 +
+             GetBValue(BackRgb) * 114) div 1000 < 128;
+end;
+
+// Показать левое окно сравнения над буфером вкладки редактора. Другой
+// буфер (сменили вкладку) или первый показ - каретка и прокрутка с
+// редактора
+procedure TForm1.CmpViewShow;
+var
+  LeftBuf: TEdBuffer;
+  Scheme: TClrScheme;
+  NewBind: Boolean;
+  TopLine, CaretLine: Integer;
+begin
+  LeftBuf := FEdEmu.Buffer;
+  if FCmpView = nil then
+  begin
+    // Без владельца, как окно второй панели: буфер окна к концу работы
+    // может быть уже освобождён
+    FCmpView := TEdView.Create(nil);
+    FCmpView.Visible := False;
+    FCmpView.Parent := FLeftHost;
+    FCmpView.Align := alNone;
+    FCmpView.OnChange := CmpViewChange;
+    FCmpView.OnViewScroll := CmpViewScroll;
+    FCmpDiff := TSplitDiff.Create;
+  end;
+  NewBind := (FCmpViewBuf <> LeftBuf) or (FCmpView.Buffer <> LeftBuf) or
+             not FCmpView.Visible;
+  if NewBind or FCmpRelook then
+  begin
+    FCmpRelook := False;
+    FCmpView.Buffer := nil;
+    FreeAndNil(FCmpHigh);
+    Scheme := SchemeCopyFor(FWindows[FWindowsIndex].FileName);
+    FCmpHigh := TEdSchemeHighlighter.Create(LeftBuf, Scheme, clWindowText,
+      clWindow);
+    FCmpView.TextColor := FCmpHigh.TextColor;
+    FCmpView.BackColor := FCmpHigh.BackColor;
+    FCmpView.OnLineRuns := FCmpHigh.LineRuns;
+    FCmpView.Font.Assign(RichEdit1.Font);
+    FCmpView.TabSize := FTabChars;
+    FCmpView.GutterColor := FGutterBG;
+    FCmpView.GutterTextColor := FGutterFG;
+    FCmpView.GutterCurColor := UiColor('Gutter.CurBG');
+    FCmpView.GutterCurText := UiColor('Gutter.CurText');
+    FCmpView.SelColor := UiColor('Editor.SelBG');
+    FCmpView.SelTextColor := UiColor('Editor.SelText');
+    FCmpView.Buffer := LeftBuf;
+    FCmpView.ReadOnly := LeftBuf.IsMapped;
+    FCmpView.TabStop := True;
+    FCmpView.RefreshAll;
+    if NewBind then
+    begin
+      CaretLine := CurrentLineIndex;
+      TopLine := 0;
+      if RichEdit1.HandleAllocated then
+        TopLine := EdApi.FirstVisibleLine;
+      if (CaretLine >= 0) and (CaretLine < LeftBuf.Count) then
+        FCmpView.MoveTo(CaretLine, 0, False);
+      FCmpView.ScrollTo(TopLine, 0);
+    end;
+  end;
+  FCmpViewBuf := LeftBuf;
+  FCmpView.SetBounds(0, SplitEditTop, FLeftHost.ClientWidth,
+    FLeftHost.ClientHeight - SplitEditTop);
+  FCmpView.Anchors := [akLeft, akTop, akRight, akBottom];
+  FCmpView.Visible := True;
+  FCmpView.BringToFront;
+  FCmpDiff.Dark := CmpIsDark;
+  FCmpDiff.Attach(FCmpView, FSplit.EdView);
+end;
+
+// Убрать левое окно сравнения. AToEditor - каретку редактора на строку
+// каретки окна (окно над буфером вкладки редактора)
+procedure TForm1.CmpViewHide(AToEditor: Boolean);
+var
+  CaretLine: Integer;
+  WasBuf: TEdBuffer;
+begin
+  if FCmpDiff <> nil then
+  begin
+    FCmpDiff.Attach(nil, nil);
+    if (FSplit <> nil) and (FSplit.EdView <> nil) then
+      FSplit.EdView.Invalidate;
+  end;
+  if FCmpView = nil then
+    Exit;
+  WasBuf := FCmpViewBuf;
+  CaretLine := FCmpView.CaretRow;
+  FCmpView.Visible := False;
+  FCmpView.Buffer := nil;
+  FreeAndNil(FCmpHigh);
+  FCmpViewBuf := nil;
+  if AToEditor and (WasBuf <> nil) and (FEdEmu <> nil) and
+     (FEdEmu.Buffer = WasBuf) and (CaretLine >= 0) then
+    GotoLine(CaretLine);
+end;
+
+// Правка в левом окне сравнения - правка буфера вкладки редактора: как
+// правка в окне второй панели над тем же буфером (SplitEdChange)
+procedure TForm1.CmpViewChange(Sender: TObject);
+begin
+  if (FCmpView = nil) or not FCmpView.Focused then
+    Exit;
+  if FSplitActive then
+  begin
+    FSplitActive := False;
+    SplitUpdateHeaders;
+  end;
+  if FEdEmu <> nil then
+    FEdEmu.ExternalEdit;
+  RichEdit1.Invalidate;
+  RefreshTabsModified;
+  if FTabs <> nil then
+    FTabs.Invalidate;
+  // Разница пересчитается после паузы в наборе (SplitTimerTick)
+  Inc(FEditSerial);
+end;
+
+procedure TForm1.CmpViewScroll(Sender: TObject);
+begin
+  if CmpViewActive then
+    FCmpDiff.SyncFrom(FCmpView);
+end;
+
+// Окно, в котором работают: каретка встаёт на отличие в нём
+function TForm1.CmpFocusView: TEdView;
+begin
+  Result := FCmpView;
+  if (FSplit <> nil) and (FSplit.EdView <> nil) and
+     (FSplit.EdView.Focused or FSplitActive) then
+    Result := FSplit.EdView;
 end;
 
 // Нажатие мыши в окне AWnd (AppMessage): в какой панели теперь работают

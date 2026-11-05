@@ -29,6 +29,11 @@ unit EdView;
 //    (TUiScrollBar по теме IDE).
 //  - Буфер не принадлежит окну; изменения буфера окно получает подпиской
 //    (AddListener) и перерисовывается.
+//  - Строки экрана (SetDisplayMap, сравнение двух текстов как в WinMerge):
+//    между строками буфера - пустые строки-заполнители, у которых нет
+//    номера и текста. TopRow, ScrollTo, PosAt, каретка - в строках буфера;
+//    TopDisp, ScrollToDisp - в строках экрана. Без карты строка экрана =
+//    строка буфера. Правка, меняющая число строк, сдвигает карту сама.
 //
 //  Собирается Delphi 7 (VCL) и Free Pascal / Lazarus (LCL).
 // ---------------------------------------------------------------------------
@@ -89,7 +94,14 @@ type
   TEdView = class(TCustomControl)
   private
     FBuffer: TEdBuffer;
-    FTopRow: Integer;          // первая видимая строка
+    FTopRow: Integer;          // первая видимая строка экрана
+    // Строки экрана (SetDisplayMap): FDispMap - строка буфера каждой строки
+    // экрана (-1 - заполнитель), FRowDisp - обратно; пусто - один к одному
+    FDispMap: array of Integer;
+    FRowDisp: array of Integer;
+    FFillerColor: TColor;
+    FOnMarkRuns: TEdLineRunsEvent;
+    FMarkRuns: TEdRuns;
     FLeftCol: Integer;         // первая видимая колонка экрана
     FEditor: TEdEditor;        // каретка, выделение, правка
     FCharW: Integer;
@@ -135,6 +147,9 @@ type
     FCellStyle: array of Byte;
     FDx: array of Integer;
     procedure SetBuffer(AValue: TEdBuffer);
+    function GetTopRow: Integer;
+    procedure RebuildRowDisp;
+    procedure AdjustDispMap(AFirst, AOldCount, ANewCount: Integer);
     procedure BufferChanged(Sender: TObject; AFirst, AOldCount,
       ANewCount: Integer);
     procedure EditorMoved(Sender: TObject);
@@ -251,14 +266,37 @@ type
     procedure Redo;
     function CanUndo: Boolean;
     function CanRedo: Boolean;
+    // Первая видимая строка буфера ATopRow (с картой - её строка экрана)
     procedure ScrollTo(ATopRow, ALeftCol: Integer);
+    // Первая видимая строка экрана ATopDisp
+    procedure ScrollToDisp(ATopDisp, ALeftCol: Integer);
     procedure EnsureCaretVisible;
+    // Строки экрана: AMap - строка буфера каждой строки экрана, -1 -
+    // заполнитель. Строки буфера - все и по порядку, иначе карта не
+    // ставится (ClearDisplayMap). Первая видимая строка буфера остаётся
+    procedure SetDisplayMap(const AMap: array of Integer);
+    procedure ClearDisplayMap;
+    function HasDisplayMap: Boolean;
+    // Число строк экрана; строка экрана строки буфера; строка буфера
+    // строки экрана (-1 - заполнитель или за концом); ближайшая строка
+    // буфера (заполнитель - следующая за ним, в конце - предыдущая)
+    function DispCount: Integer;
+    function DispOfRow(ARow: Integer): Integer;
+    function RowOfDisp(ADisp: Integer): Integer;
+    function RowNearDisp(ADisp: Integer): Integer;
     // Шрифт, цвета или разбор подсветки менялись - пересчитать и
     // перерисовать всё
     procedure RefreshAll;
 
     property Buffer: TEdBuffer read FBuffer write SetBuffer;
-    property TopRow: Integer read FTopRow;
+    // Первая видимая строка буфера и строка экрана
+    property TopRow: Integer read GetTopRow;
+    property TopDisp: Integer read FTopRow;
+    // Фон строк-заполнителей (clNone - фон окна)
+    property FillerColor: TColor read FFillerColor write FFillerColor;
+    // Куски строки поверх подсветки (отличия внутри строки): фон Back и
+    // цвет Fore (clNone - не менять) у символов куска; выделение - поверх
+    property OnMarkRuns: TEdLineRunsEvent read FOnMarkRuns write FOnMarkRuns;
     property LeftCol: Integer read FLeftCol;
     property CaretRow: Integer read GetCaretRow;
     property CaretCol: Integer read GetCaretCol;
@@ -366,6 +404,7 @@ begin
   FGutterCurColor := clNone;
   FGutterCurText := clWindowText;
   FCurLineColor := clNone;
+  FFillerColor := clNone;
   FSelColor := clHighlight;
   FSelTextColor := clHighlightText;
   Font.Name := 'Courier New';
@@ -551,9 +590,11 @@ begin
     Exit;
   if AY < 0 then
     AY := 0;
-  ARow := FTopRow + AY div FLineH;
+  ARow := RowNearDisp(FTopRow + AY div FLineH);
   if ARow >= FBuffer.Count then
     ARow := FBuffer.Count - 1;
+  if ARow < 0 then
+    ARow := 0;
   // Ближе к правому краю ячейки - после символа
   ScreenColumn := FLeftCol + (AX - FGutterW + FCharW div 2) div FCharW;
   if AX < FGutterW then
@@ -588,7 +629,7 @@ begin
   end
   else
   begin
-    RowMax := FBuffer.Count - VisibleRows;
+    RowMax := DispCount - VisibleRows;
     ColMax := GetMaxCols + 1 - VisibleCols;
   end;
   if RowMax < 0 then
@@ -620,53 +661,256 @@ procedure TEdView.VBarChange(Sender: TObject);
 begin
   if FLockBars then
     Exit;
-  ScrollTo(FVBar.Position, FLeftCol);
+  ScrollToDisp(FVBar.Position, FLeftCol);
 end;
 
 procedure TEdView.HBarChange(Sender: TObject);
 begin
   if FLockBars then
     Exit;
-  ScrollTo(FTopRow, FHBar.Position);
+  ScrollToDisp(FTopRow, FHBar.Position);
 end;
 
 procedure TEdView.ScrollTo(ATopRow, ALeftCol: Integer);
+begin
+  ScrollToDisp(DispOfRow(ATopRow), ALeftCol);
+end;
+
+// OnViewScroll - и при прокрутке вбок: по нему вторая панель сравнения
+// встаёт на то же место
+procedure TEdView.ScrollToDisp(ATopDisp, ALeftCol: Integer);
 var
   RowMax: Integer;
-  RowMoved: Boolean;
 begin
   RowMax := 0;
   if FBuffer <> nil then
-    RowMax := FBuffer.Count - VisibleRows;
-  if ATopRow > RowMax then
-    ATopRow := RowMax;
-  if ATopRow < 0 then
-    ATopRow := 0;
+    RowMax := DispCount - VisibleRows;
+  if ATopDisp > RowMax then
+    ATopDisp := RowMax;
+  if ATopDisp < 0 then
+    ATopDisp := 0;
   if ALeftCol < 0 then
     ALeftCol := 0;
-  if (ATopRow = FTopRow) and (ALeftCol = FLeftCol) then
+  if (ATopDisp = FTopRow) and (ALeftCol = FLeftCol) then
     Exit;
-  RowMoved := ATopRow <> FTopRow;
-  FTopRow := ATopRow;
+  FTopRow := ATopDisp;
   FLeftCol := ALeftCol;
   UpdateBars;
   PlaceCaret;
   Invalidate;
-  if RowMoved and Assigned(FOnViewScroll) then
+  if Assigned(FOnViewScroll) then
     FOnViewScroll(Self);
+end;
+
+// ---------------------------------------------------------------------------
+//  Строки экрана (заполнители между строками буфера)
+// ---------------------------------------------------------------------------
+
+function TEdView.HasDisplayMap: Boolean;
+begin
+  Result := Length(FDispMap) > 0;
+end;
+
+function TEdView.DispCount: Integer;
+begin
+  if Length(FDispMap) > 0 then
+    Result := Length(FDispMap)
+  else if FBuffer <> nil then
+    Result := FBuffer.Count
+  else
+    Result := 0;
+end;
+
+function TEdView.DispOfRow(ARow: Integer): Integer;
+begin
+  if Length(FDispMap) = 0 then
+    Result := ARow
+  else if ARow < 0 then
+    Result := ARow
+  else if ARow < Length(FRowDisp) then
+    Result := FRowDisp[ARow]
+  else
+    Result := Length(FDispMap) + ARow - Length(FRowDisp);
+end;
+
+function TEdView.RowOfDisp(ADisp: Integer): Integer;
+begin
+  if Length(FDispMap) = 0 then
+  begin
+    Result := ADisp;
+    if (FBuffer = nil) or (ADisp < 0) or (ADisp >= FBuffer.Count) then
+      Result := -1;
+  end
+  else if (ADisp >= 0) and (ADisp < Length(FDispMap)) then
+    Result := FDispMap[ADisp]
+  else
+    Result := -1;
+end;
+
+function TEdView.RowNearDisp(ADisp: Integer): Integer;
+var
+  DispIdx: Integer;
+begin
+  if Length(FDispMap) = 0 then
+  begin
+    Result := ADisp;
+    Exit;
+  end;
+  if ADisp < 0 then
+    ADisp := 0;
+  if ADisp > High(FDispMap) then
+    ADisp := High(FDispMap);
+  for DispIdx := ADisp to High(FDispMap) do
+    if FDispMap[DispIdx] >= 0 then
+    begin
+      Result := FDispMap[DispIdx];
+      Exit;
+    end;
+  for DispIdx := ADisp downto 0 do
+    if FDispMap[DispIdx] >= 0 then
+    begin
+      Result := FDispMap[DispIdx];
+      Exit;
+    end;
+  Result := 0;
+end;
+
+function TEdView.GetTopRow: Integer;
+begin
+  Result := RowNearDisp(FTopRow);
+end;
+
+procedure TEdView.RebuildRowDisp;
+var
+  DispIdx, RowCount: Integer;
+begin
+  RowCount := 0;
+  for DispIdx := 0 to High(FDispMap) do
+    if FDispMap[DispIdx] >= 0 then
+      Inc(RowCount);
+  SetLength(FRowDisp, RowCount);
+  for DispIdx := 0 to High(FDispMap) do
+    if FDispMap[DispIdx] >= 0 then
+      FRowDisp[FDispMap[DispIdx]] := DispIdx;
+end;
+
+procedure TEdView.SetDisplayMap(const AMap: array of Integer);
+var
+  OldTop, DispIdx, NextRow: Integer;
+  MapOk: Boolean;
+begin
+  OldTop := GetTopRow;
+  // Строки буфера - все, по порядку, каждая один раз
+  NextRow := 0;
+  MapOk := (FBuffer <> nil) and (Length(AMap) > 0);
+  if MapOk then
+    for DispIdx := 0 to High(AMap) do
+      if AMap[DispIdx] >= 0 then
+      begin
+        if AMap[DispIdx] <> NextRow then
+        begin
+          MapOk := False;
+          Break;
+        end;
+        Inc(NextRow);
+      end;
+  if MapOk and (NextRow <> FBuffer.Count) then
+    MapOk := False;
+  if not MapOk then
+  begin
+    ClearDisplayMap;
+    Exit;
+  end;
+  SetLength(FDispMap, Length(AMap));
+  for DispIdx := 0 to High(AMap) do
+    FDispMap[DispIdx] := AMap[DispIdx];
+  RebuildRowDisp;
+  FTopRow := DispOfRow(OldTop);
+  UpdateBars;
+  PlaceCaret;
+  Invalidate;
+end;
+
+procedure TEdView.ClearDisplayMap;
+begin
+  if Length(FDispMap) = 0 then
+    Exit;
+  FTopRow := GetTopRow;
+  FDispMap := nil;
+  FRowDisp := nil;
+  UpdateBars;
+  PlaceCaret;
+  Invalidate;
+end;
+
+// Правка заменила строки буфера [AFirst, AFirst + AOldCount) на ANewCount
+// строк: новые строки - на месте прежних, строки ниже - со сдвигом;
+// заполнители остаются на своих местах
+procedure TEdView.AdjustDispMap(AFirst, AOldCount, ANewCount: Integer);
+var
+  NewMap: array of Integer;
+  OutCount, DispIdx, RowVal, Delta: Integer;
+  Added: Boolean;
+
+  procedure AddNewRows;
+  var
+    AddIdx: Integer;
+  begin
+    for AddIdx := 0 to ANewCount - 1 do
+    begin
+      NewMap[OutCount] := AFirst + AddIdx;
+      Inc(OutCount);
+    end;
+    Added := True;
+  end;
+
+begin
+  if (Length(FDispMap) = 0) or (AOldCount = ANewCount) then
+    Exit;
+  Delta := ANewCount - AOldCount;
+  SetLength(NewMap, Length(FDispMap) + ANewCount);
+  OutCount := 0;
+  Added := False;
+  for DispIdx := 0 to High(FDispMap) do
+  begin
+    RowVal := FDispMap[DispIdx];
+    if (RowVal < 0) or (RowVal < AFirst) then
+    begin
+      NewMap[OutCount] := RowVal;
+      Inc(OutCount);
+      Continue;
+    end;
+    if not Added then
+      AddNewRows;
+    if RowVal < AFirst + AOldCount then
+      Continue;
+    NewMap[OutCount] := RowVal + Delta;
+    Inc(OutCount);
+  end;
+  if not Added then
+    AddNewRows;
+  SetLength(NewMap, OutCount);
+  FDispMap := NewMap;
+  RebuildRowDisp;
+  // Карта разошлась с буфером (так быть не должно) - без карты
+  if (FBuffer = nil) or (Length(FRowDisp) <> FBuffer.Count) then
+  begin
+    FDispMap := nil;
+    FRowDisp := nil;
+  end;
 end;
 
 procedure TEdView.EnsureCaretVisible;
 var
-  NewTop, NewLeft, CaretScreen, Margin: Integer;
-  RowMoved: Boolean;
+  NewTop, NewLeft, CaretScreen, Margin, CaretDisp: Integer;
 begin
   NewTop := FTopRow;
   NewLeft := FLeftCol;
-  if FEditor.CaretRow < NewTop then
-    NewTop := FEditor.CaretRow
-  else if FEditor.CaretRow >= NewTop + VisibleRows then
-    NewTop := FEditor.CaretRow - VisibleRows + 1;
+  CaretDisp := DispOfRow(FEditor.CaretRow);
+  if CaretDisp < NewTop then
+    NewTop := CaretDisp
+  else if CaretDisp >= NewTop + VisibleRows then
+    NewTop := CaretDisp - VisibleRows + 1;
   CaretScreen := ScreenCol(FEditor.CaretRow, FEditor.CaretCol);
   // Вбок - с запасом в четверть окна, чтобы не двигать на каждый символ
   Margin := VisibleCols div 4;
@@ -678,12 +922,11 @@ begin
     NewLeft := 0;
   if (NewTop <> FTopRow) or (NewLeft <> FLeftCol) then
   begin
-    RowMoved := NewTop <> FTopRow;
     FTopRow := NewTop;
     FLeftCol := NewLeft;
     UpdateBars;
     Invalidate;
-    if RowMoved and Assigned(FOnViewScroll) then
+    if Assigned(FOnViewScroll) then
       FOnViewScroll(Self);
   end;
   PlaceCaret;
@@ -751,7 +994,7 @@ begin
   if not FCaretMade then
     Exit;
   CaretX := FGutterW + (ScreenCol(FEditor.CaretRow, FEditor.CaretCol) - FLeftCol) * FCharW;
-  CaretY := (FEditor.CaretRow - FTopRow) * FLineH;
+  CaretY := (DispOfRow(FEditor.CaretRow) - FTopRow) * FLineH;
   // Вне текста - за краем окна (каретка не видна)
   if (CaretX < FGutterW) or (CaretY < 0) then
   begin
@@ -781,7 +1024,7 @@ end;
 
 procedure TEdView.Paint;
 var
-  TextW, TextH, RowIdx, RowY, RowCount: Integer;
+  TextW, TextH, RowIdx, RowY, RowCount, DispTotal, BufRow: Integer;
   AreaRect: TRect;
 begin
   UpdateMetrics;
@@ -806,14 +1049,26 @@ begin
     FBack.Canvas.FillRect(Rect(0, 0, FGutterW, TextH));
   end;
   RowCount := TextH div FLineH + 1;
+  DispTotal := DispCount;
   for RowIdx := 0 to RowCount - 1 do
   begin
     RowY := RowIdx * FLineH;
-    if (FBuffer = nil) or (FTopRow + RowIdx >= FBuffer.Count) then
+    if (FBuffer = nil) or (FTopRow + RowIdx >= DispTotal) then
       Break;
-    PaintRow(FBack.Canvas, FTopRow + RowIdx, RowY, TextW);
+    BufRow := RowOfDisp(FTopRow + RowIdx);
+    // Строка-заполнитель: без номера и текста, своим фоном
+    if BufRow < 0 then
+    begin
+      if FFillerColor <> clNone then
+      begin
+        FBack.Canvas.Brush.Color := FFillerColor;
+        FBack.Canvas.FillRect(Rect(FGutterW, RowY, TextW, RowY + FLineH));
+      end;
+      Continue;
+    end;
+    PaintRow(FBack.Canvas, BufRow, RowY, TextW);
     if FGutterW > 0 then
-      PaintGutterRow(FBack.Canvas, FTopRow + RowIdx, RowY);
+      PaintGutterRow(FBack.Canvas, BufRow, RowY);
   end;
   Canvas.Draw(0, 0, FBack);
   // Квадрат между полосами
@@ -865,7 +1120,7 @@ procedure TEdView.PaintRow(ACanvas: TCanvas; ARow, AY, ATextW: Integer);
 var
   Line: WideString;
   CellCount, RunCount, RunIdx, CharIdx, ScreenPos, CellWidth, CellIdx,
-  CellNo, Sel1Row, Sel1Col, Sel2Row, Sel2Col: Integer;
+  CellNo, Sel1Row, Sel1Col, Sel2Row, Sel2Col, MarkCount, MarkIdx: Integer;
   RowBack, CharFore, CharBack, MarkBack, MarkFore: TColor;
   CharStyle: Byte;
   HasSel, CharSel, PastEndSel: Boolean;
@@ -899,6 +1154,10 @@ begin
   RunCount := 0;
   if Assigned(FOnLineRuns) and (Line <> '') then
     FOnLineRuns(Self, ARow, Line, FRuns, RunCount);
+  MarkCount := 0;
+  if Assigned(FOnMarkRuns) and (Line <> '') then
+    FOnMarkRuns(Self, ARow, Line, FMarkRuns, MarkCount);
+  MarkIdx := 0;
   HasSel := SelRange(Sel1Row, Sel1Col, Sel2Row, Sel2Col) and
     (ARow >= Sel1Row) and (ARow <= Sel2Row);
   RunIdx := 0;
@@ -932,6 +1191,17 @@ begin
       CharBack := MarkBack;
     if MarkFore <> clNone then
       CharFore := MarkFore;
+    // Куски-отметки (отличия внутри строки)
+    while (MarkIdx < MarkCount) and
+          (FMarkRuns[MarkIdx].Start + FMarkRuns[MarkIdx].Len <= CharIdx) do
+      Inc(MarkIdx);
+    if (MarkIdx < MarkCount) and (FMarkRuns[MarkIdx].Start <= CharIdx) then
+    begin
+      if FMarkRuns[MarkIdx].Back <> clNone then
+        CharBack := FMarkRuns[MarkIdx].Back;
+      if FMarkRuns[MarkIdx].Fore <> clNone then
+        CharFore := FMarkRuns[MarkIdx].Fore;
+    end;
     if HasSel then
     begin
       CharSel := ((ARow > Sel1Row) or (CharIdx >= Sel1Col)) and
@@ -1233,13 +1503,13 @@ begin
   TextW := ClientWidth - FBarSize;
   TextH := ClientHeight - FBarSize;
   if FLastMouse.Y < 0 then
-    ScrollTo(FTopRow - 1, FLeftCol)
+    ScrollToDisp(FTopRow - 1, FLeftCol)
   else if FLastMouse.Y >= TextH then
-    ScrollTo(FTopRow + 1, FLeftCol);
+    ScrollToDisp(FTopRow + 1, FLeftCol);
   if FLastMouse.X < FGutterW then
-    ScrollTo(FTopRow, FLeftCol - 1)
+    ScrollToDisp(FTopRow, FLeftCol - 1)
   else if FLastMouse.X >= TextW then
-    ScrollTo(FTopRow, FLeftCol + 1);
+    ScrollToDisp(FTopRow, FLeftCol + 1);
   ExtendToMouse;
 end;
 
@@ -1259,6 +1529,8 @@ begin
   FEditor.Buffer := FBuffer;
   FTopRow := 0;
   FLeftCol := 0;
+  FDispMap := nil;
+  FRowDisp := nil;
   FMaxColsValid := False;
   UpdateGutterWidth;
   UpdateBars;
@@ -1291,6 +1563,7 @@ begin
   end
   else
     FMaxColsValid := False;
+  AdjustDispMap(AFirst, AOldCount, ANewCount);
   FEditor.ClampToBuffer;
   UpdateGutterWidth;
   UpdateBars;
@@ -1317,7 +1590,7 @@ end;
 
 procedure TEdView.EditorScroll(Sender: TObject; ARows: Integer);
 begin
-  ScrollTo(FTopRow + ARows, FLeftCol);
+  ScrollToDisp(FTopRow + ARows, FLeftCol);
 end;
 
 procedure TEdView.KeyDown(var Key: Word; Shift: TShiftState);
@@ -1522,7 +1795,7 @@ begin
   if (WheelLines <= 0) or (WheelLines > VisibleRows) then
     WheelLines := VisibleRows;
   {$ENDIF}
-  ScrollTo(FTopRow - WheelDelta * WheelLines div 120, FLeftCol);
+  ScrollToDisp(FTopRow - WheelDelta * WheelLines div 120, FLeftCol);
   Result := True;
 end;
 
