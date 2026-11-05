@@ -2062,6 +2062,16 @@ type
     FObjSnapPrint: string;
     FObjDfmBinary: Boolean; // показанный .dfm двоичный - правка закрыта
     FObjRapidQ: Boolean;    // в инспекторе - объекты CREATE файла RapidQ
+    // В инспекторе - вывод на экран скетча .ino (ArdRefreshInspector)
+    FObjArduino: Boolean;
+    FArdSketch: TObject;    // TArdSketch (ArdObjParse) показанного текста
+    FArdTextKey: string;    // по какому тексту он разобран: файл, длина, CRC
+    // Правка значения вызова: строка, колонка и текст аргумента до правки
+    FArdEditLine, FArdEditCol: Integer;
+    FArdEditSrc: string;
+    // Узел записанной правки: выделить его снова, когда дерево
+    // перестроится по новому тексту (подпись могла измениться)
+    FArdKeepName: string;
     // Снимок программы RapidQ (RapidQProbeRun)
     FRqProbeActive: Boolean;   // CompileRapidQ собирает копию со снимком
     FRqProbeBas: string;       // её .bas
@@ -3045,6 +3055,11 @@ type
     procedure RightPagesChange(Sender: TObject);
     procedure RefreshCodeTree;
     procedure RefreshRapidQInspector;
+    procedure ArdRefreshInspector;
+    function  ArdCallCaption(ACall: TObject): string;
+    procedure ArdFillObjTables(AObj: TObject);
+    procedure ArdBeginEdit(AItem: TListItem);
+    procedure ArdApplyEdit;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
     function  RapidQIncDir: string;
@@ -4598,6 +4613,7 @@ var
     DlgFileCompare, // сравнение двух файлов (File - Compare Files...)
     DlgFontViewer, // просмотр шрифтов UTFT (Arduino - Font Viewer)
     DlgTtfToUtft, // шрифт UTFT из TTF (Arduino - TTF to UTFT Font)
+    ArdObjParse,  // инспектор скетча .ino: функции вывода на экран TFT
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
     DlgChooseList, // выбор строки из списка - ChooseFromList
@@ -31010,6 +31026,14 @@ var
   IsArr: Boolean;
 begin
   DfmNode := TDfmNode(ANode);
+  // Скетч Arduino: подпись готова в ClassNm (ArdRefreshInspector)
+  if FObjArduino then
+  begin
+    Result := DfmNode.ClassNm;
+    if DfmNode.Note <> '' then
+      Result := Result + '   ' + DfmNode.Note;
+    Exit;
+  end;
   // Элемент массива компонентов: PalBtn17 - PalBtn[17]. Только узел
   // снимка: компонент из .dfm или из кода с таким же именем - не элемент.
   IsArr := DfmNode.IsSnap and ObjArrayOf(DfmNode.Name, ArrName, ArrIdx);
@@ -31282,6 +31306,14 @@ begin
     Exit;
   end;
   FObjRapidQ := False;
+  // Скетч Arduino - функции вывода на экран (ArdRefreshInspector)
+  if (FCurrentFileName <> '') and IsSketchExt(FCurrentFileName) then
+  begin
+    ArdRefreshInspector;
+    Exit;
+  end;
+  FObjArduino := False;
+  FArdTextKey := '';
 
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
   // Форма Delphi (.dfm) или Lazarus (.lfm) - один и тот же текстовый вид
@@ -32042,6 +32074,526 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  Инспектор объектов для скетча Arduino (.ino, .pde)
+//
+//  Панель Tree: функции скетча, которые выводят на экран TFT текст,
+//  графику или картинки (прямо методами UTFT или через другие такие
+//  функции), под каждой - её вызовы вывода по порядку текста. Разбор -
+//  ArdObjParse (TArdSketch).
+//
+//  Таблица свойств вызова - его аргументы под именами параметров: у
+//  функции скетча (Label) - из её заголовка, у метода UTFT - Text, X, Y...
+//  У текста и графики ещё строки setColor / setBackColor / setFont:
+//  ближайший такой вызов выше в той же функции, колонка «Строка кода» -
+//  его строка. Правка значения пишется в текст на месте аргумента;
+//  строка перед записью сверяется с разобранной.
+//
+//  Шрифт - список extern-шрифтов скетча; цвет - список VGA_... и #define
+//  цветов скетча, двойной щелчок по полю - диалог цвета (ObjComboDblClick
+//  пишет RGB24TOLCD(0x...) или 0xNNNN).
+//
+//  Узел дерева - TDfmNode: Name - ключ для выделения после перестроения,
+//  ClassNm - подпись, CreateLine - строка для перехода, Line - номер вызова
+//  в TArdSketch.Calls (-1 - не вызов), EndLine - номер функции в Funcs
+//  (-1 - не функция).
+// ---------------------------------------------------------------------------
+
+const
+  // Data строк таблицы: номер аргумента или одна из строк set...
+  ArdRowColor = 100000;
+  ArdRowBack = 100001;
+  ArdRowFont = 100002;
+  ArdCapColor = 'Цвет (setColor)';
+  ArdCapBack = 'Цвет фона (setBackColor)';
+  ArdCapFont = 'Шрифт (setFont)';
+  ArdNotSet = '(не задан выше в этой функции)';
+
+// Аргумент коротко - для подписи узла
+function ArdShortArg(const AText: string): string;
+var
+  Idx: Integer;
+begin
+  Result := AText;
+  for Idx := 1 to Length(Result) do
+    if Result[Idx] in [#9, #10, #13] then
+      Result[Idx] := ' ';
+  if Length(Result) > 40 then
+    Result := Copy(Result, 1, 37) + '...';
+end;
+
+function TForm1.ArdCallCaption(ACall: TObject): string;
+var
+  Call: TArdCall;
+  ArgIdx, TextArg: Integer;
+  ParamType: string;
+begin
+  Call := TArdCall(ACall);
+  if Call.ObjName <> '' then
+    Result := Call.Name
+  else
+    Result := Call.Name + '()';
+  TextArg := -1;
+  if Call.Kind = ackText then
+    TextArg := 0
+  else if (Call.Kind = ackUser) and (Call.Target <> nil) then
+  begin
+    // Текст - параметр String / char* или первый аргумент с кавычками
+    for ArgIdx := 0 to Call.Target.ParamTypes.Count - 1 do
+    begin
+      ParamType := LowerCase(Call.Target.ParamTypes[ArgIdx]);
+      if (Pos('string', ParamType) > 0) or
+         ((Pos('char', ParamType) > 0) and (Pos('*', ParamType) > 0)) then
+      begin
+        TextArg := ArgIdx;
+        Break;
+      end;
+    end;
+    if TextArg < 0 then
+      for ArgIdx := 0 to Call.Args.Count - 1 do
+        if Pos('"', Call.Args[ArgIdx]) > 0 then
+        begin
+          TextArg := ArgIdx;
+          Break;
+        end;
+  end;
+  if (TextArg >= 0) and (TextArg < Call.Args.Count) then
+    Result := Result + '  ' + ArdShortArg(Call.Args[TextArg])
+  else if Call.Kind <> ackUser then
+    Result := Result + '(' + ArdShortArg(Call.ArgsText) + ')';
+end;
+
+procedure TForm1.ArdRefreshInspector;
+var
+  SrcText, Key: string;
+  Sketch: TArdSketch;
+  Roots: TList;
+  Root, FuncNode, CallNode: TDfmNode;
+  FuncIdx, CallIdx, FuncTotal, OutTotal: Integer;
+  Func: TArdFunc;
+  Call: TArdCall;
+begin
+  SrcText := GetEditorTextCR;
+  Key := FCurrentFileName + '|' + IntToStr(Length(SrcText)) + '|' +
+         IntToHex(Crc32Of(SrcText), 8);
+  // Тот же текст - дерево остаётся, с выделением и раскрытыми ветками
+  if FObjArduino and (Key = FArdTextKey) and (FObjRoots <> nil) and
+     (FObjRoots.Count > 0) and (FArdSketch <> nil) then
+    Exit;
+
+  ObjCancelEdit;
+  FObjCurNode := nil;
+  FObjDfmBinary := False;
+  ClearDfmNodes;
+  // Ветка Delphi или RapidQ после скетча строится заново, не по старым
+  // ключам
+  FObjRapidQ := False;
+  FObjArduino := True;
+  FObjDfmKey := '';
+  FObjTreeKey := '';
+  FObjTreeDfm := '';
+  FObjDfmFile := '';
+  FObjFormClass := '';
+  FObjCacheFile := '';
+  FObjLinesUnsure := False;
+  if FObjRoots = nil then
+    FObjRoots := TList.Create;
+  FArdTextKey := Key;
+  FArdSketch.Free;
+  FArdSketch := nil;
+  Sketch := TArdSketch.Create;
+  FArdSketch := Sketch;
+  Sketch.Parse(SrcText);
+
+  Roots := TList.Create;
+  try
+    Root := TDfmNode.Create;
+    FDfmNodes.Add(Root);
+    Root.Name := ExtractFileName(FCurrentFileName);
+    Root.ClassNm := Root.Name;
+    Roots.Add(Root);
+    FuncTotal := 0;
+    OutTotal := 0;
+    for FuncIdx := 0 to Sketch.Funcs.Count - 1 do
+    begin
+      Func := TArdFunc(Sketch.Funcs[FuncIdx]);
+      if not Func.Draws then
+        Continue;
+      Inc(FuncTotal);
+      FuncNode := TDfmNode.Create;
+      FDfmNodes.Add(FuncNode);
+      FuncNode.Name := 'f:' + Func.Name + ':' + IntToStr(Func.Line + 1);
+      FuncNode.ClassNm := Func.Name + '()';
+      FuncNode.CreateLine := Func.Line;
+      FuncNode.Line := -1;
+      FuncNode.EndLine := FuncIdx;
+      FuncNode.Parent := Root;
+      Root.Children.Add(FuncNode);
+      for CallIdx := 0 to Func.Calls.Count - 1 do
+      begin
+        Call := TArdCall(Func.Calls[CallIdx]);
+        if not (Call.Kind in [ackText, ackGraph, ackImage, ackScreen,
+                              ackUser]) then
+          Continue;
+        Inc(OutTotal);
+        CallNode := TDfmNode.Create;
+        FDfmNodes.Add(CallNode);
+        CallNode.Name := 'c:' + Call.Name + ':' + IntToStr(Call.Line + 1) +
+                         ':' + IntToStr(Call.Col);
+        CallNode.ClassNm := ArdCallCaption(Call);
+        CallNode.Note := 'стр. ' + IntToStr(Call.Line + 1);
+        CallNode.CreateLine := Call.Line;
+        CallNode.Line := Sketch.Calls.IndexOf(Call);
+        CallNode.EndLine := -1;
+        CallNode.Parent := FuncNode;
+        FuncNode.Children.Add(CallNode);
+      end;
+      FuncNode.Note := 'стр. ' + IntToStr(Func.Line + 1) + ', вывод: ' +
+                       IntToStr(FuncNode.Children.Count);
+    end;
+    Root.Note := 'функций с выводом на экран: ' + IntToStr(FuncTotal);
+    Root.Line := -1;
+    Root.EndLine := -1;
+    RenderObjTree(Roots);
+    // Список функций виден сразу, и когда до того было другое дерево
+    if (FObjTree.Items.GetFirstNode <> nil) and
+       not FObjTree.Items.GetFirstNode.Expanded then
+      FObjTree.Items.GetFirstNode.Expanded := True;
+    if FArdKeepName <> '' then
+    begin
+      ObjSelectAnyName(FArdKeepName);
+      FArdKeepName := '';
+    end;
+    for FuncIdx := 0 to Roots.Count - 1 do
+      FObjRoots.Add(Roots[FuncIdx]);
+    FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
+      ': функций с выводом на экран - ' + IntToStr(FuncTotal) +
+      ', вызовов вывода - ' + IntToStr(OutTotal) +
+      '. Щелчок в дереве - к строке; значение правится в таблице';
+    FObjSource.Cursor := crDefault;
+  finally
+    Roots.Free;
+  end;
+end;
+
+procedure TForm1.ArdFillObjTables(AObj: TObject);
+var
+  Node: TDfmNode;
+  Sketch: TArdSketch;
+  Call: TArdCall;
+  Func: TArdFunc;
+  Item: TListItem;
+  Names: TStringList;
+  ArgIdx, FuncTotal: Integer;
+
+  // AUiText - текст интерфейса; значение из исходника - через EdUiText
+  procedure AddUiRow(const ACaption, AUiText: string; ALine, AData: Integer);
+  begin
+    Item := FObjProps.Items.Add;
+    Item.Caption := ACaption;
+    Item.SubItems.Add(AUiText);
+    if ALine >= 0 then
+      Item.SubItems.Add(IntToStr(ALine + 1))
+    else
+      Item.SubItems.Add('');
+    Item.Data := Pointer(AData);
+  end;
+
+  procedure AddRow(const ACaption, AValue: string; ALine, AData: Integer);
+  begin
+    AddUiRow(ACaption, EdUiText(AValue), ALine, AData);
+  end;
+
+  procedure AddSetter(const ACaption: string; ASetter: TArdCall; AData: Integer);
+  begin
+    if ASetter = nil then
+      AddUiRow(ACaption, ArdNotSet, -1, -1)
+    else
+      AddRow(ACaption, Trim(ASetter.ArgsText), ASetter.Line, AData);
+  end;
+
+begin
+  Node := TDfmNode(AObj);
+  Sketch := TArdSketch(FArdSketch);
+  if (Node = nil) or (Sketch = nil) then
+    Exit;
+
+  // Вызов вывода: аргументы под именами параметров
+  if (Node.Line >= 0) and (Node.Line < Sketch.Calls.Count) then
+  begin
+    Call := TArdCall(Sketch.Calls[Node.Line]);
+    if Call.ObjName <> '' then
+      FObjHeader.Caption := '  ' + Call.ObjName + '.' + Call.Name
+    else
+      FObjHeader.Caption := '  ' + Call.Name;
+    FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
+      IntToStr(Call.Line + 1) + ', в функции ' + Call.Func.Name + '()  - ' +
+      Call.KindText;
+    Names := TStringList.Create;
+    try
+      if (Call.Kind = ackUser) and (Call.Target <> nil) then
+      begin
+        Names.Assign(Call.Target.ParamNames);
+        while Names.Count < Call.Args.Count do
+          Names.Add('Arg' + IntToStr(Names.Count + 1));
+      end
+      else
+        ArdMethodParams(Call.Name, Call.Args.Count, Names);
+      for ArgIdx := 0 to Call.Args.Count - 1 do
+        if Call.ArgLine[ArgIdx] >= 0 then
+          AddRow(Names[ArgIdx], Call.Args[ArgIdx], Call.ArgLine[ArgIdx], ArgIdx)
+        else
+          AddRow(Names[ArgIdx], Call.Args[ArgIdx], Call.Line, ArgIdx);
+    finally
+      Names.Free;
+    end;
+    // Цвет, фон и шрифт текста - строки, где они заданы
+    if Call.Kind = ackText then
+    begin
+      AddSetter(ArdCapColor, Call.ColorCall, ArdRowColor);
+      AddSetter(ArdCapBack, Call.BackCall, ArdRowBack);
+      AddSetter(ArdCapFont, Call.FontCall, ArdRowFont);
+    end
+    else if Call.Kind = ackGraph then
+      AddSetter(ArdCapColor, Call.ColorCall, ArdRowColor);
+    Exit;
+  end;
+
+  // Функция: заголовок и параметры, только просмотр
+  if (Node.EndLine >= 0) and (Node.EndLine < Sketch.Funcs.Count) then
+  begin
+    Func := TArdFunc(Sketch.Funcs[Node.EndLine]);
+    FObjHeader.Caption := '  ' + Func.Name + '()   строки ' +
+      IntToStr(Func.Line + 1) + '-' + IntToStr(Func.EndLine + 1);
+    AddRow('Возвращает', Func.RetType, Func.Line, -1);
+    for ArgIdx := 0 to Func.ParamNames.Count - 1 do
+      AddRow(Func.ParamNames[ArgIdx], Func.ParamTypes[ArgIdx], -1, -1);
+    AddUiRow('Вывод на экран', IntToStr(Node.Children.Count) + ' вызовов', -1, -1);
+    Exit;
+  end;
+
+  // Корень - сводка по скетчу
+  FuncTotal := Node.Children.Count;
+  FObjHeader.Caption := '  ' + ExtractFileName(FCurrentFileName);
+  AddRow('Объект экрана (UTFT)', Sketch.ScreenObjs.CommaText, -1, -1);
+  AddRow('Шрифты (extern)', Sketch.Fonts.CommaText, -1, -1);
+  AddRow('Функций с выводом', IntToStr(FuncTotal), -1, -1);
+end;
+
+// Начало правки строки AItem таблицы вызова скетча
+procedure TForm1.ArdBeginEdit(AItem: TListItem);
+var
+  Node: TDfmNode;
+  Sketch: TArdSketch;
+  Call, Setter: TArdCall;
+  RowData: Integer;
+  ParamName, ParamType, OldText, LitText: string;
+  IsColor, IsFont: Boolean;
+  CellRect: TRect;
+begin
+  Node := TDfmNode(FObjCurNode);
+  Sketch := TArdSketch(FArdSketch);
+  if (Node = nil) or (Sketch = nil) or (AItem = nil) then
+    Exit;
+  RowData := Integer(AItem.Data);
+  // Строки функции и сводки, незаданный setColor - только просмотр
+  if (RowData < 0) or (Node.Line < 0) or (Node.Line >= Sketch.Calls.Count) then
+  begin
+    if (Node.Line >= 0) and (AItem.SubItems.Count > 0) and
+       (AItem.SubItems[0] = ArdNotSet) then
+      ShowMessage(AItem.Caption + ': выше этого вызова в той же функции ' +
+      'такой строки нет - действует то, что задано раньше (в другой ' +
+      'функции или в прошлом проходе). Добавьте строку в код.');
+    Exit;
+  end;
+  Call := TArdCall(Sketch.Calls[Node.Line]);
+  IsColor := False;
+  IsFont := False;
+  if RowData >= ArdRowColor then
+  begin
+    // Строка set...: правится весь текст в скобках того вызова
+    case RowData of
+      ArdRowColor: Setter := Call.ColorCall;
+      ArdRowBack: Setter := Call.BackCall;
+    else
+      Setter := Call.FontCall;
+    end;
+    if Setter = nil then
+      Exit;
+    if Setter.ArgsLine < 0 then
+    begin
+      ShowMessage(AItem.Caption + ' записан на нескольких строках - ' +
+      'правьте его в коде.');
+      Exit;
+    end;
+    FArdEditLine := Setter.ArgsLine;
+    FArdEditCol := Setter.ArgsCol;
+    FArdEditSrc := Copy(Setter.ArgsText, 1, Setter.ArgsLen);
+    IsFont := RowData = ArdRowFont;
+    IsColor := not IsFont;
+  end
+  else
+  begin
+    if RowData >= Call.Args.Count then
+      Exit;
+    if Call.ArgLine[RowData] < 0 then
+    begin
+      ShowMessage(AItem.Caption + ' записан на нескольких строках - ' +
+      'правьте его в коде.');
+      Exit;
+    end;
+    FArdEditLine := Call.ArgLine[RowData];
+    FArdEditCol := Call.ArgCol[RowData];
+    FArdEditSrc := Call.Args[RowData];
+    if (Call.Kind = ackUser) and (Call.Target <> nil) and
+       (RowData < Call.Target.ParamNames.Count) then
+    begin
+      ParamName := Call.Target.ParamNames[RowData];
+      ParamType := Call.Target.ParamTypes[RowData];
+      IsFont := ArdParamIsFont(ParamName, ParamType);
+      IsColor := not IsFont and ArdParamIsColor(ParamName, ParamType);
+    end
+    else if (Call.Name = 'fillScr') and (Call.Args.Count = 1) then
+      IsColor := True;
+  end;
+  OldText := Trim(FArdEditSrc);
+
+  FObjEditName := AItem.Caption;
+  FObjEditIdx := RowData;
+  FObjEditInsert := False;
+  FObjEditLine := FArdEditLine;
+  FObjEditType := nil;
+  FObjThemeColor := '';
+  FObjEditIsStr := False;
+  FObjEditArray := False;
+  FObjEditCode := False;
+  FObjEditGroup := False;
+  FObjColorRq := False;
+
+  // Ячейка значения - по строке и ширине первой колонки: так и в сборке
+  // Lazarus, где LVM_GETSUBITEMRECT нет
+  CellRect := AItem.DisplayRect(drBounds);
+  CellRect.Left := CellRect.Left + FObjProps.Columns[0].Width;
+  CellRect.Right := CellRect.Left + FObjProps.Columns[1].Width;
+
+  if IsFont then
+  begin
+    FObjComboColors := False;
+    FObjCombo.Style := csDropDown;
+    FObjCombo.Items.Assign(Sketch.Fonts);
+    FObjCombo.Text := EdUiText(OldText);
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else if IsColor then
+  begin
+    FObjComboColors := True;
+    FObjCombo.Style := csDropDown;
+    Sketch.ColorNames(FObjCombo.Items);
+    FObjCombo.Text := EdUiText(OldText);
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else
+  begin
+    // Одна строка в кавычках - без кавычек; выражение - как есть
+    if ArdUnquote(OldText, LitText) then
+    begin
+      FObjEditIsStr := True;
+      FObjEdit.Text := EdUiText(LitText);
+    end
+    else
+      FObjEdit.Text := EdUiText(OldText);
+    FObjEditOld := FObjEdit.Text;
+    FObjActive := FObjEdit;
+  end;
+
+  FObjActive.SetBounds(CellRect.Left, CellRect.Top,
+                       CellRect.Right - CellRect.Left,
+                       CellRect.Bottom - CellRect.Top + 2);
+  FObjActive.Visible := True;
+  FObjActive.SetFocus;
+  if FObjActive = FObjEdit then
+    FObjEdit.SelectAll;
+  FObjEditing := True;
+end;
+
+// Запись правки в текст активной вкладки: аргумент на его месте в строке
+procedure TForm1.ArdApplyEdit;
+var
+  Obj: TDfmNode;
+  EditText, NewText, CurLine, OldTrim: string;
+  LineStart, LineLen, ValCol, ValLen: Integer;
+
+  procedure TextChanged;
+  begin
+    ShowMessage('Текст изменился после разбора - инспектор обновлён, ' +
+    'повторите правку.');
+    FArdTextKey := '';
+    ObjScheduleRelines(Obj, FObjEditName);
+  end;
+
+begin
+  if FObjActive = FObjCombo then
+    EditText := Trim(FObjCombo.Text)
+  else if FObjEditIsStr then
+    EditText := FObjEdit.Text
+  else
+    EditText := Trim(FObjEdit.Text);
+  if (EditText = FObjEditOld) or ((EditText = '') and not FObjEditIsStr) then
+  begin
+    ObjCancelEdit;
+    Exit;
+  end;
+  EditText := EdFromUiText(EditText);
+  if FObjEditIsStr then
+    NewText := ArdQuote(EditText)
+  else
+    NewText := EditText;
+
+  FObjEditing := False;   // до всего остального: уход фокуса снова вызовет нас
+  FObjActive.Visible := False;
+  if FObjCurNode = nil then
+    Exit;
+  Obj := TDfmNode(FObjCurNode);
+
+  // Заменяется текст без пробелов по краям: у setColor( clw ) пробелы
+  // остаются на месте
+  OldTrim := Trim(FArdEditSrc);
+  ValCol := FArdEditCol + Pos(OldTrim, FArdEditSrc) - 1;
+  ValLen := Length(OldTrim);
+  LineStart := EdApi.LineIndex(FArdEditLine);
+  if LineStart < 0 then
+  begin
+    TextChanged;
+    Exit;
+  end;
+  LineLen := EdApi.LineLength(LineStart);
+  CurLine := ReadLineText(FArdEditLine, LineStart, LineLen);
+  if (OldTrim = '') or (Copy(CurLine, ValCol, ValLen) <> OldTrim) then
+  begin
+    TextChanged;
+    Exit;
+  end;
+  FArdKeepName := Obj.Name;
+  Inc(FObjOwnWrite);
+  try
+    EditorFreeze;
+    try
+      RichEdit1.SelStart := LineStart + ValCol - 1;
+      RichEdit1.SelLength := ValLen;
+      RichEdit1.SelText := NewText;
+    finally
+      EditorThaw;
+    end;
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  LogComp('Инспектор ino: ' + FObjEditName + ' = ' + NewText +
+          '   (строка ' + IntToStr(FArdEditLine + 1) + ')');
+  ObjScheduleRelines(Obj, FObjEditName);
+end;
+
 // Инспектор для файла RapidQ: дерево объектов CREATE. Свойств у узлов пока
 // нет - их даст снимок программы.
 procedure TForm1.RefreshRapidQInspector;
@@ -32056,6 +32608,8 @@ begin
   ClearDfmNodes;
   // Ветка Delphi после RapidQ должна строиться заново, не по старым ключам
   FObjRapidQ := True;
+  FObjArduino := False;
+  FArdTextKey := '';
   FObjDfmKey := '';
   FObjTreeKey := '';
   FObjTreeDfm := '';
@@ -36866,6 +37420,9 @@ procedure TForm1.ObjSourceClick(Sender: TObject);
 var
   FileStr: string;
 begin
+  // У скетча Arduino снимка нет
+  if FObjArduino then
+    Exit;
   // Файл RapidQ: снимок убирается совсем
   if FObjRapidQ then
   begin
@@ -36906,6 +37463,13 @@ procedure TForm1.ObjSnapBtnClick(Sender: TObject);
 var
   Has: Boolean;
 begin
+  // У скетча Arduino снимка нет: значения - текст вызовов
+  if FObjArduino then
+  begin
+    ShowMessage('Для скетча Arduino снимка нет: в таблице - аргументы ' +
+    'вызовов из текста.');
+    Exit;
+  end;
   // Файл RapidQ - свой снимок (RapidQProbeRun). Снимок есть и показан -
   // скрыть; есть и скрыт - показать (Ctrl+щелчок - снять заново); нет -
   // снять.
@@ -37088,8 +37652,8 @@ var
   DfmNode: TDfmNode;
 begin
   Result := '';
-  // Классы RapidQ (QForm, QRichEdit) - не классы Delphi
-  if FObjRapidQ then
+  // Классы RapidQ (QForm, QRichEdit) и вызовы скетча - не классы Delphi
+  if FObjRapidQ or FObjArduino then
     Exit;
   DfmNode := TDfmNode(ANode);
   if (DfmNode = nil) or (DfmNode.ClassNm = '') then
@@ -37583,6 +38147,13 @@ begin
   if not FObjRapidQ and (Idx = ObjParentRowData) then
   begin
     ObjGotoParent;
+    Exit;
+  end;
+
+  // Скетч Arduino - аргумент вызова на его месте в строке
+  if FObjArduino then
+  begin
+    ArdBeginEdit(It);
     Exit;
   end;
 
@@ -38153,6 +38724,13 @@ var
 begin
   if not FObjEditing or (FObjActive = nil) then
     Exit;
+
+  // Скетч Arduino - запись аргумента вызова
+  if FObjArduino then
+  begin
+    ArdApplyEdit;
+    Exit;
+  end;
 
   // Объект RapidQ - запись в его блок CREATE
   if FObjRapidQ then
@@ -39242,6 +39820,14 @@ begin
     Txt := FObjThemeColor;
   if Txt = '' then
     Exit;
+  // Скетч Arduino: RGB565, VGA_..., RGB24TOLCD(...), r, g, b, #define
+  if FObjArduino and (FArdSketch <> nil) then
+  begin
+    Result := TArdSketch(FArdSketch).ColorOf(Txt, Value);
+    if Result then
+      AColor := TColor(Value);
+    Exit;
+  end;
   if IdentToColor(Txt, Value) then
     Result := True
   else if Txt[1] = '$' then
@@ -39321,7 +39907,17 @@ begin
       Dlg.Color := ColorToRGB(CurColor);
     if not Dlg.Execute then
       Exit;
-    if FObjColorRq then
+    if FObjArduino and (FArdSketch <> nil) then
+    begin
+      // setColor(r, g, b) - тремя числами, иначе как принято в скетче
+      if Pos(',', FObjCombo.Text) > 0 then
+        FObjCombo.Text := IntToStr(Dlg.Color and $FF) + ', ' +
+                          IntToStr((Dlg.Color shr 8) and $FF) + ', ' +
+                          IntToStr((Dlg.Color shr 16) and $FF)
+      else
+        FObjCombo.Text := TArdSketch(FArdSketch).ColorToText(Dlg.Color and $FFFFFF);
+    end
+    else if FObjColorRq then
       FObjCombo.Text := '&H' + IntToHex(Dlg.Color and $FFFFFF, 6)
     else
       FObjCombo.Text := '$' + IntToHex(Dlg.Color and $FFFFFF, 8);
@@ -40081,8 +40677,9 @@ begin
     Exit;
   DfmNode2 := TDfmNode(FObjTree.Selected.Data);
 
-  // Объект RapidQ - к его строке CREATE в открытом файле
-  if FObjRapidQ then
+  // Объект RapidQ - к его строке CREATE в открытом файле; вызов или
+  // функция скетча Arduino - к её строке
+  if FObjRapidQ or FObjArduino then
   begin
     if DfmNode2.CreateLine >= 0 then
       GotoLine(DfmNode2.CreateLine);
@@ -48701,6 +49298,12 @@ begin
 
     // Объект RapidQ: только то, что есть в узле. Конструктор форм, классы
     // VCL и строки модуля Delphi к нему не относятся.
+    // Скетч Arduino - аргументы вызова вывода (ArdFillObjTables)
+    if FObjArduino then
+    begin
+      ArdFillObjTables(Obj);
+      Exit;
+    end;
     // Объект RapidQ - таблицы по описанию классов (RapidQFillObjTables)
     if FObjRapidQ then
     begin
@@ -52534,8 +53137,8 @@ begin
   if FObjProps.Items[HitInfo.Item].SubItems.Count < 2 then
     Exit;
   LineNo := StrToIntDef(FObjProps.Items[HitInfo.Item].SubItems[1], 0);
-  // Объект RapidQ - строка в открытом файле
-  if FObjRapidQ then
+  // Объект RapidQ и скетч Arduino - строка в открытом файле
+  if FObjRapidQ or FObjArduino then
   begin
     if LineNo > 0 then
       GotoLine(LineNo - 1);

@@ -123,6 +123,7 @@ uses
   MingwTool in 'MingwTool.pas',
   ArdSimFonts in 'ArdSimFonts.pas',
   ArdSimHost in 'ArdSimHost.pas',
+  ArdObjParse in 'ArdObjParse.pas',
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',
