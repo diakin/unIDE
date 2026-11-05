@@ -13,11 +13,15 @@ unit SplitPane;
 //      та же вкладка, что в редакторе, - тот же буфер TEdBuffer, правки
 //      видны сразу (ShowEdText);
 //    - или вид "по формату" (FmtView: страница IE, RTF, RVF).
-//  Щелчок по тексту второй панели меняет панели местами: редактор
-//  переезжает туда, где щёлкнули, и открывает её вкладку с кареткой в
-//  месте щелчка, а прежняя вкладка редактора становится текстом второй
-//  панели (это делает Unit1, SplitActivate). Так всегда правится та
-//  панель, в которой работают, а вторая - только для чтения.
+//  При своём редакторе окно TEdView правит буфер своей вкладки прямо в
+//  панели (SetEdEditable): набор, откат, буфер обмена; Unit1 отмечает
+//  вкладку изменённой и пишет её по Ctrl+S (SplitEdChange, SplitSaveWin).
+//  Без своего редактора (копия текста) щелчок по тексту второй панели
+//  меняет панели местами: редактор переезжает туда, где щёлкнули, и
+//  открывает её вкладку с кареткой в месте щелчка, а прежняя вкладка
+//  редактора становится текстом второй панели (Unit1, SplitSwapTick). То
+//  же при правке - пунктом меню панели «Править в основном редакторе»
+//  (Code Insight, поиск, закладки есть только у основного редактора).
 //
 //  Панели меняются местами без смены родителя: редактор (FLeftHost) всегда
 //  alClient, у второй панели и разделителя меняется сторона (alRight /
@@ -57,12 +61,21 @@ type
     FFmtBtn: TUiButton;
     FCloseBtn: TUiButton;
     FSyncBtn: TUiButton;
+    // Сравнение панелей (только у заголовка второй панели): Diff и
+    // переходы к соседнему отличию
+    FDiffBtn: TUiButton;
+    FPrevBtn: TUiButton;
+    FNextBtn: TUiButton;
     FTitleText: string;
     FTitleMark: string;
     FOnTitleClick: TNotifyEvent;
     FOnFmtClick: TNotifyEvent;
     FOnCloseClick: TNotifyEvent;
     FOnSyncClick: TNotifyEvent;
+    FOnDiffClick: TNotifyEvent;
+    FOnDiffPrev: TNotifyEvent;
+    FOnDiffNext: TNotifyEvent;
+    procedure DiffBtnClick(Sender: TObject);
     procedure TitleClick(Sender: TObject);
     procedure FmtBtnClick(Sender: TObject);
     procedure SyncBtnClick(Sender: TObject);
@@ -79,6 +92,10 @@ type
     // Кнопка синхронной прокрутки (только у заголовка второй панели):
     // AVisible - показать, AOn - включена
     procedure SetSync(AVisible, AOn: Boolean);
+    // Кнопка сравнения панелей (только у второй панели): AVisible -
+    // показать, AOn - сравнение включено (тогда видны и < >), AInfo -
+    // надпись на кнопке при включённом сравнении ('3/7', '0')
+    procedure SetDiff(AVisible, AOn: Boolean; const AInfo: string);
     // Пометка после имени файла (свой редактор); '' - без неё
     procedure SetTitleMark(const AMark: string);
     property Panel: TPanel read FPanel;
@@ -86,6 +103,9 @@ type
     property OnFmtClick: TNotifyEvent read FOnFmtClick write FOnFmtClick;
     property OnCloseClick: TNotifyEvent read FOnCloseClick write FOnCloseClick;
     property OnSyncClick: TNotifyEvent read FOnSyncClick write FOnSyncClick;
+    property OnDiffClick: TNotifyEvent read FOnDiffClick write FOnDiffClick;
+    property OnDiffPrev: TNotifyEvent read FOnDiffPrev write FOnDiffPrev;
+    property OnDiffNext: TNotifyEvent read FOnDiffNext write FOnDiffNext;
   end;
 
   // Первая видимая строка текста второй панели сменилась
@@ -117,6 +137,23 @@ type
     FOnTextScroll: TSplitScrollEvent;
     FOnRowStyle: TEdRowStyleEvent;
     FOnRowPaint: TEdRowPaintEvent;
+    // Правка в самой панели (окно TEdView над буфером вкладки): щелчок
+    // ставит каретку, а не меняет панели местами
+    FEditable: Boolean;
+    FMenuAction: Boolean;    // правка пунктом меню панели
+    FOnEdChange: TNotifyEvent;
+    FOnSwapClick: TNotifyEvent;
+    FUndoItem: TMenuItem;
+    FCutItem: TMenuItem;
+    FPasteItem: TMenuItem;
+    FEditSep: TMenuItem;
+    FSwapItem: TMenuItem;
+    procedure EdTextChange(Sender: TObject);
+    procedure MenuPopup(Sender: TObject);
+    procedure UndoClick(Sender: TObject);
+    procedure CutClick(Sender: TObject);
+    procedure PasteClick(Sender: TObject);
+    procedure SwapClick(Sender: TObject);
     procedure EdTextScroll(Sender: TObject);
     procedure TextClickPos(Sender: TObject; ALine, ACol, ATopLine: Integer);
     procedure EdTextClick(Sender: TObject; ARow, ACol: Integer);
@@ -190,6 +227,16 @@ type
     property OnRowPaint: TEdRowPaintEvent read FOnRowPaint write FOnRowPaint;
     // Окно TEdView (nil - ещё не создано)
     property EdView: TEdView read FEdText;
+    // Правка в окне TEdView: True - набор, откат, буфер обмена прямо в
+    // панели (буфер вкладки), щелчок ставит каретку; False - только
+    // просмотр, щелчок - OnTextClick (панели меняются местами)
+    procedure SetEdEditable(AValue: Boolean);
+    property Editable: Boolean read FEditable;
+    // Текст изменили в самой панели (набор, меню панели) - не правкой из
+    // основного редактора того же буфера
+    property OnEdChange: TNotifyEvent read FOnEdChange write FOnEdChange;
+    // Пункт меню «Править в основном редакторе»
+    property OnSwapClick: TNotifyEvent read FOnSwapClick write FOnSwapClick;
   end;
 
 implementation
@@ -245,6 +292,43 @@ begin
     FSyncBtn.ShowHint := True;
     FSyncBtn.Visible := False;
     FSyncBtn.OnClick := SyncBtnClick;
+
+    FDiffBtn := TUiButton.Create(FPanel);
+    FDiffBtn.Parent := FPanel;
+    FDiffBtn.Left := 400;
+    FDiffBtn.Align := alRight;
+    FDiffBtn.Width := 80;
+    FDiffBtn.Caption := 'Diff: off';
+    FDiffBtn.TabStop := False;
+    FDiffBtn.Hint := 'Сравнение с редактором, как в WinMerge: отличия ' +
+      'строк - цветом в обеих панелях, прокрутка - по парам строк';
+    FDiffBtn.ShowHint := True;
+    FDiffBtn.Visible := False;
+    FDiffBtn.OnClick := DiffBtnClick;
+
+    FNextBtn := TUiButton.Create(FPanel);
+    FNextBtn.Parent := FPanel;
+    FNextBtn.Left := 300;
+    FNextBtn.Align := alRight;
+    FNextBtn.Width := 24;
+    FNextBtn.Caption := '>';
+    FNextBtn.TabStop := False;
+    FNextBtn.Hint := 'Следующее отличие (Alt+Down)';
+    FNextBtn.ShowHint := True;
+    FNextBtn.Visible := False;
+    FNextBtn.OnClick := DiffBtnClick;
+
+    FPrevBtn := TUiButton.Create(FPanel);
+    FPrevBtn.Parent := FPanel;
+    FPrevBtn.Left := 200;
+    FPrevBtn.Align := alRight;
+    FPrevBtn.Width := 24;
+    FPrevBtn.Caption := '<';
+    FPrevBtn.TabStop := False;
+    FPrevBtn.Hint := 'Предыдущее отличие (Alt+Up)';
+    FPrevBtn.ShowHint := True;
+    FPrevBtn.Visible := False;
+    FPrevBtn.OnClick := DiffBtnClick;
   end;
 
   FFmtBtn := TUiButton.Create(FPanel);
@@ -350,6 +434,53 @@ begin
     FOnSyncClick(Self);
 end;
 
+procedure TPaneHeader.SetDiff(AVisible, AOn: Boolean; const AInfo: string);
+var
+  NewCaption: string;
+  AnchorLeft: Integer;
+begin
+  if FDiffBtn = nil then
+    Exit;
+  if AOn then
+    NewCaption := 'Diff: ' + AInfo
+  else
+    NewCaption := 'Diff: off';
+  if FDiffBtn.Caption <> NewCaption then
+    FDiffBtn.Caption := NewCaption;
+  // Кнопки alRight по порядку слева направо: < > Diff Sync Txt x. Порядок
+  // задаёт Left в момент показа
+  if AVisible and not FDiffBtn.Visible then
+  begin
+    if FSyncBtn.Visible then
+      AnchorLeft := FSyncBtn.Left
+    else
+      AnchorLeft := FFmtBtn.Left;
+    FDiffBtn.Left := AnchorLeft - FDiffBtn.Width;
+  end;
+  if FDiffBtn.Visible <> AVisible then
+    FDiffBtn.Visible := AVisible;
+  if AVisible and AOn and not FNextBtn.Visible then
+  begin
+    FNextBtn.Left := FDiffBtn.Left - FNextBtn.Width;
+    FPrevBtn.Left := FNextBtn.Left - FPrevBtn.Width;
+  end;
+  if FNextBtn.Visible <> (AVisible and AOn) then
+  begin
+    FNextBtn.Visible := AVisible and AOn;
+    FPrevBtn.Visible := AVisible and AOn;
+  end;
+end;
+
+procedure TPaneHeader.DiffBtnClick(Sender: TObject);
+begin
+  if (Sender = FDiffBtn) and Assigned(FOnDiffClick) then
+    FOnDiffClick(Self)
+  else if (Sender = FPrevBtn) and Assigned(FOnDiffPrev) then
+    FOnDiffPrev(Self)
+  else if (Sender = FNextBtn) and Assigned(FOnDiffNext) then
+    FOnDiffNext(Self);
+end;
+
 procedure TPaneHeader.TitleClick(Sender: TObject);
 begin
   if Assigned(FOnTitleClick) then
@@ -383,15 +514,38 @@ begin
   FEditorFirst := True;
   FView := svNone;
 
+  // Пункты правки - только у окна TEdView в режиме правки (MenuPopup)
   FMenu := TUiPopupMenu.Create(nil);
+  FMenu.OnPopup := MenuPopup;
+  FUndoItem := TMenuItem.Create(FMenu);
+  FUndoItem.Caption := 'Отменить'#9'Ctrl+Z';
+  FUndoItem.OnClick := UndoClick;
+  FMenu.Items.Add(FUndoItem);
+  FCutItem := TMenuItem.Create(FMenu);
+  FCutItem.Caption := 'Вырезать'#9'Ctrl+X';
+  FCutItem.OnClick := CutClick;
+  FMenu.Items.Add(FCutItem);
   MenuItem := TMenuItem.Create(FMenu);
   MenuItem.Caption := 'Копировать'#9'Ctrl+C';
   MenuItem.OnClick := CopyClick;
   FMenu.Items.Add(MenuItem);
+  FPasteItem := TMenuItem.Create(FMenu);
+  FPasteItem.Caption := 'Вставить'#9'Ctrl+V';
+  FPasteItem.OnClick := PasteClick;
+  FMenu.Items.Add(FPasteItem);
   MenuItem := TMenuItem.Create(FMenu);
   MenuItem.Caption := 'Выделить всё'#9'Ctrl+A';
   MenuItem.OnClick := SelectAllClick;
   FMenu.Items.Add(MenuItem);
+  FEditSep := TMenuItem.Create(FMenu);
+  FEditSep.Caption := '-';
+  FMenu.Items.Add(FEditSep);
+  FSwapItem := TMenuItem.Create(FMenu);
+  FSwapItem.Caption := 'Править в основном редакторе';
+  FSwapItem.Hint := 'Панели меняются местами: здесь - основной редактор ' +
+    '(Code Insight, поиск, закладки)';
+  FSwapItem.OnClick := SwapClick;
+  FMenu.Items.Add(FSwapItem);
 
   FPanel := TPanel.Create(nil);
   FPanel.Visible := False;
@@ -595,13 +749,92 @@ begin
   FEdText.Visible := False;
   FEdText.Parent := FBody;
   FEdText.Align := alClient;
-  FEdText.ReadOnly := True;
-  FEdText.TabStop := False;
   FEdText.PopupMenu := FMenu;
-  FEdText.OnTextClick := EdTextClick;
   FEdText.OnViewScroll := EdTextScroll;
   FEdText.OnRowStyle := FOnRowStyle;
   FEdText.OnRowPaint := FOnRowPaint;
+  FEdText.OnChange := EdTextChange;
+  SetEdEditable(FEditable);
+end;
+
+procedure TSplitPane.SetEdEditable(AValue: Boolean);
+begin
+  FEditable := AValue;
+  if FEdText = nil then
+    Exit;
+  FEdText.ReadOnly := not AValue;
+  FEdText.TabStop := AValue;
+  if AValue then
+    FEdText.OnTextClick := nil
+  else
+    FEdText.OnTextClick := EdTextClick;
+end;
+
+// Буфер изменился. Правка из основного редактора (тот же буфер) сюда
+// тоже приходит - её отличает фокус: набор в панели идёт, когда фокус у
+// её окна; пункт меню панели - FMenuAction
+procedure TSplitPane.EdTextChange(Sender: TObject);
+begin
+  if not FEditable or (FView <> svEdText) then
+    Exit;
+  if (FEdText.Focused or FMenuAction) and Assigned(FOnEdChange) then
+    FOnEdChange(Self);
+end;
+
+procedure TSplitPane.MenuPopup(Sender: TObject);
+var
+  CanEdit: Boolean;
+begin
+  CanEdit := FEditable and (FView = svEdText) and (FEdText <> nil);
+  FUndoItem.Visible := CanEdit;
+  FCutItem.Visible := CanEdit;
+  FPasteItem.Visible := CanEdit;
+  FEditSep.Visible := (FView = svEdText) and Assigned(FOnSwapClick);
+  FSwapItem.Visible := FEditSep.Visible;
+  if CanEdit then
+    FUndoItem.Enabled := FEdText.CanUndo;
+end;
+
+procedure TSplitPane.UndoClick(Sender: TObject);
+begin
+  if not FEditable or (FEdText = nil) then
+    Exit;
+  FMenuAction := True;
+  try
+    FEdText.Undo;
+  finally
+    FMenuAction := False;
+  end;
+end;
+
+procedure TSplitPane.CutClick(Sender: TObject);
+begin
+  if not FEditable or (FEdText = nil) then
+    Exit;
+  FMenuAction := True;
+  try
+    FEdText.CutToClipboard;
+  finally
+    FMenuAction := False;
+  end;
+end;
+
+procedure TSplitPane.PasteClick(Sender: TObject);
+begin
+  if not FEditable or (FEdText = nil) then
+    Exit;
+  FMenuAction := True;
+  try
+    FEdText.PasteFromClipboard;
+  finally
+    FMenuAction := False;
+  end;
+end;
+
+procedure TSplitPane.SwapClick(Sender: TObject);
+begin
+  if Assigned(FOnSwapClick) then
+    FOnSwapClick(Self);
 end;
 
 procedure TSplitPane.ShowEdText(AShared: TEdBuffer; const AText: WideString;

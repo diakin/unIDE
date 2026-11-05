@@ -57,6 +57,7 @@ uses
   EdMapFile,      // большой файл - отображением в память (шаг 0.7.8)
   FmtView,        // просмотр по формату во вкладке: .md, .html, .mht, .rtf, .rvf
   SplitPane,      // вторая панель редактора: вкладка только для чтения
+  TextDiff,       // разница по строкам - сравнение панелей (TDiffBlocks)
   Wv2View,        // просмотр .html / .mht через WebView2 (Chromium)
   FileSearch,     // Find In Files: маски, чтение файлов, обход папок (TFifFileFound)
   UnFar,          // unIDE FAR: двухпанельный файловый менеджер (Utils)
@@ -3630,6 +3631,22 @@ type
     procedure SplitSyncClick(Sender: TObject);
     procedure SplitTextScroll(ATopLine: Integer);
     procedure SplitSyncFromEditor;
+    // Сравнение панелей: редактор и вторая панель, как в WinMerge
+    function  CmpPossible: Boolean;
+    procedure CmpSet(AOn: Boolean);
+    procedure CmpRecalc;
+    procedure CmpMarkCurrent;
+    procedure CmpUpdateHeader;
+    procedure CmpRepaint;
+    function  CmpColor(AMark: Byte): TColor;
+    function  CmpMapLine(ALine: Integer; AFromEditor: Boolean): Integer;
+    function  CmpDiffLine(ADiffIdx: Integer): Integer;
+    procedure CmpGoTo(ADiffIdx: Integer);
+    procedure CmpGo(ADir: Integer);
+    procedure CmpDiffClick(Sender: TObject);
+    procedure CmpPrevClick(Sender: TObject);
+    procedure CmpNextClick(Sender: TObject);
+    procedure CmpWithTab(AWinIdx: Integer);
     function LineCommentStart(const ALineStr: string; ALineLen,
       ALineStart: Integer): Integer;
     function LineMarkGroupOf(const ALineStr: string; ALineLen,
@@ -3647,6 +3664,11 @@ type
     function  SplitEditTop: Integer;
     procedure SplitUpdateHeaders;
     procedure SplitTrackClick(AWnd: HWND);
+    // Правка во второй панели (окно TEdView над буфером её вкладки)
+    procedure SplitEdChange(Sender: TObject);
+    procedure SplitSwapMenuClick(Sender: TObject);
+    function  SplitPaneEditing: Boolean;
+    function  SplitSaveWin: Boolean;
     procedure SplitShowTabsMenu(ACurrent: Integer; AHandler: TNotifyEvent);
     procedure EditHeaderTitleClick(Sender: TObject);
     procedure EditTabMenuClick(Sender: TObject);
@@ -4170,10 +4192,6 @@ type
     FSplitClickLine: Integer;
     FSplitClickCol: Integer;
     FSplitClickTop: Integer;
-    // Свой редактор: показать во второй панели копию текста, даже если в ней
-    // та же вкладка, что в редакторе (вкладка редактора сейчас сменится, а
-    // буфер своего редактора перейдёт к новой) - SplitRefresh
-    FSplitNoShare: Boolean;
     // Синхронная прокрутка второй панели (окно TEdView, свой редактор):
     // включена (кнопка Sync в её заголовке), идёт перенос положения из одной
     // панели в другую (чтобы ответ не вернулся обратно), первая видимая
@@ -4181,6 +4199,23 @@ type
     FSplitSync: Boolean;
     FSplitSyncBusy: Boolean;
     FSplitSyncTop: Integer;
+    // Сравнение панелей (кнопка Diff в заголовке второй панели, раздел
+    // "Сравнение панелей"): включено; участки разницы (слева - вкладка
+    // редактора, справа - вкладка панели); отметки строк (0 - нет,
+    // 1 - отличие, 2 - текущее отличие); номер участка каждого отличия;
+    // число отличий и текущее (-1 - нет); по какому FEditSerial и каким
+    // вкладкам посчитано; FEditSerial на прошлом такте таймера
+    FCmpOn: Boolean;
+    FCmpBlocks: TDiffBlocks;
+    FCmpEdMark: array of Byte;
+    FCmpPaneMark: array of Byte;
+    FCmpDiffBlock: array of Integer;
+    FCmpCount: Integer;
+    FCmpCur: Integer;
+    FCmpSerial: Cardinal;
+    FCmpTickSerial: Cardinal;
+    FCmpEdWin: Integer;
+    FCmpPaneWin: Integer;
     // Отметки строк и направляющие второй панели (та же вкладка) - по
     // данным редактора; с этими данными панель нарисована в последний раз
     FSplitDecoMapVer: Cardinal;
@@ -9439,6 +9474,13 @@ begin
   end;
   if (Mode = 1) and (TabWin = FWindowsIndex) then
     Mode := 2;
+  // Вкладка и активная - в окне unIDE, разделённом по вертикали: редактор
+  // слева, вкладка - во второй панели, сравнение панелей включено
+  if (Mode = 1) and SplitWinValid(TabWin) then
+  begin
+    CmpWithTab(TabWin);
+    Exit;
+  end;
 
   Dlg := TDlgFileCompare.CreateDlg(Self);
   Dlg.SetSchemeProvider(SchemeCopyFor);
@@ -10359,17 +10401,8 @@ begin
     // ещё активна (SaveActiveClrSchema пишет в схему активной вкладки)
     if (Form2 <> nil) and Form2.Visible then
       Form2.BeforeTabSwitch;
-    // Во второй панели буфер своего редактора (та же вкладка): он сейчас
-    // перейдёт к новой вкладке - панели копию текста прежней
-    if (FSplit <> nil) and (FEdEmu <> nil) and (FSplit.SharedBuffer <> nil) then
-    begin
-      FSplitNoShare := True;
-      try
-        SplitRefresh(-1);
-      finally
-        FSplitNoShare := False;
-      end;
-    end;
+    // Во второй панели буфер вкладки (свой редактор) - он остаётся буфером
+    // той же вкладки и после смены вкладки редактора: копия не нужна
     // Во второй панели эта же вкладка, а последние правки ещё не дошли до
     // неё (SplitTimerTick ждёт паузы) - обновить, пока текст в редакторе
     if (FSplit <> nil) and (FSplitWin = FWindowsIndex) and
@@ -26222,6 +26255,17 @@ begin
   // F3 / Shift+F3 в редакторе - поиск, см. FindKey
   // F1 в файле RapidQ - справка по слову под кареткой, см. HelpKey
   // F12 во вкладке .md, .html, .mht, .rtf, .rvf - текст / просмотр, см. FmtKey
+  // Сравнение панелей: Alt+Down / Alt+Up - следующее / предыдущее отличие
+  if FCmpOn and (Msg.message = WM_SYSKEYDOWN) and (Screen.ActiveForm = Self) and
+     ((Msg.wParam = VK_DOWN) or (Msg.wParam = VK_UP)) then
+  begin
+    if Msg.wParam = VK_DOWN then
+      CmpGo(1)
+    else
+      CmpGo(-1);
+    Handled := True;
+    Exit;
+  end;
   if (Msg.message = WM_KEYDOWN) and (Screen.ActiveForm = Self) then
   begin
     if DbgKey(Word(Msg.wParam)) or FindKey(Word(Msg.wParam)) or
@@ -27441,6 +27485,12 @@ end;
 
 procedure TForm1.N3Click(Sender: TObject);
 begin
+  // Правят во второй панели другую вкладку - Save (Ctrl+S) пишет её
+  if SplitPaneEditing and (FSplitWin <> FWindowsIndex) then
+  begin
+    SplitSaveWin;
+    Exit;
+  end;
   SaveCurrentFile; // Просто вызываем наш универсальный метод
 end;
 
@@ -85137,6 +85187,15 @@ begin
       if LineLen <= 0 then
       begin
         LineStartX := Pt.X;
+        // Сравнение панелей: пустая строка отличия - тоже фоном отличия
+        if FCmpOn and (CurrentLineIdx < Length(FCmpEdMark)) and
+           (FCmpEdMark[CurrentLineIdx] > 0) then
+        begin
+          MarkBr := CreateSolidBrush(ColorToRGB(CmpColor(FCmpEdMark[CurrentLineIdx])));
+          Windows.FillRect(DC, Rect(0, Pt.Y, ViewWidth, Pt.Y + LineHeight),
+                           MarkBr);
+          DeleteObject(MarkBr);
+        end;
         if FUseHotTab and not GuidesOff then
           DrawTabGuides;
         Continue;
@@ -85287,6 +85346,16 @@ begin
       begin
         MarkFG := FScheme.MarkGroups[MarkIdx].FgColor;
         MarkBG := FScheme.MarkGroups[MarkIdx].BgColor;
+      end;
+
+      // Сравнение панелей: строка отличия - фоном отличия, цвета текста -
+      // по подсветке
+      if FCmpOn and (CurrentLineIdx < Length(FCmpEdMark)) and
+         (FCmpEdMark[CurrentLineIdx] > 0) then
+      begin
+        LineMarked := True;
+        MarkFG := clNone;
+        MarkBG := CmpColor(FCmpEdMark[CurrentLineIdx]);
       end;
 
       // Format text: строка, код которой кончается точкой (FFmtSusLine)
@@ -89777,6 +89846,14 @@ begin
   FSplit.OnRowStyle := SplitRowStyle;
   FSplit.OnRowPaint := SplitRowPaint;
   FSplit.Header.OnSyncClick := SplitSyncClick;
+  FSplit.OnEdChange := SplitEdChange;
+  FSplit.OnSwapClick := SplitSwapMenuClick;
+  FSplit.Header.OnDiffClick := CmpDiffClick;
+  FSplit.Header.OnDiffPrev := CmpPrevClick;
+  FSplit.Header.OnDiffNext := CmpNextClick;
+  FCmpCur := -1;
+  FCmpEdWin := -1;
+  FCmpPaneWin := -1;
   FSplitSync := True;
   FSplitSyncTop := -1;
   FSplit.Web.OnOpenFile := FmtOpenFromView;
@@ -89835,6 +89912,8 @@ begin
   begin
     if FSplit <> nil then
     begin
+      if FCmpOn then
+        CmpSet(False);
       FSplit.SetLayout(soNone, True);
       FSplitTimer.Enabled := False;
       FEditHeader.Panel.Visible := False;
@@ -89870,8 +89949,9 @@ var
   Kind: TFmtKind;
   FileName, Utf8Text, ErrText: string;
   Scheme: TClrScheme;
-  Shown, FromDisk, Shared: Boolean;
+  Shown, FromDisk, Shared, Editable: Boolean;
   TopLine: Integer;
+  PaneBuf: TEdBuffer;
 begin
   if (FSplit = nil) or not FSplit.Shown then
     Exit;
@@ -89894,10 +89974,13 @@ begin
     FSplitFmt := False;
   FSplit.SetTitle(TabFileName(FileName),
     PathNative(FileName) + #13#10 +
-    'Щелчок по тексту - править здесь; по заголовку - другая вкладка',
+    'Правка - прямо в этой панели; Code Insight, поиск, закладки - в ' +
+    'основном редакторе (правая кнопка > Править в основном редакторе); ' +
+    'щелчок по заголовку - другая вкладка',
     Kind <> fkNone, FSplitFmt);
   // Кнопка Sync - только у текста в окне TEdView (ниже, при своём редакторе)
   FSplit.Header.SetSync(False, FSplitSync);
+  FSplit.Header.SetDiff(False, FCmpOn, '');
   SplitUpdateHeaders;
 
   if FSplitFmt then
@@ -89964,11 +90047,27 @@ begin
   begin
     // Заново и для того же буфера: схема и цвета могли смениться (тема);
     // подсветка разбирает текст лениво, по видимым строкам
-    Shared := (FEdEmu <> nil) and (FSplitWin = FWindowsIndex) and
-              not FSplitNoShare;
-    // Синхронная прокрутка - с той же строки, что в редакторе
+    // Свой редактор: панель показывает буфер своей вкладки (у той же
+    // вкладки, что в редакторе, - тот же объект) и правит его прямо в
+    // панели (SplitEdChange). Большой файл на отображении и сгенерированный
+    // RQ FB - только просмотр
+    PaneBuf := nil;
+    if FEdEmu <> nil then
+      PaneBuf := FWindows[FSplitWin].Buffer;
+    Shared := PaneBuf <> nil;
+    Editable := Shared and not PaneBuf.IsMapped and
+                not RqFbIsGenerated(FileName);
+    // Сравнение панелей - по текстам, которые сейчас покажут
+    if FCmpOn then
+      CmpRecalc;
+    // Синхронная прокрутка - с той же строки, что в редакторе (при
+    // сравнении - с парной строки)
     if FSplitSync and RichEdit1.HandleAllocated then
+    begin
       TopLine := EdApi.FirstVisibleLine;
+      if FCmpOn then
+        TopLine := CmpMapLine(TopLine, True);
+    end;
     FSplit.SetEdLook(RichEdit1.Font, FTabChars, FGutterBG, FGutterFG,
       UiColor('Gutter.CurBG'), UiColor('Gutter.CurText'),
       UiColor('Editor.SelBG'), UiColor('Editor.SelText'));
@@ -89977,15 +90076,20 @@ begin
     FSplitSyncBusy := True;
     try
       if Shared then
-        FSplit.ShowEdText(FEdEmu.Buffer, '', Scheme, TopLine)
+        FSplit.ShowEdText(PaneBuf, '', Scheme, TopLine)
       else
         FSplit.ShowEdText(nil, EdWideText(SplitWinText(FSplitWin)), Scheme,
           TopLine);
+      FSplit.SetEdEditable(Editable);
     finally
       FSplitSyncBusy := False;
     end;
-    FSplitSyncTop := TopLine;
+    if FCmpOn and FSplitSync and RichEdit1.HandleAllocated then
+      FSplitSyncTop := EdApi.FirstVisibleLine
+    else
+      FSplitSyncTop := TopLine;
     FSplit.Header.SetSync(True, FSplitSync);
+    CmpUpdateHeader;
     SplitUpdateHeaders;
   end;
 end;
@@ -89998,6 +90102,16 @@ begin
   begin
     FSplitTimer.Enabled := False;
     Exit;
+  end;
+  // Сравнение панелей: сменилась вкладка - сразу; правка в редакторе -
+  // после паузы в наборе (текст на прошлом такте уже был таким)
+  if FCmpOn then
+  begin
+    if (FCmpEdWin <> FWindowsIndex) or (FCmpPaneWin <> FSplitWin) then
+      CmpRecalc
+    else if (FEditSerial <> FCmpSerial) and (FEditSerial = FCmpTickSerial) then
+      CmpRecalc;
+    FCmpTickSerial := FEditSerial;
   end;
   if (FSplitWin <> FWindowsIndex) or (FEditSerial = FSplitSerial) then
     Exit;
@@ -90316,6 +90430,13 @@ var
   MarkFore, MarkBack: TColor;
   PaneBuf: TEdBuffer;
 begin
+  // Сравнение панелей: строка отличия - фоном отличия
+  if FCmpOn and (ARow >= 0) and (ARow < Length(FCmpPaneMark)) and
+     (FCmpPaneMark[ARow] > 0) then
+  begin
+    ABack := CmpColor(FCmpPaneMark[ARow]);
+    Exit;
+  end;
   if not SplitDecoOn then
     Exit;
   PaneBuf := FSplit.EdView.Buffer;
@@ -90469,6 +90590,9 @@ begin
   if FSplitSyncBusy or not FSplitSync or not SplitOwnEdText or
      not RichEdit1.HandleAllocated then
     Exit;
+  // Сравнение панелей: редактор - на строку, парную верхней строке панели
+  if FCmpOn then
+    ATopLine := CmpMapLine(ATopLine, False);
   FSplitSyncBusy := True;
   try
     FSplitSyncTop := ScrollEditTo(ATopLine);
@@ -90489,14 +90613,468 @@ begin
     Exit;
   FSplitSyncBusy := True;
   try
-    FSplit.EdScrollTo(FirstVisibleLine);
+    if FCmpOn then
+      FSplit.EdScrollTo(CmpMapLine(FirstVisibleLine, True))
+    else
+      FSplit.EdScrollTo(FirstVisibleLine);
   finally
     FSplitSyncBusy := False;
   end;
   FSplitSyncTop := FirstVisibleLine;
 end;
 
+// ---------------------------------------------------------------------------
+//  Сравнение панелей (как WinMerge, в окне unIDE)
+//
+//  Кнопка Diff в заголовке второй панели (или меню вкладки - "Сравнить с
+//  активной вкладкой"): вкладка редактора сравнивается со вкладкой второй
+//  панели по строкам (TextDiff). Строки отличий - жёлтым фоном в обеих
+//  панелях, текущее отличие - голубым. Прокрутка - по парам строк:
+//  верхняя строка одной панели переводится в парную строку другой
+//  (CmpMapLine). Пустых строк-вставок нет: в текст редактора их не
+//  вставить, он правится как обычно; после паузы в наборе разница
+//  считается заново (SplitTimerTick).
+//
+//  < > в заголовке и Alt+Up / Alt+Down - предыдущее / следующее отличие:
+//  каретка редактора встаёт на его первую строку.
+// ---------------------------------------------------------------------------
+
+// Есть что сравнивать: вторая панель показывает текст другой вкладки
+function TForm1.CmpPossible: Boolean;
+begin
+  Result := (FSplit <> nil) and FSplit.Shown and not FSplitFmt and
+            SplitWinValid(FSplitWin) and SplitWinValid(FWindowsIndex) and
+            (FSplitWin <> FWindowsIndex);
+end;
+
+procedure TForm1.CmpSet(AOn: Boolean);
+begin
+  FCmpOn := AOn;
+  FCmpCur := -1;
+  if AOn then
+  begin
+    CmpRecalc;
+    if FCmpCount > 0 then
+      CmpGoTo(0);
+  end
+  else
+  begin
+    FCmpBlocks := nil;
+    SetLength(FCmpEdMark, 0);
+    SetLength(FCmpPaneMark, 0);
+    SetLength(FCmpDiffBlock, 0);
+    FCmpCount := 0;
+    FCmpEdWin := -1;
+    FCmpPaneWin := -1;
+    CmpUpdateHeader;
+    CmpRepaint;
+  end;
+  // Положение панели - заново, уже по парам строк (или по номерам)
+  FSplitSyncTop := -1;
+  if FSplitSync then
+    SplitSyncFromEditor;
+end;
+
+// Разница вкладки редактора и вкладки второй панели заново
+procedure TForm1.CmpRecalc;
+var
+  LeftLines, RightLines: TStringList;
+  BlockIdx, DiffIdx: Integer;
+begin
+  FCmpBlocks := nil;
+  FCmpCount := 0;
+  SetLength(FCmpEdMark, 0);
+  SetLength(FCmpPaneMark, 0);
+  SetLength(FCmpDiffBlock, 0);
+  FCmpSerial := FEditSerial;
+  FCmpTickSerial := FEditSerial;
+  FCmpEdWin := FWindowsIndex;
+  FCmpPaneWin := FSplitWin;
+  if FCmpOn and CmpPossible then
+  begin
+    LeftLines := TStringList.Create;
+    RightLines := TStringList.Create;
+    try
+      LeftLines.Text := SplitWinText(FWindowsIndex);
+      RightLines.Text := SplitWinText(FSplitWin);
+      FCmpBlocks := DiffLines(LeftLines, RightLines, DiffDefaultOptions);
+      SetLength(FCmpEdMark, LeftLines.Count);
+      SetLength(FCmpPaneMark, RightLines.Count);
+    finally
+      RightLines.Free;
+      LeftLines.Free;
+    end;
+    FCmpCount := DiffCount(FCmpBlocks);
+    SetLength(FCmpDiffBlock, FCmpCount);
+    DiffIdx := 0;
+    for BlockIdx := 0 to High(FCmpBlocks) do
+      if FCmpBlocks[BlockIdx].Kind <> dkEqual then
+      begin
+        FCmpDiffBlock[DiffIdx] := BlockIdx;
+        Inc(DiffIdx);
+      end;
+  end;
+  if FCmpCur > FCmpCount - 1 then
+    FCmpCur := FCmpCount - 1;
+  CmpMarkCurrent;
+  CmpUpdateHeader;
+  CmpRepaint;
+end;
+
+// Отметки строк: 1 - отличие, 2 - текущее отличие
+procedure TForm1.CmpMarkCurrent;
+var
+  DiffIdx, LineIdx: Integer;
+  Mark: Byte;
+begin
+  if Length(FCmpEdMark) > 0 then
+    FillChar(FCmpEdMark[0], Length(FCmpEdMark), 0);
+  if Length(FCmpPaneMark) > 0 then
+    FillChar(FCmpPaneMark[0], Length(FCmpPaneMark), 0);
+  for DiffIdx := 0 to FCmpCount - 1 do
+  begin
+    if DiffIdx = FCmpCur then
+      Mark := 2
+    else
+      Mark := 1;
+    with FCmpBlocks[FCmpDiffBlock[DiffIdx]] do
+    begin
+      for LineIdx := LeftStart to LeftStart + LeftCount - 1 do
+        if LineIdx < Length(FCmpEdMark) then
+          FCmpEdMark[LineIdx] := Mark;
+      for LineIdx := RightStart to RightStart + RightCount - 1 do
+        if LineIdx < Length(FCmpPaneMark) then
+          FCmpPaneMark[LineIdx] := Mark;
+    end;
+  end;
+end;
+
+// Кнопка Diff и < > в заголовке второй панели
+procedure TForm1.CmpUpdateHeader;
+var
+  Info: string;
+begin
+  if FSplit = nil then
+    Exit;
+  if not CmpPossible then
+    Info := '-'
+  else if FCmpCount = 0 then
+    Info := '0'
+  else if FCmpCur >= 0 then
+    Info := IntToStr(FCmpCur + 1) + '/' + IntToStr(FCmpCount)
+  else
+    Info := IntToStr(FCmpCount);
+  FSplit.Header.SetDiff(SplitOwnEdText, FCmpOn, Info);
+end;
+
+procedure TForm1.CmpRepaint;
+begin
+  if RichEdit1.HandleAllocated then
+    RichEdit1.Invalidate;
+  if (FSplit <> nil) and (FSplit.EdView <> nil) then
+    FSplit.EdView.Invalidate;
+end;
+
+// Фон строки отличия: по фону редактора - для тёмной или светлой схемы
+function TForm1.CmpColor(AMark: Byte): TColor;
+var
+  BackRgb: Longint;
+  IsDark: Boolean;
+begin
+  BackRgb := ColorToRGB(RichEdit1.Color);
+  IsDark := (GetRValue(BackRgb) * 299 + GetGValue(BackRgb) * 587 +
+             GetBValue(BackRgb) * 114) div 1000 < 128;
+  if IsDark then
+  begin
+    if AMark = 2 then
+      Result := $00584A20
+    else
+      Result := $00284050;
+  end
+  else if AMark = 2 then
+    Result := $00FFF0B4
+  else
+    Result := $00C8F0FF;
+end;
+
+// Строка другой панели, парная строке ALine (AFromEditor - ALine из
+// редактора, иначе - из второй панели). Внутри отличия - строка с тем же
+// сдвигом от его начала, не дальше его последней строки
+function TForm1.CmpMapLine(ALine: Integer; AFromEditor: Boolean): Integer;
+var
+  BlockIdx, FromStart, FromCount, ToStart, ToCount, Offset: Integer;
+begin
+  Result := ALine;
+  if (Length(FCmpBlocks) = 0) or (ALine < 0) then
+    Exit;
+  for BlockIdx := 0 to High(FCmpBlocks) do
+  begin
+    with FCmpBlocks[BlockIdx] do
+      if AFromEditor then
+      begin
+        FromStart := LeftStart;
+        FromCount := LeftCount;
+        ToStart := RightStart;
+        ToCount := RightCount;
+      end
+      else
+      begin
+        FromStart := RightStart;
+        FromCount := RightCount;
+        ToStart := LeftStart;
+        ToCount := LeftCount;
+      end;
+    if ALine < FromStart + FromCount then
+    begin
+      Offset := ALine - FromStart;
+      if Offset > ToCount - 1 then
+        Offset := ToCount - 1;
+      if Offset < 0 then
+        Offset := 0;
+      Result := ToStart + Offset;
+      Exit;
+    end;
+  end;
+  // Ниже последней строки - тем же сдвигом от конца
+  with FCmpBlocks[High(FCmpBlocks)] do
+    if AFromEditor then
+      Result := RightStart + RightCount + (ALine - LeftStart - LeftCount)
+    else
+      Result := LeftStart + LeftCount + (ALine - RightStart - RightCount);
+end;
+
+// Строка редактора, с которой начинается отличие ADiffIdx (у отличия без
+// строк в редакторе - место, где их нет)
+function TForm1.CmpDiffLine(ADiffIdx: Integer): Integer;
+begin
+  Result := FCmpBlocks[FCmpDiffBlock[ADiffIdx]].LeftStart;
+end;
+
+procedure TForm1.CmpGoTo(ADiffIdx: Integer);
+var
+  Line, LineCount: Integer;
+begin
+  if FCmpCount = 0 then
+    Exit;
+  if ADiffIdx < 0 then
+    ADiffIdx := 0;
+  if ADiffIdx > FCmpCount - 1 then
+    ADiffIdx := FCmpCount - 1;
+  FCmpCur := ADiffIdx;
+  CmpMarkCurrent;
+  CmpUpdateHeader;
+  Line := CmpDiffLine(ADiffIdx);
+  LineCount := Length(FCmpEdMark);
+  if (Line > LineCount - 1) and (LineCount > 0) then
+    Line := LineCount - 1;
+  GotoLine(Line);
+  CmpRepaint;
+end;
+
+// ADir: 1 - следующее отличие ниже каретки, -1 - предыдущее выше неё
+procedure TForm1.CmpGo(ADir: Integer);
+var
+  CaretLine, DiffIdx, Target: Integer;
+begin
+  if not FCmpOn or (FCmpCount = 0) then
+    Exit;
+  // Правки после подсчёта - сначала посчитать заново
+  if FEditSerial <> FCmpSerial then
+    CmpRecalc;
+  if FCmpCount = 0 then
+    Exit;
+  CaretLine := CurrentLineIndex;
+  Target := -1;
+  // Каретка на начале текущего отличия - соседнее с ним (у отличия без
+  // строк в редакторе соседние могут начинаться с той же строки)
+  if (FCmpCur >= 0) and (CmpDiffLine(FCmpCur) = CaretLine) then
+    Target := FCmpCur + ADir
+  else if ADir > 0 then
+  begin
+    for DiffIdx := 0 to FCmpCount - 1 do
+      if CmpDiffLine(DiffIdx) > CaretLine then
+      begin
+        Target := DiffIdx;
+        Break;
+      end;
+  end
+  else
+    for DiffIdx := FCmpCount - 1 downto 0 do
+      if CmpDiffLine(DiffIdx) < CaretLine then
+      begin
+        Target := DiffIdx;
+        Break;
+      end;
+  if (Target < 0) or (Target > FCmpCount - 1) then
+  begin
+    MessageBeep(0);
+    Exit;
+  end;
+  CmpGoTo(Target);
+end;
+
+procedure TForm1.CmpDiffClick(Sender: TObject);
+begin
+  CmpSet(not FCmpOn);
+  if FCmpOn and not CmpPossible then
+    LogComp('Сравнение панелей: во второй панели должна быть другая ' +
+            'вкладка (щелчок по заголовку панели - выбор вкладки)');
+end;
+
+procedure TForm1.CmpPrevClick(Sender: TObject);
+begin
+  CmpGo(-1);
+end;
+
+procedure TForm1.CmpNextClick(Sender: TObject);
+begin
+  CmpGo(1);
+end;
+
+// Меню вкладки "Сравнить с активной вкладкой": окно разделено по
+// вертикали, вкладка AWinIdx - во второй панели, сравнение включено
+procedure TForm1.CmpWithTab(AWinIdx: Integer);
+begin
+  if (FSplit = nil) or not FSplit.Shown or (FSplit.Orient <> soVertical) then
+    SplitSet(soVertical);
+  FSplitFmt := False;
+  FSplitWin := AWinIdx;
+  SplitRefresh(0);
+  CmpSet(True);
+end;
+
 // Нажатие мыши в окне AWnd (AppMessage): в какой панели теперь работают
+// Текст изменили в самой второй панели. Та же вкладка, что в редакторе
+// (буфер общий): уведомления своего редактора - как после правки в нём
+// (RichEdit1Change: карта, звёздочка вкладки, перерисовка). Другая
+// вкладка: отметка изменений и разбор заново при показе
+procedure TForm1.SplitEdChange(Sender: TObject);
+begin
+  if not SplitWinValid(FSplitWin) then
+    Exit;
+  // Правят в панели - она активная (заголовок)
+  if not FSplitActive then
+  begin
+    FSplitActive := True;
+    SplitUpdateHeaders;
+  end;
+  if FSplitWin = FWindowsIndex then
+  begin
+    if FEdEmu <> nil then
+      FEdEmu.ExternalEdit;
+    // Перерисовка и звёздочка вкладки - и без EN_CHANGE (оно приходит не
+    // во всех сборках: в Linux-сборке RichEdit1Change не вызывается)
+    RichEdit1.Invalidate;
+    RefreshTabsModified;
+    if FTabs <> nil then
+      FTabs.Invalidate;
+    Exit;
+  end;
+  if not FWindows[FSplitWin].Modified then
+  begin
+    FWindows[FSplitWin].Modified := True;
+    UpdateTabCaption(FSplitWin);
+    if FTabs <> nil then
+      FTabs.Invalidate;
+  end;
+  FWindows[FSplitWin].MapValid := False;
+  // Сравнение панелей пересчитается после паузы в наборе (SplitTimerTick)
+  Inc(FEditSerial);
+end;
+
+// Правят во второй панели: её окно TEdView в режиме правки, и панель
+// активна (последний щелчок - в ней) или фокус у её окна
+function TForm1.SplitPaneEditing: Boolean;
+begin
+  Result := (FSplit <> nil) and FSplit.Shown and FSplit.Editable and
+            (FSplit.View = svEdText) and (FSplit.EdView <> nil) and
+            SplitWinValid(FSplitWin) and
+            (FSplitActive or FSplit.EdView.Focused);
+end;
+
+// Меню второй панели > «Править в основном редакторе»: панели меняются
+// местами, каретка - там же, где была в панели (как прежний щелчок)
+procedure TForm1.SplitSwapMenuClick(Sender: TObject);
+begin
+  if (FSplit = nil) or (FSplit.EdView = nil) or (FSplit.EdView.Buffer = nil) then
+    Exit;
+  SplitTextClick(FSplit.EdView.CaretRow, FSplit.EdView.CaretCol,
+    FSplit.EdView.TopRow);
+end;
+
+// Записать вкладку второй панели (не активную в редакторе): прямо из её
+// буфера, в кодировке и с переводом строки файла. Новый файл (нужно имя)
+// и большой файл на отображении - обычным путём, как ConfirmSaveOthers:
+// вкладка на время становится активной
+function TForm1.SplitSaveWin: Boolean;
+var
+  WinIdx, OldIdx: Integer;
+  FileName, Raw: string;
+  PaneBuf: TEdBuffer;
+  LineEnd: Byte;
+  Stream: TFileStream;
+  Bom: array[0..2] of Byte;
+begin
+  Result := False;
+  WinIdx := FSplitWin;
+  if not SplitWinValid(WinIdx) then
+    Exit;
+  FileName := FWindows[WinIdx].FileName;
+  PaneBuf := FWindows[WinIdx].Buffer;
+  if IsUntitledName(FileName) or (PaneBuf = nil) or PaneBuf.IsMapped then
+  begin
+    OldIdx := FWindowsIndex;
+    ActivateWindow(WinIdx);
+    Result := SaveCurrentFile;
+    if SplitWinValid(OldIdx) and (OldIdx <> FWindowsIndex) then
+      ActivateWindow(OldIdx);
+    Exit;
+  end;
+  // Файл на диске изменили снаружи - спросить до записи поверх
+  if not CheckDiskChanges(WinIdx) then
+    Exit;
+  if not SplitWinValid(WinIdx) or (FWindows[WinIdx].Buffer <> PaneBuf) then
+    Exit;
+  LineEnd := FWindows[WinIdx].LineEnd;
+  if LineEnd = EdLineEndNone then
+  begin
+    {$IFDEF UNIX}
+    LineEnd := EdLineEndLF;
+    {$ELSE}
+    LineEnd := EdLineEndCRLF;
+    {$ENDIF}
+  end;
+  Raw := EdEncodeBuffer(PaneBuf, FWindows[WinIdx].IsUtf8,
+    LineEnd = EdLineEndLF);
+  try
+    Stream := TFileStream.Create(FileName, fmCreate);
+    try
+      if FWindows[WinIdx].IsUtf8 and FWindows[WinIdx].HasBom then
+      begin
+        Bom[0] := $EF; Bom[1] := $BB; Bom[2] := $BF;
+        Stream.WriteBuffer(Bom, 3);
+      end;
+      if Raw <> '' then
+        Stream.WriteBuffer(Raw[1], Length(Raw));
+    finally
+      Stream.Free;
+    end;
+  except
+    on Err: Exception do
+    begin
+      ShowMessage('Не удалось сохранить файл: ' + Err.Message);
+      Exit;
+    end;
+  end;
+  NoteDiskRaw(FileName, Raw, FWindows[WinIdx].IsUtf8);
+  FWindows[WinIdx].Modified := False;
+  UpdateTabCaption(WinIdx);
+  if FTabs <> nil then
+    FTabs.Invalidate;
+  StatusBar1.Panels[0].Text := 'Сохранено: ' + ExtractFileName(FileName);
+  Result := True;
+end;
+
 procedure TForm1.SplitTrackClick(AWnd: HWND);
 var
   NewActive: Boolean;
