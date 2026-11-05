@@ -1,0 +1,62 @@
+# uniFAR: after each push to mainTest copy uniFAR sources into the standalone
+# repository diakin/uniFAR (branch master). File list and copying -
+# uniFAR/sync/sync_unifar.py. Nothing changed in uniFAR files - no commit.
+#
+# Needs the repository secret UNIFAR_SYNC_TOKEN: a fine-grained personal
+# access token with "Contents: Read and write" on diakin/uniFAR only.
+name: Sync uniFAR
+
+on:
+  push:
+    branches: [mainTest]
+  workflow_dispatch:
+
+concurrency:
+  group: sync-unifar
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check token
+        env:
+          SYNC_TOKEN: ${{ secrets.UNIFAR_SYNC_TOKEN }}
+        run: |
+          if [ -z "$SYNC_TOKEN" ]; then
+            echo "::error::Secret UNIFAR_SYNC_TOKEN is not set (see uniFAR/sync/README.md)"
+            exit 1
+          fi
+
+      - name: Checkout unIDE
+        uses: actions/checkout@v4
+        with:
+          path: unide
+
+      - name: Checkout uniFAR
+        uses: actions/checkout@v4
+        with:
+          repository: diakin/uniFAR
+          ref: master
+          token: ${{ secrets.UNIFAR_SYNC_TOKEN }}
+          path: unifar
+
+      - name: Copy uniFAR files
+        run: python3 unide/uniFAR/sync/sync_unifar.py unide unifar
+
+      - name: Commit and push
+        working-directory: unifar
+        env:
+          COMMIT_SUBJECT: ${{ github.event.head_commit.message }}
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "uniFAR files did not change"
+            exit 0
+          fi
+          git config user.name "unIDE sync"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          SUBJECT=$(printf '%s\n' "$COMMIT_SUBJECT" | head -n 1)
+          git commit -m "Sync from unIDE: ${SUBJECT:-manual run}" \
+            -m "unIDE commit: https://github.com/${GITHUB_REPOSITORY}/commit/${GITHUB_SHA}"
+          git push origin HEAD:master
