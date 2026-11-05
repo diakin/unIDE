@@ -56552,6 +56552,27 @@ begin
   Dpr := ExpandFileName(Dpr);
   LogComp('Цель: ' + Dpr);
 
+  // Папка, подготовленная LazPrep для Lazarus: рядом с .dpr лежит .lpr того
+  // же имени, а .dof нет. Это копия исходников для FPC - без Search path
+  // из .dof dcc32 не найдёт модули (WebView4Delphi и др.). Собирать в Delphi
+  // нужно исходный проект.
+  if FileExists(ChangeFileExt(Dpr, '.lpr')) and
+     not FileExists(ChangeFileExt(Dpr, '.dof')) then
+  begin
+    LogComp('Компиляция Delphi не запущена: ' + ExtractFilePath(Dpr) +
+            ' - копия для Lazarus (LazPrep: есть ' +
+            ExtractFileName(ChangeFileExt(Dpr, '.lpr')) + ', нет .dof). ' +
+            'Её собирают Lazarus или FPC (' +
+            ExtractFileName(ChangeFileExt(Dpr, '.lpi')) + ')');
+    OrigDpr := ExpandFileName(ExtractFilePath(Dpr) + '..' + PathDelim +
+                              ExtractFileName(Dpr));
+    if FileExists(OrigDpr) then
+      LogComp('Для Delphi откройте исходный проект: ' + OrigDpr)
+    else
+      LogComp('Для Delphi откройте исходный .dpr проекта (не из этой папки)');
+    Exit;
+  end;
+
   // Повторы имён компонентов в .dfm модулей проекта. dcc32 их не видит:
   // .dfm уходит в exe ресурсом как есть, и ошибка вылезла бы только при
   // создании формы (EComponentError "A component named ... already exists").
