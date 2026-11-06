@@ -39048,6 +39048,21 @@ begin
     FObjCombo.Text := Raw;
     FObjActive := FObjCombo;
   end
+  else if (CompareText(FObjEditName, 'Font.Name') = 0) or
+          ((Length(FObjEditName) > 10) and
+           (CompareText(Copy(FObjEditName, Length(FObjEditName) - 9, 10),
+                        '.Font.Name') = 0)) then
+  begin
+    // Имя шрифта - список шрифтов системы (Screen.Fonts), как в Delphi;
+    // можно и набрать руками. Значение - строка .dfm в апострофах
+    FObjComboColors := False;
+    FObjEditIsStr := True;
+    FObjCombo.Style := csDropDown;
+    FObjCombo.Items.Clear;
+    FObjCombo.Items.AddStrings(Screen.Fonts);
+    FObjCombo.Text := EdUiText(DecodeDfmString(Raw));
+    FObjActive := FObjCombo;
+  end
   else if (TI <> nil) and (TI.Kind = dtkSet) then
   begin
     // Набор - галки по элементам
@@ -39447,6 +39462,9 @@ begin
       end;
     NewRaw := '[' + Str + ']';
   end
+  else if (FObjActive = FObjCombo) and FObjEditIsStr then
+    // Имя шрифта из списка - строка в апострофах
+    NewRaw := EncodeDfmString(EdFromUiText(Trim(FObjCombo.Text)))
   else if FObjActive = FObjCombo then
   begin
     NewRaw := Trim(FObjCombo.Text);
