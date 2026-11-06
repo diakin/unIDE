@@ -29,7 +29,7 @@ unit UiEditCtrls;
 interface
 
 uses
-  {$IFDEF FPC} LCLType, {$ENDIF}
+  {$IFDEF FPC} LCLType, LMessages, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, StdCtrls,
   UiTheme;
 
@@ -282,6 +282,9 @@ type
     procedure CNCommand(var Message: TWMCommand); message CN_COMMAND;
     procedure WMPaint(var Message: TWMPaint); message WM_PAINT;
     procedure PaintOver(DC: HDC);
+    {$IFDEF FPC}
+    procedure LMDrawItem(var Message: TLMDrawItems); message LM_DRAWITEM;
+    {$ENDIF}
   protected
     procedure ApplyTheme;
     procedure Loaded; override;
@@ -869,6 +872,44 @@ begin
      (Message.NotifyCode = CBN_CLOSEUP) then
     Invalidate;
 end;
+
+{$IFDEF FPC}
+// Lazarus (Windows): строку раскрытого списка LCL отдаёт OnDrawItem только
+// при Style csOwnerDrawFixed и подобных (win32callback, WM_DRAWITEM). У
+// ListOwnerDraw стиль окна свой (CBS_OWNERDRAWFIXED в CreateParams), а Style
+// остаётся csDropDown или csDropDownList - строка приходит сюда как
+// LM_DRAWITEM и без этого обработчика не рисовалась: список раскрывался
+// белым полем. Переводим её в LM_DRAWLISTITEM - дальше как у LCL:
+// холст, шрифт, цвет выделения и DrawItem (OnDrawItem).
+procedure TUiComboBox.LMDrawItem(var Message: TLMDrawItems);
+var
+  ItemRec: LCLType.PDrawItemStruct;
+  ListRec: TDrawListItemStruct;
+  ListMsg: TLMDrawListItem;
+  StateKind: TOwnerDrawStateType;
+begin
+  ItemRec := Message.DrawItemStruct;
+  if not FListOwnerDraw or (ItemRec = nil) or
+     (ItemRec^.itemID = UINT(-1)) then
+  begin
+    inherited;
+    Exit;
+  end;
+  ListRec.ItemID := ItemRec^.itemID;
+  ListRec.Area := ItemRec^.rcItem;
+  ListRec.DC := ItemRec^._hDC;
+  // Биты ODS_* идут в том же порядке, что TOwnerDrawStateType
+  ListRec.ItemState := [];
+  for StateKind := Low(TOwnerDrawStateType) to High(TOwnerDrawStateType) do
+    if (ItemRec^.itemState and (UINT(1) shl Ord(StateKind))) <> 0 then
+      Include(ListRec.ItemState, StateKind);
+  FillChar(ListMsg, SizeOf(ListMsg), 0);
+  ListMsg.Msg := LM_DRAWLISTITEM;
+  ListMsg.DrawListItemStruct := @ListRec;
+  Dispatch(ListMsg);
+  Message.Result := 1;
+end;
+{$ENDIF}
 
 // Windows рисует список выбора целиком; в темах Dark и Custom поверх -
 // рамка и кнопка списка

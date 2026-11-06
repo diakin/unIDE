@@ -71,6 +71,7 @@ private
   FActive: Boolean;
   FFrom: TPoint;
   FRect: TRect;
+  FAutoOff: Boolean;   // AutoSize выключен этим растягиванием
   function CanDrag: Boolean;
   procedure WMSetCursor(var Message: TWMSetCursor); message WM_SETCURSOR;
   protected
@@ -158,6 +159,15 @@ private
   FExtendedHints: Boolean;
   FHintWnd: THintWindow;
   FHintTimer: TTimer;
+  {$IFDEF FPC}
+  // Lazarus: WM_EXITSIZEMOVE до перехватчика формы не доходит (LCL win32
+  // передаёт контролу только известные ей сообщения), и место окна формы
+  // в .dfm не записывалось - после вставки компонента форма вставала на
+  // старое место. Вместо него - WM_MOVE и WM_SIZE формы и таймер: кнопку
+  // мыши отпустили, окно стоит - место пишется (FormMoved).
+  FMoveTimer: TTimer;
+  FMoveDone: TRect;    // место окна формы, уже записанное или загруженное
+  {$ENDIF}
   FHintTarget: TComponent;
   FHintShown: Boolean;
   FRootName: string;
@@ -362,7 +372,12 @@ private
   procedure MouseUp;
   procedure KeyDown(AKey: Word);
   procedure FormMoved;
-  procedure CommitBounds(AComp: TComponent);
+  {$IFDEF FPC}
+  procedure FormBoundsNoted;
+  procedure MoveTimerTick(Sender: TObject);
+  {$ENDIF}
+  // AExtra - ещё одна строка Имя=значение в ту же запись (AutoSize=False)
+  procedure CommitBounds(AComp: TComponent; const AExtra: string = '');
   property Form: TForm read FForm;
   property RootName: string read FRootName;
   property Dragging: Boolean read GetDragging;
@@ -2162,6 +2177,16 @@ begin
       Exit;
     end;
 
+    {$IFDEF FPC}
+    WM_MOVE:
+      if IsRoot then
+    begin
+      FPrev(Msg);
+      FDesigner.FormBoundsNoted;
+      Exit;
+    end;
+    {$ENDIF}
+
     WM_SIZE:
     // Размер формы поменялся - выровненные компоненты (alRight,
     // alClient) встали по-новому. Раскладка делается внутри обработки
@@ -2173,6 +2198,9 @@ begin
       if ((FDesigner.FCarets[1] <> nil) and FDesigner.FCarets[1].Visible) or
          (FDesigner.GroupCount > 1) then
         FDesigner.ShowCarets;
+      {$IFDEF FPC}
+      FDesigner.FormBoundsNoted;
+      {$ENDIF}
       Exit;
     end;
   end;
@@ -2271,6 +2299,26 @@ end;
 // alTop - нижний средний маркер (высота), alBottom - верхний средний,
 // alLeft - правый средний (ширина), alRight - левый средний. Остальные
 // стороны у него задаёт родитель. alClient - никак.
+// Опубликованное AutoSize компонента (TLabel, TEdit, TPanel): включено ли
+function DsgAutoSizeOn(ACtl: TControl): Boolean;
+var
+  PropRec: PPropInfo;
+begin
+  PropRec := GetPropInfo(ACtl, 'AutoSize');
+  Result := (PropRec <> nil) and
+            (PropRec^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind in [tkEnumeration{$IFDEF FPC}, tkBool{$ENDIF}]) and
+            (GetOrdProp(ACtl, PropRec) <> 0);
+end;
+
+procedure DsgSetAutoSize(ACtl: TControl; AValue: Boolean);
+var
+  PropRec: PPropInfo;
+begin
+  PropRec := GetPropInfo(ACtl, 'AutoSize');
+  if (PropRec <> nil) and (PropRec^.SetProc <> nil) then
+    SetOrdProp(ACtl, PropRec, Ord(AValue));
+end;
+
 function TDsgCaret.CanDrag: Boolean;
 var
   Ctrl: TControl;
@@ -2328,6 +2376,7 @@ begin
   if (Ctrl = nil) or not CanDrag then
     Exit;
   FActive := True;
+  FAutoOff := False;
   FFrom := ClientToScreen(Point(PosX, PosY));
   FRect := Ctrl.BoundsRect;
 end;
@@ -2375,7 +2424,21 @@ begin
   ClampToParent(Ctrl.Parent, RectVal, True);
   // Обрезка по краю не должна сжать меньше 4 пикселей
   if (RectVal.Right - RectVal.Left >= 4) and (RectVal.Bottom - RectVal.Top >= 4) then
+  begin
     Ctrl.BoundsRect := RectVal;
+    {$IFDEF FPC}
+    // LCL: при AutoSize = True размер ставит сам компонент (TLabel - по
+    // тексту, TEdit - высоту по шрифту), и BoundsRect ему не указ - маркер
+    // не тянул. Размер не встал - AutoSize выключается, при отпускании в
+    // .dfm пишется AutoSize = False. В VCL размер встаёт и так.
+    if not EqualRect(Ctrl.BoundsRect, RectVal) and DsgAutoSizeOn(Ctrl) then
+    begin
+      DsgSetAutoSize(Ctrl, False);
+      FAutoOff := True;
+      Ctrl.BoundsRect := RectVal;
+    end;
+    {$ENDIF}
+  end;
   FDesigner.ShowCarets;
 end;
 
@@ -2388,8 +2451,18 @@ begin
     Exit;
   FActive := False;
   Ctrl := FDesigner.SelControl;
-  if (Ctrl <> nil) and not EqualRect(Ctrl.BoundsRect, FRect) then
-    FDesigner.CommitBounds(Ctrl);
+  if Ctrl = nil then
+    Exit;
+  if not EqualRect(Ctrl.BoundsRect, FRect) then
+  begin
+    if FAutoOff then
+      FDesigner.CommitBounds(Ctrl, 'AutoSize=False')
+    else
+      FDesigner.CommitBounds(Ctrl);
+  end
+  else if FAutoOff then
+    DsgSetAutoSize(Ctrl, True);   // вернули как было - AutoSize тоже
+  FAutoOff := False;
 end;
 
 { TDsgIconCaption }
@@ -2545,6 +2618,12 @@ begin
   FHintTimer := TTimer.Create(nil);
   FHintTimer.Enabled := False;
   FHintTimer.OnTimer := HintTimerTick;
+  {$IFDEF FPC}
+  FMoveTimer := TTimer.Create(nil);
+  FMoveTimer.Enabled := False;
+  FMoveTimer.Interval := 250;
+  FMoveTimer.OnTimer := MoveTimerTick;
+  {$ENDIF}
   FClassOf := TStringList.Create;
   FVisualUnknown := TStringList.Create;
   FVisualUnknown.Sorted := True;
@@ -2570,6 +2649,9 @@ begin
     DeleteObject(FGridBrush);
   HideHint;
   FreeAndNil(FHintTimer);
+  {$IFDEF FPC}
+  FreeAndNil(FMoveTimer);
+  {$ENDIF}
   FreeAndNil(FHintWnd);
   DropOldForm;
   Clear;
@@ -2988,6 +3070,10 @@ begin
     FlushPaint;
   end;
   Windows.SetFocus(FForm.Handle);
+  {$IFDEF FPC}
+  // Место из .dfm - уже записанное: перемещения при показе не пишутся
+  FMoveDone := FForm.BoundsRect;
+  {$ENDIF}
   // Новая форма уже на экране - прежнюю можно убрать
   DropOldForm;
 end;
@@ -3374,6 +3460,22 @@ begin
   Select(MainMenu, True);
 end;
 
+// Окно конструктора без Parent (маркер, уголок группы: ParentWindow формы) -
+// наверх среди дочерних окон формы. В LCL BringToFront такому окну ничего
+// не делает: TControl.SetZOrder выходит сразу, если Parent = nil. Маркеры
+// оставались под окнами, созданными или поднятыми позже (TMemo, TEdit:
+// выделенный поднимает DsgRaiseSelected), и их не было видно.
+procedure DsgWindowToTop(ACtl: TWinControl);
+begin
+  {$IFDEF FPC}
+  if ACtl.HandleAllocated then
+    SetWindowPos(ACtl.Handle, HWND_TOP, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or
+                 SWP_NOACTIVATE or SWP_NOOWNERZORDER);
+  {$ELSE}
+  ACtl.BringToFront;
+  {$ENDIF}
+end;
+
 // Выделенный компонент - поверх соседей, чтобы его было видно и можно было
 // зацепить мышью, даже если он перекрыт (поле под заголовком таблицы,
 // флажок под редактором). Только на форме конструктора: порядок в .dfm не
@@ -3530,7 +3632,7 @@ begin
 
     // Поверх всего на форме: компонент может лежать глубоко в панелях
     for I := 1 to 8 do
-      FCarets[I].BringToFront;
+      DsgWindowToTop(FCarets[I]);
 
     // Маркер - дочернее окно формы, а стоит он над контролами, вложенными в
     // панели. Место, откуда он ушёл, помечаем к перерисовке вместе со всеми
@@ -4767,7 +4869,7 @@ begin
           if not DsgGroupMark.Visible then
             DsgGroupMark.Visible := True;
           // Поверх всего на форме: компонент может лежать глубоко в панелях
-          DsgGroupMark.BringToFront;
+          DsgWindowToTop(DsgGroupMark);
         end;
       end;
       if not Shown and DsgGroupMark.Visible then
@@ -5597,10 +5699,45 @@ end;
 // только те, что в файле уже есть: иначе в .dfm оказались бы обе пары.
 procedure TFormDesigner.FormMoved;
 begin
+  {$IFDEF FPC}
+  if FForm <> nil then
+    FMoveDone := FForm.BoundsRect;
+  {$ENDIF}
   CommitBounds(FForm);
 end;
 
-procedure TFormDesigner.CommitBounds(AComp: TComponent);
+{$IFDEF FPC}
+// Окно формы сдвинулось или поменяло размер: запись - когда перенос
+// закончится (MoveTimerTick)
+procedure TFormDesigner.FormBoundsNoted;
+begin
+  if (FForm = nil) or (FMoveTimer = nil) or not FForm.Visible then
+    Exit;
+  FMoveTimer.Enabled := False;
+  FMoveTimer.Enabled := True;
+end;
+
+procedure TFormDesigner.MoveTimerTick(Sender: TObject);
+var
+  NowRect: TRect;
+begin
+  // Кнопка мыши ещё нажата - окно тянут дальше, ждём
+  if GetAsyncKeyState(VK_LBUTTON) < 0 then
+    Exit;
+  FMoveTimer.Enabled := False;
+  if (FForm = nil) or not FForm.Visible or
+     (FForm.WindowState <> wsNormal) then
+    Exit;
+  NowRect := FForm.BoundsRect;
+  if (NowRect.Left = FMoveDone.Left) and (NowRect.Top = FMoveDone.Top) and
+     (NowRect.Right = FMoveDone.Right) and
+     (NowRect.Bottom = FMoveDone.Bottom) then
+    Exit;
+  FormMoved;
+end;
+{$ENDIF}
+
+procedure TFormDesigner.CommitBounds(AComp: TComponent; const AExtra: string);
 var
   StrList: TStringList;
   Ctrl: TControl;
@@ -5629,6 +5766,8 @@ begin
       // Координаты, которые задаёт код, в .dfm не пишутся: там они
       // живые, а не из файла (MarkCodePlaced)
       Code := CodePlacedSides(Ctrl);
+      if AExtra <> '' then
+        StrList.Add(AExtra);
       // Выровненному место задаёт родитель - пишется только свободный
       // размер: у alTop/alBottom высота, у alLeft/alRight ширина
       case Ctrl.Align of
