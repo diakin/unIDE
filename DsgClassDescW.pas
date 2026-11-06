@@ -194,7 +194,7 @@ begin
       Typ.Kind := dtkChar;
     tkWChar:
       Typ.Kind := dtkWChar;
-    tkEnumeration:
+    tkEnumeration{$IFDEF FPC}, tkBool{$ENDIF}:
     begin
       Typ.Kind := dtkEnum;
       Typ.MinValue := TypeRec^.MinValue;

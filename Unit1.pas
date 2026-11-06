@@ -3221,7 +3221,7 @@ type
     procedure UtilChipsPaint;
     procedure UtilOwnByMain(AForm: TCustomForm);
     function UtilFormHidden(AForm: TCustomForm): Boolean;
-    function  UtilFormOf(ATag: Integer): TCustomForm;
+    function  UtilFormOf(ATag: {$IFDEF FPC}PtrInt{$ELSE}Integer{$ENDIF}): TCustomForm;
     procedure UtilShowForm(AForm: TCustomForm);
     procedure SettingsAlert(const AText: string);
     procedure PaletteIconEditClick(Sender: TObject);
@@ -44984,13 +44984,13 @@ const
 // Окно программы по указателю из Tag пункта или плашки; nil - его уже нет
 // (закрылось после постройки меню). Указатель только сравнивается со
 // списком окон, сам не разыменовывается
-function TForm1.UtilFormOf(ATag: Integer): TCustomForm;
+function TForm1.UtilFormOf(ATag: {$IFDEF FPC}PtrInt{$ELSE}Integer{$ENDIF}): TCustomForm;
 var
   FormIdx: Integer;
 begin
   Result := nil;
   for FormIdx := 0 to Screen.CustomFormCount - 1 do
-    if Integer(Screen.CustomForms[FormIdx]) = ATag then
+    if {$IFDEF FPC}PtrInt{$ELSE}Integer{$ENDIF}(Screen.CustomForms[FormIdx]) = ATag then
     begin
       Result := Screen.CustomForms[FormIdx];
       Exit;
@@ -45635,7 +45635,7 @@ begin
         else
           SetOrdProp(Obj, PI, StrToInt(AValue));
       end;
-      tkEnumeration:
+      tkEnumeration{$IFDEF FPC}, tkBool{$ENDIF}:
         SetEnumProp(Obj, PI, AValue);
       tkSet:
         SetSetProp(Obj, PI, AValue);
@@ -48629,7 +48629,7 @@ begin
       Result := Result + ' char';
     tkWChar:
       Result := Result + ' wchar';
-    tkEnumeration:
+    tkEnumeration{$IFDEF FPC}, tkBool{$ENDIF}:
     begin
       Result := Result + ' enum';
       for ValIdx := TypeRec^.MinValue to TypeRec^.MaxValue do

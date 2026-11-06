@@ -77,6 +77,11 @@ type
   TRqListView = class(TUiListView)
   private
     procedure CNNotify(var Message: TWMNotify); message CN_NOTIFY;
+  {$IFDEF FPC}
+  protected
+    // LCL: NM_CUSTOMDRAW как CN_NOTIFY - через UiListViewNotifyCN
+    procedure CreateWnd; override;
+  {$ENDIF}
   end;
 
 // Цвет между AColor и ATo: APercent - доля ATo
@@ -95,6 +100,14 @@ begin
   ToRgb := ColorToRGB(ATo);
   Result := TColor(Part(0) or (Part(8) shl 8) or (Part(16) shl 16));
 end;
+
+{$IFDEF FPC}
+procedure TRqListView.CreateWnd;
+begin
+  inherited CreateWnd;
+  UiListViewNotifyCN(Self);
+end;
+{$ENDIF}
 
 procedure TRqListView.CNNotify(var Message: TWMNotify);
 var

@@ -11328,6 +11328,11 @@ type
   TMoveListView = class(TUiListView)
   private
     procedure CNNotify(var Message: TWMNotify); message CN_NOTIFY;
+  {$IFDEF FPC}
+  protected
+    // LCL: NM_CUSTOMDRAW как CN_NOTIFY - через UiListViewNotifyCN
+    procedure CreateWnd; override;
+  {$ENDIF}
   end;
 
   TMoveReportForm = class(TForm)
@@ -11867,6 +11872,14 @@ begin
       View.SetFocus;
   end;
 end;
+
+{$IFDEF FPC}
+procedure TMoveListView.CreateWnd;
+begin
+  inherited CreateWnd;
+  UiListViewNotifyCN(Self);
+end;
+{$ENDIF}
 
 procedure TMoveListView.CNNotify(var Message: TWMNotify);
 const

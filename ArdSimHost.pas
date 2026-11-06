@@ -313,8 +313,20 @@ type
     FPlaced: Boolean;
     FOnPlaced: TNotifyEvent;
     FOnHidden: TNotifyEvent;
+    {$IFDEF FPC}
+    FPlaceTimer: TTimer;
+    {$ENDIF}
     procedure WindowClose(Sender: TObject; var Action: TCloseAction);
     procedure WMExitSizeMove(var Message: TMessage); message WM_EXITSIZEMOVE;
+    {$IFDEF FPC}
+    // LCL win32 не передаёт WM_EXITSIZEMOVE в WindowProc (нет в списке
+    // win32callback.inc): конец перемещения ловится по WM_MOVE / WM_SIZE и
+    // таймеру, который ждёт отпускания левой кнопки мыши
+    procedure WMMove(var Message: TMessage); message WM_MOVE;
+    procedure WMSize(var Message: TMessage); message WM_SIZE;
+    procedure PlaceNoted;
+    procedure PlaceTimerTick(Sender: TObject);
+    {$ENDIF}
   protected
     procedure CreateParams(var Params: TCreateParams); override;
   public
@@ -2361,6 +2373,44 @@ begin
   if Assigned(FOnPlaced) then
     FOnPlaced(Self);
 end;
+
+{$IFDEF FPC}
+procedure TArdSimWindow.WMMove(var Message: TMessage);
+begin
+  inherited;
+  PlaceNoted;
+end;
+
+procedure TArdSimWindow.WMSize(var Message: TMessage);
+begin
+  inherited;
+  PlaceNoted;
+end;
+
+procedure TArdSimWindow.PlaceNoted;
+begin
+  if not Visible or not FPlaced or (csDestroying in ComponentState) then
+    Exit;
+  if FPlaceTimer = nil then
+  begin
+    FPlaceTimer := TTimer.Create(Self);
+    FPlaceTimer.Interval := 250;
+    FPlaceTimer.OnTimer := PlaceTimerTick;
+  end;
+  FPlaceTimer.Enabled := False;
+  FPlaceTimer.Enabled := True;
+end;
+
+procedure TArdSimWindow.PlaceTimerTick(Sender: TObject);
+begin
+  // Кнопка ещё нажата - окно тянут дальше
+  if GetAsyncKeyState(VK_LBUTTON) < 0 then
+    Exit;
+  FPlaceTimer.Enabled := False;
+  if Visible and Assigned(FOnPlaced) then
+    FOnPlaced(Self);
+end;
+{$ENDIF}
 
 procedure TArdSimWindow.ShowAtRight;
 var

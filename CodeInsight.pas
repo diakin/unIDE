@@ -1293,6 +1293,11 @@ begin
   inherited CreateParams(Params);
   Params.Style := WS_POPUP or WS_BORDER;
   Params.ExStyle := WS_EX_TOOLWINDOW or WS_EX_TOPMOST;
+  {$IFDEF FPC}
+  // LCL win32 не передаёт WM_MOUSEACTIVATE в WindowProc: без
+  // WS_EX_NOACTIVATE щелчок по списку забирает фокус у редактора
+  Params.ExStyle := Params.ExStyle or $08000000; // WS_EX_NOACTIVATE
+  {$ENDIF}
   Params.WndParent := 0;
 end;
 

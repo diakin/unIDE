@@ -3956,7 +3956,8 @@ begin
       tkChar:
         if (Length(ValStr) = 3) and (ValStr[1] = '''') then
         SetOrdProp(AObj, PI, Ord(ValStr[2]));
-      tkEnumeration:
+      // FPC: Boolean - tkBool, а не tkEnumeration
+      tkEnumeration{$IFDEF FPC}, tkBool{$ENDIF}:
       begin
         Num := GetEnumValue(PI^.PropType{$IFNDEF FPC}^{$ENDIF}, ValStr);
         if Num >= 0 then

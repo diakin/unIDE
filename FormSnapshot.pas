@@ -141,7 +141,7 @@ begin
       tkChar, tkWChar:
         Emit(ALevel, Nm + ' = ' + SnapQuote(Chr(GetOrdProp(AObj, PropInf))));
 
-      tkEnumeration:
+      tkEnumeration{$IFDEF FPC}, tkBool{$ENDIF}:
         Emit(ALevel, Nm + ' = ' + GetEnumProp(AObj, PropInf));
 
       tkSet:
@@ -153,7 +153,8 @@ begin
       tkInt64:
         Emit(ALevel, Nm + ' = ' + IntToStr(GetInt64Prop(AObj, PropInf)));
 
-      tkString, tkLString, tkWString:
+      // FPC: string - tkAString, Boolean - tkBool
+      tkString, tkLString, tkWString{$IFDEF FPC}, tkAString, tkUString{$ENDIF}:
         Emit(ALevel, Nm + ' = ' + SnapQuote(GetStrProp(AObj, PropInf)));
 
       tkMethod:
