@@ -44937,6 +44937,12 @@ begin
       OneForm := Screen.CustomForms[FormIdx];
       if (OneForm = Self) or not OneForm.Visible or (OneForm.Caption = '') then
         Continue;
+      // Окно подсказки - не окно утилиты. В LCL THintWindow - форма, она
+      // есть в Screen.CustomForms, и её заголовок - текст подсказки: при
+      // наведении на кнопку (Pull) в строке меню появлялась плашка
+      // «git pull». В VCL подсказка - не форма, сюда не попадает.
+      if OneForm is THintWindow then
+        Continue;
       Listed.Add(OneForm);
       // Свёрнуто ли окно, в подпись не входит: плашка при щелчке не
       // пересоздаётся, только перекрашивается (UtilChipsPaint)
@@ -58640,6 +58646,19 @@ begin
       if GitWriteBuildInfo(Exe, BuildSrc) then
         LogComp('--- Исходники: ' + GitBuildInfoShort(Exe) + ' (' +
                 ExtractFileName(GitBuildInfoFile(Exe)) + ')');
+      // Собран сам редактор (SyntaxHLClaude.lpi) - его файлы рядом с новым
+      // exe, как у сборки Delphi: schemes\*.clr, IDE.clr, editor.ini,
+      // справка. Без них новый exe в Output\ запускался без схем подсветки.
+      // Откуда - из папки исходников Delphi (копия laz\ - её папка), чего
+      // там нет - из папки работающего редактора.
+      if CompareText(ChangeFileExt(ExtractFileName(Lpi), ''),
+                     OwnProjectBase) = 0 then
+      begin
+        if PrepSrc <> '' then
+          CopyOwnRunFiles(PrepSrc, ExtractFilePath(Exe))
+        else
+          CopyOwnRunFiles(ExtractFilePath(Lpi), ExtractFilePath(Exe));
+      end;
     end;
     Exit;
   end;
