@@ -822,10 +822,38 @@ end;
 {$ENDIF}
 
 {$IFDEF FPC}
+// Lazarus (Windows): ярлычки TTabControl - у вложенного элемента вкладок
+// LCL, его CreateParams не наш, и UiTabsFixRows до него не доходит: ряды
+// без TCS_BUTTONS при каждом выборе менялись местами, выбранная вкладка
+// уходила в нижний ряд. Стиль ставится окну вложенного элемента прямо.
+procedure UiTabsFixRowsWnd(AWnd: HWND);
+var
+  StyleVal: LongInt;
+begin
+  if AWnd = 0 then
+    Exit;
+  StyleVal := GetWindowLong(AWnd, GWL_STYLE);
+  if (StyleVal and TCS_MULTILINE = 0) or (StyleVal and TCS_BUTTONS <> 0) then
+    Exit;
+  SetWindowLong(AWnd, GWL_STYLE, StyleVal or TCS_BUTTONS);
+  SetWindowPos(AWnd, 0, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or
+               SWP_NOACTIVATE or SWP_FRAMECHANGED);
+  InvalidateRect(AWnd, nil, True);
+end;
+
 procedure TUiTabControl.HookInner;
 var
   CtlIdx: Integer;
 begin
+  // Стиль - при каждой отрисовке: LCL пересоздаёт вложенный элемент
+  // (MultiLine, смена темы), а с ним и стиль окна
+  for CtlIdx := 0 to ControlCount - 1 do
+    if (Controls[CtlIdx] is TCustomTabControl) and
+       TWinControl(Controls[CtlIdx]).HandleAllocated then
+    begin
+      UiTabsFixRowsWnd(TWinControl(Controls[CtlIdx]).Handle);
+      Break;
+    end;
   if UiTabHookActive(FTabHook) then
     Exit;
   for CtlIdx := 0 to ControlCount - 1 do
