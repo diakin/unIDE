@@ -2012,10 +2012,17 @@ begin
       Pt := Point(SmallInt(LoWord(Msg.LParam)), SmallInt(HiWord(Msg.LParam)));
       Target := FDesigner.TargetAt(FCtl.ClientToScreen(Pt));
       FDesigner.ContextMenu(Target, FCtl.ClientToScreen(Pt));
+      // Result <> 0 - обработано. LCL (win32callback) при Result = 0 у
+      // LM_RBUTTONUP и LM_CONTEXTMENU отдаёт сообщение окну Windows, и у
+      // TMemo, TEdit появлялось системное меню поля (Отменить, Вырезать...)
+      Msg.Result := 1;
       Exit;
     end;
     WM_CONTEXTMENU:
+    begin
+      Msg.Result := 1;
       Exit;
+    end;
 
     WM_PAINT:
     begin
