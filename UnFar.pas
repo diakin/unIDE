@@ -135,6 +135,11 @@ unit UnFar;
 //      нескольких файлов меняется только то, что переключили или вписали.
 //    - b.62: щелчок по заголовку панели (путь) или по приглашению перед
 //      командной строкой - путь этой папки в буфер обмена.
+//    - b.63: F5 / F6: файл уже есть в папке назначения - своё окно Warning
+//      как в FAR (New / Existing: размер и время, Remember choice;
+//      Overwrite, Skip, Rename, Append, Cancel) вместо окна Windows.
+//      Вопросы задаются до начала копирования; сама операция -
+//      SHFileOperation по списку файл -> файл (FOF_MULTIDESTFILES).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -170,7 +175,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.62';
+  FarBuild = 'b.63';
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -195,13 +200,24 @@ type
   TFarItems = array of TFarItem;
   TFarNames = array of WideString;
 
+  // F5 / F6: что сделать с одним файлом (папкой) операции. caAsk - файл
+  // уже есть в папке назначения, ответ ещё не получен
+  TFarCopyAction = (caCopy, caAsk, caSkip, caAppend);
+  TFarCopyStep = record
+    Source: WideString;          // полный путь
+    Dest: WideString;            // полный путь, с именем
+    Action: TFarCopyAction;
+  end;
+  TFarCopySteps = array of TFarCopyStep;
+
   // Открытый диалог: копирование, перенос, папка, удаление
   TFarDlgKind = (fdNone, fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew,
     fdArcExtract, fdPassword, fdSzOffer, fdSzProgress, fdSzFail, fdArcAdd,
     fdFind, fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError,
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
-    fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr);
+    fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr,
+    fdOverwrite, fdOverRename);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -584,6 +600,15 @@ type
     FDlgButtonCol: array of Integer;  // где нарисованы кнопки (для мыши)
     FDlgButtonRow: Integer;
     FDlgNames: TFarNames;         // с чем работает операция
+    // F5 / F6: план операции и вопросы «файл уже есть» (CopyAskNext)
+    FCopySteps: TFarCopySteps;
+    FCopyDirs: TFarNames;         // папки, разобранные по файлам (перенос:
+                                  // пустые потом удаляются)
+    FCopyMove: Boolean;
+    FCopyFocus: WideString;       // курсор после операции
+    FCopyAsk: Integer;            // шаг, о котором спрашиваем
+    FCopyRemember: Integer;       // запомненный ответ (кнопка); -1 - нет
+    FCopyMismatch: Integer;       // файл на месте папки и наоборот
     FDlgPermanent: Boolean;       // удаление мимо корзины
     FDlgMasked: Boolean;          // поле ввода звёздочками (пароль)
     FDlgRows: TFarDlgRows;        // поля окна Shift+F1 (под строками текста)
@@ -808,6 +833,13 @@ type
     procedure FtpStartCopyTo(AMove: Boolean);
     procedure FtpCopyConfirm(const AText: WideString);
     procedure FtpOverwriteAnswer(AButton: Integer);
+    procedure CopyAddStep(const ASource, ADest: WideString;
+      AAction: TFarCopyAction);
+    procedure CopyPlan(const ASource, ADest: WideString);
+    procedure CopyAskNext;
+    procedure CopyAnswer(AButton: Integer; ARemember: Boolean);
+    procedure CopyRenameAnswer(AConfirmed: Boolean; const AText: WideString);
+    procedure CopyRun;
     procedure FtpRunOp;
     procedure FtpAskMkDir;
     procedure FtpMkDirConfirm(const AText: WideString);
@@ -1211,6 +1243,7 @@ const
   FarFoMove = 1;
   FarFoCopy = 2;
   FarFoDelete = 3;
+  FarFofMultiDestFiles = $1;
   FarFofNoConfirmation = $10;
   FarFofAllowUndo = $40;
   FarFofNoConfirmMkDir = $200;
@@ -5512,6 +5545,7 @@ end;
 procedure TFarView.DlgActivate(AButton: Integer);
 var
   Kind: TFarDlgKind;
+  Remember: Boolean;
   EditText, SavedTemp: WideString;
   SavedAction: TFarArcAction;
 begin
@@ -5599,6 +5633,23 @@ begin
       EditSave(FEditSaveName, feAnsi, True)
     else
       FEditQuitAfterSave := False;
+    Exit;
+  end;
+  // F5 / F6: файл уже есть - Overwrite / Skip / Rename / Append / Cancel
+  if FDlgKind = fdOverwrite then
+  begin
+    Remember := (Length(FDlgRows) > 0) and FDlgRows[0].IsCheck and
+      (FDlgRows[0].Index = 1);
+    DlgClose;
+    CopyAnswer(AButton, Remember);
+    Exit;
+  end;
+  // F5 / F6, Rename: новое имя файла
+  if FDlgKind = fdOverRename then
+  begin
+    EditText := FDlgEdit;
+    DlgClose;
+    CopyRenameAnswer(AButton = 0, EditText);
     Exit;
   end;
   // FTP: файлы уже есть - Overwrite / Skip / Cancel
@@ -6233,9 +6284,8 @@ procedure TFarView.DoCopyMove(AMove: Boolean; const ATarget: WideString);
 var
   Source: TFarPanel;
   Target, TargetDir, DestPath, SourceDir, TargetName, NewName: WideString;
-  NameIndex, ItemIndex: Integer;
-  IntoDir, Aborted, Done: Boolean;
-  Func: UINT;
+  NameIndex: Integer;
+  IntoDir: Boolean;
 begin
   Source := ActivePanel;
   Target := FarTrimW(ATarget);
@@ -6295,23 +6345,22 @@ begin
     DestPath := Target;
   end;
 
-  if AMove then
-    Func := FarFoMove
-  else
-    Func := FarFoCopy;
-  Done := RunShellOp(Func, FarZeroList(Source.Path, FDlgNames),
-    DestPath + WideChar(#0) + WideChar(#0),
-    FarFofNoConfirmMkDir or FarFofAllowUndo, Aborted);
-
-  // Обработанные - без выделения (так в FAR)
-  if Done and not Aborted then
-    for NameIndex := 0 to High(FDlgNames) do
-    begin
-      ItemIndex := Source.IndexOfName(FDlgNames[NameIndex]);
-      if ItemIndex >= 0 then
-        Source.SetSelected(ItemIndex, False);
-    end;
-  AfterOperation(NewName);
+  // План: файл -> файл; файлы, что уже есть, - вопросы (окно Warning, как
+  // в FAR), потом одна операция SHFileOperation (CopyRun)
+  FCopySteps := nil;
+  FCopyDirs := nil;
+  FCopyMove := AMove;
+  FCopyFocus := NewName;
+  FCopyAsk := 0;
+  FCopyRemember := -1;
+  FCopyMismatch := 0;
+  for NameIndex := 0 to High(FDlgNames) do
+    if IntoDir then
+      CopyPlan(Source.Path + FDlgNames[NameIndex],
+        TargetDir + FDlgNames[NameIndex])
+    else
+      CopyPlan(Source.Path + FDlgNames[NameIndex], DestPath);
+  CopyAskNext;
 end;
 
 procedure TFarView.DoMkDir(const AName: WideString);
@@ -15655,7 +15704,8 @@ begin
         Result := FarHelpViewer;
       fdHiDelete:
         Result := FarHelpOptions;
-      fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew:
+      fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew, fdOverwrite,
+      fdOverRename:
         Result := FarHelpFiles;
       fdHistClear:
         Result := FarHelpPanels;
@@ -16419,6 +16469,439 @@ begin
   else
     Status(FarProduct + ': атрибуты изменены у ' + IntToStr(DoneCount));
   Invalidate;
+end;
+
+// ---------------------------------------------------------------------------
+//  F5 / F6: файл уже есть в папке назначения - окно Warning, как в FAR
+//
+//  DoCopyMove строит план (CopyPlan): каждое имя - шаг «откуда -> куда».
+//  Папка, которой ещё нет в назначении, - один шаг; папка, которая уже
+//  есть, разбирается по файлам (её содержимое сливается с той папкой).
+//  Файл, который уже есть, - шаг caAsk: о нём спрашивает CopyAskNext.
+//  Ответы: Overwrite - заменить, Skip - пропустить, Rename - другое имя,
+//  Append - дописать в конец, Cancel / Esc - ничего не делать. Remember
+//  choice - тот же ответ для остальных файлов (Rename - свободное имя
+//  'имя (2).расш'). Когда вопросов не осталось, CopyRun выполняет план.
+// ---------------------------------------------------------------------------
+
+// Размер и время записи файла; False - файла нет
+function FarCopyFileInfo(const APath: WideString; var ASize: Int64;
+  var ATime: TFileTime): Boolean;
+var
+  FindHandle: THandle;
+  FindData: TFarFindData;
+begin
+  Result := False;
+  ASize := 0;
+  ATime.dwLowDateTime := 0;
+  ATime.dwHighDateTime := 0;
+  FindHandle := FarFindFirst(PWideChar(APath), FindData);
+  if FindHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  Windows.FindClose(FindHandle);
+  ASize := Int64(FindData.nFileSizeHigh) shl 32 + FindData.nFileSizeLow;
+  ATime := FindData.ftLastWriteTime;
+  Result := True;
+end;
+
+// Строка окна: 'New' слева, размер и время справа (ширина AWidth)
+function FarCopyInfoLine(const ACaption, APath: WideString;
+  AWidth: Integer): WideString;
+var
+  FileSize: Int64;
+  WriteTime: TFileTime;
+  InfoText: WideString;
+begin
+  if FarCopyFileInfo(APath, FileSize, WriteTime) then
+    InfoText := WideString(IntToStr(FileSize)) + ' ' +
+      FarFormatFileTime(WriteTime)
+  else
+    InfoText := '';
+  Result := ACaption;
+  while Length(Result) + Length(InfoText) < AWidth do
+    Result := Result + ' ';
+  Result := Result + InfoText;
+end;
+
+// Строка по центру ширины AWidth (пробелы слева)
+function FarCopyCenter(const AText: WideString; AWidth: Integer): WideString;
+var
+  PadCount: Integer;
+begin
+  Result := FarFitName(AText, AWidth);
+  PadCount := (AWidth - Length(Result)) div 2;
+  while PadCount > 0 do
+  begin
+    Result := ' ' + Result;
+    Dec(PadCount);
+  end;
+end;
+
+// Свободное имя рядом с APath: 'имя (2).расш', 'имя (3).расш' ...
+function FarCopyFreeName(const APath: WideString): WideString;
+var
+  DirPart, NamePart, BaseName, ExtPart: WideString;
+  DotPos, Counter: Integer;
+begin
+  FarSplitPath(APath, DirPart, NamePart);
+  DotPos := Length(NamePart);
+  while (DotPos > 1) and (NamePart[DotPos] <> '.') do
+    Dec(DotPos);
+  if DotPos > 1 then
+  begin
+    BaseName := Copy(NamePart, 1, DotPos - 1);
+    ExtPart := Copy(NamePart, DotPos, MaxInt);
+  end
+  else
+  begin
+    BaseName := NamePart;
+    ExtPart := '';
+  end;
+  Counter := 2;
+  repeat
+    Result := DirPart + BaseName + ' (' + WideString(IntToStr(Counter)) + ')' +
+      ExtPart;
+    Inc(Counter);
+  until FarGetAttributes(PWideChar(Result)) = FarInvalidAttr;
+end;
+
+// Append: дописать ASource в конец ADest. '' - удалось, иначе - ошибка
+function FarCopyAppendFile(const ASource, ADest: WideString): WideString;
+const
+  ChunkSize = 1024 * 1024;
+var
+  SourceHandle, DestHandle: THandle;
+  Chunk: array of Byte;
+  ReadCount, WrittenCount: DWORD;
+begin
+  Result := '';
+  SourceHandle := FarCreateFile(PWideChar(ASource), GENERIC_READ,
+    FILE_SHARE_READ, nil, OPEN_EXISTING, 0, 0);
+  if SourceHandle = INVALID_HANDLE_VALUE then
+  begin
+    Result := SysErrorMessage(GetLastError);
+    Exit;
+  end;
+  try
+    DestHandle := FarCreateFile(PWideChar(ADest), GENERIC_WRITE, 0, nil,
+      OPEN_EXISTING, 0, 0);
+    if DestHandle = INVALID_HANDLE_VALUE then
+    begin
+      Result := SysErrorMessage(GetLastError);
+      Exit;
+    end;
+    try
+      SetFilePointer(DestHandle, 0, nil, FILE_END);
+      SetLength(Chunk, ChunkSize);
+      repeat
+        ReadCount := 0;
+        if not ReadFile(SourceHandle, Chunk[0], ChunkSize, ReadCount, nil) then
+        begin
+          Result := SysErrorMessage(GetLastError);
+          Exit;
+        end;
+        if ReadCount = 0 then
+          Break;
+        WrittenCount := 0;
+        if not WriteFile(DestHandle, Chunk[0], ReadCount, WrittenCount, nil) or
+           (WrittenCount <> ReadCount) then
+        begin
+          Result := SysErrorMessage(GetLastError);
+          Exit;
+        end;
+      until False;
+    finally
+      CloseHandle(DestHandle);
+    end;
+  finally
+    CloseHandle(SourceHandle);
+  end;
+end;
+
+procedure TFarView.CopyAddStep(const ASource, ADest: WideString;
+  AAction: TFarCopyAction);
+var
+  StepIndex: Integer;
+begin
+  StepIndex := Length(FCopySteps);
+  SetLength(FCopySteps, StepIndex + 1);
+  FCopySteps[StepIndex].Source := ASource;
+  FCopySteps[StepIndex].Dest := ADest;
+  FCopySteps[StepIndex].Action := AAction;
+end;
+
+procedure TFarView.CopyPlan(const ASource, ADest: WideString);
+var
+  SourceAttr, DestAttr: DWORD;
+  SourceIsDir, DestIsDir: Boolean;
+  FindHandle: THandle;
+  FindData: TFarFindData;
+  FoundName: WideString;
+begin
+  DestAttr := FarGetAttributes(PWideChar(ADest));
+  // Назначения нет или это тот же файл (Shift+F6: другой регистр букв)
+  if (DestAttr = FarInvalidAttr) or FarSameName(ASource, ADest) then
+  begin
+    CopyAddStep(ASource, ADest, caCopy);
+    Exit;
+  end;
+  SourceAttr := FarGetAttributes(PWideChar(ASource));
+  SourceIsDir := (SourceAttr <> FarInvalidAttr) and
+    (SourceAttr and FILE_ATTRIBUTE_DIRECTORY <> 0);
+  DestIsDir := DestAttr and FILE_ATTRIBUTE_DIRECTORY <> 0;
+  // Файл на месте папки или папка на месте файла - не заменяем
+  if SourceIsDir <> DestIsDir then
+  begin
+    CopyAddStep(ASource, ADest, caSkip);
+    Inc(FCopyMismatch);
+    Exit;
+  end;
+  if not SourceIsDir then
+  begin
+    CopyAddStep(ASource, ADest, caAsk);
+    Exit;
+  end;
+  // Ссылка на папку - одним шагом, внутрь не заходим
+  if SourceAttr and FarAttrReparse <> 0 then
+  begin
+    CopyAddStep(ASource, ADest, caCopy);
+    Exit;
+  end;
+  // Папка уже есть - по файлам
+  SetLength(FCopyDirs, Length(FCopyDirs) + 1);
+  FCopyDirs[High(FCopyDirs)] := ASource;
+  FindHandle := FarFindFirst(PWideChar(ASource + FarSep + '*'), FindData);
+  if FindHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    repeat
+      FoundName := PWideChar(@FindData.cFileName[0]);
+      if (FoundName <> '.') and (FoundName <> '..') then
+        CopyPlan(ASource + FarSep + FoundName, ADest + FarSep + FoundName);
+    until not FarFindNext(FindHandle, FindData);
+  finally
+    Windows.FindClose(FindHandle);
+  end;
+end;
+
+// Следующий файл, который уже есть: окно Warning (или запомненный ответ);
+// вопросов нет - выполнить план
+procedure TFarView.CopyAskNext;
+var
+  Lines: TFarNames;
+  LineW: Integer;
+begin
+  while FCopyAsk <= High(FCopySteps) do
+  begin
+    if FCopySteps[FCopyAsk].Action <> caAsk then
+    begin
+      Inc(FCopyAsk);
+      Continue;
+    end;
+    if FCopyRemember < 0 then
+      Break;
+    // Remember choice: тот же ответ без окна
+    case FCopyRemember of
+      0: FCopySteps[FCopyAsk].Action := caCopy;
+      2:
+        begin
+          FCopySteps[FCopyAsk].Dest :=
+            FarCopyFreeName(FCopySteps[FCopyAsk].Dest);
+          FCopySteps[FCopyAsk].Action := caCopy;
+        end;
+      3: FCopySteps[FCopyAsk].Action := caAppend;
+    else
+      FCopySteps[FCopyAsk].Action := caSkip;
+    end;
+    Inc(FCopyAsk);
+  end;
+  if FCopyAsk > High(FCopySteps) then
+  begin
+    CopyRun;
+    Exit;
+  end;
+  // Ширина строк - как у DrawDialog (окно 72 клетки, поля по 5)
+  LineW := 72;
+  if LineW > FCols - 2 then
+    LineW := FCols - 2;
+  Dec(LineW, 10);
+  if LineW < 10 then
+    LineW := 10;
+  SetLength(Lines, 5);
+  Lines[0] := FarCopyCenter('File already exists', LineW);
+  Lines[1] := FarCopyCenter(FCopySteps[FCopyAsk].Dest, LineW);
+  Lines[2] := '';
+  Lines[3] := FarCopyInfoLine('New', FCopySteps[FCopyAsk].Source, LineW);
+  Lines[4] := FarCopyInfoLine('Existing', FCopySteps[FCopyAsk].Dest, LineW);
+  DlgOpen(fdOverwrite, 'Warning', Lines, False, True, False, '',
+    ['Overwrite', 'Skip', 'Rename', 'Append', 'Cancel']);
+  DlgAddCheck('Remember choice', False);
+  // Фокус - на Overwrite (как в FAR), не на флажке
+  FDlgRow := -1;
+  FDlgFocus := 0;
+  Invalidate;
+end;
+
+procedure TFarView.CopyAnswer(AButton: Integer; ARemember: Boolean);
+var
+  NamePart, DirPart: WideString;
+begin
+  if (FCopyAsk < 0) or (FCopyAsk > High(FCopySteps)) then
+    Exit;
+  // Cancel - ничего не копируем
+  if (AButton < 0) or (AButton > 3) then
+  begin
+    FCopySteps := nil;
+    FCopyDirs := nil;
+    Status(FarProduct + ': операция отменена');
+    Exit;
+  end;
+  if ARemember then
+    FCopyRemember := AButton;
+  case AButton of
+    0: FCopySteps[FCopyAsk].Action := caCopy;
+    1: FCopySteps[FCopyAsk].Action := caSkip;
+    3: FCopySteps[FCopyAsk].Action := caAppend;
+    2:
+      if ARemember then
+      begin
+        FCopySteps[FCopyAsk].Dest :=
+          FarCopyFreeName(FCopySteps[FCopyAsk].Dest);
+        FCopySteps[FCopyAsk].Action := caCopy;
+      end
+      else
+      begin
+        // Окно нового имени; в поле - свободное имя
+        FarSplitPath(FarCopyFreeName(FCopySteps[FCopyAsk].Dest), DirPart,
+          NamePart);
+        DlgOpen(fdOverRename, 'Rename', ['New name for ' +
+          FarFitName(FCopySteps[FCopyAsk].Dest, 48) + ':'], False, False, True,
+          NamePart, ['OK', 'Cancel']);
+        Exit;
+      end;
+  end;
+  Inc(FCopyAsk);
+  CopyAskNext;
+end;
+
+// Окно Rename: OK - новое имя (такой файл тоже есть - снова Warning);
+// Cancel - снова Warning об этом файле
+procedure TFarView.CopyRenameAnswer(AConfirmed: Boolean;
+  const AText: WideString);
+var
+  NewName, DirPart, NamePart: WideString;
+begin
+  if (FCopyAsk < 0) or (FCopyAsk > High(FCopySteps)) then
+    Exit;
+  NewName := FarTrimW(AText);
+  if AConfirmed and (NewName <> '') then
+  begin
+    FarSplitPath(FCopySteps[FCopyAsk].Dest, DirPart, NamePart);
+    NewName := FarFullPath(DirPart, NewName);
+    FCopySteps[FCopyAsk].Dest := NewName;
+    if FarGetAttributes(PWideChar(NewName)) = FarInvalidAttr then
+    begin
+      FCopySteps[FCopyAsk].Action := caCopy;
+      Inc(FCopyAsk);
+    end
+    else if FarDirExists(NewName) then
+    begin
+      FCopySteps[FCopyAsk].Action := caSkip;
+      Inc(FCopyMismatch);
+      Inc(FCopyAsk);
+    end;
+    // Файл с новым именем тоже есть - шаг остаётся caAsk
+  end;
+  CopyAskNext;
+end;
+
+// Выполнить план: SHFileOperation по списку файл -> файл (замена без
+// вопросов Windows - ответы уже получены), затем Append своим кодом;
+// перенос - разобранные папки, которые опустели, удаляются
+procedure TFarView.CopyRun;
+var
+  Source: TFarPanel;
+  FromList, ToList, ErrorText, FirstError: WideString;
+  StepIndex, NameIndex, ItemIndex, ShellCount, SkipCount, ErrorCount: Integer;
+  Func: UINT;
+  Done, Aborted: Boolean;
+begin
+  Source := ActivePanel;
+  FromList := '';
+  ToList := '';
+  ShellCount := 0;
+  SkipCount := 0;
+  ErrorCount := 0;
+  FirstError := '';
+  for StepIndex := 0 to High(FCopySteps) do
+    case FCopySteps[StepIndex].Action of
+      caCopy:
+        begin
+          FromList := FromList + FCopySteps[StepIndex].Source + WideChar(#0);
+          ToList := ToList + FCopySteps[StepIndex].Dest + WideChar(#0);
+          Inc(ShellCount);
+        end;
+      caSkip:
+        Inc(SkipCount);
+    end;
+  Done := True;
+  Aborted := False;
+  if ShellCount > 0 then
+  begin
+    if FCopyMove then
+      Func := FarFoMove
+    else
+      Func := FarFoCopy;
+    // Папки назначения для файлов из разобранных папок уже есть;
+    // FOF_MULTIDESTFILES - у каждого файла своё имя назначения
+    Done := RunShellOp(Func, FromList + WideChar(#0), ToList + WideChar(#0),
+      FarFofMultiDestFiles or FarFofNoConfirmation or FarFofNoConfirmMkDir or
+      FarFofAllowUndo, Aborted);
+  end;
+  // Append: после основной операции (её могли прервать - тогда не дописываем)
+  if not Aborted then
+    for StepIndex := 0 to High(FCopySteps) do
+      if FCopySteps[StepIndex].Action = caAppend then
+      begin
+        ErrorText := FarCopyAppendFile(FCopySteps[StepIndex].Source,
+          FCopySteps[StepIndex].Dest);
+        if (ErrorText = '') and FCopyMove and
+           not FarDeleteFile(PWideChar(FCopySteps[StepIndex].Source)) then
+          ErrorText := SysErrorMessage(GetLastError);
+        if ErrorText <> '' then
+        begin
+          Inc(ErrorCount);
+          if FirstError = '' then
+            FirstError := FCopySteps[StepIndex].Source + ': ' + ErrorText;
+        end;
+      end;
+  // Перенос: разобранные папки - с конца (сначала вложенные); не пустая
+  // (там пропущенные файлы) остаётся
+  if FCopyMove and not Aborted then
+    for NameIndex := High(FCopyDirs) downto 0 do
+      RemoveDirectoryW(PWideChar(FCopyDirs[NameIndex]));
+  // Обработанные - без выделения (так в FAR)
+  if Done and not Aborted then
+    for NameIndex := 0 to High(FDlgNames) do
+    begin
+      ItemIndex := Source.IndexOfName(FDlgNames[NameIndex]);
+      if ItemIndex >= 0 then
+        Source.SetSelected(ItemIndex, False);
+    end;
+  FCopySteps := nil;
+  FCopyDirs := nil;
+  AfterOperation(FCopyFocus);
+  if ErrorCount > 0 then
+    Status(FarProduct + ': не дописано файлов: ' + IntToStr(ErrorCount) +
+      ' (' + FirstError + ')')
+  else if FCopyMismatch > 0 then
+    Status(FarProduct + ': пропущено: ' + IntToStr(SkipCount) +
+      ', из них файл на месте папки или папка на месте файла: ' +
+      IntToStr(FCopyMismatch))
+  else if (SkipCount > 0) and (ShellCount = 0) then
+    Status(FarProduct + ': все файлы пропущены, ничего не сделано')
+  else if SkipCount > 0 then
+    Status(FarProduct + ': пропущено файлов: ' + IntToStr(SkipCount));
 end;
 
 end.
