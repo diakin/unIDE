@@ -2946,6 +2946,8 @@ begin
       ObjectTextToBinary(Src, Bin);
       Bin.Position := 0;
       FForm := TForm.CreateNew(nil);
+      // Элементы Ui* на форме - в цветах светлой темы, а не темы IDE
+      UiThemeAddDesignRoot(FForm);
       Reader := TReader.Create(Bin, 4096);
       try
         Reader.OnFindComponentClass := ReaderFindClass;

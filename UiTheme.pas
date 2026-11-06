@@ -177,6 +177,15 @@ function UiThemeFor(AControl: TControl): TUiTheme;
 // она есть, иначе общие (UiThemeColor, UiThemeNative)
 function UiThemeColorFor(AControl: TControl; const ARole: string): TColor;
 function UiThemeNativeFor(AControl: TControl): Boolean;
+
+// Форма конструктора (и временная форма, на которой создаётся новый
+// компонент): элементы на ней без своей TUiTheme берут светлые цвета по
+// умолчанию, как в запущенной программе, где тему не меняли, а не тему
+// самой IDE. Иначе на светлой форме надпись тёмной темы IDE (светлый
+// текст) почти не видна, и этот цвет записывался в .dfm. Форма убирается
+// из списка сама, когда её освобождают.
+procedure UiThemeAddDesignRoot(ARoot: TComponent);
+procedure UiThemeRemoveDesignRoot(ARoot: TComponent);
 // Флаги DrawText с учётом направления текста контрола (в Delphi -
 // TControl.DrawTextBiDiModeFlags, в LCL такого метода нет)
 function UiDrawTextFlags(AControl: TControl; AFlags: Longint): Longint;
@@ -243,6 +252,7 @@ var
   ColorsReady: Boolean = False;
   Clients: TList = nil;
   ThemeComps: TList = nil;       // все TUiTheme программы
+  DesignRoots: TList = nil;      // формы конструктора (UiThemeAddDesignRoot)
 
   // Замер рассылки (UiThemeProfileStart): имя класса - номер в массивах
   ProfNames: TStringList = nil;
@@ -469,6 +479,78 @@ begin
     end;
 end;
 
+type
+  // Следит за формами конструктора: освобождённая уходит из DesignRoots
+  TUiDesignWatch = class(TComponent)
+  protected
+    procedure Notification(AComponent: TComponent;
+                           Operation: TOperation); override;
+  end;
+
+var
+  DesignWatch: TUiDesignWatch = nil;
+
+procedure TUiDesignWatch.Notification(AComponent: TComponent;
+                                      Operation: TOperation);
+begin
+  inherited Notification(AComponent, Operation);
+  if (Operation = opRemove) and (DesignRoots <> nil) then
+    DesignRoots.Remove(AComponent);
+end;
+
+procedure UiThemeAddDesignRoot(ARoot: TComponent);
+begin
+  if ARoot = nil then
+    Exit;
+  if DesignRoots = nil then
+    DesignRoots := TList.Create;
+  if DesignWatch = nil then
+    DesignWatch := TUiDesignWatch.Create(nil);
+  if DesignRoots.IndexOf(ARoot) < 0 then
+  begin
+    DesignRoots.Add(ARoot);
+    ARoot.FreeNotification(DesignWatch);
+  end;
+end;
+
+procedure UiThemeRemoveDesignRoot(ARoot: TComponent);
+begin
+  if (DesignRoots = nil) or (ARoot = nil) then
+    Exit;
+  DesignRoots.Remove(ARoot);
+  if DesignWatch <> nil then
+    ARoot.RemoveFreeNotification(DesignWatch);
+end;
+
+// Элемент лежит на форме конструктора? Корень - по Parent; пока Parent нет
+// (элемент читается из .dfm), - его владелец
+function UiOnDesignRoot(AControl: TControl): Boolean;
+var
+  Root: TControl;
+begin
+  Result := False;
+  if (DesignRoots = nil) or (DesignRoots.Count = 0) or (AControl = nil) then
+    Exit;
+  Root := AControl;
+  while Root.Parent <> nil do
+    Root := Root.Parent;
+  Result := DesignRoots.IndexOf(Root) >= 0;
+  if not Result and (Root = AControl) and (AControl.Owner <> nil) then
+    Result := DesignRoots.IndexOf(AControl.Owner) >= 0;
+end;
+
+// Цвет роли светлой темы по умолчанию
+function UiLightRoleColor(const ARole: string): TColor;
+var
+  Idx: Integer;
+begin
+  Idx := RoleIndex(ARole);
+  if Idx < 0 then
+    Result := clNone
+  else
+    Result := RoleDefs[Idx].Light;
+end;
+
 function UiThemeColorFor(AControl: TControl; const ARole: string): TColor;
 var
   Theme: TUiTheme;
@@ -476,6 +558,8 @@ begin
   Theme := UiThemeFor(AControl);
   if Theme <> nil then
     Result := Theme.RoleColor(ARole)
+  else if UiOnDesignRoot(AControl) then
+    Result := UiLightRoleColor(ARole)
   else
     Result := UiThemeColor(ARole);
 end;
@@ -543,6 +627,8 @@ begin
   Theme := UiThemeFor(AControl);
   if Theme <> nil then
     Result := (Theme.Kind = utLight) and ThemeServices.ThemesEnabled
+  else if UiOnDesignRoot(AControl) then
+    Result := ThemeServices.ThemesEnabled
   else
     Result := UiThemeNative;
 end;
@@ -871,4 +957,6 @@ finalization
   // проверяет список на nil
   FreeAndNil(Clients);
   FreeAndNil(ThemeComps);
+  FreeAndNil(DesignWatch);
+  FreeAndNil(DesignRoots);
 end.

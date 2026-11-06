@@ -48365,10 +48365,15 @@ begin
   SL := TStringList.Create;
   try
     try
-      Inst := ACls.Create(nil);
+      // Временная форма - как форма конструктора (UiThemeAddDesignRoot):
+      // элементы Ui* берут цвета светлой темы по умолчанию, а не тему IDE.
+      // Владелец - она же: тема ставится уже в конструкторе компонента, и
+      // цвет по умолчанию не попадает в .dfm (Font.Color, ParentFont).
+      Tmp := TForm.CreateNew(nil);
+      UiThemeAddDesignRoot(Tmp);
+      Inst := ACls.Create(Tmp);
       if Inst is TControl then
       begin
-        Tmp := TForm.CreateNew(nil);
         TControl(Inst).Parent := Tmp;
         TControl(Inst).SetBounds(PosX, PosY, TControl(Inst).Width,
                                  TControl(Inst).Height);
@@ -48376,6 +48381,14 @@ begin
       else
         Inst.DesignInfo := MakeLong(Word(PosX), Word(PosY));
       Inst.Name := AName;
+      // Элемент Ui* с ThemeColors: цвет шрифта ему ставит тема при загрузке
+      // (Loaded) - в .dfm его не пишем, шрифт остаётся от родителя. Иначе
+      // записывались Font.Color и ParentFont = False (в Lazarus цвет темы
+      // clWindowText отличается от умолчания шрифта clDefault).
+      if (Inst is TControl) and IsPublishedProp(Inst, 'ThemeColors') and
+         (GetOrdProp(Inst, 'ThemeColors') <> 0) and
+         IsPublishedProp(Inst, 'ParentFont') then
+        SetOrdProp(Inst, 'ParentFont', Ord(True));
 
       Bin.WriteComponent(Inst);
       Bin.Position := 0;
