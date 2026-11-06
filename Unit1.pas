@@ -7549,6 +7549,9 @@ type
     OldProc: TWndMethod;
     procedure WndProc(var Msg: TMessage);
     procedure DrawLines(DC: HDC; AItem, ASub: Integer; ACell: Boolean);
+    {$IF DEFINED(FPC) AND DEFINED(MSWINDOWS)}
+    destructor Destroy; override;
+    {$ENDIF}
   end;
 
   // NMLVCUSTOMDRAW (commctrl.h) - свои имена, чтобы не подключать CommCtrl
@@ -7558,7 +7561,9 @@ type
     DrawStage: DWORD;
     DC: HDC;
     Rc: TRect;
-    ItemSpec: DWORD;
+    // DWORD_PTR: в 64-битной сборке 8 байт - иначе все поля дальше
+    // (SubItem) читались бы со сдвигом
+    ItemSpec: {$IFDEF FPC}PtrUInt{$ELSE}DWORD{$ENDIF};
     ItemState: UINT;
     ItemlParam: LPARAM;
     ClrText: COLORREF;
@@ -7682,6 +7687,148 @@ begin
       Form1.UiGridNote(LV, 'линии нарисованы (строка)');
 end;
 
+{$IF DEFINED(FPC) AND DEFINED(MSWINDOWS)}
+// Lazarus (Windows): NM_CUSTOMDRAW таблицы LCL разбирает сама, в обработчике
+// WM_NOTIFY её родителя (win32wscustomlistview, ListViewParentMsgHandler), и
+// до WindowProc таблицы он не доходит - CN_NOTIFY, как у VCL, нет. Сетку
+// Windows UiListGrid выключил, а TUiGridMark.WndProc вызовов не получал:
+// линий не было совсем. Здесь окно родителя таблицы подменяется
+// (SetWindowLongPtrW): NM_CUSTOMDRAW от таблицы с меткой идёт той же
+// логикой, что TUiGridMark.WndProc, остальное - прежнему обработчику.
+type
+  TUiGridParent = record
+    Wnd: HWND;
+    OldProc: Pointer;
+  end;
+
+var
+  UiGridParents: array of TUiGridParent;
+  UiGridMarks: TList = nil;
+
+function UiGridParentIndex(AWnd: HWND): Integer;
+var
+  ParIdx: Integer;
+begin
+  Result := -1;
+  for ParIdx := 0 to High(UiGridParents) do
+    if UiGridParents[ParIdx].Wnd = AWnd then
+    begin
+      Result := ParIdx;
+      Exit;
+    end;
+end;
+
+function UiGridMarkOf(AWnd: HWND): TUiGridMark;
+var
+  MarkIdx: Integer;
+  OneMark: TUiGridMark;
+begin
+  Result := nil;
+  if UiGridMarks = nil then
+    Exit;
+  for MarkIdx := 0 to UiGridMarks.Count - 1 do
+  begin
+    OneMark := TUiGridMark(UiGridMarks[MarkIdx]);
+    if (OneMark.LV <> nil) and OneMark.LV.HandleAllocated and
+       (OneMark.LV.Handle = AWnd) then
+    begin
+      Result := OneMark;
+      Exit;
+    end;
+  end;
+end;
+
+function UiGridParentProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM;
+  ALParam: LPARAM): LRESULT; stdcall;
+var
+  ParIdx: Integer;
+  OldProc: Pointer;
+  OneMark: TUiGridMark;
+  CD: PUiLVCustomDraw;
+  Stage: DWORD;
+begin
+  ParIdx := UiGridParentIndex(AWnd);
+  if ParIdx < 0 then
+  begin
+    Result := DefWindowProcW(AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  OldProc := UiGridParents[ParIdx].OldProc;
+  if AMsg = WM_NCDESTROY then
+  begin
+    // Окно уходит - прежний обработчик на место, запись убрать
+    SetWindowLongPtrW(AWnd, GWLP_WNDPROC, LONG_PTR(OldProc));
+    UiGridParents[ParIdx] := UiGridParents[High(UiGridParents)];
+    SetLength(UiGridParents, Length(UiGridParents) - 1);
+    Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  OneMark := nil;
+  if (AMsg = WM_NOTIFY) and (ALParam <> 0) and
+     (Integer(PNMHdr(ALParam)^.code) = UiNM_CUSTOMDRAW) then
+    OneMark := UiGridMarkOf(PNMHdr(ALParam)^.hwndFrom);
+  if OneMark = nil then
+  begin
+    Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  CD := PUiLVCustomDraw(ALParam);
+  Stage := CD^.DrawStage;
+  if (Stage and not DWORD(UiCDDS_SUBITEM)) = UiCDDS_ITEMPOSTPAINT then
+  begin
+    // Стадию "после" запросили мы, LCL её не ждёт - ей не отдаём
+    OneMark.DrawLines(CD^.DC, Integer(CD^.ItemSpec), CD^.SubItem,
+                      Stage and UiCDDS_SUBITEM <> 0);
+    if Form1 <> nil then
+      Form1.ObjPropsPostPaint(OneMark.LV, CD^.DC, Integer(CD^.ItemSpec));
+    Result := UiCDRF_DODEFAULT;
+  end
+  else
+  begin
+    Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
+    if Result and UiCDRF_SKIPDEFAULT = 0 then
+    begin
+      if Stage = UiCDDS_PREPAINT then
+        Result := Result or UiCDRF_NOTIFYITEMDRAW
+      else if (Stage and not DWORD(UiCDDS_SUBITEM)) = UiCDDS_ITEMPREPAINT then
+        Result := Result or UiCDRF_NOTIFYPOSTPAINT;
+    end;
+  end;
+  if Form1 <> nil then
+    Form1.UiGridNote(OneMark.LV, 'NM_CUSTOMDRAW (родитель), стадия $' +
+      IntToHex(Stage, 8) + ', ответ $' + IntToHex(Result, 8));
+end;
+
+// Метка - в список, окно родителя таблицы - подменить (один раз на окно).
+// Родителя пересоздали - подмена ставится заново при следующем UiListGrid.
+procedure UiGridAttachParent(AMark: TUiGridMark);
+var
+  ParWnd: HWND;
+begin
+  if UiGridMarks = nil then
+    UiGridMarks := TList.Create;
+  if UiGridMarks.IndexOf(AMark) < 0 then
+    UiGridMarks.Add(AMark);
+  if (AMark.LV = nil) or not AMark.LV.HandleAllocated then
+    Exit;
+  ParWnd := GetParent(AMark.LV.Handle);
+  if (ParWnd = 0) or (UiGridParentIndex(ParWnd) >= 0) then
+    Exit;
+  SetLength(UiGridParents, Length(UiGridParents) + 1);
+  UiGridParents[High(UiGridParents)].Wnd := ParWnd;
+  UiGridParents[High(UiGridParents)].OldProc :=
+    Pointer(SetWindowLongPtrW(ParWnd, GWLP_WNDPROC,
+                              LONG_PTR(@UiGridParentProc)));
+end;
+
+destructor TUiGridMark.Destroy;
+begin
+  if UiGridMarks <> nil then
+    UiGridMarks.Remove(Self);
+  inherited Destroy;
+end;
+{$ENDIF}
+
 // Таблица с линиями сетки (GridLines): их рисует Windows цветом системы, на
 // тёмном фоне они слишком яркие и цвет им не задать. Сетка Windows
 // выключается, линии рисует TUiGridMark после строки/ячейки цветом
@@ -7712,6 +7859,9 @@ begin
     Dbg('3187: сетка: таблица ' + UiCtlName(ALV) + ' - сетка Windows ' +
     'выключена, перехват NM_CUSTOMDRAW назначен', clNavy);
   end;
+  {$IF DEFINED(FPC) AND DEFINED(MSWINDOWS)}
+  UiGridAttachParent(UiGridMark);
+  {$ENDIF}
   // Перерисовать - только если цвет линий сменился
   if UiGridMark.Color <> UiColor('Grid.Lines') then
   begin
