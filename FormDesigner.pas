@@ -3965,11 +3965,20 @@ begin
       tkSet:
         if (ValStr[1] = '[') and (ValStr[Length(ValStr)] = ']') then
         SetSetProp(AObj, PI, Copy(ValStr, 2, Length(ValStr) - 2));
-      tkString, tkLString, tkWString:
+      // FPC: string при {$H+} - tkAString, а не tkLString, как в Delphi;
+      // без него строки (Caption, Font.Name) живой форме не ставились и
+      // появлялись только после перестройки формы
+      tkString, tkLString, tkWString{$IFDEF FPC}, tkAString,
+      tkUString{$ENDIF}:
         if (Length(ValStr) >= 2) and (ValStr[1] = '''') and (ValStr[Length(ValStr)] = '''') then
       begin
         Str := Copy(ValStr, 2, Length(ValStr) - 2);
         Str := StringReplace(Str, '''''', '''', [rfReplaceAll]);
+        {$IFDEF FPC}
+        // Текст .dfm - в кодировке исходника, строки LCL - UTF-8 (как при
+        // загрузке, Load)
+        Str := DsgAnsiToUtf8(Str);
+        {$ENDIF}
         SetStrProp(AObj, PI, Str);
       end;
       tkFloat:

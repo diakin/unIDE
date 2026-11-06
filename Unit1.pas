@@ -45619,7 +45619,9 @@ begin
     Exit;
   try
     case PI^.PropType{$IFNDEF FPC}^{$ENDIF}^.Kind of
-      tkString, tkLString, tkWString:
+      // FPC: string при {$H+} - tkAString
+      tkString, tkLString, tkWString{$IFDEF FPC}, tkAString,
+      tkUString{$ENDIF}:
         SetStrProp(Obj, PI, AValue);
       tkChar:
         if AValue <> '' then
@@ -48635,7 +48637,8 @@ begin
     end;
     tkFloat:
       Result := Result + ' float';
-    tkString, tkLString, tkWString:
+    tkString, tkLString, tkWString{$IFDEF FPC}, tkAString,
+    tkUString{$ENDIF}:
       Result := Result + ' string';
     tkSet:
       Result := Result + ' set ' + TypeRec^.CompType{$IFNDEF FPC}^{$ENDIF}^.Name;
