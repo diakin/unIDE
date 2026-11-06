@@ -137,6 +137,14 @@ echo   %SKETCHNAME%.ino
 if errorlevel 1 exit /b 1
 
 set EXE=%OUTDIR%\%SKETCHNAME%_sim.exe
+rem the old exe must be free: ld cannot overwrite a running or locked file
+if exist "%EXE%" del /f /q "%EXE%" 2>nul
+if exist "%EXE%" (
+  echo ArdSim: cannot replace %EXE% - the file is in use. Running copies:
+  tasklist /fi "imagename eq %SKETCHNAME%_sim.exe" /nh
+  echo ArdSim: close the running emulator of this sketch and build again
+  exit /b 1
+)
 "%GXX%" -mwindows -static -o "%EXE%" "%OBJDIR%\%SKETCHNAME%_sim.o" %RTOBJS% %FONTOBJS% -L"%OBJDIR%" -lardsim_fonts -lgdi32 -lwinmm
 if errorlevel 1 exit /b 1
 echo ArdSim: %EXE%

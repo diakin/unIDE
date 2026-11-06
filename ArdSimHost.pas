@@ -1404,7 +1404,12 @@ begin
     // просьба выйти; скетч может считать без вызовов API - тогда снять
     SetHeader(HdrStopRequest, 1);
     if not FSim.WaitFor(500) then
+    begin
       FSim.Terminate(1);
+      // TerminateProcess не ждёт: exe занят, пока процесс не вышел, и
+      // сборка сразу после остановки не могла бы его перезаписать
+      FSim.WaitFor(3000);
+    end;
   end;
   FreeAndNil(FSim);
   FreeShared;
