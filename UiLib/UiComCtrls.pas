@@ -186,6 +186,16 @@ type
     destructor Destroy; override;
   end;
 
+{$IFDEF FPC}
+// LCL win32 обрабатывает NM_CUSTOMDRAW списка в WM_NOTIFY родителя
+// (win32wscustomlistview.inc, ListViewParentMsgHandler) и самому списку как
+// CN_NOTIFY его не передаёт. После вызова NM_CUSTOMDRAW списка AView
+// приходит ему и как CN_NOTIFY, как в VCL: после обработки LCL (события
+// OnCustomDraw*), Result - уже с ответом LCL. Ставится из CreateWnd
+// списка; в Linux (gtk2) ничего не делает.
+procedure UiListViewNotifyCN(AView: TWinControl);
+{$ENDIF}
+
 implementation
 
 {$IFDEF LCLGTK2}
@@ -512,6 +522,71 @@ begin
   InvalidateRect(Hook.Wnd, nil, True);
 end;
 
+{$IFDEF FPC}
+const
+  UiLVParentProp = 'UiLVCNParent';  // у родителя: прежняя оконная процедура
+  UiLVViewProp = 'UiLVCNView';      // у списка: ждёт CN_NOTIFY
+
+function UiLVParentProc(AWnd: HWND; AMsg: UINT; AWParam: WPARAM;
+  ALParam: LPARAM): LRESULT; stdcall;
+var
+  OldProc: Pointer;
+  Hdr: PNMHdr;
+  ViewCtl: TWinControl;
+  CnMsg: TMessage;
+begin
+  OldProc := Pointer(GetProp(AWnd, UiLVParentProp));
+  if OldProc = nil then
+  begin
+    Result := DefWindowProcW(AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  if AMsg = WM_NCDESTROY then
+  begin
+    SetWindowLongPtrW(AWnd, GWLP_WNDPROC, LONG_PTR(OldProc));
+    RemoveProp(AWnd, UiLVParentProp);
+    Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
+    Exit;
+  end;
+  Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
+  if (AMsg <> WM_NOTIFY) or (ALParam = 0) then
+    Exit;
+  Hdr := PNMHdr(ALParam);
+  if (Integer(Hdr^.code) <> Integer(NM_CUSTOMDRAW)) or
+     (GetProp(Hdr^.hwndFrom, UiLVViewProp) = 0) then
+    Exit;
+  ViewCtl := FindControl(Hdr^.hwndFrom);
+  if (ViewCtl = nil) or (csDestroying in ViewCtl.ComponentState) then
+    Exit;
+  FillChar(CnMsg, SizeOf(CnMsg), 0);
+  CnMsg.Msg := CN_NOTIFY;
+  CnMsg.WParam := AWParam;
+  CnMsg.LParam := ALParam;
+  CnMsg.Result := Result;
+  ViewCtl.Dispatch(CnMsg);
+  Result := CnMsg.Result;
+end;
+
+procedure UiListViewNotifyCN(AView: TWinControl);
+{$IFDEF MSWINDOWS}
+var
+  ParWnd: HWND;
+{$ENDIF}
+begin
+  {$IFDEF MSWINDOWS}
+  if (AView = nil) or not AView.HandleAllocated then
+    Exit;
+  SetProp(AView.Handle, UiLVViewProp, 1);
+  ParWnd := GetParent(AView.Handle);
+  if (ParWnd = 0) or (GetProp(ParWnd, UiLVParentProp) <> 0) then
+    Exit;
+  SetProp(ParWnd, UiLVParentProp, THandle(GetWindowLongPtrW(ParWnd,
+    GWLP_WNDPROC)));
+  SetWindowLongPtrW(ParWnd, GWLP_WNDPROC, LONG_PTR(@UiLVParentProc));
+  {$ENDIF}
+end;
+{$ENDIF}
+
 procedure UiTabHookInvalidate(AHook: TObject);
 begin
   if UiTabHookActive(AHook) then
@@ -822,10 +897,38 @@ end;
 {$ENDIF}
 
 {$IFDEF FPC}
+// Lazarus (Windows): ярлычки TTabControl - у вложенного элемента вкладок
+// LCL, его CreateParams не наш, и UiTabsFixRows до него не доходит: ряды
+// без TCS_BUTTONS при каждом выборе менялись местами, выбранная вкладка
+// уходила в нижний ряд. Стиль ставится окну вложенного элемента прямо.
+procedure UiTabsFixRowsWnd(AWnd: HWND);
+var
+  StyleVal: LongInt;
+begin
+  if AWnd = 0 then
+    Exit;
+  StyleVal := GetWindowLong(AWnd, GWL_STYLE);
+  if (StyleVal and TCS_MULTILINE = 0) or (StyleVal and TCS_BUTTONS <> 0) then
+    Exit;
+  SetWindowLong(AWnd, GWL_STYLE, StyleVal or TCS_BUTTONS);
+  SetWindowPos(AWnd, 0, 0, 0, 0, 0, SWP_NOMOVE or SWP_NOSIZE or SWP_NOZORDER or
+               SWP_NOACTIVATE or SWP_FRAMECHANGED);
+  InvalidateRect(AWnd, nil, True);
+end;
+
 procedure TUiTabControl.HookInner;
 var
   CtlIdx: Integer;
 begin
+  // Стиль - при каждой отрисовке: LCL пересоздаёт вложенный элемент
+  // (MultiLine, смена темы), а с ним и стиль окна
+  for CtlIdx := 0 to ControlCount - 1 do
+    if (Controls[CtlIdx] is TCustomTabControl) and
+       TWinControl(Controls[CtlIdx]).HandleAllocated then
+    begin
+      UiTabsFixRowsWnd(TWinControl(Controls[CtlIdx]).Handle);
+      Break;
+    end;
   if UiTabHookActive(FTabHook) then
     Exit;
   for CtlIdx := 0 to ControlCount - 1 do

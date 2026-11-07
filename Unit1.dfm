@@ -1,7 +1,7 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = 45
-  Top = 264
+  Left = 97
+  Top = 242
   Width = 1407
   Height = 910
   Caption = 'Form1 current'
