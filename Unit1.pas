@@ -58628,6 +58628,44 @@ begin
   end;
 end;
 
+// Манифест стилей Windows (Common Controls 6) рядом с exe сборки Lazarus,
+// как SyntaxHLClaude.exe.manifest у сборки Delphi. Windows ищет внешний
+// манифест только по имени exe (<имя>.exe.manifest); без него
+// ThemeServices.ThemesEnabled = False, и редактор и конструктор выглядят
+// не так, как в сборке Delphi (в конструкторе у формы с TUiMenuBar
+// пропадало меню окна). Архитектура "*" - годится и для win32, и для
+// win64. Есть уже - не трогаем.
+procedure LazWriteManifest(const AExe: string);
+var
+  ManName: string;
+  ManText: TStringList;
+begin
+  ManName := AExe + '.manifest';
+  if FileExists(ManName) then
+    Exit;
+  ManText := TStringList.Create;
+  try
+    ManText.Add('<?xml version="1.0" encoding="UTF-8" standalone="yes"?>');
+    ManText.Add('<assembly xmlns="urn:schemas-microsoft-com:asm.v1" manifestVersion="1.0">');
+    ManText.Add('<assemblyIdentity version="1.0.0.0" processorArchitecture="*" name="unIDE" type="win32"/>');
+    ManText.Add('<dependency>');
+    ManText.Add('<dependentAssembly>');
+    ManText.Add('<assemblyIdentity type="win32" name="Microsoft.Windows.Common-Controls" ' +
+                'version="6.0.0.0" processorArchitecture="*" ' +
+                'publicKeyToken="6595b64144ccf1df" language="*"/>');
+    ManText.Add('</dependentAssembly>');
+    ManText.Add('</dependency>');
+    ManText.Add('</assembly>');
+    try
+      ManText.SaveToFile(ManName);
+    except
+      // Не записался - exe работает и без него, только без стилей
+    end;
+  finally
+    ManText.Free;
+  end;
+end;
+
 function TForm1.CompileLazarus: Boolean;
 var
   Lpi, Lazbuild, Problem, Dir, Params, Exe, ShortName, Src, FpcFile: string;
@@ -58831,6 +58869,7 @@ begin
           CopyOwnRunFiles(PrepSrc, ExtractFilePath(Exe))
         else
           CopyOwnRunFiles(ExtractFilePath(Lpi), ExtractFilePath(Exe));
+        LazWriteManifest(Exe);
       end;
     end;
     Exit;
