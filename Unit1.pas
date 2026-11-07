@@ -1111,6 +1111,8 @@ type
     function  FbHelpPick: string;
     procedure Status2MouseDown(Sender: TObject; Button: TMouseButton;
                                Shift: TShiftState; PosX, PosY: Integer);
+    procedure Status2DrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel;
+                               const Rect: TRect);
     procedure SplitBarMouseDown(Sender: TObject; Button: TMouseButton;
                                 Shift: TShiftState; PosX, PosY: Integer);
     procedure SplitBarMouseMove(Sender: TObject; Shift: TShiftState;
@@ -18914,20 +18916,126 @@ end;
 // невозможно: OnClick срабатывает и после протяжки.
 // Клик по панели пути копирует его в буфер обмена. По остальным панелям
 // не копируем: там нечего забирать.
+// Левая кнопка - путь целиком, правая - папка файла (без имени файла и
+// без слеша в конце)
 procedure TForm1.Status2MouseDown(Sender: TObject; Button: TMouseButton;
                                   Shift: TShiftState; PosX, PosY: Integer);
+var
+  FullPath: string;
 begin
-  if Button <> mbLeft then
+  if not (Button in [mbLeft, mbRight]) then
     Exit;
   if (FStatus2 = nil) or (FStatus2.Panels[0].Text = '') then
     Exit;
   if PosX > FStatus2.Panels[0].Width then
     Exit;
 
-  Clipboard.AsText := FStatus2.Panels[0].Text;
-
-  StatusBar1.SimpleText := 'Путь скопирован в буфер обмена';
+  FullPath := FStatus2.Panels[0].Text;
+  if Button = mbRight then
+  begin
+    Clipboard.AsText := ExcludeTrailingPathDelimiter(ExtractFilePath(FullPath));
+    StatusBar1.SimpleText := 'Папка файла скопирована в буфер обмена';
+  end
+  else
+  begin
+    Clipboard.AsText := FullPath;
+    StatusBar1.SimpleText := 'Путь скопирован в буфер обмена';
+  end;
   StatusBar1.SimplePanel := True;
+end;
+
+// Цвет между AFrom и ATo: APercent - доля ATo
+function PathMixColor(AFrom, ATo: TColor; APercent: Integer): TColor;
+var
+  FromRgb, ToRgb: Longint;
+begin
+  FromRgb := ColorToRGB(AFrom);
+  ToRgb := ColorToRGB(ATo);
+  Result := RGB(
+    (GetRValue(FromRgb) * (100 - APercent) + GetRValue(ToRgb) * APercent) div 100,
+    (GetGValue(FromRgb) * (100 - APercent) + GetGValue(ToRgb) * APercent) div 100,
+    (GetBValue(FromRgb) * (100 - APercent) + GetBValue(ToRgb) * APercent) div 100);
+end;
+
+// Путь файла: части между слешами по очереди тремя оттенками цвета
+// текста, слеши - бледнее. Не влезает - виден конец пути (имя файла), а
+// начало уходит за левый край.
+procedure TForm1.Status2DrawPanel(StatusBar: TStatusBar; Panel: TStatusPanel;
+                                  const Rect: TRect);
+var
+  PathText, Segment: string;
+  TextColor, BackColor, SlashColor: TColor;
+  SegColors: array[0..2] of TColor;
+  DarkBack: Boolean;
+  BackRgb: Longint;
+  PosX, PosY, TotalWidth, CharIdx, SegStart, SegNum, SavedDC: Integer;
+  DrawRect: TRect;
+  Cv: TCanvas;
+begin
+  if Panel.Index <> 0 then
+    Exit;
+  Cv := StatusBar.Canvas;
+  PathText := Panel.Text;
+  if PathText = '' then
+    Exit;
+  TextColor := Cv.Font.Color;
+  BackColor := Cv.Brush.Color;
+  BackRgb := ColorToRGB(BackColor);
+  DarkBack := (GetRValue(BackRgb) * 30 + GetGValue(BackRgb) * 59 +
+               GetBValue(BackRgb) * 11) div 100 < 128;
+  SegColors[0] := TextColor;
+  if DarkBack then
+  begin
+    SegColors[1] := PathMixColor(TextColor, RGB(120, 200, 255), 55);
+    SegColors[2] := PathMixColor(TextColor, RGB(255, 220, 120), 55);
+  end
+  else
+  begin
+    SegColors[1] := PathMixColor(TextColor, RGB(0, 70, 170), 70);
+    SegColors[2] := PathMixColor(TextColor, RGB(140, 70, 0), 70);
+  end;
+  SlashColor := PathMixColor(TextColor, BackColor, 50);
+
+  DrawRect := Rect;
+  InflateRect(DrawRect, -3, 0);
+  Cv.Brush.Style := bsClear;
+  TotalWidth := Cv.TextWidth(PathText);
+  PosX := DrawRect.Left;
+  if TotalWidth > DrawRect.Right - DrawRect.Left then
+    PosX := DrawRect.Right - TotalWidth;
+  PosY := DrawRect.Top + (DrawRect.Bottom - DrawRect.Top -
+          Cv.TextHeight('Wg')) div 2;
+
+  SavedDC := SaveDC(Cv.Handle);
+  try
+    IntersectClipRect(Cv.Handle, DrawRect.Left, DrawRect.Top,
+                      DrawRect.Right, DrawRect.Bottom);
+    SegStart := 1;
+    SegNum := 0;
+    for CharIdx := 1 to Length(PathText) + 1 do
+      if (CharIdx > Length(PathText)) or (PathText[CharIdx] = '') or
+         (PathText[CharIdx] = '/') then
+      begin
+        Segment := Copy(PathText, SegStart, CharIdx - SegStart);
+        if Segment <> '' then
+        begin
+          Cv.Font.Color := SegColors[SegNum mod 3];
+          Cv.TextOut(PosX, PosY, Segment);
+          Inc(PosX, Cv.TextWidth(Segment));
+          Inc(SegNum);
+        end;
+        if CharIdx <= Length(PathText) then
+        begin
+          Cv.Font.Color := SlashColor;
+          Cv.TextOut(PosX, PosY, PathText[CharIdx]);
+          Inc(PosX, Cv.TextWidth(PathText[CharIdx]));
+        end;
+        SegStart := CharIdx + 1;
+      end;
+  finally
+    RestoreDC(Cv.Handle, SavedDC);
+    Cv.Font.Color := TextColor;
+  end;
 end;
 
 procedure TForm1.AppHint(Sender: TObject);
@@ -27678,6 +27786,9 @@ begin
   FStatus2.Panels.Add;
   FStatus2.Panels.Add;
   FStatus2.Panels.Add;
+  // Путь рисуется сам: части между слешами - разными оттенками
+  FStatus2.Panels[0].Style := psOwnerDraw;
+  FStatus2.OnDrawPanel := Status2DrawPanel;
 
   //  StatusBar1.Align := alNone;
   StatusBar1.Align := alBottom;
