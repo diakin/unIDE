@@ -89599,6 +89599,19 @@ var
 begin
   StartTick := GetTickCount;
   FirstTime := (Form2 = nil) or not Form2.IsBuilt;
+  // Схема подсветки не прочитана (только Pair Mark) - перечитать перед
+  // окном настроек (просьба Андрея 07.11, пробная сборка laz64NEW)
+  if (FScheme.FFileSections.Count = 0) and (FWindowsIndex >= 0) and
+     (FWindowsIndex <= WindowsItemCount - 1) and
+     FWindows[FWindowsIndex].Used then
+  begin
+    Dbg('30564: схема подсветки пустая - повторное чтение перед Options',
+        clNavy);
+    LoadCustomClrSchema(WindowExt(FWindows[FWindowsIndex].FileName),
+                        FWindows[FWindowsIndex].FileName);
+    Dbg('30564: прочитано разделов: ' +
+        IntToStr(FScheme.FFileSections.Count), clNavy);
+  end;
   StageTick := GetTickCount;
   PrepareOptionsForm;
   TPrepare := GetTickCount - StageTick;
