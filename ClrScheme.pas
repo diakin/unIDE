@@ -347,6 +347,9 @@ type
 function ThemeKey(const AName: string): string;
 // Строка - заголовок раздела (с меткой SchemaHeadMark)
 function IsSchemaHead(const Str: string): Boolean;
+// Длина метки заголовка в начале строки в байтах: 2 (149 160), 5 (E2 80 A2
+// C2 A0), 4 (C2 95 C2 A0); 0 - не заголовок
+function ClrHeadLen(const Str: string): Integer;
 // Строки файла .clr как есть, без перекодировки (и запись так же). В
 // сборке Lazarus TStrings.LoadFromFile перекодирует текст из кодовой
 // страницы Windows в UTF-8, и метка заголовка #149#160 в прочитанном
@@ -356,7 +359,7 @@ procedure ClrLoadLines(ALines: TStrings; const APath: string);
 // Для журнала (30561): версия чтения схем и байты метки - в шестнадцатеричном
 // виде; так видно, из какого ClrScheme.pas собран exe
 const
-  ClrReadTag = '2026-11-07d';
+  ClrReadTag = '2026-11-07e';
   ClrReadVersion = 'ClrScheme ' + ClrReadTag + ' (метка в любой кодировке)';
 function ClrHexBytes(const AStr: string; AMax: Integer): string;
 procedure ClrSaveLines(ALines: TStrings; const APath: string);
@@ -953,7 +956,27 @@ end;
 // Строка файла схемы - заголовок раздела (с меткой SchemaHeadMark)?
 function IsSchemaHead(const Str: string): Boolean;
 begin
-  Result := Copy(Str, 1, Length(SchemaHeadMark)) = SchemaHeadMark;
+  Result := ClrHeadLen(Str) > 0;
+end;
+
+// Сравнение по кодам байтов, без строковых констант. В сборке Lazarus
+// ({$CODEPAGE UTF8}) константа SchemaHeadMark помечена кодовой страницей
+// UTF-8, строки файла - системной (CP1251); сравнение и сложение таких
+// строк в FPC перекодирует одну из них, и заголовок не узнавался (30561,
+// 07.11: метка программы 95 A0, первая строка после чтения E2 80 A2 C2 A0)
+function ClrHeadLen(const Str: string): Integer;
+begin
+  Result := 0;
+  if (Length(Str) >= 2) and (Ord(Str[1]) = 149) and (Ord(Str[2]) = 160) then
+    Result := 2
+  else if (Length(Str) >= 5) and (Ord(Str[1]) = $E2) and
+          (Ord(Str[2]) = $80) and (Ord(Str[3]) = $A2) and
+          (Ord(Str[4]) = $C2) and (Ord(Str[5]) = $A0) then
+    Result := 5
+  else if (Length(Str) >= 4) and (Ord(Str[1]) = $C2) and
+          (Ord(Str[2]) = $95) and (Ord(Str[3]) = $C2) and
+          (Ord(Str[4]) = $A0) then
+    Result := 4;
 end;
 
 // Метка заголовка в файле - байты 149 160 (CP1251: '•' и неразрывный
@@ -983,27 +1006,19 @@ end;
 // символов (C2 95 C2 A0)
 procedure ClrNormalizeHeads(ALines: TStrings);
 var
-  Marks: array[0..2] of string;
-  Own, Line: string;
-  LineIdx, MarkIdx: Integer;
+  FileMark, Line: string;
+  LineIdx, HeadLen: Integer;
 begin
-  Own := SchemaHeadMark;
-  Marks[0] := ClrFileMark;
-  Marks[1] := ClrBytes([$E2, $80, $A2, $C2, $A0]);
-  Marks[2] := ClrBytes([$C2, $95, $C2, $A0]);
+  // Все виды метки - на байты файла (149 160): строка ClrFileMark собрана
+  // из байтов и помечена той же кодовой страницей, что строки файла, -
+  // сложение их не перекодирует
+  FileMark := ClrFileMark;
   for LineIdx := 0 to ALines.Count - 1 do
   begin
     Line := ALines[LineIdx];
-    if (Line = '') or (Ord(Line[1]) < 128) then
-      Continue;
-    for MarkIdx := 0 to High(Marks) do
-      if (Marks[MarkIdx] <> Own) and
-         (Copy(Line, 1, Length(Marks[MarkIdx])) = Marks[MarkIdx]) then
-      begin
-        ALines[LineIdx] := Own + Copy(Line, Length(Marks[MarkIdx]) + 1,
-          MaxInt);
-        Break;
-      end;
+    HeadLen := ClrHeadLen(Line);
+    if HeadLen > 2 then
+      ALines[LineIdx] := FileMark + Copy(Line, HeadLen + 1, MaxInt);
   end;
 end;
 
@@ -1074,20 +1089,20 @@ const
   LineBreak: array[0..1] of Byte = (13, 10);
 var
   Stream: TFileStream;
-  Own, FileMark, Line: string;
-  LineIdx: Integer;
+  FileMark, Line: string;
+  LineIdx, HeadLen: Integer;
 begin
-  Own := SchemaHeadMark;
   FileMark := ClrFileMark;
   Stream := TFileStream.Create(APath, fmCreate);
   try
     for LineIdx := 0 to ALines.Count - 1 do
     begin
       Line := ALines[LineIdx];
-      if Copy(Line, 1, Length(Own)) = Own then
+      HeadLen := ClrHeadLen(Line);
+      if HeadLen > 0 then
       begin
         Stream.WriteBuffer(FileMark[1], Length(FileMark));
-        Line := Copy(Line, Length(Own) + 1, MaxInt);
+        Line := Copy(Line, HeadLen + 1, MaxInt);
       end;
       if Length(Line) > 0 then
         Stream.WriteBuffer(Line[1], Length(Line));
@@ -1286,7 +1301,7 @@ begin
         Inc(Idx); // не заголовок: пустая строка или лишние данные
         Continue;
       end;
-      HeaderStr := Trim(Copy(Lines[Idx], Length(SchemaHeadMark) + 1, MaxInt));
+      HeaderStr := Trim(Copy(Lines[Idx], ClrHeadLen(Lines[Idx]) + 1, MaxInt));
       // Данных может не быть вовсе - следом сразу другой заголовок
       HasData := (Idx + 1 < Lines.Count) and not IsSchemaHead(Lines[Idx + 1]);
       if HasData then

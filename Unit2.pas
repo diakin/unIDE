@@ -1872,7 +1872,7 @@ function SchemaHeadName(const ALine: string): string;
 var
   SpacePos: Integer;
 begin
-  Result := Trim(Copy(ALine, Length(SchemaHeadMark) + 1, MaxInt));
+  Result := Trim(Copy(ALine, ClrHeadLen(ALine) + 1, MaxInt));
   SpacePos := Pos(' ', Result);
   if SpacePos > 0 then
     Result := Copy(Result, 1, SpacePos - 1);
