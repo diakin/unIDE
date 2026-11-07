@@ -41,7 +41,7 @@ implementation
 
 uses
   SysUtils, TypInfo, Controls, Graphics, Menus, ComCtrls, ExtCtrls, StdCtrls,
-  Forms {$IFDEF FPC}, LCLProc{$ENDIF};
+  Forms {$IFDEF FPC}, LCLProc, Windows{$ENDIF};
 
 const
   MaxListItems = 30;   // длиннее - только число строк
@@ -50,12 +50,39 @@ const
 var
   Buf: TStringList;
 
-// Строка в записи .dfm: апострофы удваиваются, управляющие символы - #код
-function SnapQuote(const Str: string): string;
+{$IFDEF FPC}
+// Строки LCL - UTF-8, а текст снимка разбирается как текст .dfm - в
+// кодировке редактора (CP_ACP, FormDesigner: DsgAnsiToUtf8). Без перевода
+// кириллица из снимка переводилась в UTF-8 второй раз (кракозябры в
+// подписях и подсказках формы в конструкторе)
+function SnapFromUtf8(const AText: string): string;
+var
+  WideText: WideString;
+  AnsiLen: Integer;
+begin
+  Result := AText;
+  if AText = '' then
+    Exit;
+  WideText := UTF8Decode(AText);
+  AnsiLen := WideCharToMultiByte(CP_ACP, 0, PWideChar(WideText),
+    Length(WideText), nil, 0, nil, nil);
+  SetLength(Result, AnsiLen);
+  if AnsiLen > 0 then
+    WideCharToMultiByte(CP_ACP, 0, PWideChar(WideText), Length(WideText),
+      PAnsiChar(Result), AnsiLen, nil, nil);
+end;
+{$ENDIF}
+
+// Строка в записи .dfm: апострофы удваиваются, управляющие символы - #код.
+// Под FPC строка приходит из LCL (UTF-8) и переводится в кодировку
+// редактора (SnapFromUtf8)
+function SnapQuote(const AStr: string): string;
 var
   I: Integer;
   InQ: Boolean;
+  Str: string;
 begin
+  Str := {$IFDEF FPC}SnapFromUtf8(AStr){$ELSE}AStr{$ENDIF};
   Result := '';
   InQ := False;
   for I := 1 to Length(Str) do
