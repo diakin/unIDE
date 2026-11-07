@@ -148,3 +148,6 @@ uniFAR/*_compile.bat
 /ArdSim/ardsim_build/
 /uniFAR/tools/7zip/License.txt
 /uniFAR/tools/7zip/unide_7zip.txt
+
+# Сведения о сборке (<exe>.build.txt): пишутся при каждой сборке, в git не нужны
+*.build.txt
