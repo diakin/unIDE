@@ -551,6 +551,9 @@ begin
   else if AName = 'PairMark' then
     Result := 'Парная скобка или тег под кареткой: цвета, которыми ' +
       'выделяются обе половины пары.'
+  else if AName = 'CaretChar' then
+    Result := 'Символ под кареткой (редактор F4 uniFAR). clNone в цвете ' +
+      'текста - цвет символа прежний, в фоне - фон чуть отличается от обычного.'
   else if AName = 'SubBody' then
     Result := 'Строка начала тела подпрограммы (переход из списка справа). ' +
       'Нет раздела - цвета LineMark.'
@@ -782,6 +785,8 @@ begin
     Result := 'Sub Scope (search below)'
   else if AName = 'PairMark' then
     Result := 'Pair Mark (bracket under caret)'
+  else if AName = 'CaretChar' then
+    Result := 'Caret Char (char under caret)'
   else if (Length(AName) > 6) and (Copy(AName, 1, 6) = 'CUSTOM') then
   begin
     Num := StrToIntDef(Copy(AName, 7, 1), 0);
@@ -2190,6 +2195,11 @@ begin
       Form1.FScheme.FSubBodyHasColors := True;
     end
     // Имена компонентов: только цвета, список собирается по .dfm и тексту
+    else if Sec = 'CaretChar' then
+    begin
+      Form1.FScheme.FCaretFG := TColor(Grid.Objects[1, R]);
+      Form1.FScheme.FCaretBG := TColor(Grid.Objects[2, R]);
+    end
     else if Sec = 'Components' then
     begin
       Form1.FScheme.FCompFG := TColor(Grid.Objects[1, R]);
@@ -2367,6 +2377,12 @@ begin
     begin
       Grid.Objects[1, R] := TObject(Form1.FScheme.FSubBodyFG);
       Grid.Objects[2, R] := TObject(Form1.FScheme.FSubBodyBG);
+      Grid.Cells[3, R] := 'auto';
+    end
+    else if Sec = 'CaretChar' then
+    begin
+      Grid.Objects[1, R] := TObject(Form1.FScheme.FCaretFG);
+      Grid.Objects[2, R] := TObject(Form1.FScheme.FCaretBG);
       Grid.Cells[3, R] := 'auto';
     end
     else if Sec = 'Components' then

@@ -276,6 +276,11 @@ type
     FCompFG: TColor;
     FCompBG: TColor;
     FCompHasColors: Boolean;
+    // СИМВОЛ ПОД КАРЕТКОЙ (раздел CaretChar): им подсвечивается символ, на
+    // котором стоит каретка (редактор F4 uniFAR). clNone в цвете текста -
+    // цвет символа не меняется, в фоне - фон чуть светлее/темнее обычного.
+    FCaretFG: TColor;
+    FCaretBG: TColor;
     // Разделы схемы в том порядке, в каком они лежат в файле .clr. По этому
     // списку окно настроек (Unit2) строит строки таблицы цветов, и по нему же
     // схема пишется обратно - см. ParseClrFile и SaveClrSchemaTo. Раздела нет
@@ -604,6 +609,8 @@ begin
   FCompFG := clNone;
   FCompBG := clNone;
   FCompHasColors := False;
+  FCaretFG := clNone;
+  FCaretBG := clNone;
 
   // Порядок разделов схемы - заполняется при чтении .clr
   SchemaSections := TStringList.Create;
@@ -721,6 +728,12 @@ begin
   begin
     AFg := FPairFG;
     ABg := FPairBG;
+    Result := True;
+  end
+  else if AName = 'CaretChar' then
+  begin
+    AFg := FCaretFG;
+    ABg := FCaretBG;
     Result := True;
   end
   else if (Length(AName) >= 8) and (Copy(AName, 1, 8) = 'LineMark') then
@@ -846,6 +859,12 @@ begin
   begin
     FPairFG := AFg;
     FPairBG := ABg;
+    Result := True;
+  end
+  else if AName = 'CaretChar' then
+  begin
+    FCaretFG := AFg;
+    FCaretBG := ABg;
     Result := True;
   end
   else if (Length(AName) >= 8) and (Copy(AName, 1, 8) = 'LineMark') then
@@ -1421,6 +1440,11 @@ begin
         // ОТМЕТКА СТРОК: LineMark <цвет текста или clNone> <фон строки>,
         // строка данных - слова через запятую
         // -----------------------------------------------------------------
+        else if ParamSL[0] = 'CaretChar' then
+        begin
+          FCaretFG := StringToColor(ParamSL[1]);
+          FCaretBG := StringToColor(ParamSL[2]);
+        end
         else if ParamSL[0] = 'PairMark' then
         begin
           // Цвета пары под кареткой: скобка со скобкой, тег с тегом
@@ -1556,6 +1580,8 @@ begin
   FCompFG := clNone;
   FCompBG := clNone;
   FCompHasColors := False;
+  FCaretFG := clNone;
+  FCaretBG := clNone;
 
   // =====================================================================
   // ОЧИСТКА ДИНАМИЧЕСКИХ ГРУПП КЛЮЧЕВЫХ СЛОВ
@@ -1829,6 +1855,9 @@ begin
   else if AName = 'PairMark' then
     SL.Add(SchemaHeadMark + 'PairMark ' + ColorToString(FPairFG) + ' ' +
            ColorToString(FPairBG))
+  else if AName = 'CaretChar' then
+    SL.Add(SchemaHeadMark + 'CaretChar ' + ColorToString(FCaretFG) + ' ' +
+           ColorToString(FCaretBG))
   // Отметка строк: цвета нужны и без списка слов - ими подсвечивается строка,
   // на которую перешли из списка подпрограмм
   else if (Length(AName) >= 8) and (Copy(AName, 1, 8) = 'LineMark') then
@@ -1997,6 +2026,7 @@ begin
   if FSubScope <> '' then
     Result.Add('SubScope');
   Result.Add('PairMark');
+  Result.Add('CaretChar');
   for I := 0 to High(MarkGroups) do
     Result.Add(MarkGroups[I].Name);
   if FSubBodyHasColors then

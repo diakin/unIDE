@@ -110,6 +110,8 @@ begin
     Result := 'Sub Scope (search below)'
   else if AName = 'PairMark' then
     Result := 'Pair Mark (bracket under caret)'
+  else if AName = 'CaretChar' then
+    Result := 'Caret Char (char under caret)'
   else if StartsWith(AName, 'CUSTOM') and (Length(AName) > 6) then
   begin
     Num := StrToIntDef(Copy(AName, 7, 1), 0);
@@ -424,6 +426,8 @@ begin
             Result.SchemaSections.Add(DefSections[SecIdx]);
       end;
       Result.EnsureSchemaSection('PairMark');
+      // Символ под кареткой (F4 uniFAR): строка в таблице и без раздела
+      Result.EnsureSchemaSection('CaretChar');
       Result.ApplyTheme;
       Result.BuildMarkerChars;
     except
