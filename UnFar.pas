@@ -146,6 +146,7 @@ unit UnFar;
 //    - b.65: строка о файле под курсором: размер, время создания и время
 //      изменения отдельно ('2270  Created 02.10.26 19:38  Modified
 //      04.10.26 08:52'); узкая панель - как раньше, размер и время изменения.
+//    - b.66: строка о папке под курсором: 'Folder  Created 02.10.26 19:38'.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -181,7 +182,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.65';
+  FarBuild = 'b.66';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -4024,7 +4025,15 @@ begin
           RightText := CountText + RightText;
       end
       else if IsDir then
-        RightText := 'Folder'
+      begin
+        // Папка: время создания (нет его или не помещается - просто Folder)
+        RightText := 'Folder';
+        if ((CreateTime.dwLowDateTime <> 0) or
+            (CreateTime.dwHighDateTime <> 0)) and
+           (Length(RightText) + 26 + FarMinNameW < InnerW) then
+          RightText := RightText + '  Created ' +
+            WideString(FarFileDate(CreateTime));
+      end
       else
       begin
         // Размер, время создания и изменения; не помещается с именем -
