@@ -384,6 +384,11 @@ begin
   FarView.EditWideDefault := True;
   FarView.OnClose := Events.FarClose;
   FarView.OnGetScheme := Events.FarGetScheme;
+  // F9 - Options - Schemes: правка схем той же папки, той же темой
+  FarView.SchemesDir := SchemesDir;
+  FarView.SchemeTheme := ThemeName;
+  FarView.SchemeFontColor := EditFontColor;
+  FarView.SchemeBgColor := EditBgColor;
   // OnEditFile, OnLeave, OnHalfResize, OnShowPanels - режим F4 рядом с
   // редактором unIDE; OnColorsDialog, OnPaletteDialog - окна настроек
   // unIDE. Здесь их нет

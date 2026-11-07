@@ -44168,6 +44168,8 @@ begin
     FFar.OnColorsDialog := FarColorsClick;
     FFar.OnPaletteDialog := FarPaletteClick;
     FFar.OnGetScheme := FarGetScheme;
+    // F9 - Options - Schemes: окно IDE Options
+    FFar.OnSchemesDialog := mOptionsClick;
     FFarOwnWin := -1;
     FFarLastTabIdx := -1;
     FFar.LoadState(SettingsFileName, StartDir);

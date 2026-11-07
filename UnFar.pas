@@ -149,6 +149,10 @@ unit UnFar;
 //    - b.66: строка о папке под курсором: 'Folder  Created 02.10.26 19:38'.
 //    - b.67: редактор F4: номера строк слева (как в редакторе unIDE),
 //      номер строки с кареткой - цветом текста.
+//    - b.68: F9 - Options - Schemes (uniFAR; в unIDE - окно IDE Options):
+//      Color schemes - разделы файла .clr, цвет текста и фона, строка
+//      данных; Editor options - шаг табуляции, номера строк; File types -
+//      какое расширение какой схемой (schemes\alias.ini).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -181,10 +185,11 @@ uses
   {$IFDEF UNIX}LCLType, {$ENDIF}
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ExtCtrls,
   IniBuf, SzSetup, ProcRun, FarFind, FarVolumes, FarFtp, FarProgress,
-  ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
+  ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp, SchemeFiles,
+  SchemeData;
 
 const
-  FarBuild = 'b.67';
+  FarBuild = 'b.68';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -230,7 +235,7 @@ type
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
     fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr,
-    fdOverwrite, fdOverRename);
+    fdOverwrite, fdOverRename, fdSchemeData, fdSchemeTab, fdSchemeType);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -293,7 +298,9 @@ type
   // Открытое меню: смена диска (Alt+F1 / Alt+F2), сортировка (Ctrl+F12),
   // история папок (Alt+F12)
   TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory, fmOptions,
-    fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmEditEncoding);
+    fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmEditEncoding,
+    fmSchemes, fmSchemeFiles, fmSchemeItems, fmSchemeEdit, fmSchemeEditor,
+    fmSchemeTypes, fmSchemeTypePick);
 
   TFarMenuItem = record
     Text: WideString;       // '&' перед буквой быстрого выбора
@@ -501,6 +508,7 @@ type
     FEditQuitAfterSave: Boolean;
     FEditDragging: Boolean;
     FEditTabSize: Integer;        // editor.ini [Editor] TabChars
+    FEditLineNumbers: Boolean;    // номера строк слева ([Far] EditLineNumbers)
     // Просмотр (F3): на месте редактора (FEditPanel / FEditWide), вместе с
     // редактором не бывает
     FViewer: TFarViewer;
@@ -536,6 +544,18 @@ type
     FPickExtRow, FPickExtCol, FPickForeRow, FPickBackRow: Integer;
     FPickPanelRow, FPickBtnRow: Integer;
     FPickBtnCol: array[0..1] of Integer;
+    // F9 - Options - Schemes: папка схем, тема и цвета редактора (их задаёт
+    // uniFAR), схема в правке, её ключ ('' - •default•.clr), раздел в
+    // правке, расширение в File types
+    FSchemesDir: string;
+    FSchemeTheme: string;
+    FSchemeFontColor: TColor;
+    FSchemeBgColor: TColor;
+    FSchemeEdit: TClrScheme;
+    FSchemeEditKey: string;
+    FSchemeEditSec: string;
+    FSchemeTypeExt: string;
+    FOnSchemesDialog: TNotifyEvent;
     // Тема (F9 - Options - Themes) и свои цвета окна выбора цвета
     FThemeName: string;
     FCustColors: array[0..15] of COLORREF;
@@ -935,6 +955,23 @@ type
     procedure ShowThemesMenu;
     procedure ApplyTheme(const AName: string; const APalette: TFarPalette);
     procedure ThemeImport;
+    procedure ShowSchemesMenu(ACursor: Integer);
+    procedure ShowSchemeFiles(const ACursorKey: string);
+    procedure SchemeOpenFile(const AKey: string);
+    procedure ShowSchemeItems(const ACursorSec: string);
+    procedure ShowSchemeEdit(ACursorTag: Integer);
+    procedure SchemeChooseColor(ABack: Boolean);
+    procedure SchemeDataDialog;
+    procedure SchemeSave;
+    procedure SchemeReloadEditor;
+    procedure ShowSchemeEditor(ACursor: Integer);
+    procedure ShowSchemeTypes(const ACursorExt: string);
+    procedure ShowSchemeTypePick(const AExt, ACurrent: string);
+    function SchemeMenuKey(AKey: Word): Boolean;
+    function SchemeMenuBack: Boolean;
+    procedure SchemeDlgDone(AOk: Boolean);
+    function SchemeShownBack(AColor: TColor): TColor;
+    procedure SchemeIniWrite(const ASection, AKey, AValue: string);
     procedure PickOpenRule(AIndex: Integer);
     procedure PickClose;
     function PickButtonText(AIndex: Integer): WideString;
@@ -1138,6 +1175,17 @@ type
       write FOnPaletteDialog;
     // Редактор F4: схема подсветки файла (Unit1)
     property OnGetScheme: TFarSchemeEvent read FOnGetScheme write FOnGetScheme;
+    // F9 - Options - Schemes: окно настроек unIDE (Unit1). Не задано -
+    // свои меню по папке SchemesDir (uniFAR)
+    property OnSchemesDialog: TNotifyEvent read FOnSchemesDialog
+      write FOnSchemesDialog;
+    // Папка схем (с '\' на конце), тема ([Themes] Current) и цвета
+    // редактора без схемы - для правки схем (uniFAR, FarApp)
+    property SchemesDir: string read FSchemesDir write FSchemesDir;
+    property SchemeTheme: string read FSchemeTheme write FSchemeTheme;
+    property SchemeFontColor: TColor read FSchemeFontColor
+      write FSchemeFontColor;
+    property SchemeBgColor: TColor read FSchemeBgColor write FSchemeBgColor;
     // Строка сообщений над командной строкой: туда же Status, если
     // OnStatus не задан
     property MessageLine: Boolean read FMessageLine write SetMessageLine;
@@ -3428,6 +3476,9 @@ begin
   FEditor := nil;
   FEditPanel := 1;
   FEditTabSize := 4;
+  FEditLineNumbers := True;
+  FSchemeFontColor := clBlack;
+  FSchemeBgColor := clWhite;
   FFtpEditIdx := -1;
   FFtpPassPanel := -1;
   FFtpDelIdx := -1;
@@ -3464,6 +3515,7 @@ var
 begin
   FOnStatus := nil;
   FreeAndNil(FHelp);
+  FreeAndNil(FSchemeEdit);
   DirSizeStop;
   FSzTimer.Enabled := False;
   if FFindTimer <> nil then
@@ -5497,7 +5549,11 @@ begin
   ButtonCount := Length(FDlgButtons);
   case AKey of
     VK_ESCAPE, VK_F10:
-      DlgClose;
+      // Окна Schemes: отмена - обратно в меню
+      if FDlgKind in [fdSchemeData, fdSchemeTab, fdSchemeType] then
+        SchemeDlgDone(False)
+      else
+        DlgClose;
     VK_RETURN:
       if FDlgFocus < 0 then
         DlgActivate(0)
@@ -5597,6 +5653,12 @@ var
   EditText, SavedTemp: WideString;
   SavedAction: TFarArcAction;
 begin
+  // Окна Schemes: OK / Cancel - обратно в меню
+  if FDlgKind in [fdSchemeData, fdSchemeTab, fdSchemeType] then
+  begin
+    SchemeDlgDone(AButton = 0);
+    Exit;
+  end;
   // Shift+F1, Add: сначала проверка полей - окно закрывается, только если
   // всё верно
   if (FDlgKind = fdArcAdd) and (AButton = 0) then
@@ -6691,6 +6753,9 @@ begin
   // Правила раскраски: Ins, Del, пробел, F4, Ctrl+стрелки
   if (FMenuKind = fmHiRules) and HiRulesKey(AKey, AShift, ACtrl, AAlt) then
     Exit;
+  // Schemes: Ins, Del, F4
+  if not AShift and not ACtrl and not AAlt and SchemeMenuKey(AKey) then
+    Exit;
   // Элементы палитры: Del - стандартный цвет
   if (FMenuKind = fmPalItems) and (AKey = VK_DELETE) and
      (FMenuCursor >= 0) and (FMenuCursor <= High(FMenuItems)) then
@@ -6703,7 +6768,8 @@ begin
       // Элементы палитры - обратно в группы
       if (AKey = VK_ESCAPE) and (FMenuKind = fmPalItems) then
         ShowPalGroups(FarPalGroupIndex(FPalGroupFirst))
-      else
+      // Меню Schemes: Esc - на уровень выше
+      else if (AKey <> VK_ESCAPE) or not SchemeMenuBack then
         MenuClose;
     VK_UP:
       MenuMove(-1);
@@ -6867,6 +6933,78 @@ begin
             ShowPalGroups(0);
         4:
           ShowThemesMenu;
+        5:
+          if Assigned(FOnSchemesDialog) then
+            FOnSchemesDialog(Self)
+          else
+            ShowSchemesMenu(0);
+      end;
+    fmSchemes:
+      case Item.Tag of
+        0:
+          // Курсор - на схеме файла в редакторе
+          if FEditor <> nil then
+            ShowSchemeFiles(SchemeKeyForFile(FSchemesDir,
+              string(FEditor.FileName), False))
+          else
+            ShowSchemeFiles('');
+        1:
+          ShowSchemeEditor(0);
+        2:
+          ShowSchemeTypes('');
+      end;
+    fmSchemeFiles:
+      SchemeOpenFile(string(Item.Data));
+    fmSchemeItems:
+      begin
+        FSchemeEditSec := string(Item.Data);
+        ShowSchemeEdit(0);
+      end;
+    fmSchemeEdit:
+      case Item.Tag of
+        0:
+          SchemeChooseColor(False);
+        1:
+          SchemeChooseColor(True);
+        2:
+          SchemeDataDialog;
+      end;
+    fmSchemeEditor:
+      if Item.Tag = 0 then
+        DlgOpen(fdSchemeTab, 'Tab size', ['Tab size (1..32):'], False, False,
+          True, IntToStr(FEditTabSize), ['OK', 'Cancel'])
+      else
+      begin
+        FEditLineNumbers := not FEditLineNumbers;
+        SchemeIniWrite(FarIniSection, 'EditLineNumbers',
+          IntToStr(Ord(FEditLineNumbers)));
+        if FEditor <> nil then
+          EditEnsureVisible;
+        ShowSchemeEditor(1);
+      end;
+    fmSchemeTypes:
+      if Item.Tag < 0 then
+        DlgOpen(fdSchemeType, 'New file type', ['Extension (without dot):'],
+          False, False, True, '', ['OK', 'Cancel'])
+      else if Item.Tag = 2 then
+      begin
+        ShowSchemeTypes(Copy(string(Item.Data), 1,
+          Pos('=', string(Item.Data)) - 1));
+        Status(FarProduct + ': у расширения своя схема - она важнее ' +
+          'соответствия; чтобы сменить, файл схемы нужно убрать из папки');
+      end
+      else
+        ShowSchemeTypePick(Copy(string(Item.Data), 1,
+          Pos('=', string(Item.Data)) - 1), Copy(string(Item.Data),
+          Pos('=', string(Item.Data)) + 1, MaxInt));
+    fmSchemeTypePick:
+      begin
+        if not SchemeAliasSet(FSchemesDir, FSchemeTypeExt,
+           string(Item.Data)) then
+          Status(FarProduct + ': alias.ini не записан')
+        else
+          SchemeReloadEditor;
+        ShowSchemeTypes(FSchemeTypeExt);
       end;
     fmPalGroups:
       if Item.Tag >= 0 then
@@ -9718,7 +9856,7 @@ var
 begin
   EditBounds(AX0, AWidth);
   GutterW := EditGutterW;
-  if AWidth - GutterW >= 8 then
+  if FEditLineNumbers and (AWidth - GutterW >= 8) then
   begin
     Inc(AX0, GutterW);
     Dec(AWidth, GutterW);
@@ -15490,15 +15628,16 @@ end;
 // F9: меню Options (только оно - решено). Что ещё не сделано - серым
 procedure TFarView.ShowOptionsMenu;
 const
-  ItemTexts: array[0..7] of string = ('&Panel settings', 'Con&firmations',
-    '', '&Themes', '&Colors', 'Files &highlighting', '', '&Save setup');
-  ItemTags: array[0..7] of Integer = (0, 0, 0, 4, 3, 1, 0, 2);
+  ItemTexts: array[0..8] of string = ('&Panel settings', 'Con&firmations',
+    '', '&Themes', '&Colors', 'Files &highlighting', 'Sche&mes', '',
+    '&Save setup');
+  ItemTags: array[0..8] of Integer = (0, 0, 0, 4, 3, 1, 5, 0, 2);
 var
   Items: TFarMenuItems;
   ItemIndex: Integer;
 begin
-  SetLength(Items, 8);
-  for ItemIndex := 0 to 7 do
+  SetLength(Items, 9);
+  for ItemIndex := 0 to 8 do
   begin
     Items[ItemIndex].Text := ItemTexts[ItemIndex];
     Items[ItemIndex].RightText := '';
@@ -15509,9 +15648,584 @@ begin
     Items[ItemIndex].Data := '';
     Items[ItemIndex].Tag := ItemTags[ItemIndex];
   end;
-  Items[7].RightText := 'Shift+F9';
+  Items[8].RightText := 'Shift+F9';
+  // Schemes: нет ни окна unIDE, ни папки схем - серым
+  Items[6].Disabled := (FSchemesDir = '') and not Assigned(FOnSchemesDialog);
   MenuOpen(fmOptions, 'Options', Items, 3, FActive);
 end;
+
+// ---------------------------------------------------------------------------
+//  F9 - Options - Schemes (uniFAR): меню вместо окна IDE Options unIDE.
+//  Schemes: Color schemes, Editor options, File types.
+//  Color schemes: файл схемы - разделы (цвет текста и фона квадратиками) -
+//  раздел: Foreground, Background (окно выбора цвета), Data (строка данных
+//  раздела). Каждое изменение сразу пишется в файл схемы, редактор F4
+//  берёт схему заново. Esc - на уровень выше.
+// ---------------------------------------------------------------------------
+
+function SchemeShortText(const AText: string; AMax: Integer): string;
+begin
+  Result := AText;
+  if Length(Result) > AMax then
+    Result := Copy(Result, 1, AMax - 3) + '...';
+end;
+
+// Имя файла схемы для заголовков: '' - •default•.clr
+function SchemeKeyTitle(const AKey: string): WideString;
+begin
+  if AKey = '' then
+    Result := WideString(#$2022) + 'default' + WideString(#$2022) + '.clr'
+  else
+    Result := WideString(AKey + '.clr');
+end;
+
+// Фон раздела для показа: clNone - фон текста схемы (или редактора)
+function TFarView.SchemeShownBack(AColor: TColor): TColor;
+begin
+  Result := AColor;
+  if Result <> clNone then
+    Exit;
+  if (FSchemeEdit <> nil) and (FSchemeEdit.FTextBG <> clNone) then
+    Result := FSchemeEdit.FTextBG
+  else
+    Result := FSchemeBgColor;
+end;
+
+procedure TFarView.SchemeIniWrite(const ASection, AKey, AValue: string);
+var
+  Ini: TBufIniFile;
+begin
+  if FIniName = '' then
+    Exit;
+  Ini := TBufIniFile.Create(FIniName);
+  try
+    Ini.WriteString(ASection, AKey, AValue);
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TFarView.ShowSchemesMenu(ACursor: Integer);
+const
+  ItemTexts: array[0..2] of string = ('&Color schemes', '&Editor options',
+    '&File types');
+var
+  Items: TFarMenuItems;
+  ItemIndex: Integer;
+begin
+  SetLength(Items, 3);
+  for ItemIndex := 0 to 2 do
+  begin
+    Items[ItemIndex].Text := WideString(ItemTexts[ItemIndex]);
+    Items[ItemIndex].Mark := ' ';
+    Items[ItemIndex].Tag := ItemIndex;
+  end;
+  MenuOpen(fmSchemes, 'Schemes', Items, ACursor, FActive);
+end;
+
+// Файлы схем: •default•.clr первым, затем <расширение>.clr
+procedure TFarView.ShowSchemeFiles(const ACursorKey: string);
+var
+  Items: TFarMenuItems;
+  Names: TStringList;
+  NameIdx, CursorIdx: Integer;
+begin
+  Names := TStringList.Create;
+  try
+    SchemeNameList(FSchemesDir, Names);
+    // Имя •default•.clr в другой кодировке - не в списке схем языков
+    for NameIdx := Names.Count - 1 downto 0 do
+      if (Pos('default', Names[NameIdx]) > 0) and (Names[NameIdx] <> '') and
+         not (Names[NameIdx][1] in ['a'..'z', '0'..'9', '_']) then
+        Names.Delete(NameIdx);
+    SetLength(Items, Names.Count + 1);
+    CursorIdx := 0;
+    Items[0].Text := SchemeKeyTitle('');
+    Items[0].RightText := 'base';
+    Items[0].Mark := ' ';
+    Items[0].Data := '';
+    for NameIdx := 0 to Names.Count - 1 do
+    begin
+      Items[NameIdx + 1].Text := SchemeKeyTitle(Names[NameIdx]);
+      Items[NameIdx + 1].Mark := ' ';
+      Items[NameIdx + 1].Data := WideString(Names[NameIdx]);
+      if CompareText(Names[NameIdx], ACursorKey) = 0 then
+        CursorIdx := NameIdx + 1;
+    end;
+  finally
+    Names.Free;
+  end;
+  MenuOpen(fmSchemeFiles, 'Color schemes', Items, CursorIdx, FActive);
+  Status(FarProduct + ': Enter - разделы схемы, Esc - назад; папка ' +
+    FSchemesDir);
+end;
+
+// Схема для правки: •default•.clr одна или схема расширения поверх него
+// (как в окне IDE Options unIDE)
+procedure TFarView.SchemeOpenFile(const AKey: string);
+begin
+  FreeAndNil(FSchemeEdit);
+  FSchemeEdit := SchemeLoadForEdit(FSchemesDir, AKey, FSchemeTheme,
+    FSchemeFontColor, FSchemeBgColor);
+  if FSchemeEdit = nil then
+  begin
+    ShowSchemeFiles(AKey);
+    Status(FarProduct + ': схема не прочитана: ' +
+      string(SchemeKeyTitle(AKey)));
+    Exit;
+  end;
+  FSchemeEditKey := AKey;
+  ShowSchemeItems('');
+  if FSchemeEdit.FLoadError <> '' then
+    Status(FarProduct + ': ' + FSchemeEdit.FLoadError);
+end;
+
+// Разделы схемы в порядке файла; справа - цвет текста и фона, у разделов
+// без цветов - строка данных
+procedure TFarView.ShowSchemeItems(const ACursorSec: string);
+var
+  Items: TFarMenuItems;
+  SecIdx, ItemIdx, CursorIdx: Integer;
+  SecName, DataText: string;
+  FgColor, BgColor: TColor;
+begin
+  if FSchemeEdit = nil then
+    Exit;
+  SetLength(Items, 0);
+  CursorIdx := 0;
+  for SecIdx := 0 to FSchemeEdit.SchemaSections.Count - 1 do
+  begin
+    SecName := FSchemeEdit.SchemaSections[SecIdx];
+    if SchemeSectionHidden(SecName) then
+      Continue;
+    SetLength(Items, Length(Items) + 1);
+    ItemIdx := High(Items);
+    Items[ItemIdx].Text := WideString(SchemeSectionCaption(SecName));
+    Items[ItemIdx].Mark := ' ';
+    Items[ItemIdx].Data := WideString(SecName);
+    if SchemeSectionHasColors(SecName) and
+       FSchemeEdit.SectionColors(SecName, FgColor, BgColor) then
+    begin
+      Items[ItemIdx].SwatchCount := 2;
+      Items[ItemIdx].Swatch1 := FgColor;
+      Items[ItemIdx].Swatch2 := SchemeShownBack(BgColor);
+      // Образец: подпись - цветами раздела
+      Items[ItemIdx].HasColors := True;
+      Items[ItemIdx].Fore := FgColor;
+      Items[ItemIdx].Back := SchemeShownBack(BgColor);
+    end
+    else if SchemeSectionData(FSchemeEdit, SecName, DataText) then
+      Items[ItemIdx].RightText := WideString(SchemeShortText(DataText, 24));
+    if SecName = ACursorSec then
+      CursorIdx := ItemIdx;
+  end;
+  if Length(Items) = 0 then
+  begin
+    SetLength(Items, 1);
+    Items[0].Text := '(в схеме нет разделов)';
+    Items[0].Mark := ' ';
+    Items[0].Disabled := True;
+  end;
+  MenuOpen(fmSchemeItems, 'Color scheme ' + SchemeKeyTitle(FSchemeEditKey),
+    Items, CursorIdx, FActive);
+  Status(FarProduct + ': Enter - изменить раздел, F4 - строка данных, ' +
+    'Esc - к файлам схем');
+end;
+
+// Раздел: что у него можно поменять. ACursorTag - пункт под курсором
+// (0 - текст, 1 - фон, 2 - данные)
+procedure TFarView.ShowSchemeEdit(ACursorTag: Integer);
+var
+  Items: TFarMenuItems;
+  FgColor, BgColor: TColor;
+  DataText: string;
+  CursorIdx, ItemIdx: Integer;
+begin
+  if FSchemeEdit = nil then
+    Exit;
+  SetLength(Items, 0);
+  if SchemeSectionHasColors(FSchemeEditSec) and
+     FSchemeEdit.SectionColors(FSchemeEditSec, FgColor, BgColor) then
+  begin
+    SetLength(Items, 2);
+    Items[0].Text := '&Foreground';
+    Items[0].Mark := ' ';
+    Items[0].Tag := 0;
+    Items[0].SwatchCount := 1;
+    Items[0].Swatch1 := FgColor;
+    Items[1].Text := '&Background';
+    Items[1].Mark := ' ';
+    Items[1].Tag := 1;
+    Items[1].SwatchCount := 1;
+    Items[1].Swatch1 := SchemeShownBack(BgColor);
+  end;
+  if SchemeSectionData(FSchemeEdit, FSchemeEditSec, DataText) then
+  begin
+    SetLength(Items, Length(Items) + 1);
+    ItemIdx := High(Items);
+    Items[ItemIdx].Text := '&Data';
+    Items[ItemIdx].Mark := ' ';
+    Items[ItemIdx].Tag := 2;
+    if DataText = '' then
+      Items[ItemIdx].RightText := '(пусто)'
+    else
+      Items[ItemIdx].RightText := WideString(SchemeShortText(DataText, 30));
+  end;
+  if Length(Items) = 0 then
+  begin
+    ShowSchemeItems(FSchemeEditSec);
+    Status(FarProduct + ': в разделе ' + FSchemeEditSec +
+      ' менять нечего');
+    Exit;
+  end;
+  CursorIdx := 0;
+  for ItemIdx := 0 to High(Items) do
+    if Items[ItemIdx].Tag = ACursorTag then
+      CursorIdx := ItemIdx;
+  MenuOpen(fmSchemeEdit, WideString(SchemeSectionCaption(FSchemeEditSec)),
+    Items, CursorIdx, FActive);
+  Status(FarProduct + ': Enter - изменить, Esc - к разделам схемы');
+end;
+
+// Цвет текста (ABack = False) или фона раздела - окном выбора цвета
+procedure TFarView.SchemeChooseColor(ABack: Boolean);
+var
+  FgColor, BgColor, NewColor: TColor;
+  Title: WideString;
+  Changed: Boolean;
+begin
+  Changed := False;
+  if (FSchemeEdit <> nil) and
+     FSchemeEdit.SectionColors(FSchemeEditSec, FgColor, BgColor) then
+  begin
+    if ABack then
+    begin
+      NewColor := SchemeShownBack(BgColor);
+      Title := 'Background: ';
+    end
+    else
+    begin
+      NewColor := FgColor;
+      Title := 'Foreground: ';
+    end;
+    Title := Title + WideString(SchemeSectionCaption(FSchemeEditSec));
+    if ChooseColor(NewColor, Title) then
+    begin
+      if ABack then
+        BgColor := NewColor
+      else
+        FgColor := NewColor;
+      FSchemeEdit.SetSectionColors(FSchemeEditSec, FgColor, BgColor);
+      Changed := True;
+    end;
+  end;
+  ShowSchemeEdit(Ord(ABack));
+  if Changed then
+    SchemeSave;
+end;
+
+// Строка данных раздела: слова, маркеры, символы операторов
+procedure TFarView.SchemeDataDialog;
+var
+  DataText: string;
+begin
+  if (FSchemeEdit = nil) or
+     not SchemeSectionData(FSchemeEdit, FSchemeEditSec, DataText) then
+  begin
+    ShowSchemeItems(FSchemeEditSec);
+    Status(FarProduct + ': у раздела ' + FSchemeEditSec +
+      ' нет строки данных');
+    Exit;
+  end;
+  DlgOpen(fdSchemeData, WideString(SchemeSectionCaption(FSchemeEditSec)),
+    [WideString(SchemeSectionHint(FSchemeEditSec))], False, False, True,
+    WideString(DataText), ['OK', 'Cancel']);
+end;
+
+// Схема - в её файл; редактор F4 - со схемой с диска
+procedure TFarView.SchemeSave;
+var
+  ClrPath: string;
+begin
+  if FSchemeEdit = nil then
+    Exit;
+  ClrPath := SchemeEditPath(FSchemesDir, FSchemeEditKey);
+  try
+    FSchemeEdit.SaveClrSchemaTo(ClrPath);
+  except
+    on Err: Exception do
+    begin
+      Status(FarProduct + ': схема не записана: ' + Err.Message);
+      Exit;
+    end;
+  end;
+  SchemeReloadEditor;
+  Status(FarProduct + ': записано в ' + string(SchemeKeyTitle(FSchemeEditKey)));
+end;
+
+procedure TFarView.SchemeReloadEditor;
+var
+  Scheme: TClrScheme;
+begin
+  if (FEditor = nil) or not Assigned(FOnGetScheme) then
+    Exit;
+  Scheme := FOnGetScheme(FEditor.FileName);
+  FEditor.SetScheme(Scheme, FPal[fpPanelText], FPal[fpPanelBack]);
+  Invalidate;
+end;
+
+// Editor options: шаг табуляции, номера строк
+procedure TFarView.ShowSchemeEditor(ACursor: Integer);
+var
+  Items: TFarMenuItems;
+begin
+  SetLength(Items, 2);
+  Items[0].Text := '&Tab size';
+  Items[0].Mark := ' ';
+  Items[0].RightText := WideString(IntToStr(FEditTabSize));
+  Items[0].Tag := 0;
+  Items[1].Text := '&Line numbers';
+  if FEditLineNumbers then
+    Items[1].Mark := FarCheckMark
+  else
+    Items[1].Mark := ' ';
+  Items[1].Tag := 1;
+  MenuOpen(fmSchemeEditor, 'Editor options', Items, ACursor, FActive);
+  Status(FarProduct + ': Enter - изменить, Esc - назад');
+end;
+
+// File types: расширение - схема (alias.ini, встроенное, своя схема)
+procedure TFarView.ShowSchemeTypes(const ACursorExt: string);
+var
+  Items: TFarMenuItems;
+  Rows: TStringList;
+  RowIdx, TabPos, CursorIdx: Integer;
+  ExtName, Rest, SchemeName, FromText: string;
+begin
+  Rows := TStringList.Create;
+  try
+    SchemeAliasRows(FSchemesDir, Rows);
+    SetLength(Items, Rows.Count);
+    CursorIdx := 0;
+    for RowIdx := 0 to Rows.Count - 1 do
+    begin
+      ExtName := Rows.Names[RowIdx];
+      Rest := Copy(Rows[RowIdx], Length(ExtName) + 2, MaxInt);
+      TabPos := Pos(#9, Rest);
+      SchemeName := Copy(Rest, 1, TabPos - 1);
+      FromText := Copy(Rest, TabPos + 1, MaxInt);
+      Items[RowIdx].Text := WideString('*.' + ExtName);
+      Items[RowIdx].Mark := ' ';
+      Items[RowIdx].Data := WideString(ExtName + '=' + SchemeName);
+      if FromText = SchemeFromAlias then
+        Items[RowIdx].Tag := 0
+      else if FromText = SchemeFromBuiltin then
+        Items[RowIdx].Tag := 1
+      else
+        Items[RowIdx].Tag := 2;
+      // Своя схема ext.clr важнее соответствия
+      if (Items[RowIdx].Tag <> 2) and
+         FileExists(FSchemesDir + ExtName + '.clr') then
+        FromText := FromText + ', не действует';
+      Items[RowIdx].RightText := WideString(SchemeName + '.clr  ' + FromText);
+      if ExtName = ACursorExt then
+        CursorIdx := RowIdx;
+    end;
+  finally
+    Rows.Free;
+  end;
+  if Length(Items) = 0 then
+  begin
+    SetLength(Items, 1);
+    Items[0].Text := '(нет - Ins: добавить)';
+    Items[0].Mark := ' ';
+    Items[0].Tag := -1;
+  end;
+  MenuOpen(fmSchemeTypes, 'File types', Items, CursorIdx, FActive);
+  Status(FarProduct + ': Enter / F4 - выбрать схему, Ins - добавить, Del - ' +
+    'удалить строку alias.ini, Esc - назад');
+end;
+
+// Схема для расширения AExt: список файлов схем
+procedure TFarView.ShowSchemeTypePick(const AExt, ACurrent: string);
+var
+  Items: TFarMenuItems;
+  Names: TStringList;
+  NameIdx, CursorIdx: Integer;
+begin
+  FSchemeTypeExt := AExt;
+  Names := TStringList.Create;
+  try
+    SchemeNameList(FSchemesDir, Names);
+    SetLength(Items, Names.Count);
+    CursorIdx := 0;
+    for NameIdx := 0 to Names.Count - 1 do
+    begin
+      Items[NameIdx].Text := WideString(Names[NameIdx] + '.clr');
+      Items[NameIdx].Data := WideString(Names[NameIdx]);
+      if CompareText(Names[NameIdx], ACurrent) = 0 then
+      begin
+        Items[NameIdx].Mark := FarCheckMark;
+        CursorIdx := NameIdx;
+      end
+      else
+        Items[NameIdx].Mark := ' ';
+    end;
+  finally
+    Names.Free;
+  end;
+  if Length(Items) = 0 then
+  begin
+    ShowSchemeTypes(AExt);
+    Status(FarProduct + ': в папке схем нет файлов .clr');
+    Exit;
+  end;
+  MenuOpen(fmSchemeTypePick, WideString('*.' + AExt + ' - scheme'), Items,
+    CursorIdx, FActive);
+  Status(FarProduct + ': Enter - выбрать, Esc - назад');
+end;
+
+// Клавиши меню Schemes сверх обычных. True - разобрана
+function TFarView.SchemeMenuKey(AKey: Word): Boolean;
+var
+  Item: TFarMenuItem;
+  ExtName: string;
+begin
+  Result := False;
+  if (FMenuCursor < 0) or (FMenuCursor > High(FMenuItems)) then
+    Exit;
+  Item := FMenuItems[FMenuCursor];
+  case FMenuKind of
+    fmSchemeItems:
+      if (AKey = VK_F4) and not Item.Disabled then
+      begin
+        Result := True;
+        FSchemeEditSec := string(Item.Data);
+        MenuClose;
+        SchemeDataDialog;
+      end;
+    fmSchemeTypes:
+      if AKey = VK_F4 then
+      begin
+        Result := True;
+        MenuActivate(FMenuCursor);
+      end
+      else if AKey = VK_INSERT then
+      begin
+        Result := True;
+        MenuClose;
+        DlgOpen(fdSchemeType, 'New file type', ['Extension (without dot):'],
+          False, False, True, '', ['OK', 'Cancel']);
+      end
+      else if AKey = VK_DELETE then
+      begin
+        Result := True;
+        if Item.Tag <> 0 then
+        begin
+          Status(FarProduct + ': удаляются только строки alias.ini; ' +
+            'встроенное соответствие можно переназначить (Enter)');
+          Exit;
+        end;
+        ExtName := Copy(string(Item.Data), 1, Pos('=', string(Item.Data)) - 1);
+        if SchemeAliasSet(FSchemesDir, ExtName, '') then
+          SchemeReloadEditor
+        else
+          Status(FarProduct + ': alias.ini не записан');
+        ShowSchemeTypes(ExtName);
+      end;
+  end;
+end;
+
+// Esc в меню Schemes: на уровень выше. False - не меню Schemes
+function TFarView.SchemeMenuBack: Boolean;
+begin
+  Result := True;
+  case FMenuKind of
+    fmSchemeFiles:
+      ShowSchemesMenu(0);
+    fmSchemeItems:
+      begin
+        FreeAndNil(FSchemeEdit);
+        ShowSchemeFiles(FSchemeEditKey);
+      end;
+    fmSchemeEdit:
+      ShowSchemeItems(FSchemeEditSec);
+    fmSchemeEditor:
+      ShowSchemesMenu(1);
+    fmSchemeTypes:
+      ShowSchemesMenu(2);
+    fmSchemeTypePick:
+      ShowSchemeTypes(FSchemeTypeExt);
+  else
+    Result := False;
+  end;
+end;
+
+// Окна Schemes закрыты: AOk - OK (Enter), иначе отмена. Потом - снова меню
+procedure TFarView.SchemeDlgDone(AOk: Boolean);
+var
+  Kind: TFarDlgKind;
+  EditText, ExtName: string;
+  TabValue: Integer;
+begin
+  Kind := FDlgKind;
+  EditText := string(FDlgEdit);
+  DlgClose;
+  case Kind of
+    fdSchemeData:
+      begin
+        if FSchemeEdit = nil then
+          Exit;
+        if AOk then
+          SchemeSetSectionData(FSchemeEdit, FSchemeEditSec, EditText);
+        ShowSchemeEdit(2);
+        if AOk then
+          SchemeSave;
+      end;
+    fdSchemeTab:
+      begin
+        ShowSchemeEditor(0);
+        if not AOk then
+          Exit;
+        TabValue := StrToIntDef(Trim(EditText), 0);
+        if (TabValue < 1) or (TabValue > 32) then
+        begin
+          Status(FarProduct + ': шаг табуляции - от 1 до 32');
+          Exit;
+        end;
+        FEditTabSize := TabValue;
+        if FEditor <> nil then
+          FEditor.TabSize := TabValue;
+        if FViewer <> nil then
+          FViewer.TabSize := TabValue;
+        SchemeIniWrite('Editor', 'TabChars', IntToStr(TabValue));
+        ShowSchemeEditor(0);
+      end;
+    fdSchemeType:
+      begin
+        if not AOk then
+        begin
+          ShowSchemeTypes('');
+          Exit;
+        end;
+        ExtName := LowerCase(Trim(EditText));
+        if Copy(ExtName, 1, 2) = '*.' then
+          Delete(ExtName, 1, 2);
+        if (ExtName <> '') and (ExtName[1] = '.') then
+          Delete(ExtName, 1, 1);
+        if (ExtName = '') or (Pos('=', ExtName) > 0) or
+           (Pos('.', ExtName) > 0) then
+        begin
+          ShowSchemeTypes('');
+          Status(FarProduct + ': расширение - без точки внутри и без "=", ' +
+            'например: inc');
+          Exit;
+        end;
+        ShowSchemeTypePick(ExtName, '');
+      end;
+  end;
+end;
+
 
 // Save setup (Shift+F9): папки панелей, сортировка, история - в editor.ini
 procedure TFarView.SaveSetup;
@@ -15664,6 +16378,8 @@ begin
   Ini := TBufIniFile.Create(AIniName);
   try
     FEditTabSize := StrToIntDef(Ini.ReadString('Editor', 'TabChars', '4'), 4);
+    FEditLineNumbers := Ini.ReadString(FarIniSection, 'EditLineNumbers',
+      '1') <> '0';
   finally
     Ini.Free;
   end;
@@ -15777,7 +16493,9 @@ begin
   case FMenuKind of
     fmDrive:
       Result := FarHelpDrives;
-    fmOptions, fmPalGroups, fmPalItems, fmHiRules, fmThemes:
+    fmOptions, fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmSchemes,
+    fmSchemeFiles, fmSchemeItems, fmSchemeEdit, fmSchemeEditor, fmSchemeTypes,
+    fmSchemeTypePick:
       Result := FarHelpOptions;
     fmEditEncoding:
       Result := FarHelpEditor;
@@ -15804,7 +16522,7 @@ begin
         Result := FarHelpEditor;
       fdViewFind, fdViewGoto:
         Result := FarHelpViewer;
-      fdHiDelete:
+      fdHiDelete, fdSchemeData, fdSchemeTab, fdSchemeType:
         Result := FarHelpOptions;
       fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew, fdOverwrite,
       fdOverRename:

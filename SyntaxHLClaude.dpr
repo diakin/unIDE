@@ -101,6 +101,7 @@ uses
   FarProgress in 'FarProgress.pas',
   SchemeLine in 'SchemeLine.pas',
   SchemeFiles in 'SchemeFiles.pas',
+  SchemeData in 'SchemeData.pas',
   EdBuffer in 'EdBuffer.pas',
   EdClip in 'EdClip.pas',
   EdEditor in 'EdEditor.pas',
