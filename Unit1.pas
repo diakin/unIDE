@@ -65634,6 +65634,19 @@ begin
   // Над редактором по умолчанию - вкладка Git, а не палитра Components
   if not FStartupDone and (FPalTabs <> nil) and (FPalTabs.TabIndex <> 1) then
     GitShowBar(True);
+  // Схема подсветки - ещё раз в конце запуска (просьба Андрея 07.11: пробная
+  // сборка laz64NEW пишет 30561 при запуске). Итог - в HiLite log
+  if not FStartupDone and (FWindowsIndex >= 0) and
+     (FWindowsIndex <= WindowsItemCount - 1) and
+     FWindows[FWindowsIndex].Used then
+  begin
+    Dbg('30563: схема подсветки - повторное чтение после запуска', clNavy);
+    LoadCustomClrSchema(WindowExt(FWindows[FWindowsIndex].FileName),
+                        FWindows[FWindowsIndex].FileName);
+    if FScheme.FFileSections.Count > 0 then
+      Dbg('30563: прочитано разделов: ' +
+          IntToStr(FScheme.FFileSections.Count), clNavy);
+  end;
   FStartupDone := True;
   // Простой наступает после КАЖДОГО сообщения, в том числе после каждого
   // движения мыши. Пока в конструкторе тянут компонент или рамку, вид
@@ -89110,6 +89123,38 @@ begin
              GetTickCount - StartTick - TWrite]), clNavy);
 end;
 
+// Первые байты файла и первой строки после ClrLoadLines - для 30561
+function ClrSchemeFileStart(const APath: string): string;
+var
+  Stream: TFileStream;
+  Raw: string;
+  Lines: TStringList;
+begin
+  Result := '';
+  try
+    Stream := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+    try
+      SetLength(Raw, 8);
+      SetLength(Raw, Stream.Read(Raw[1], 8));
+    finally
+      Stream.Free;
+    end;
+    Result := ClrHexBytes(Raw, 8);
+    Lines := TStringList.Create;
+    try
+      ClrLoadLines(Lines, APath);
+      if Lines.Count > 0 then
+        Result := Result + '; первая строка после чтения: ' +
+          ClrHexBytes(Lines[0], 8);
+    finally
+      Lines.Free;
+    end;
+  except
+    on Error: Exception do
+      Result := Result + ' (ошибка: ' + Error.Message + ')';
+  end;
+end;
+
 procedure TForm1.LoadCustomClrSchema(const Ext: string; const AFile: string);
 var
   WasModified: Boolean; // схема тоже меняет шрифт - см. ApplyEditorLook
@@ -89149,7 +89194,10 @@ begin
     if not FileExists(ClrPath) then
       Dbg('30560: схема подсветки не найдена: ' + ClrPath, clRed)
     else if FScheme.FFileSections.Count = 0 then
-      Dbg('30561: в схеме подсветки нет разделов: ' + ClrPath, clRed);
+      Dbg('30561: в схеме подсветки нет разделов: ' + ClrPath + ' | ' +
+          ClrReadVersion + '; метка программы: ' +
+          ClrHexBytes(SchemaHeadMark, 8) + '; начало файла: ' +
+          ClrSchemeFileStart(ClrPath), clRed);
     if not FileExists(DefaultSchemaFile) then
       Dbg('30562: нет файла умолчаний схем: ' + DefaultSchemaFile, clRed);
 

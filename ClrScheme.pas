@@ -353,6 +353,11 @@ function IsSchemaHead(const Str: string): Boolean;
 // тексте становится другими байтами: ни один раздел не узнаётся. Delphi 7
 // читает байты как есть - так же и здесь
 procedure ClrLoadLines(ALines: TStrings; const APath: string);
+// Для журнала (30561): версия чтения схем и байты метки - в шестнадцатеричном
+// виде; так видно, из какого ClrScheme.pas собран exe
+const
+  ClrReadVersion = 'ClrScheme 2026-11-07c (метка в любой кодировке)';
+function ClrHexBytes(const AStr: string; AMax: Integer): string;
 procedure ClrSaveLines(ALines: TStrings; const APath: string);
 function SchemaMarkerValue(const Str: string): string;
 function  IsKeywordSection(const AName: string): Boolean;
@@ -999,6 +1004,20 @@ begin
         Break;
       end;
   end;
+end;
+
+function ClrHexBytes(const AStr: string; AMax: Integer): string;
+var
+  ByteIdx: Integer;
+begin
+  Result := '';
+  for ByteIdx := 1 to Length(AStr) do
+  begin
+    if ByteIdx > AMax then
+      Break;
+    Result := Result + IntToHex(Ord(AStr[ByteIdx]), 2) + ' ';
+  end;
+  Result := TrimRight(Result);
 end;
 
 procedure ClrLoadLines(ALines: TStrings; const APath: string);
