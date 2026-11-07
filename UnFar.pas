@@ -140,6 +140,9 @@ unit UnFar;
 //      Overwrite, Skip, Rename, Append, Cancel) вместо окна Windows.
 //      Вопросы задаются до начала копирования; сама операция -
 //      SHFileOperation по списку файл -> файл (FOF_MULTIDESTFILES).
+//    - b.64: F3 на папке: итог - в строке панели о папке под курсором:
+//      'файлов N, папок M' и в конце размер с единицей ('... байт');
+//      в строке сообщений - только общий итог нескольких папок.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -175,7 +178,9 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.63';
+  FarBuild = 'b.64';
+  // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
+  FarMinNameW = 12;
 
   // Фон панели - для образца раскраски в окне DlgFarColors
   FarPanelColor = $800000;
@@ -194,6 +199,8 @@ type
     IsUp: Boolean;       // строка '..'
     Selected: Boolean;
     DirSizeKnown: Boolean; // папка: размер посчитан (F3), он - в Size
+    DirFiles: Integer;     // папка (F3): файлов внутри, с подпапками
+    DirDirs: Integer;      //   и папок внутри
   end;
   // Один тип массива для поля и локальных переменных: в Delphi 7 два
   // отдельно описанных 'array of TFarItem' - разные типы, присвоить нельзя
@@ -421,6 +428,8 @@ type
   private
     FPaths: TFarNames;
     FSizes: array of Int64;
+    FFileCounts: array of Integer;   // по каждой папке: файлов
+    FDirCounts: array of Integer;    //   и папок внутри
     FLock: TRTLCriticalSection;
     FBytes: Int64;
     FFiles: Integer;
@@ -437,6 +446,8 @@ type
     function Done: Boolean;
     procedure Progress(var ABytes: Int64; var AFiles, ADirs: Integer);
     function PathSize(AIndex: Integer): Int64;
+    function PathFiles(AIndex: Integer): Integer;
+    function PathDirs(AIndex: Integer): Integer;
     property Cancelled: Boolean read FCancelled;
   end;
 
@@ -3914,6 +3925,7 @@ var
   Fore, Back: TColor;
   IsActive: Boolean;
   Title, ItemName, RightText, Totals, FreeText, SelText: WideString;
+  CountText: WideString;
   TotalsLen, StartCol: Integer;
   SortLetter: string;
   HasRule: Boolean;
@@ -3999,7 +4011,15 @@ begin
       else if Panel.FFtpMode = 1 then
         RightText := ''
       else if IsDir and DirSizeKnown then
-        RightText := FarGroupDigits(Size)
+      begin
+        // F3: 'файлов N, папок M   1 234 байт'; не помещается с именем -
+        // только размер
+        RightText := WideString(FarGroupDigits(Size)) + WideString(' байт');
+        CountText := WideString('файлов ') + WideString(IntToStr(DirFiles)) +
+          WideString(', папок ') + WideString(IntToStr(DirDirs)) + '   ';
+        if Length(CountText) + Length(RightText) + FarMinNameW < InnerW then
+          RightText := CountText + RightText;
+      end
       else if IsDir then
         RightText := 'Folder'
       else
@@ -15923,6 +15943,8 @@ begin
   for PathIdx := 0 to High(APaths) do
     FPaths[PathIdx] := APaths[PathIdx];
   SetLength(FSizes, Length(APaths));
+  SetLength(FFileCounts, Length(APaths));
+  SetLength(FDirCounts, Length(APaths));
   InitializeCriticalSection(FLock);
   FDone := 0;
   FreeOnTerminate := False;
@@ -15964,6 +15986,20 @@ begin
   Result := 0;
   if (AIndex >= 0) and (AIndex <= High(FSizes)) then
     Result := FSizes[AIndex];
+end;
+
+function TFarDirSizeThread.PathFiles(AIndex: Integer): Integer;
+begin
+  Result := 0;
+  if (AIndex >= 0) and (AIndex <= High(FFileCounts)) then
+    Result := FFileCounts[AIndex];
+end;
+
+function TFarDirSizeThread.PathDirs(AIndex: Integer): Integer;
+begin
+  Result := 0;
+  if (AIndex >= 0) and (AIndex <= High(FDirCounts)) then
+    Result := FDirCounts[AIndex];
 end;
 
 procedure TFarDirSizeThread.ScanDir(const ADir: WideString; var ASize: Int64);
@@ -16009,7 +16045,7 @@ end;
 
 procedure TFarDirSizeThread.Execute;
 var
-  PathIdx: Integer;
+  PathIdx, FilesBefore, DirsBefore: Integer;
   DirSize: Int64;
 begin
   try
@@ -16018,8 +16054,13 @@ begin
       if FCancelled then
         Break;
       DirSize := 0;
+      // FFiles / FDirs пишет только этот поток - читать можно без FLock
+      FilesBefore := FFiles;
+      DirsBefore := FDirs;
       ScanDir(FPaths[PathIdx], DirSize);
       FSizes[PathIdx] := DirSize;
+      FFileCounts[PathIdx] := FFiles - FilesBefore;
+      FDirCounts[PathIdx] := FDirs - DirsBefore;
     end;
   except
     // ошибка обхода - подсчёт просто кончается
@@ -16129,16 +16170,22 @@ begin
       if (ItemIdx >= 0) and Panel.FItems[ItemIdx].IsDir then
       begin
         Panel.FItems[ItemIdx].Size := FDirSizeThread.PathSize(NameIdx);
+        Panel.FItems[ItemIdx].DirFiles := FDirSizeThread.PathFiles(NameIdx);
+        Panel.FItems[ItemIdx].DirDirs := FDirSizeThread.PathDirs(NameIdx);
         Panel.FItems[ItemIdx].DirSizeKnown := True;
       end;
     end;
+  // Одна папка: итог - в строке панели о ней; строка сообщений - пустая.
+  // Несколько: общий итог - в строке сообщений
   if Length(FDirSizeNames) = 1 then
-    Text := string(FDirSizeNames[0])
+    Status('')
   else
+  begin
     Text := 'папок ' + IntToStr(Length(FDirSizeNames));
-  Status(FarProduct + ': ' + Text + ' - ' + FarGroupDigits(Bytes) +
-    ' байт, файлов ' + IntToStr(Files) + ', папок внутри ' +
-    IntToStr(Dirs));
+    Status(FarProduct + ': ' + Text + ' - ' + FarGroupDigits(Bytes) +
+      ' байт, файлов ' + IntToStr(Files) + ', папок внутри ' +
+      IntToStr(Dirs));
+  end;
   FDirSizeThread.Free;
   FDirSizeThread := nil;
   Invalidate;
