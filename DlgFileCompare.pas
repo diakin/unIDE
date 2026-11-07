@@ -53,6 +53,9 @@ type
 
   // Вид строки сравнения
   TCmpRowKind = (crkEqual, crkDiff, crkFiller);
+  // Отметка отличия (окно разбора конфликтов): не выбрано, эта сторона
+  // взята в результат, отброшена
+  TCmpDiffMark = (cdmNone, cdmTaken, cdmDropped);
 
   // Панель сравнения: TEdRowsView, у строк отличий - свой фон, у
   // изменённых слов - ярче. Фон кладётся при отрисовке (OnLineRuns поверх
@@ -66,6 +69,7 @@ type
     FInline: array of TDiffRanges;   // символы с 1 в тексте строки
     FCurDiff: Integer;
     FCells: array of TEdRun;         // по символу: цвет, фон, начертание
+    FDiffMark: array of TCmpDiffMark;
     procedure CmpLineRuns(Sender: TObject; ARow: Integer;
       const ALine: WideString; var ARuns: TEdRuns; var ACount: Integer);
   public
@@ -74,7 +78,19 @@ type
     DiffBg, InlineBg, FillerBg: TColor;
     CurDiffBg, CurInlineBg, CurFillerBg: TColor;
     GutterDiffBg: TColor;
+    // Отметки отличий: взято (зелёным), отброшено (серым текстом)
+    TakenBg, TakenInlineBg, CurTakenBg: TColor;
+    DroppedBg, CurDroppedBg, DroppedFg: TColor;
     constructor Create(AOwner: TComponent); override;
+    // Разметка строк для своего окна (не TDlgFileCompare): число строк и
+    // ширина колонки номеров; вид и отличие строки; изменённые символы
+    procedure SetRowCount(ACount, APrefixLen: Integer);
+    procedure SetRowMark(ARow: Integer; AKind: TCmpRowKind; ADiff: Integer);
+    procedure SetRowInline(ARow: Integer; const ARanges: TDiffRanges);
+    // Отметки отличий: ACount - сколько отличий (все - cdmNone)
+    procedure SetDiffCount(ACount: Integer);
+    procedure SetDiffMark(ADiff: Integer; AMark: TCmpDiffMark);
+    function RowDiff(ARow: Integer): Integer;
     property CurDiff: Integer read FCurDiff write FCurDiff;
   end;
 
@@ -195,6 +211,12 @@ type
 function CompareReadFile(const AFileName: string; var AEncoding: string;
   var ABinary: Boolean): string;
 
+// Цвета отличий панели - по её фону (тёмный / светлый)
+procedure CompareViewColors(AView: TCompareView);
+
+// Табуляции - пробелами до позиции, кратной ATabSize
+function CompareExpandTabs(const ALine: string; ATabSize: Integer): string;
+
 implementation
 
 const
@@ -293,6 +315,51 @@ begin
   Result := string(EdDecodeBytes(Raw, IsUtf8));
 end;
 
+function CompareExpandTabs(const ALine: string; ATabSize: Integer): string;
+begin
+  Result := ExpandTabsTo(ALine, ATabSize);
+end;
+
+procedure CompareViewColors(AView: TCompareView);
+begin
+  if IsDarkColor(AView.BackColor) then
+  begin
+    AView.DiffBg := $00284050;
+    AView.InlineBg := $00306A88;
+    AView.FillerBg := $00262626;
+    AView.CurDiffBg := $00584A20;
+    AView.CurInlineBg := $00207A90;
+    AView.CurFillerBg := $00585858;
+    AView.GutterDiffBg := $00303A44;
+    AView.TakenBg := $00284A28;
+    AView.TakenInlineBg := $00307A30;
+    AView.CurTakenBg := $00386838;
+    AView.DroppedBg := $00303030;
+    AView.CurDroppedBg := $00484848;
+    AView.DroppedFg := $00808080;
+  end
+  else
+  begin
+    // Как в WinMerge: отличие - жёлтым, текущее - голубым, нет строк -
+    // серым, изменённые слова - ярче
+    AView.DiffBg := $00C8F0FF;
+    AView.InlineBg := $0060DCFF;
+    AView.FillerBg := $00E4E4E4;
+    AView.CurDiffBg := $00FFF0B4;
+    AView.CurInlineBg := $0000F0FF;
+    AView.CurFillerBg := $00C8C8C8;
+    AView.GutterDiffBg := $00D0E4EC;
+    AView.TakenBg := $00D4F4D4;
+    AView.TakenInlineBg := $0090E090;
+    AView.CurTakenBg := $00B0ECB0;
+    AView.DroppedBg := $00F0F0F0;
+    AView.CurDroppedBg := $00DCDCDC;
+    AView.DroppedFg := $00A0A0A0;
+  end;
+  AView.SelColor := UiThemeColor('Menu.HotBG');
+  AView.SelTextColor := UiThemeColor('Menu.HotText');
+end;
+
 // ---------------------------------------------------------------------------
 //  TCompareView
 // ---------------------------------------------------------------------------
@@ -306,13 +373,67 @@ begin
   FCurDiff := -1;
 end;
 
+procedure TCompareView.SetRowCount(ACount, APrefixLen: Integer);
+var
+  RowIdx: Integer;
+begin
+  SetLength(FRowKind, ACount);
+  SetLength(FRowDiff, ACount);
+  SetLength(FInline, ACount);
+  for RowIdx := 0 to ACount - 1 do
+  begin
+    FRowKind[RowIdx] := crkEqual;
+    FRowDiff[RowIdx] := -1;
+    FInline[RowIdx] := nil;
+  end;
+  FPrefixLen := APrefixLen;
+end;
+
+procedure TCompareView.SetRowMark(ARow: Integer; AKind: TCmpRowKind;
+  ADiff: Integer);
+begin
+  if (ARow < 0) or (ARow > High(FRowKind)) then
+    Exit;
+  FRowKind[ARow] := AKind;
+  FRowDiff[ARow] := ADiff;
+end;
+
+procedure TCompareView.SetRowInline(ARow: Integer; const ARanges: TDiffRanges);
+begin
+  if (ARow >= 0) and (ARow <= High(FInline)) then
+    FInline[ARow] := ARanges;
+end;
+
+procedure TCompareView.SetDiffCount(ACount: Integer);
+var
+  DiffIdx: Integer;
+begin
+  SetLength(FDiffMark, ACount);
+  for DiffIdx := 0 to ACount - 1 do
+    FDiffMark[DiffIdx] := cdmNone;
+end;
+
+procedure TCompareView.SetDiffMark(ADiff: Integer; AMark: TCmpDiffMark);
+begin
+  if (ADiff >= 0) and (ADiff <= High(FDiffMark)) then
+    FDiffMark[ADiff] := AMark;
+end;
+
+function TCompareView.RowDiff(ARow: Integer): Integer;
+begin
+  Result := -1;
+  if (ARow >= 0) and (ARow <= High(FRowDiff)) then
+    Result := FRowDiff[ARow];
+end;
+
 procedure TCompareView.CmpLineRuns(Sender: TObject; ARow: Integer;
   const ALine: WideString; var ARuns: TEdRuns; var ACount: Integer);
 var
   LineLen, RunIdx, CharIdx, RangeIdx, CellIdx, Count: Integer;
   Kind: TCmpRowKind;
+  Mark: TCmpDiffMark;
   IsCur: Boolean;
-  RowBg, WordBg: TColor;
+  RowBg, WordBg, MarkFg: TColor;
   Range: TDiffRange;
 begin
   ACount := 0;
@@ -339,6 +460,29 @@ begin
     WordBg := CurInlineBg
   else
     WordBg := InlineBg;
+  // Отметка отличия (окно конфликтов): взятое - зелёным, отброшенное -
+  // серым текстом без выделения слов
+  Mark := cdmNone;
+  if (FRowDiff[ARow] >= 0) and (FRowDiff[ARow] <= High(FDiffMark)) then
+    Mark := FDiffMark[FRowDiff[ARow]];
+  MarkFg := clNone;
+  if (Mark = cdmTaken) and (Kind = crkDiff) then
+  begin
+    if IsCur then
+      RowBg := CurTakenBg
+    else
+      RowBg := TakenBg;
+    WordBg := TakenInlineBg;
+  end
+  else if Mark = cdmDropped then
+  begin
+    if IsCur then
+      RowBg := CurDroppedBg
+    else
+      RowBg := DroppedBg;
+    WordBg := RowBg;
+    MarkFg := DroppedFg;
+  end;
 
   // По символу: вид из кусков, потом фон отличия и слов
   LineLen := Length(ALine);
@@ -363,7 +507,11 @@ begin
     if CharIdx < FPrefixLen then
       FCells[CharIdx].Back := GutterDiffBg
     else
+    begin
       FCells[CharIdx].Back := RowBg;
+      if MarkFg <> clNone then
+        FCells[CharIdx].Fore := MarkFg;
+    end;
   if Kind = crkDiff then
     for RangeIdx := 0 to High(FInline[ARow]) do
     begin
@@ -854,36 +1002,9 @@ end;
 procedure TDlgFileCompare.UpdateColors;
 var
   SideIdx: Integer;
-  View: TCompareView;
 begin
   for SideIdx := 0 to 1 do
-  begin
-    View := FView[SideIdx];
-    if IsDarkColor(View.BackColor) then
-    begin
-      View.DiffBg := $00284050;
-      View.InlineBg := $00306A88;
-      View.FillerBg := $00262626;
-      View.CurDiffBg := $00584A20;
-      View.CurInlineBg := $00207A90;
-      View.CurFillerBg := $00585858;
-      View.GutterDiffBg := $00303A44;
-    end
-    else
-    begin
-      // Как в WinMerge: отличие - жёлтым, текущее - голубым, нет строк -
-      // серым, изменённые слова - ярче
-      View.DiffBg := $00C8F0FF;
-      View.InlineBg := $0060DCFF;
-      View.FillerBg := $00E4E4E4;
-      View.CurDiffBg := $00FFF0B4;
-      View.CurInlineBg := $0000F0FF;
-      View.CurFillerBg := $00C8C8C8;
-      View.GutterDiffBg := $00D0E4EC;
-    end;
-    View.SelColor := UiThemeColor('Menu.HotBG');
-    View.SelTextColor := UiThemeColor('Menu.HotText');
-  end;
+    CompareViewColors(FView[SideIdx]);
 end;
 
 procedure TDlgFileCompare.Render;

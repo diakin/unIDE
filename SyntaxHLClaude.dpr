@@ -59,6 +59,7 @@ uses
   TextDiff in 'TextDiff.pas',
   SplitDiff in 'SplitDiff.pas',
   DlgFileCompare in 'DlgFileCompare.pas',
+  DlgConflictMerge in 'DlgConflictMerge.pas',
   DlgFontViewer in 'DlgFontViewer.pas',
   DlgTtfToUtft in 'DlgTtfToUtft.pas',
   FileSearch in 'FileSearch.pas',

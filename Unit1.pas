@@ -1387,6 +1387,8 @@ type
       Shift: TShiftState);
     procedure GitStatusClick(Sender: TObject);
     procedure GitConflictsClick(Sender: TObject);
+    procedure GitConflictOpenLine(const AFileName: string; ALine: Integer);
+    procedure GitConflictSaved(const AFileName: string);
     procedure GitAutoResolveClick(Sender: TObject);
     procedure GitContinueClick(Sender: TObject);
     procedure GitSkipClick(Sender: TObject);
@@ -4690,6 +4692,7 @@ var
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
     DlgFileCompare, // сравнение двух файлов (File - Compare Files...)
+    DlgConflictMerge, // разбор конфликтов git (панель Git - Conflicts...)
     DlgFontViewer, // просмотр шрифтов UTFT (Arduino - Font Viewer)
     DlgTtfToUtft, // шрифт UTFT из TTF (Arduino - TTF to UTFT Font)
     ArdObjParse,  // инспектор скетча .ino: функции вывода на экран TFT
@@ -74726,8 +74729,8 @@ begin
   begin
     AIsError := True;
     Result := 'конфликт: в файлах с CONFLICT обе версии. Conflicts... - ' +
-      'открыть файл на конфликте; исправить, сохранить, затем Continue. ' +
-      'Отменить - Abort';
+      'окно разбора: слева текущая ветка, справа вливаемое, выбрать по ' +
+      'каждому конфликту, сохранить, затем Continue. Отменить - Abort';
     Exit;
   end;
   // Push в репозитории без коммитов: ветки ещё нет
@@ -74969,8 +74972,8 @@ begin
   FGitStatusWarns := TStringList.Create;
   // Незаконченное слияние / cherry-pick / revert (GitPlaceHint)
   // .dfm: FGitBtnConflicts := NewButton('Conflicts...', 'Файлы с конфликтом: список ' +
-    // .dfm: 'в Git log, выбранный - в редактор на первый конфликт ' +
-    // .dfm: '(<<<<<<<)', 4, 84, GitConflictsClick);
+    // .dfm: 'в Git log и окно разбора (DlgConflictMerge)', 4, 84,
+    // .dfm: GitConflictsClick);
   // .dfm: FGitBtnAutoResolve := NewButton('Auto-resolve', 'Разрешить конфликты, ' +
     // .dfm: 'где обе стороны только добавили строки в одно место (в общей версии ' +
     // .dfm: 'там ничего не было): оставить обе вставки - сначала текущей ветки, ' +
@@ -76323,15 +76326,22 @@ begin
   end;
 end;
 
+// Conflicts...: файлы с конфликтом - в Git log; окно разбора конфликтов
+// (DlgConflictMerge) - на первом файле с маркерами, остальные - кнопкой
+// «Файл...» в окне. Маркеров нет ни в одном файле (конфликт удаления,
+// двоичный файл) - выбранный файл в редактор, как раньше
 procedure TForm1.GitConflictsClick(Sender: TObject);
 var
-  Git, Repo, Choice, FullPath: string;
+  Git, Repo, Choice, FullPath, FirstMarked: string;
   Files, Choices: TStringList;
   FileIdx, MarkCount, MarkLine: Integer;
+  Dlg: TDlgConflictMerge;
 begin
   if not GitPrepare(Git, Repo) then
     Exit;
   FGitOp := GitCurrentOp(Git, Repo);
+  // Правки в редакторе - на диск: окно читает файл с диска
+  AutoSaveEditorFiles;
   Files := TStringList.Create;
   Choices := TStringList.Create;
   try
@@ -76343,18 +76353,42 @@ begin
       Exit;
     end;
     LogGit('Git: файлы с конфликтом (' + FGitOp + '):');
+    FirstMarked := '';
     for FileIdx := 0 to Files.Count - 1 do
     begin
       FullPath := IncludeTrailingPathDelimiter(Repo) +
         string(GitWinPath(WideString(Files[FileIdx])));
       MarkCount := GitMarkerCount(FullPath, MarkLine);
       if MarkCount > 0 then
+      begin
         Choice := Files[FileIdx] + '  (конфликтов: ' + IntToStr(MarkCount) +
-          ')'
+          ')';
+        if FirstMarked = '' then
+          FirstMarked := FullPath;
+      end
       else
         Choice := Files[FileIdx] + '  (маркеров нет - уже исправлен)';
       Choices.Add(Choice);
       LogGit('  ' + Choice);
+    end;
+    if FirstMarked <> '' then
+    begin
+      LogGit('  Окно разбора: слева - текущая ветка, справа - вливаемое ' +
+              '(коммит или ветка). По каждому конфликту - какую сторону ' +
+              'взять (или обе), внизу - результат; Сохранить. Когда все ' +
+              'файлы готовы - Continue');
+      Dlg := TDlgConflictMerge.CreateDlg(Self);
+      Dlg.SetSchemeProvider(SchemeCopyFor);
+      Dlg.SetViewFont(RichEdit1.Font, FTabChars);
+      Dlg.SetPlacementIni(SettingsFileName);
+      Dlg.SetFiles(Repo, Files);
+      Dlg.OnOpenLine := GitConflictOpenLine;
+      Dlg.OnSaved := GitConflictSaved;
+      if Dlg.LoadFile(FirstMarked) then
+        Dlg.Show
+      else
+        Dlg.Free;
+      Exit;
     end;
     LogGit('  В файле: от <<<<<<< до ======= - текущая ветка, от ======= ' +
             'до >>>>>>> - вливаемое (коммит или ветка). Оставить нужное, ' +
@@ -76376,6 +76410,22 @@ begin
     Choices.Free;
     Files.Free;
   end;
+end;
+
+// Окно конфликтов: «В редакторе»
+procedure TForm1.GitConflictOpenLine(const AFileName: string; ALine: Integer);
+begin
+  StrictOpenLine(AFileName, ALine);
+end;
+
+// Окно конфликтов записало файл: открытые вкладки - с диска, панель Git -
+// заново (кнопка Continue, строка Git status)
+procedure TForm1.GitConflictSaved(const AFileName: string);
+begin
+  CheckDiskChanges(-1);
+  LogGit('Git: записан ' + AFileName + ', конфликтов в нём: ' +
+    IntToStr(ConflictMarkerCount(AFileName)));
+  GitRefreshBar;
 end;
 
 procedure TForm1.GitContinueClick(Sender: TObject);

@@ -2116,7 +2116,7 @@ object Form1: TForm1
           end
           object FGitBtnConflicts: TUiButton
             Caption = 'Conflicts...'
-            Hint = 'Файлы с конфликтом: список в Git log, выбранный - в редактор на первый конфликт (<<<<<<<)'
+            Hint = 'Файлы с конфликтом: список в Git log и окно разбора - слева текущая ветка, справа вливаемое, выбор по каждому конфликту, результат внизу'
             ShowHint = True
             Left = 4
             Top = 1
