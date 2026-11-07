@@ -1,0 +1,7 @@
+build=07.11.2026 05:28:02
+source=D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\SyntaxHLClaude.dpr
+repo=D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude
+branch=mainTest
+commit=7d38880e2713cf8a45636f2760f53025de7dc616
+changes=0
+untracked=0   (файлы не из репозитория)
