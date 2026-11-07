@@ -2298,6 +2298,14 @@ object Form1: TForm1
             ShowHint = True
             OnClick = ObjMoveClick
           end
+          object FObjNvBtn: TUiButton
+            Top = 3
+            Height = 24
+            Width = 105
+            Caption = 'Hide non-visual'
+            ShowHint = True
+            OnClick = DsgNonVisualClick
+          end
         end
         object FObjTree: TUiTreeView
           Height = 220

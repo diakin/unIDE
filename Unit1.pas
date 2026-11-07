@@ -768,6 +768,7 @@ type
     FObjDsgBtn: TUiButton; // Design form - открыть конструктор
     FObjDsgShowBtn: TUiButton; // Hide/Show form - спрятать или показать его окно
     FObjMoveBtn: TUiButton; // «Перенести в .dfm»: разбор, что переносится
+    FObjNvBtn: TUiButton; // Hide/Show non-visual - значки невизуальных в конструкторе
     FObjTree: TUiTreeView;
     mReopen: TMenuItem;
     mSaveAs: TMenuItem;
@@ -1165,6 +1166,7 @@ type
     function RunConOf(const AExe: string): TObject;
     procedure OwnCaretTick(Sender: TObject);
     procedure DesignFormClick(Sender: TObject);
+    procedure DsgNonVisualClick(Sender: TObject);
     procedure FmtViewClick(Sender: TObject);
     procedure SplitVClick(Sender: TObject);
     procedure SplitHClick(Sender: TObject);
@@ -3234,6 +3236,7 @@ type
     procedure DsgPaletteReset;
     procedure DsgAddRuntime;
     procedure DsgPaletteTabs;
+    procedure DsgNonVisualCaption;
     procedure DsgLiveLook;
     procedure DsgLiveDiffClear;
     function  OwnFormResText(const AClass: string): string;
@@ -31613,6 +31616,11 @@ begin
   FObjMoveBtn.Hint := 'Какие компоненты, созданные в коде, можно перенести ' +
   'в .dfm и что останется в коде';
 
+  FObjNvBtn.Left := FObjMoveBtn.Left + FObjMoveBtn.Width + 4;
+  FObjNvBtn.Hint := 'Спрятать или показать на форме конструктора значки ' +
+  'невизуальных компонентов (TTimer, меню, диалоги)';
+  DsgNonVisualCaption;
+
 FDsgUndo := TStringList.Create;
   FDsgUndoPas := TStringList.Create;
   FDsgMade := TStringList.Create;
@@ -41824,6 +41832,30 @@ begin
   ObjSelectAnyName(Id);
 end;
 
+// Кнопка Hide non-visual / Show non-visual: значки невизуальных
+// компонентов на форме конструктора (и на спрятанном втором виде).
+// Выбор хранится в editor.ini, [Designer] HideNonVisual.
+procedure TForm1.DsgNonVisualClick(Sender: TObject);
+begin
+  FEnv.DsgHideNonVisual := not FEnv.DsgHideNonVisual;
+  EnvSaveOptions(SettingsFileName, FEnv);
+  DsgNonVisualCaption;
+  if FDesigner <> nil then
+    FDesigner.HideNonVisual := FEnv.DsgHideNonVisual;
+  if FDsgOther <> nil then
+    FDsgOther.HideNonVisual := FEnv.DsgHideNonVisual;
+end;
+
+procedure TForm1.DsgNonVisualCaption;
+begin
+  if FObjNvBtn = nil then
+    Exit;
+  if FEnv.DsgHideNonVisual then
+    FObjNvBtn.Caption := 'Show non-visual'
+  else
+    FObjNvBtn.Caption := 'Hide non-visual';
+end;
+
 procedure TForm1.DesignFormClick(Sender: TObject);
 var
   Ext, Dfm, Txt, Err: string;
@@ -43281,6 +43313,7 @@ procedure TForm1.DsgThemeLook;
 var
   I: Integer;
   Comp: TComponent;
+  MenuBar: TUiMenuBar;
 begin
   if (FDesigner = nil) or (FDesigner.Form = nil) or not IsOwnProject or
      (OwnLiveForm(FObjFormClass) = nil) then
@@ -43305,6 +43338,32 @@ begin
       Continue;
     UiPaintColors(TControl(Comp));
   end;
+
+  // Строка меню TUiMenuBar - как у живой формы. При загрузке форма
+  // конструктора светлая (UiThemeAddDesignRoot), строка решила, что меню
+  // Windows, поставила его окну и спряталась, а конструктор показал её
+  // как скрытую: на форме были две строки меню. Теперь тема IDE - строка
+  // выбирает заново (ApplyMode: в Dark и Custom меню окна убирается), и
+  // конструктору - её видимость, без красной рамки скрытого.
+  for I := 0 to FDesigner.Form.ComponentCount - 1 do
+    if FDesigner.Form.Components[I] is TUiMenuBar then
+    begin
+      MenuBar := TUiMenuBar(FDesigner.Form.Components[I]);
+      MenuBar.ApplyMode;
+      if MenuBar.Visible then
+        FDesigner.SetCompPropText(MenuBar, 'Visible', 'True')
+      else
+        FDesigner.SetCompPropText(MenuBar, 'Visible', 'False');
+    end;
+
+  // Панель Git и палитра лежат в pnlPaletteIn друг на друге (alClient), у
+  // живой формы видна одна из них (GitShowBar). Копия палитры в
+  // конструкторе пустая: её вкладки и кнопки строит сама палитра, в снимок
+  // они не входят (FormSnapshot, IsInnerPart). Поверх - панель Git с её
+  // кнопками из .dfm.
+  Comp := FDesigner.Form.FindComponent('FGitBar');
+  if Comp is TControl then
+    TControl(Comp).BringToFront;
 end;
 
 // Палитра редактора в конструкторе его же формы. Кнопки в снимке спрятаны
@@ -81235,6 +81294,7 @@ begin
   ADesigner.DragTrace := FEnv.DsgDragTrace;
   ADesigner.SnapToGrid := FEnv.DsgSnapToGrid;
   ADesigner.ShowCaptions := FEnv.DsgShowCaptions;
+  ADesigner.HideNonVisual := FEnv.DsgHideNonVisual;
   ADesigner.ShowHints := FEnv.DsgShowHints;
   ADesigner.ExtendedHints := FEnv.DsgExtendedHints;
 end;

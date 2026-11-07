@@ -155,6 +155,9 @@ private
   FSnapToGrid: Boolean;
   // Имена под значками невизуальных компонентов
   FShowCaptions: Boolean;
+  // Значки невизуальных компонентов спрятаны (кнопка Hide non-visual):
+  // на большой форме они закрывают контролы
+  FHideNonVisual: Boolean;
   // Подсказка над компонентом под мышью: «Имя: Класс», с ExtendedHints -
   // место, размер, TabStop и TabOrder. Своё окно подсказки: Hint самих
   // компонентов формы - их свойство из .dfm, его не трогаем.
@@ -300,6 +303,7 @@ private
   procedure SetGrid(AValue: Integer);
   procedure SetShowGrid(AValue: Boolean);
   procedure SetShowCaptions(AValue: Boolean);
+  procedure SetHideNonVisual(AValue: Boolean);
   procedure SetShowHints(AValue: Boolean);
   procedure HintTimerTick(Sender: TObject);
   function  HintTarget(const AScreen: TPoint): TComponent;
@@ -393,6 +397,7 @@ private
   property ShowGrid: Boolean read FShowGrid write SetShowGrid;
   property SnapToGrid: Boolean read FSnapToGrid write FSnapToGrid;
   property ShowCaptions: Boolean read FShowCaptions write SetShowCaptions;
+  property HideNonVisual: Boolean read FHideNonVisual write SetHideNonVisual;
   property ShowHints: Boolean read FShowHints write SetShowHints;
   property ExtendedHints: Boolean read FExtendedHints write FExtendedHints;
   // Запирать координаты, которые задаёт код (MarkCodePlaced); False -
@@ -3176,6 +3181,7 @@ begin
     Icon.SetBounds(LongRec(Comp.DesignInfo).Lo, LongRec(Comp.DesignInfo).Hi, 28, 28);
     // Подсказка значка - общая подсказка конструктора (HoverAt)
     Icon.ShowHint := False;
+    Icon.Visible := not FHideNonVisual;
     Icon.Parent := FForm;
   end;
   UpdateIconCaptions;
@@ -3234,7 +3240,7 @@ begin
     if not (FForm.Controls[CtlIdx] is TDsgIcon) then
       Continue;
     Icon := TDsgIcon(FForm.Controls[CtlIdx]);
-    if FShowCaptions and (Icon.FComp <> nil) then
+    if FShowCaptions and (Icon.FComp <> nil) and Icon.Visible then
     begin
       if Icon.FCaption = nil then
       begin
@@ -3259,6 +3265,28 @@ begin
     Exit;
   FShowCaptions := AValue;
   UpdateIconCaptions;
+end;
+
+// Значки невизуальных компонентов спрятать или показать. Выделен
+// невизуальный - маркеры уходят вместе с его значком.
+procedure TFormDesigner.SetHideNonVisual(AValue: Boolean);
+var
+  CtlIdx: Integer;
+begin
+  if AValue = FHideNonVisual then
+    Exit;
+  FHideNonVisual := AValue;
+  if FForm = nil then
+    Exit;
+  for CtlIdx := 0 to FForm.ControlCount - 1 do
+    if FForm.Controls[CtlIdx] is TDsgIcon then
+      FForm.Controls[CtlIdx].Visible := not AValue;
+  UpdateIconCaptions;
+  if (FSel <> nil) and not (FSel is TControl) then
+    if AValue then
+      HideCarets
+    else
+      ShowCarets;
 end;
 
 procedure TFormDesigner.SetShowHints(AValue: Boolean);

@@ -36,6 +36,7 @@ type
     DsgGridY: Integer;
     DsgAutoCreateForms: Boolean;  // New Form вписывает Application.CreateForm
     DsgShowCaptions: Boolean;     // имена под значками невизуальных компонентов
+    DsgHideNonVisual: Boolean;    // значки невизуальных компонентов спрятаны
     DsgShowHints: Boolean;        // подсказка «Имя: Класс» над компонентом
     DsgExtendedHints: Boolean;    // в подсказке - место, размер, TabOrder
     DsgDragTrace: Boolean;        // журнал переноса в HiLite log (отладка;
@@ -139,6 +140,7 @@ begin
   AOpts.DsgGridY := 8;
   AOpts.DsgAutoCreateForms := True;   // так New Form работал и раньше
   AOpts.DsgShowCaptions := False;
+  AOpts.DsgHideNonVisual := False;
   AOpts.DsgShowHints := True;
   AOpts.DsgExtendedHints := True;
 end;
@@ -196,6 +198,8 @@ begin
                                              AOpts.DsgAutoCreateForms);
     AOpts.DsgShowCaptions := Ini.ReadBool(SecDesigner, 'ShowComponentCaptions',
                                           AOpts.DsgShowCaptions);
+    AOpts.DsgHideNonVisual := Ini.ReadBool(SecDesigner, 'HideNonVisual',
+                                           AOpts.DsgHideNonVisual);
     AOpts.DsgShowHints := Ini.ReadBool(SecDesigner, 'ShowDesignerHints',
                                        AOpts.DsgShowHints);
     AOpts.DsgExtendedHints := Ini.ReadBool(SecDesigner, 'ShowExtendedHints',
@@ -227,6 +231,7 @@ begin
     Ini.WriteInteger(SecDesigner, 'GridSizeY', GridValue(AOpts.DsgGridY));
     Ini.WriteBool(SecDesigner, 'AutoCreateForms', AOpts.DsgAutoCreateForms);
     Ini.WriteBool(SecDesigner, 'ShowComponentCaptions', AOpts.DsgShowCaptions);
+    Ini.WriteBool(SecDesigner, 'HideNonVisual', AOpts.DsgHideNonVisual);
     Ini.WriteBool(SecDesigner, 'ShowDesignerHints', AOpts.DsgShowHints);
     Ini.WriteBool(SecDesigner, 'ShowExtendedHints', AOpts.DsgExtendedHints);
   finally
