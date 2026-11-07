@@ -22071,7 +22071,7 @@ end;
 // переходит на любое оставшееся.
 procedure TForm1.CloseWindow(WinIdx: Integer);
 var
-  I, NewIdx: Integer;
+  I, NewIdx, TabPos: Integer;
 begin
   if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) then
     Exit;
@@ -22083,6 +22083,16 @@ begin
   if WinIdx = FWindowsIndex then
     if not ConfirmSaveCurrent then
       Exit;
+
+  // Место вкладки - чтобы после закрытия активного окна перейти на
+  // соседнюю вкладку, а не на первое окно списка Windows
+  TabPos := -1;
+  for I := 0 to High(FTabWin) do
+    if FTabWin[I] = WinIdx then
+    begin
+      TabPos := I;
+      Break;
+    end;
 
   RemoveTabOf(WinIdx);
 
@@ -22105,13 +22115,26 @@ begin
   begin
     FWindowsIndex := -1;
 
+    // Соседняя вкладка: та, что встала на место закрытой, или последняя.
+    // Раньше бралось первое занятое окно - после удаления файла в Корзину
+    // открывалось окно 1 из меню Windows, хотя его вкладки рядом не было
     NewIdx := -1;
-    for I := 0 to WindowsItemCount - 1 do
-      if FWindows[I].Used then
-      begin
-        NewIdx := I;
-        Break;
-      end;
+    if (TabPos >= 0) and (Length(FTabWin) > 0) then
+    begin
+      if TabPos > High(FTabWin) then
+        TabPos := High(FTabWin);
+      NewIdx := FTabWin[TabPos];
+      if (NewIdx < 0) or (NewIdx > WindowsItemCount - 1) or
+         not FWindows[NewIdx].Used then
+        NewIdx := -1;
+    end;
+    if NewIdx < 0 then
+      for I := 0 to WindowsItemCount - 1 do
+        if FWindows[I].Used then
+        begin
+          NewIdx := I;
+          Break;
+        end;
 
     if NewIdx >= 0 then
       ActivateWindow(NewIdx)
