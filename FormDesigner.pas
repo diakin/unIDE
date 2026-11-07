@@ -134,6 +134,9 @@ TDsgNonVisual = class(TComponent);
 TFormDesigner = class
 private
   FForm: TForm;
+  // DC, в котором окно рисуется сейчас (WM_PAINT перехватчика), - туда же
+  // рисуются метки (Mark*); 0 - метки берут GetDC окна
+  FPaintDC: HDC;
   FCarets: array[1..8] of TDsgCaret;
   FSel: TComponent;
   // Сетка (IDE Options - Designer): шаг по X и Y, показывать ли точки,
@@ -460,6 +463,9 @@ private
   // просмотра - его Left/Top в .dfm записаны относительно прежнего
   // родителя, и писать туда новые было бы неверно.
   function Reparent(const AName, AParent: string): Boolean;
+  // DC для меток окна ACtl: DC текущей отрисовки или GetDC окна
+  function MarkDCGet(ACtl: TWinControl): HDC;
+  procedure MarkDCFree(ACtl: TWinControl; ADC: HDC);
   procedure MarkRuntime(ACtl: TWinControl);
   // Серая пунктирная рамка у контейнера без видимой границы (TPanel с
   // BevelOuter = bvNone и т. п.), как в Delphi: иначе его края на форме
@@ -2027,6 +2033,15 @@ begin
     WM_PAINT:
     begin
       FPrev(Msg);
+      {$IFDEF FPC}
+      // LCL win32 рисует окно в буфер (в окне с DoubleBuffered - и у
+      // TPanel) и копирует буфер в окно уже после обработчика
+      // (win32callback.inc, SendPaintMessage): метки, нарисованные через
+      // GetDC, затирались - у панелей без рамки не было пунктира. Метки -
+      // в DC сообщения (буфер или DC BeginPaint)
+      FDesigner.FPaintDC := HDC(Msg.WParam);
+      try
+      {$ENDIF}
       if FDesigner.IsRuntime(FCtl) then
         FDesigner.MarkRuntime(FCtl)
       else if not IsRoot then
@@ -2034,6 +2049,11 @@ begin
       FDesigner.MarkInvisibleKids(FCtl);
       FDesigner.MarkHidden(FCtl);
       FDesigner.MarkForeign(FCtl);
+      {$IFDEF FPC}
+      finally
+        FDesigner.FPaintDC := 0;
+      end;
+      {$ENDIF}
       Exit;
     end;
 
@@ -4232,6 +4252,20 @@ end;
 
 // Пометка runtime-компонента: пунктирная рамка по краю, чтобы не спутать
 // с компонентом из .dfm
+function TFormDesigner.MarkDCGet(ACtl: TWinControl): HDC;
+begin
+  if FPaintDC <> 0 then
+    Result := FPaintDC
+  else
+    Result := GetDC(ACtl.Handle);
+end;
+
+procedure TFormDesigner.MarkDCFree(ACtl: TWinControl; ADC: HDC);
+begin
+  if ADC <> FPaintDC then
+    ReleaseDC(ACtl.Handle, ADC);
+end;
+
 procedure TFormDesigner.MarkRuntime(ACtl: TWinControl);
 var
   DC: HDC;
@@ -4240,7 +4274,7 @@ var
 begin
   if not ACtl.HandleAllocated then
     Exit;
-  DC := GetDC(ACtl.Handle);
+  DC := MarkDCGet(ACtl);
   Cnv := TCanvas.Create;
   try
     Cnv.Handle := DC;
@@ -4252,7 +4286,7 @@ begin
   finally
     Cnv.Handle := 0;
     Cnv.Free;
-    ReleaseDC(ACtl.Handle, DC);
+    MarkDCFree(ACtl, DC);
   end;
 end;
 
@@ -4335,7 +4369,7 @@ begin
     end;
   if not Any then
     Exit;
-  DC := GetDC(ACtl.Handle);
+  DC := MarkDCGet(ACtl);
   Cnv := TCanvas.Create;
   try
     Cnv.Handle := DC;
@@ -4354,7 +4388,7 @@ begin
   finally
     Cnv.Handle := 0;
     Cnv.Free;
-    ReleaseDC(ACtl.Handle, DC);
+    MarkDCFree(ACtl, DC);
   end;
 end;
 
@@ -4366,7 +4400,7 @@ var
 begin
   if not ACtl.HandleAllocated or not NoVisibleBorder(ACtl) then
     Exit;
-  DC := GetDC(ACtl.Handle);
+  DC := MarkDCGet(ACtl);
   Cnv := TCanvas.Create;
   try
     Cnv.Handle := DC;
@@ -4379,7 +4413,7 @@ begin
   finally
     Cnv.Handle := 0;
     Cnv.Free;
-    ReleaseDC(ACtl.Handle, DC);
+    MarkDCFree(ACtl, DC);
   end;
 end;
 
@@ -4632,7 +4666,7 @@ begin
   if not Any then
     Exit;
 
-  DC := GetDC(ACtl.Handle);
+  DC := MarkDCGet(ACtl);
   Cnv := TCanvas.Create;
   try
     Cnv.Handle := DC;
@@ -4658,7 +4692,7 @@ begin
   finally
     Cnv.Handle := 0;
     Cnv.Free;
-    ReleaseDC(ACtl.Handle, DC);
+    MarkDCFree(ACtl, DC);
   end;
 end;
 
@@ -4687,7 +4721,7 @@ begin
   if not Any then
     Exit;
 
-  DC := GetDC(ACtl.Handle);
+  DC := MarkDCGet(ACtl);
   FrameCanvas := TCanvas.Create;
   try
     FrameCanvas.Handle := DC;
@@ -4713,7 +4747,7 @@ begin
   finally
     FrameCanvas.Handle := 0;
     FrameCanvas.Free;
-    ReleaseDC(ACtl.Handle, DC);
+    MarkDCFree(ACtl, DC);
   end;
 end;
 
