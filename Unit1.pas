@@ -43364,6 +43364,21 @@ begin
   Comp := FDesigner.Form.FindComponent('FGitBar');
   if Comp is TControl then
     TControl(Comp).BringToFront;
+
+  // Окна просмотра текста (TEdView), созданные кодом (FCmpView - второе
+  // окно сравнения): их цвета код ставит из схемы подсветки, в разборе это
+  // выражения, и копия оставалась белой. Цвета - как у редактора.
+  for I := 0 to FDesigner.Form.ComponentCount - 1 do
+  begin
+    Comp := FDesigner.Form.Components[I];
+    if not (Comp is TEdView) or (Comp is TEdLogView) then
+      Continue;
+    TEdView(Comp).BackColor := RichEdit1.Color;
+    TEdView(Comp).TextColor := RichEdit1.Font.Color;
+    TEdView(Comp).GutterColor := FGutterBG;
+    TEdView(Comp).GutterTextColor := FGutterFG;
+    TEdView(Comp).Invalidate;
+  end;
 end;
 
 // Палитра редактора в конструкторе его же формы. Кнопки в снимке спрятаны

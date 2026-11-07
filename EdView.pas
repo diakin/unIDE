@@ -350,6 +350,9 @@ type
 
 implementation
 
+uses
+  UiTheme;
+
 const
   // Байт стиля ячейки: биты TFontStyle
   EdStyleBold = 1;
@@ -1074,9 +1077,11 @@ begin
       PaintGutterRow(FBack.Canvas, BufRow, RowY);
   end;
   Canvas.Draw(0, 0, FBack);
-  // Квадрат между полосами
+  // Квадрат между полосами - цветом дорожки полос (тема IDE). Раньше -
+  // цветом полосы номеров: у логов без номеров это светлый цвет по
+  // умолчанию, и в тёмной теме в углу был белый квадрат.
   Canvas.Brush.Style := bsSolid;
-  Canvas.Brush.Color := FGutterColor;
+  Canvas.Brush.Color := UiThemeColorFor(Self, 'Scroll.Track');
   Canvas.FillRect(Rect(TextW, TextH, ClientWidth, ClientHeight));
 end;
 
