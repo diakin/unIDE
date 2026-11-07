@@ -157,6 +157,9 @@ unit UnFar;
 //      разделов (Section, Text, Back, Data), строка данных под ней, кнопки
 //      Save & Exit и Cancel (окно закрывается только ими). При открытии -
 //      схема файла под курсором (по расширению).
+//    - b.70: каретка редактора F4 и командной строки мигает; символ под
+//      кареткой в F4 подсвечивается цветами раздела CaretChar схемы (нет
+//      цвета фона - фон чуть отличается от обычного).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -193,7 +196,7 @@ uses
   SchemeData;
 
 const
-  FarBuild = 'b.69';
+  FarBuild = 'b.70';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -709,6 +712,9 @@ type
     FWatchFirstTick: Cardinal;    // первый сигнал из ещё не перечитанных
     FWatchLastTick: Cardinal;     // последний сигнал
     FWatchTimer: TTimer;
+    // Мигание каретки (редактор F4, командная строка): видна ли сейчас
+    FCaretTimer: TTimer;
+    FCaretOn: Boolean;
     FBusy: Boolean;               // идёт операция с файлами
     // Меню (Alt+F1 / Alt+F2, Ctrl+F12, Alt+F12): рисуется поверх панелей
     FMenuKind: TFarMenuKind;
@@ -1142,6 +1148,8 @@ type
       AFlags: Word; var AAborted: Boolean): Boolean;
     procedure AfterOperation(const AFocusName: WideString);
     procedure WatchTick(Sender: TObject);
+    procedure CaretTick(Sender: TObject);
+    procedure CaretRestart;
     procedure WatchStop;
     // Меню, сортировка, диски, история папок
     procedure MenuOpen(AKind: TFarMenuKind; const ATitle: WideString;
@@ -3552,6 +3560,18 @@ begin
   FWatchTimer.Interval := FarWatchInterval;
   FWatchTimer.OnTimer := WatchTick;
   FWatchTimer.Enabled := True;
+  // Каретка мигает с частотой Windows (Панель управления - Клавиатура)
+  FCaretOn := True;
+  FCaretTimer := TTimer.Create(Self);
+  {$IFDEF UNIX}
+  FCaretTimer.Interval := 530;
+  {$ELSE}
+  FCaretTimer.Interval := GetCaretBlinkTime;
+  if (FCaretTimer.Interval < 100) or (FCaretTimer.Interval > 5000) then
+    FCaretTimer.Interval := 530;
+  {$ENDIF}
+  FCaretTimer.OnTimer := CaretTick;
+  FCaretTimer.Enabled := True;
   FProcTimer := TTimer.Create(Self);
   FProcTimer.Interval := 100;
   FProcTimer.OnTimer := ProcTick;
@@ -4460,6 +4480,7 @@ var
   EditX0, EditW0: Integer;
 begin
   inherited MouseDown(Button, Shift, PosX, PosY);
+  CaretRestart;
   EditX0 := 0;
   EditW0 := 0;
   if DocOpen then
@@ -4840,6 +4861,8 @@ var
 begin
   Result := False;
   KeyCode := Word(AMsg.wParam);
+  // Нажатие - каретка видна сразу, мигание - заново
+  CaretRestart;
 
   // Символ для поля ввода диалога. Окно VCL в Delphi 7 - ANSI: символ
   // приходит в кодировке Windows; окно uniFAR - Unicode (KeyChar)
@@ -6641,6 +6664,28 @@ begin
     FWatch[PanelIndex] := 0;
     FWatchPath[PanelIndex] := '';
     FWatchDirty[PanelIndex] := False;
+  end;
+end;
+
+// Мигание каретки: перерисовка, только когда окно в фокусе
+procedure TFarView.CaretTick(Sender: TObject);
+begin
+  if not Focused then
+  begin
+    FCaretOn := True;
+    Exit;
+  end;
+  FCaretOn := not FCaretOn;
+  Invalidate;
+end;
+
+procedure TFarView.CaretRestart;
+begin
+  FCaretOn := True;
+  if FCaretTimer <> nil then
+  begin
+    FCaretTimer.Enabled := False;
+    FCaretTimer.Enabled := True;
   end;
 end;
 
@@ -10397,6 +10442,7 @@ var
   GutterX, GutterW: Integer;
   GutterFg: TColor;
   NumText: WideString;
+  CaretFg, CaretBg: TColor;
 begin
   Ed := FEditor;
   EditBounds(EditX, EditW);
@@ -10554,6 +10600,27 @@ begin
         CellBg[CellIdx] := SelBg;
       end;
     end;
+    // Символ под кареткой - цветами раздела CaretChar схемы
+    if (LineIdx = Ed.Row) and EditorActive then
+    begin
+      CellIdx := Ed.ScreenCol(Ed.Row, Ed.Col) - Ed.LeftCol;
+      if (CellIdx >= 0) and (CellIdx < EditW) then
+      begin
+        CaretFg := clNone;
+        CaretBg := clNone;
+        if Ed.Scheme <> nil then
+        begin
+          CaretFg := Ed.Scheme.FCaretFG;
+          CaretBg := Ed.Scheme.FCaretBG;
+        end;
+        if (CaretFg <> clNone) and (CaretFg <> clDefault) then
+          CellFg[CellIdx] := ColorToRGB(CaretFg);
+        if (CaretBg <> clNone) and (CaretBg <> clDefault) then
+          CellBg[CellIdx] := ColorToRGB(CaretBg)
+        else
+          CellBg[CellIdx] := FarBlend(CellBg[CellIdx], CellFg[CellIdx], 30);
+      end;
+    end;
     // Вывод - кусками одного цвета
     GroupStart := 0;
     for CellIdx := 1 to EditW do
@@ -10566,8 +10633,9 @@ begin
         GroupStart := CellIdx;
       end;
   end;
-  // Каретка - полоса внизу клетки, когда редактор активен и окно в фокусе
-  if EditorActive and Focused and (FDlgKind = fdNone) and
+  // Каретка - полоса внизу клетки, когда редактор активен и окно в фокусе;
+  // мигает (FCaretOn)
+  if EditorActive and Focused and FCaretOn and (FDlgKind = fdNone) and
      (FMenuKind = fmNone) and not FFindOpen then
   begin
     CaretRow := Ed.Row - Ed.TopRow + 1;
@@ -12033,7 +12101,8 @@ begin
     FPal[fpCmdBack]);
   PutText(PromptW, Row, Length(Shown), Shown, FPal[fpCmdText],
     FPal[fpCmdBack]);
-  if Focused and (FDlgKind = fdNone) and (FMenuKind = fmNone) then
+  if Focused and FCaretOn and (FDlgKind = fdNone) and
+     (FMenuKind = fmNone) then
   begin
     CaretCol := PromptW + FCmdPos - ScrollPos;
     FBuffer.Canvas.Brush.Style := bsSolid;
