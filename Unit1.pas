@@ -7591,7 +7591,7 @@ var
   Stage: DWORD;
 begin
   if (Msg.Msg <> CN_NOTIFY) or
-     (TWMNotify(Msg).NMHdr^.code <> UiNM_CUSTOMDRAW) then
+     (Integer(TWMNotify(Msg).NMHdr^.code) <> Integer(UiNM_CUSTOMDRAW)) then
   begin
     OldProc(Msg);
     Exit;

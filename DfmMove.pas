@@ -11891,7 +11891,7 @@ var
   Info: TMoveInfo;
 begin
   inherited;
-  if (Message.NMHdr^.code <> NM_CUSTOMDRAW) or
+  if (Integer(Message.NMHdr^.code) <> Integer(NM_CUSTOMDRAW)) or
      (csDestroying in ComponentState) then
     Exit;
   Draw := PNMLVCustomDraw(Message.NMHdr);

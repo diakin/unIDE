@@ -50,6 +50,9 @@
               </Win32>
             </Options>
           </Linking>
+          <Other>
+            <CustomOptions Value="-vm5023,5024,5025,5027,5028,5029,6058,5066,5043"/>
+          </Other>
         </CompilerOptions>
       </Item>
       <!-- Linux (gtk2): модули-заменители WinAPI в lazarus/unix (Windows, Messages и др., WinImpl).
@@ -82,6 +85,9 @@
             </Debugging>
             <LinkSmart Value="True"/>
           </Linking>
+          <Other>
+            <CustomOptions Value="-vm5023,5024,5025,5027,5028,5029,6058,5066,5043"/>
+          </Other>
         </CompilerOptions>
       </Item>
     </BuildModes>
@@ -137,5 +143,8 @@
         </Win32>
       </Options>
     </Linking>
+    <Other>
+      <CustomOptions Value="-vm5023,5024,5025,5027,5028,5029,6058,5066,5043"/>
+    </Other>
   </CompilerOptions>
 </CONFIG>

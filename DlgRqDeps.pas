@@ -113,7 +113,7 @@ procedure TRqListView.CNNotify(var Message: TWMNotify);
 var
   Draw: PNMLVCustomDraw;
 begin
-  if Message.NMHdr^.code <> NM_CUSTOMDRAW then
+  if Integer(Message.NMHdr^.code) <> Integer(NM_CUSTOMDRAW) then
   begin
     inherited;
     Exit;
