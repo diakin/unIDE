@@ -11660,6 +11660,11 @@ begin
   if IsSketchFolder(Dir) then
   begin
     Folder := ExtractFileName(ExcludeTrailingPathDelimiter(Dir));
+    // Отдельный скетч - в папке своего имени рядом с папкой этого скетча,
+    // а не внутри неё: ...\_BS10\BS10-2\BS10-2.ino -> ...\_BS10\BS10-6\BS10-6.ino
+    Home := IncludeTrailingPathDelimiter(
+      ExtractFilePath(ExcludeTrailingPathDelimiter(Dir)) +
+      ChangeFileExt(ExtractFileName(AFile), '')) + ExtractFileName(AFile);
     case MessageDlg('Папка ' + Folder + ' - скетч ' + Folder + '.'#13#10#13#10 +
                     'Да - сохранить отдельным скетчем:'#13#10 + Home +
                     #13#10#13#10'Нет - сохранить дополнительным файлом ' +
