@@ -13,7 +13,7 @@
       <Title Value="unIDE"/>
       <UseAppBundle Value="False"/>
       <ResourceType Value="res"/>
-      <!-- Манифест в ресурс не встраивается: как у Delphi 7, unIDE после сборки кладёт рядом внешний SyntaxHLClaude_laz64.exe.manifest (LazWriteManifest в Unit1), если его ещё нет -->
+      <!-- Без манифеста тем Windows, как сборка Delphi 7: свои Ui* рисуют сами (UiThemeNativeFor = False), стандартные элементы - классические -->
       <UseXPManifest Value="False"/>
       <Icon Value="0"/>
     </General>
