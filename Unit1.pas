@@ -2776,6 +2776,7 @@ type
 
     // Поиск
     procedure BuildSearchPanel;
+    procedure FitToolbarSize;
     procedure FitSearchBox;
     procedure ToggleSearchPanel;
     function  SearchOptions: TSearchTypes;
@@ -22264,9 +22265,9 @@ const
   SideGap = 4;     // отступ слева и справа от краёв панели
   ItemGap = 3;     // между полем и кнопкой, между кнопками
   RowTop = 2;      // верх первого ряда
-  RowStep = 26;    // шаг рядов
   ButtonPad = 14;  // поля кнопки слева и справа от подписи, вместе
 var
+  RowStep: Integer; // шаг рядов: 26, поле со списком выше - по нему
   WidthPx, I, Arrow, RightEdge, ColAWidth, ColBWidth, RowHeight,
     Row2Top, Row3Top, Row4Top, ColALeft, ColBLeft: Integer;
   Bmp: TBitmap;
@@ -22304,7 +22305,10 @@ begin
     cmbMode.Width := TextW('WholeWord') + Arrow + 6;
     SendMessage(cmbMode.Handle, CB_SETDROPPEDWIDTH, WidthPx + Arrow + 8, 0);
 
-    chkCase.Width := TextW(chkCase.Caption) + 20;
+    // Квадрат флажка и отступ до подписи - SM_CXMENUCHECK (в LCL под
+    // Windows он шире, чем 20 точек, взятых прежде)
+    chkCase.Width := TextW(chkCase.Caption) + GetSystemMetrics(SM_CXMENUCHECK) +
+      10;
 
     // Порядок пунктов важен (ScopeFile ... ScopeDisk), подписи - нет
     cmbScope.Items.Add('В окне');
@@ -22331,6 +22335,10 @@ begin
     RowHeight := cmbFind.Height;
     if RowHeight < 20 then
       RowHeight := 22;
+    // Поле выше шага (LCL под Windows) - шаг по полю
+    RowStep := 26;
+    if RowHeight + 3 > RowStep then
+      RowStep := RowHeight + 3;
     Row2Top := RowTop + RowStep;
     Row3Top := Row2Top + RowStep;
     Row4Top := Row3Top + RowStep;
@@ -22351,6 +22359,13 @@ begin
       ItemGap + cmbScope.Width;
     if SideGap + 100 + ItemGap + ColAWidth + ItemGap + ColBWidth > RightEdge then
       RightEdge := SideGap + 100 + ItemGap + ColAWidth + ItemGap + ColBWidth;
+    // Область в ряду 3 стоит вровень с колонкой Replace: колонки кнопок
+    // шире поля области - перед ней Case должен поместиться целиком (иначе
+    // область ложилась поверх подписи Case)
+    if SideGap + cmbMode.Width + ItemGap + chkCase.Width + ItemGap +
+       ColAWidth + ItemGap + ColBWidth > RightEdge then
+      RightEdge := SideGap + cmbMode.Width + ItemGap + chkCase.Width +
+        ItemGap + ColAWidth + ItemGap + ColBWidth;
     if pnlSearchIn.ClientWidth - SideGap > RightEdge then
       RightEdge := pnlSearchIn.ClientWidth - SideGap;
 
@@ -22403,6 +22418,60 @@ begin
   // Разница между шириной рамки и её клиентской частью - это обе боковые
   // кромки; плюс отступ справа, как слева у первого поля
   // grpSearch.Width := R + (grpSearch.Width - grpSearch.ClientWidth) + 8;
+end;
+
+// Тулбар по содержимому: в сборке Lazarus под Windows поля со списком и
+// подписи рамок выше, чем в Delphi 7, и при высоте тулбара из .dfm низ
+// рамки Project (поля Lazarus / 64) и кнопка Undo обрезались, а ряды
+// Search and replace могли выйти за правый край рамки. Рамка Project,
+// рамка поиска и сам тулбар растут на нехватку; уже не уменьшаются.
+// Вызов - когда раскладка формы готова (FormShow).
+procedure TForm1.FitToolbarSize;
+const
+  BottomGap = 3;   // от нижнего поля до края панели
+var
+  CtlIdx, Lowest, RightMost, Grow, Need: Integer;
+  Ctl: TControl;
+begin
+  if (FToolbar = nil) or (grpCompiler = nil) or (pnlBuildKind = nil) or
+     (pnlSearchIn = nil) or (UndoBtn = nil) then
+    Exit;
+  // Рамка Project: самое нижнее поле pnlBuildKind (видимы они по виду
+  // сборки, место - под любое)
+  Lowest := 0;
+  for CtlIdx := 0 to pnlBuildKind.ControlCount - 1 do
+  begin
+    Ctl := pnlBuildKind.Controls[CtlIdx];
+    if Ctl.Top + Ctl.Height > Lowest then
+      Lowest := Ctl.Top + Ctl.Height;
+  end;
+  Need := Lowest + BottomGap - pnlBuildKind.ClientHeight;
+  if Need > 0 then
+    grpCompiler.Height := grpCompiler.Height + Need;
+  // Левая часть: ряд кнопок сверху и рамка Project снизу
+  Grow := pnlToolbarIn.Top + pnlToolbarIn.Height + grpCompiler.Height -
+    FLeftPanel.ClientHeight;
+  // Рамка поиска: ряд Undo
+  Need := UndoBtn.Top + UndoBtn.Height + BottomGap - pnlSearchIn.ClientHeight;
+  if Need > Grow then
+    Grow := Need;
+  if Grow > 0 then
+  begin
+    FToolbar.Height := FToolbar.Height + Grow;
+    if FToolbarBaseHeight > 0 then
+      Inc(FToolbarBaseHeight, Grow);
+  end;
+  // Ширина рамки поиска: по самому правому полю
+  RightMost := 0;
+  for CtlIdx := 0 to pnlSearchIn.ControlCount - 1 do
+  begin
+    Ctl := pnlSearchIn.Controls[CtlIdx];
+    if Ctl.Left + Ctl.Width > RightMost then
+      RightMost := Ctl.Left + Ctl.Width;
+  end;
+  Need := RightMost + 4 - pnlSearchIn.ClientWidth;
+  if Need > 0 then
+    grpSearch.Width := grpSearch.Width + Need;
 end;
 
 procedure TForm1.FindPanelClick(Sender: TObject);
@@ -87510,6 +87579,9 @@ begin
     PostMessage(Handle, WM_USER + 330, 0, 0);
   end;
 
+
+  // Тулбар по содержимому (поля выше в сборке Lazarus)
+  FitToolbarSize;
 
   // Итог проверки путей editor.ini (CheckIniPaths в FormCreate)
   if FIniPathLog <> nil then
