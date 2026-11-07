@@ -88821,6 +88821,15 @@ begin
     end;
 
     ParseClrFile(ClrPath);
+    // Схемы нет или в ней нет разделов - в таблице IDE Options остаётся
+    // одна строка Pair Mark, подсветки нет. Путь - в журнал: какой файл
+    // искали (рядом с exe, AppSubDir).
+    if not FileExists(ClrPath) then
+      Dbg('30560: схема подсветки не найдена: ' + ClrPath, clRed)
+    else if FScheme.FFileSections.Count = 0 then
+      Dbg('30561: в схеме подсветки нет разделов: ' + ClrPath, clRed);
+    if not FileExists(DefaultSchemaFile) then
+      Dbg('30562: нет файла умолчаний схем: ' + DefaultSchemaFile, clRed);
 
     // Порядок строк таблицы задаёт схема расширения; разделы, которых в ней
     // нет, а в •default•.clr есть, встают за ними. Группы ключевых слов из
