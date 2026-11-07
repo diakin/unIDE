@@ -70044,7 +70044,9 @@ begin
 
   if Map.WrapUnits <> '' then
     LogComp('Отладчик: в .map номера строк после 65535 записаны заново с ' +
-    '0 (Delphi 7 хранит их в 16 битах), пересчитаны: ' + Map.WrapUnits);
+    '0 (Delphi 7 хранит их в 16 битах), пересчитаны: ' + Map.WrapUnits +
+    '. Строки без номеров Delphi 7 в .map не записала - точки на них не ' +
+    'сработают');
   FDbgSession := TDbgSession.Create(AExe, ADir, Map);
   DbgClearEdits;   // .map только что собран - номера совпадают с текстом
   // Отладочная информация TD32 - для окна Watch. Нет её - программа

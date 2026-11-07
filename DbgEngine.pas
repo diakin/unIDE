@@ -670,20 +670,30 @@ begin
           LineNo := StrToIntDef(Words[WordIdx], -1);
           if (LineNo > 0) and MapCodeOfs(Words[WordIdx + 1], Ofs) then
           begin
-            // Delphi 7 пишет номер строки в 16 битах: после 65535 идёт
-            // 0, 1, ... Код модуля в разделе идёт по порядку текста,
-            // поэтому резкий спад номера (больше чем на 32768) - переход
-            // через 65536, а не начало другой процедуры.
+            // Delphi 7 пишет номер строки в 16 битах. По карте Unit1.pas
+            // (93691 строка, 2026-11-07): строки 1..28156 записаны как
+            // есть, 28157..65535 - не записаны вовсе, 65536..93691 - как
+            // 0..28155. Код модуля в разделе идёт по порядку текста,
+            // поэтому спад номера больше чем на 4096 - переход через
+            // 65536, а не начало другой процедуры (вложенные дают спад
+            // на сотни строк).
             if (LineNo < 65536) and
-               (LineNo + LineBase < PrevLine - 32768) then
+               (LineNo + LineBase < PrevLine - 4096) then
             begin
               Inc(LineBase, 65536);
-              if Pos(', ' + FUnitFile[UnitIdx] + ';',
-                     ', ' + FWrapUnits + ';') = 0 then
+              if Pos(', ' + FUnitFile[UnitIdx] + ' ',
+                     ', ' + FWrapUnits + ' ') = 0 then
               begin
                 if FWrapUnits <> '' then
                   FWrapUnits := FWrapUnits + ', ';
-                FWrapUnits := FWrapUnits + FUnitFile[UnitIdx];
+                // Строки между последним номером до перехода и 65535 кода
+                // в .map не имеют - точка на них не сработает
+                if PrevLine mod 65536 < 65535 then
+                  FWrapUnits := FWrapUnits + FUnitFile[UnitIdx] +
+                    Format(' (без номеров строки %d-%d)',
+                           [PrevLine + 1, PrevLine - PrevLine mod 65536 + 65535])
+                else
+                  FWrapUnits := FWrapUnits + FUnitFile[UnitIdx] + ' ';
               end;
             end;
             Inc(LineNo, LineBase);
