@@ -7551,7 +7551,7 @@ type
     procedure DrawLines(DC: HDC; AItem, ASub: Integer; ACell: Boolean);
     {$IF DEFINED(FPC) AND DEFINED(MSWINDOWS)}
     destructor Destroy; override;
-    {$ENDIF}
+    {$IFEND}
   end;
 
   // NMLVCUSTOMDRAW (commctrl.h) - свои имена, чтобы не подключать CommCtrl
@@ -7827,7 +7827,7 @@ begin
     UiGridMarks.Remove(Self);
   inherited Destroy;
 end;
-{$ENDIF}
+{$IFEND}
 
 // Таблица с линиями сетки (GridLines): их рисует Windows цветом системы, на
 // тёмном фоне они слишком яркие и цвет им не задать. Сетка Windows
@@ -7861,7 +7861,7 @@ begin
   end;
   {$IF DEFINED(FPC) AND DEFINED(MSWINDOWS)}
   UiGridAttachParent(UiGridMark);
-  {$ENDIF}
+  {$IFEND}
   // Перерисовать - только если цвет линий сменился
   if UiGridMark.Color <> UiColor('Grid.Lines') then
   begin
@@ -45109,8 +45109,10 @@ begin
       // есть в Screen.CustomForms, и её заголовок - текст подсказки: при
       // наведении на кнопку (Pull) в строке меню появлялась плашка
       // «git pull». В VCL подсказка - не форма, сюда не попадает.
+      {$IFDEF FPC}
       if OneForm is THintWindow then
         Continue;
+      {$ENDIF}
       Listed.Add(OneForm);
       // Свёрнуто ли окно, в подпись не входит: плашка при щелчке не
       // пересоздаётся, только перекрашивается (UtilChipsPaint)
