@@ -1,0 +1,42 @@
+• Keywords1 clBlue $00F9F9F9
+alignas,alignof,asm,auto,break,case,catch,class,co_await,co_return,co_yield,concept,const,const_cast,consteval,constexpr,constinit,continue,decltype,default,delete,do,dynamic_cast,else,enum,explicit,export,extern,final,for,friend,goto,if,inline,mutable,namespace,new,noexcept,operator,override,private,protected,public,register,reinterpret_cast,requires,return,sizeof,static,static_assert,static_cast,struct,switch,template,this,thread_local,throw,try,typedef,typeid,typename,union,using,virtual,volatile,while
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+array,bool,cerr,char,char16_t,char32_t,char8_t,cin,cout,deque,double,endl,false,float,int,list,long,map,nullptr,optional,pair,set,shared_ptr,short,signed,size_t,std,string,true,tuple,unique_ptr,unordered_map,unsigned,variant,vector,void,wchar_t,weak_ptr,wstring
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+!%&()*+,-./:;<=>?[]^{|}~
+• LineComment clGreen $00F9F9F9
+//
+• BlockComment clGreen $00F9F9F9
+/* */
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+0x exp suffix=FLUflu
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• SubStyle
+braces
+• LineMark clNone $00B7FFDD
+
+• SubOpen
+{
+• SubEnd
+}
+• FmtOutdent
+}
+• Strings2 $00008CFF $00F9F9F9
+'
+• Strings2@Dark $000077F9 $001A1A1A
+• StrEscape
+\

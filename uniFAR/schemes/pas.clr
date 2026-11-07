@@ -1,0 +1,62 @@
+• Keywords1 clBlue $00F9F9F9
+and,array,as,asm,begin,case,class,const,constructor,destructor,dispinterface,div,do,downto,else,end,except,exports,file,finalization,finally,for,function,goto,if,implementation,in,inherited,initialization,inline,interface,is,label,library,mod,nil,not,object,of,or,out,packed,procedure,program,property,raise,record,repeat,resourcestring,set,shl,shr,then,threadvar,to,try,type,unit,until,uses,var,while,with,xor
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+boolean,byte,cardinal,char,comp,copy,currency,dec,dispose,double,extended,false,inc,int64,integer,length,longint,longword,new,pchar,pointer,pos,readln,real,result,self,setlength,shortint,shortstring,single,smallint,string,true,variant,widestring,word,writeln
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+()*+,-./:;<=>@[]^
+• Operators@Dark $00F54FF6 $001A1A1A
+• LineComment clGreen $00F9F9F9
+//
+• LineComment@Dark $00009B00 $001A1A1A
+• BlockComment clGreen $00F9F9F9
+{ }
+• BlockComment@Dark $00009B00 $001A1A1A
+• Strings $00008CFF $00F9F9F9
+'
+• Strings@Dark $000077F9 $001A1A1A
+• Digits clRed $00F9F9F9
+dec
+• Digits@Dark clRed $001A1A1A
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM1@Dark $00FBB8B5 $004B3E7B
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM2@Dark $00FF80FF $000000A4
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM3@Dark $00FF80FF $006D6D36
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• Text@Dark clSilver $001A1A1A
+• SubList
+constructor,destructor,function,procedure
+• SubEnd
+end,until
+• SubOpen
+asm,begin,case,record,repeat,try
+• SubNoBody
+external,forward
+• SubScope
+implementation
+• FmtOutdent
+end,except,finally,until
+• FmtSection
+const,label,type,var
+• FmtClass
+class,interface,object
+• FmtStmtEnd
+do,of,private,protected,public,published,then
+• FmtHang
+do,else,then
+• Components clPurple $00F9F9F9
+• Components@Dark $00D656CF $FFFFFFFF
+• LineMark clNone $00E4FEC5
+constructor,destructor,function,procedure
+• LineMark@Dark clNone $002E5201
+• PairMark clNone $0080FFFF

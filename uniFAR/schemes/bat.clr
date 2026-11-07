@@ -1,0 +1,29 @@
+• Keywords1 clBlue $00F9F9F9
+call,cd,chdir,cls,copy,del,dir,echo,else,endlocal,erase,exit,for,goto,if,md,mkdir,move,pause,popd,pushd,rd,rem,ren,rename,rmdir,set,setlocal,shift,start,timeout,title,type,ver,xcopy
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+defined,errorlevel,exist,not,equ,neq,lss,leq,gtr,geq,nul,con,prn,aux,com1,lpt1,path,temp,tmp,windir,userprofile,appdata,programfiles,systemroot,comspec
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
++-*/=<>&|^()[],;:%@
+• LineComment clGreen $00F9F9F9
+::
+• BlockComment $00008000 $00F9F9F9
+none
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+dec
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• LineMark clNone clYellow
+

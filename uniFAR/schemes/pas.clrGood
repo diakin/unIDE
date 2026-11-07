@@ -1,0 +1,26 @@
+• Keywords1 clBlue $00FFFFA8
+array,begin,boolean,case,char,class,const,do,double,downto,end,except,finally,for,function,if,implementation,integer,interface,object,of,pointer,procedure,real,record,string,then,to,try,type,unit,uses,var,while,with
+• Keywords2 clFuchsia $00FDF2E1
+break,continue,exit,and,or
+• Operators $0000509F $00C5FAFA
+$&()*+,-./:;<=>@[]^_{
+• LineComment clGreen $00DEFDC1
+//
+• BlockComment $00004000 $00E7CFF5
+/* */
+• Strings $000456FF clWhite
+'
+• Digits clRed clWhite
+
+• CUSTOM1 clWhite clRed
+!
+• CUSTOM2 $009CEBA6 $00BD5E78
+!!
+• CUSTOM3 clWhite clFuchsia
+!!!
+• CUSTOM4 clFuchsia clBlack
+!!!!
+• CUSTOM5 $004EE7F8 $00FF0080
+!!!!!
+• LineMark clNone clYellow
+procedure,function,constructor,destructor

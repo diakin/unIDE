@@ -1,0 +1,42 @@
+• Keywords1 clBlue $00F9F9F9
+break,case,chan,const,continue,default,defer,else,fallthrough,for,func,go,goto,if,import,interface,map,package,range,return,select,struct,switch,type,var
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+any,bool,byte,complex64,complex128,error,float32,float64,int,int8,int16,int32,int64,rune,string,uint,uint8,uint16,uint32,uint64,uintptr,append,cap,close,complex,copy,delete,imag,len,make,new,panic,print,println,real,recover,nil,true,false,iota,fmt,errors,strings,strconv
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
++-*/%=<>!&|^:;,.()[]{}
+• LineComment clGreen $00F9F9F9
+//
+• BlockComment $00008000 $00F9F9F9
+/* */
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+0x exp suffix=i
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• SubStyle
+braces
+• LineMark clNone clYellow
+
+• SubOpen
+{
+• SubEnd
+}
+• FmtOutdent
+}
+• Strings2 $00008CFF $00F9F9F9
+'
+• Strings2@Dark $000077F9 $001A1A1A
+• StrEscape
+\

@@ -1,0 +1,42 @@
+• Keywords1 clBlue $00F9F9F9
+abstract,as,async,await,base,break,case,catch,checked,class,const,continue,default,delegate,do,else,enum,event,explicit,extern,finally,fixed,for,foreach,get,goto,if,implicit,in,init,interface,internal,is,lock,nameof,namespace,new,operator,out,override,params,partial,private,protected,public,readonly,record,ref,return,sealed,set,sizeof,stackalloc,static,struct,switch,this,throw,try,typeof,unchecked,unsafe,using,var,virtual,volatile,when,where,while,yield
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+bool,byte,char,decimal,double,dynamic,float,int,long,object,sbyte,short,string,uint,ulong,ushort,void,true,false,null,List,Dictionary,HashSet,IEnumerable,Task,Console,String,Math,Exception,Nullable
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
++-*/%=<>!&|^~?:;,.()[]{}
+• LineComment clGreen $00F9F9F9
+//
+• BlockComment $00008000 $00F9F9F9
+/* */
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+0x exp suffix=fFdDmMuUlL
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• SubStyle
+braces
+• LineMark clNone clYellow
+
+• SubOpen
+{
+• SubEnd
+}
+• FmtOutdent
+}
+• Strings2 $00008CFF $00F9F9F9
+'
+• Strings2@Dark $000077F9 $001A1A1A
+• StrEscape
+\

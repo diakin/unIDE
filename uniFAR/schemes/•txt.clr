@@ -1,0 +1,21 @@
+• Operators $00D81CDD $00FFF0F0
+()*+,-./:;<=>@[]^{}
+• LineComment clGreen $00FAF1FE
+//
+• BlockComment clGreen $00E6EEF7
+/* */
+• Strings $00008CFF $00E6EEF7
+'
+• Digits clRed $00E6EEF7
+0x
+• CUSTOM1 $00FF80FF clRed
+!
+• CUSTOM2 $00FF80FF clRed
+!!
+• CUSTOM3 $00FF80FF clRed
+!!!
+• CUSTOM4 $00FF80FF clRed
+!!!!
+• CUSTOM5 $00FF80FF clRed
+!!!!!
+• Text $00400040 $00E6EEF7

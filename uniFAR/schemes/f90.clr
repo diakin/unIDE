@@ -1,0 +1,29 @@
+• Keywords1 clBlue $00F9F9F9
+allocatable,allocate,assign,associate,block,call,case,character,class,close,common,complex,contains,continue,cycle,data,deallocate,default,dimension,do,double,elemental,else,elseif,elsewhere,end,enddo,endif,entry,equivalence,exit,external,forall,format,function,go,goto,if,implicit,import,in,include,inout,integer,intent,interface,intrinsic,kind,logical,module,namelist,none,nullify,only,open,operator,optional,out,parameter,pointer,precision,print,private,procedure,program,public,pure,read,real,recursive,result,return,save,select,sequence,stop,subroutine,target,then,type,use,where,while,write
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+abs,achar,adjustl,adjustr,aimag,aint,allocated,anint,associated,ceiling,cmplx,conjg,cos,cosh,count,dble,dot_product,eoshift,epsilon,exp,floor,huge,index,int,len,len_trim,log,log10,matmul,max,maxval,merge,min,minval,mod,modulo,nint,pack,present,product,real,reshape,shape,sign,sin,sinh,size,spread,sqrt,sum,tan,tanh,transpose,trim,ubound,lbound,true,false
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
++-*/=<>()[],.:;%
+• LineComment clGreen $00F9F9F9
+!
+• BlockComment $00008000 $00F9F9F9
+none
+• Strings $00008CFF $00F9F9F9
+'
+• Digits clRed $00F9F9F9
+exp suffix=dD
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• LineMark clNone clYellow
+

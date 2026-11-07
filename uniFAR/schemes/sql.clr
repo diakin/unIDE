@@ -1,0 +1,29 @@
+• Keywords1 clBlue $00F9F9F9
+add,all,alter,and,any,as,asc,begin,between,by,case,cast,check,column,commit,constraint,create,cross,database,declare,default,delete,desc,distinct,drop,else,end,exec,exists,fetch,for,foreign,from,full,group,having,if,in,index,inner,insert,into,is,join,key,left,like,limit,not,null,offset,on,or,order,outer,over,partition,primary,procedure,references,return,right,rollback,select,set,table,then,top,transaction,trigger,truncate,union,unique,update,values,view,when,where,while,with
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+bigint,binary,bit,char,date,datetime,decimal,float,image,int,money,nchar,ntext,numeric,nvarchar,real,smallint,text,time,timestamp,tinyint,uniqueidentifier,varbinary,varchar,xml,avg,count,max,min,sum,abs,coalesce,convert,getdate,isnull,len,lower,upper,ltrim,rtrim,substring,replace,round,cast
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
++-*/%=<>!&|^()[],.;
+• LineComment clGreen $00F9F9F9
+--
+• BlockComment $00008000 $00F9F9F9
+/* */
+• Strings $00008CFF $00F9F9F9
+'
+• Digits clRed $00F9F9F9
+dec
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• LineMark clNone clYellow
+

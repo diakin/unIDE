@@ -1,0 +1,32 @@
+• Keywords1 clBlue $00F9F9F9
+CONFIG,ProjectOptions,ProjectSession,Package,Version,General,Flags,SessionStorage,MainUnit,Title,UseAppBundle,ResourceType,Icon,i18n,BuildModes,Item,Mode,MacroValues,PublishOptions,RunParams,FormatVersion,RequiredPackages,RequiredPkgs,PackageName,Units,Unit,Filename,IsPartOfProject,ComponentName,HasResources,ResourceBaseClass,UnitName,CompilerOptions,Target,SearchPaths,IncludeFiles,OtherUnitFiles,UnitOutputDirectory,Parsing,SyntaxOptions,SyntaxMode,CodeGeneration,Linking,Debugging,DebugInfoType,Options,Win32,GraphicApplication,Exceptions,Name,Author,Description,License,Files,UsageOptions,EditorIndex,CursorPos,TopLine,UsageCount,Loaded,JumpHistory,Position,WindowIndex,IsVisibleTab,EditorComponent,DefaultSyntaxHighlighter,Other,CustomOptions
+• Keywords2 clTeal $00F9F9F9
+Value,Name,Count,Major,Minor,Release,Build,Version,X,Y,Active,Default,Filename,Idx,Type
+• Operators $00D81CDD $00F9F9F9
+<>/=?!
+• LineComment clGreen $00F9F9F9
+none
+• BlockComment $00008000 $00F9F9F9
+<!-- -->
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+dec
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• LineMark clNone clYellow
+
+• SubStyle
+tags
+• TagVoid
+area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr
+• PairMark clNone $0080FFFF
