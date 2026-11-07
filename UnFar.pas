@@ -16870,7 +16870,9 @@ begin
         else
           PutText(FSwFieldCol, Row, 26, Caption, FPal[fpDlgEditText],
             FPal[fpDlgEditBack]);
-        PutText(FSwFieldCol + 26, Row, 3, '[' + WideChar($2193) + ']', Fore,
+        // Delphi 7: '[' + WideChar - Incompatible types, WideString явно
+        PutText(FSwFieldCol + 26, Row, 3,
+          WideString('[') + WideChar($2193) + WideString(']'), Fore,
           Back);
         PutText(FSwFieldCol + 31, Row, InnerW - 39, '* - есть изменения',
           FarBlend(Fore, Back, 40), Back);
