@@ -21,10 +21,23 @@ extern volatile int SimDebugWanted;
 // Statement being executed: (file << 20) | line
 extern volatile int SimTopLine;
 void simStepSlow(int code);
+void simPoll();
+// Statements since the last simPoll() from simStep()
+extern int SimStepsUnpolled;
+const int SimStepsPerPoll = 64;
 
+// Every SimStepsPerPoll statements a simPoll(): interrupts and timer ticks
+// come also in loops without Arduino calls or String comparisons, such as
+// a wait on a volatile variable that an ISR sets (on the board an
+// interrupt comes between any two instructions)
 inline void simStep(int code)
 {
   SimTopLine = code;
+  if (++SimStepsUnpolled >= SimStepsPerPoll)
+  {
+    SimStepsUnpolled = 0;
+    simPoll();
+  }
   if (SimDebugWanted)
     simStepSlow(code);
 }

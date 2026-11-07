@@ -18,6 +18,7 @@
 
 volatile int SimDebugWanted = 0;
 volatile int SimTopLine = 0;
+int SimStepsUnpolled = 0;
 
 namespace
 {
