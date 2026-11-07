@@ -42807,6 +42807,33 @@ begin
   FDsgLiveDiff.Clear;
 end;
 
+{$IFDEF FPC}
+// Строки живой таблицы ASrc - в копию ADst в конструкторе: подпись,
+// подстолбцы, значок, отметка. Data не переносится: это указатели живой
+// формы.
+procedure DsgCopyListItems(ADst, ASrc: TListView);
+var
+  ItemIdx: Integer;
+  SrcItem, DstItem: TListItem;
+begin
+  ADst.Items.BeginUpdate;
+  try
+    ADst.Items.Clear;
+    for ItemIdx := 0 to ASrc.Items.Count - 1 do
+    begin
+      SrcItem := ASrc.Items[ItemIdx];
+      DstItem := ADst.Items.Add;
+      DstItem.Caption := SrcItem.Caption;
+      DstItem.SubItems.Assign(SrcItem.SubItems);
+      DstItem.ImageIndex := SrcItem.ImageIndex;
+      DstItem.Checked := SrcItem.Checked;
+    end;
+  finally
+    ADst.Items.EndUpdate;
+  end;
+end;
+{$ENDIF}
+
 procedure TForm1.DsgLiveLook;
 const
   // Строк таблицы или узлов дерева больше - не копируются: это содержимое,
@@ -43074,7 +43101,13 @@ begin
            not TListView(DC).OwnerData and not TListView(LC).OwnerData and
            (TListView(LC).Items.Count <= DsgItemsMax) then
         begin
+          {$IFDEF FPC}
+          // У TListItems в LCL нет Assign (TPersistent.Assign - исключение),
+          // строки переносятся по одной
+          DsgCopyListItems(TListView(DC), TListView(LC));
+          {$ELSE}
           TListView(DC).Items.Assign(TListView(LC).Items);
+          {$ENDIF}
           Inc(Lists);
         end
         else if (DC is TTreeView) and (LC is TTreeView) and
