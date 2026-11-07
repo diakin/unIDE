@@ -4013,6 +4013,9 @@ type
                             var AModeOptions: string): string;
     function  LazUnitPathOf(const ALpi: string): string;
     function  CompileLazarus: Boolean;
+    function  LazOwnHold(const AExe: string; out AKept: string): Boolean;
+    function  LazOwnRelease(const AExe, AKept: string;
+                            ABuilt: Boolean): string;
     procedure LazRefreshPrep(const ASrcDir: string);
     function  FpcExe(var AProblem: string): string;
     function  FpcSetting(const AKey: string): string;
@@ -4739,41 +4742,69 @@ var
 
 const
   OwnTrialSuffix = '_new';      // SyntaxHLClaude_new.exe
+  // Пробная сборка Lazarus: SyntaxHLClaude_laz64NEW.exe, _laz32NEW.exe
+  OwnLazTrialSuffix = 'NEW';
   OwnStageDir = '_newbuild';    // папка сборки внутри папки вывода
+  // Окончания имени exe сборки Lazarus (lazarus\SyntaxHLClaude.lpi)
+  OwnLazSuffixes: array[0..1] of string = ('_laz32', '_laz64');
 
-  // Имя редактора без расширения и без OwnTrialSuffix: SyntaxHLClaude и у
-  // рабочего, и у пробного exe. С ним сравнивается имя .dpr, чтобы узнать
-  // проект самого редактора.
+// AName оканчивается на ASuffix (без учёта регистра) и длиннее его
+function OwnEndsWith(const AName, ASuffix: string): Boolean;
+begin
+  Result := (Length(AName) > Length(ASuffix)) and
+            (CompareText(Copy(AName, Length(AName) - Length(ASuffix) + 1,
+                              MaxInt), ASuffix) = 0);
+end;
+
+// Имя без расширения оканчивается на _laz32 / _laz64
+function OwnHasLazSuffix(const AName: string): Boolean;
+var
+  SufIdx: Integer;
+begin
+  Result := False;
+  for SufIdx := Low(OwnLazSuffixes) to High(OwnLazSuffixes) do
+    if OwnEndsWith(AName, OwnLazSuffixes[SufIdx]) then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+  // Имя редактора без расширения и без окончания пробной сборки
+  // (OwnTrialSuffix, у сборки Lazarus - OwnLazTrialSuffix): SyntaxHLClaude
+  // (SyntaxHLClaude_laz64) и у рабочего, и у пробного exe. Имя рабочего exe.
 function OwnExeBase: string;
+var
+  Shorter: string;
 begin
   Result := ChangeFileExt(ExtractFileName(Application.ExeName), '');
-  if (Length(Result) > Length(OwnTrialSuffix)) and
-     (CompareText(Copy(Result, Length(Result) - Length(OwnTrialSuffix) + 1,
-                       MaxInt), OwnTrialSuffix) = 0) then
+  if OwnEndsWith(Result, OwnTrialSuffix) then
+  begin
     SetLength(Result, Length(Result) - Length(OwnTrialSuffix));
+    Exit;
+  end;
+  if OwnEndsWith(Result, OwnLazTrialSuffix) then
+  begin
+    Shorter := Copy(Result, 1, Length(Result) - Length(OwnLazTrialSuffix));
+    if OwnHasLazSuffix(Shorter) then
+      Result := Shorter;
+  end;
 end;
 
 // Имя проекта, из которого собран этот exe: OwnExeBase без окончания
 // сборки Lazarus (_laz32 / _laz64, lazarus\SyntaxHLClaude.lpi). Для
 // сверки с проектом (IsOwnProject); имя рабочего exe - OwnExeBase
 function OwnProjectBase: string;
-const
-  LazSuffixes: array[0..1] of string = ('_laz32', '_laz64');
 var
-  SufIdx, SufLen: Integer;
+  SufIdx: Integer;
 begin
   Result := OwnExeBase;
-  for SufIdx := Low(LazSuffixes) to High(LazSuffixes) do
-  begin
-    SufLen := Length(LazSuffixes[SufIdx]);
-    if (Length(Result) > SufLen) and
-       (CompareText(Copy(Result, Length(Result) - SufLen + 1, MaxInt),
-                    LazSuffixes[SufIdx]) = 0) then
+  for SufIdx := Low(OwnLazSuffixes) to High(OwnLazSuffixes) do
+    if OwnEndsWith(Result, OwnLazSuffixes[SufIdx]) then
     begin
-      SetLength(Result, Length(Result) - SufLen);
+      SetLength(Result, Length(Result) - Length(OwnLazSuffixes[SufIdx]));
       Exit;
     end;
-  end;
 end;
 
 // Запущен пробный exe (имя оканчивается на OwnTrialSuffix)
@@ -4783,12 +4814,33 @@ begin
   ''), OwnExeBase) <> 0;
 end;
 
-// Пробный exe рядом с рабочим AMainExe: <папка>\<имя>_new.exe
+// Пробный exe рядом с рабочим AMainExe: <папка>\<имя>_new.exe, у сборки
+// Lazarus - <папка>\<имя>_laz64NEW.exe (_laz32NEW.exe)
 function OwnTrialExeOf(const AMainExe: string): string;
+var
+  MainBase: string;
 begin
-  Result := ExtractFilePath(AMainExe) +
-            ChangeFileExt(ExtractFileName(AMainExe), '') + OwnTrialSuffix +
-            ExeExt;
+  MainBase := ChangeFileExt(ExtractFileName(AMainExe), '');
+  if OwnHasLazSuffix(MainBase) then
+    Result := ExtractFilePath(AMainExe) + MainBase + OwnLazTrialSuffix + ExeExt
+  else
+    Result := ExtractFilePath(AMainExe) + MainBase + OwnTrialSuffix + ExeExt;
+end;
+
+// exe, который запускает Run у проекта Lazarus ALpi: AExe, а у самого
+// редактора (SyntaxHLClaude.lpi) - его пробная сборка, если она есть
+function OwnLazRunExe(const ALpi, AExe: string): string;
+var
+  TrialExe: string;
+begin
+  Result := AExe;
+  if (AExe = '') or
+     (CompareText(ChangeFileExt(ExtractFileName(ALpi), ''),
+                  OwnProjectBase) <> 0) then
+    Exit;
+  TrialExe := OwnTrialExeOf(AExe);
+  if FileExists(TrialExe) then
+    Result := TrialExe;
 end;
 
 // Свободное имя для прежнего файла: AFile.old, .old1, .old2 ...
@@ -57285,7 +57337,7 @@ begin
   // (OwnTrialInstall); рабочий SyntaxHLClaude.exe не трогается
   OwnBuild := not FProbeActive and
               (CompareText(ChangeFileExt(ExtractFileName(OrigDpr), ''),
-                           OwnExeBase) = 0);
+                           OwnProjectBase) = 0);
   OutDir := ExeDir;
   if OwnBuild then
     OutDir := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExeDir) +
@@ -57459,7 +57511,7 @@ begin
   // Сам редактор: из папки сборки - пробным exe рядом с рабочим
   if (Code = 0) and OwnBuild then
     if not OwnTrialInstall(OutDir, IncludeTrailingPathDelimiter(ExeDir),
-                           OwnExeBase) then
+                           OwnProjectBase) then
     begin
       Result := False;
       Exit;
@@ -57471,8 +57523,8 @@ begin
     'закроется обычным образом',
                    [GetTickCount - T0,
                    OwnTrialExeOf(IncludeTrailingPathDelimiter(ExeDir) +
-                                 OwnExeBase + '.exe'),
-                   OwnExeBase + '.exe']))
+                                 OwnProjectBase + '.exe'),
+                   OwnProjectBase + '.exe']))
   else if Code = 0 then
     LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - T0,
                    IncludeTrailingPathDelimiter(ExeDir) +
@@ -57482,7 +57534,7 @@ begin
     // Из какой версии исходников собран exe - файл рядом с ним
     if OwnBuild then
       BuiltExe := OwnTrialExeOf(IncludeTrailingPathDelimiter(ExeDir) +
-                                OwnExeBase + '.exe')
+                                OwnProjectBase + '.exe')
     else
       BuiltExe := IncludeTrailingPathDelimiter(ExeDir) +
                   ChangeFileExt(ExtractFileName(Dpr), '.exe');
@@ -57495,7 +57547,7 @@ begin
     // Собран сам редактор - его файлы рядом с новым exe
     if not FProbeActive and
        (CompareText(ChangeFileExt(ExtractFileName(OrigDpr), ''),
-                    OwnExeBase) = 0) then
+                    OwnProjectBase) = 0) then
       CopyOwnRunFiles(Dir, ExeDir);
   end
   else if Code > 0 then
@@ -58579,6 +58631,82 @@ begin
     RichEdit1.SetFocus;
 end;
 
+// Сборка самого редактора в Lazarus (SyntaxHLClaude.lpi): lazbuild и fpc
+// пишут exe под именем из .lpi (SyntaxHLClaude_laz64.exe). Чтобы рабочий
+// exe не заменился, он на время сборки переименовывается в <exe>.keep
+// (запущенный exe Windows переименовать позволяет), после сборки новый exe
+// уходит в пробный SyntaxHLClaude_laz64NEW.exe (OwnTrialExeOf), рабочий
+// возвращается на место (LazOwnRelease). Пробный, который запустился и
+// закрылся обычным образом, становится рабочим (OwnPromoteTrial), как у
+// сборки Delphi. False - рабочий exe не переименовался, причина в логе.
+function TForm1.LazOwnHold(const AExe: string; out AKept: string): Boolean;
+begin
+  Result := True;
+  AKept := '';
+  if not FileExists(AExe) then
+    Exit;
+  AKept := AExe + '.keep';
+  // .keep прошлой сборки, оборванной до LazOwnRelease, - копия того же
+  // рабочего exe, он сам ещё на месте
+  if FileExists(AKept) and not DeleteFile(AKept) then
+    AKept := OwnOldName(AKept);
+  if not MoveFile(PChar(AExe), PChar(AKept)) then
+  begin
+    LogComp('Компиляция: не удалось на время сборки переименовать ' + AExe +
+            ' в ' + ExtractFileName(AKept) + ' (' +
+            SysErrorMessage(GetLastError) + ')');
+    AKept := '';
+    Result := False;
+  end;
+end;
+
+// Новый exe AExe (если собран) - пробным <имя>NEW.exe, рабочий AKept - на
+// место AExe. Результат - имя пробного exe, '' - не вышло (причина в логе)
+function TForm1.LazOwnRelease(const AExe, AKept: string;
+                              ABuilt: Boolean): string;
+var
+  TrialExe: string;
+begin
+  Result := '';
+  if ABuilt and FileExists(AExe) then
+  begin
+    TrialExe := OwnTrialExeOf(AExe);
+    // Прежняя пробная сборка ещё запущена - она уходит в .old
+    if FreeBusyExe(TrialExe) then
+    begin
+      if FileExists(TrialExe) and not DeleteFile(TrialExe) then
+        LogComp('Пробная сборка: не удалось заменить ' + TrialExe + ' (' +
+                SysErrorMessage(GetLastError) + ')')
+      else if MoveFile(PChar(AExe), PChar(TrialExe)) then
+        Result := TrialExe
+      else
+        LogComp('Пробная сборка: не удалось переименовать ' + AExe +
+                ' в ' + ExtractFileName(TrialExe) + ' (' +
+                SysErrorMessage(GetLastError) + ')');
+    end;
+    // Не перенесён - новый exe остаётся под рабочим именем, прежний рабочий
+    // уходит в .old
+    if (Result = '') and FileExists(AExe) then
+    begin
+      if AKept <> '' then
+        MoveFile(PChar(AKept), PChar(OwnOldName(AExe)));
+      Exit;
+    end;
+  end;
+  if AKept = '' then
+    Exit;
+  if FileExists(AExe) then
+  begin
+    // Сборка не прошла, но exe на месте (fpc оставил свой) - прежний рабочий
+    // в .old, чтобы не потерять его
+    MoveFile(PChar(AKept), PChar(OwnOldName(AExe)));
+    Exit;
+  end;
+  if not MoveFile(PChar(AKept), PChar(AExe)) then
+    LogComp('Компиляция: не удалось вернуть рабочий exe: ' + AKept + ' -> ' +
+            ExtractFileName(AExe) + ' (' + SysErrorMessage(GetLastError) + ')');
+end;
+
 // Сборка ASource через fpc.exe; ALpi - описание проекта, из которого
 // берутся режим, пути и имя exe (может быть пусто). Лог уже очищен и
 // файлы сохранены (CompileLazarus)
@@ -58589,9 +58717,13 @@ var
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount, SepPos: Integer;
   StartTick: Cardinal;
-  Built: Boolean;
+  Built, OwnLaz: Boolean;
+  KeptExe, TrialExe: string;
 begin
   Result := False;
+  OwnLaz := False;
+  KeptExe := '';
+  TrialExe := '';
   Fpc := FpcExe(Problem);
   if Fpc = '' then
   begin
@@ -58607,7 +58739,16 @@ begin
     Exe := ChangeFileExt(ASource, ExeExt);
   // 64-битный - с суффиксом 64, рядом с 32-битным
   Exe := LazBitsExe(Exe);
-  if not FreeBusyExe(Exe) then
+  // Сам редактор (SyntaxHLClaude.lpi) - пробной сборкой (LazOwnHold)
+  OwnLaz := (ALpi <> '') and
+            (CompareText(ChangeFileExt(ExtractFileName(ALpi), ''),
+                         OwnProjectBase) = 0);
+  if OwnLaz then
+  begin
+    if not LazOwnHold(Exe, KeptExe) then
+      Exit;
+  end
+  else if not FreeBusyExe(Exe) then
     Exit;
 
   Params := '';
@@ -58718,11 +58859,22 @@ begin
       BusyEnd('Компиляция: готово', True)
     else
       BusyEnd('Компиляция: ошибки', False);
+    if OwnLaz then
+      TrialExe := LazOwnRelease(Exe, KeptExe, Built);
   end;
   Result := Built;
 
   if Built then
   begin
+    if OwnLaz then
+    begin
+      Result := TrialExe <> '';
+      if Result then
+        LogComp(Format('--- Готово, %d мс: пробная сборка %s. Рабочий exe ' +
+        'не изменён; пробная станет рабочей, если запустится и закроется ' +
+        'обычным образом', [GetTickCount - StartTick, TrialExe]));
+      Exit;
+    end;
     LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - StartTick, Exe]));
     Exit;
   end;
@@ -58746,9 +58898,13 @@ var
   LogLine, ErrFile, FirstFile, Where: string;
   Code, LogStart, LineIdx, ErrLine, FirstLine, ErrCount: Integer;
   StartTick: Cardinal;
-  Built: Boolean;
+  Built, OwnLaz: Boolean;
+  KeptExe, TrialExe: string;
 begin
   Result := False;
+  OwnLaz := False;
+  KeptExe := '';
+  TrialExe := '';
   ShowCompLog;
   if CompLogEdit <> nil then
     LogClear(CompLogEdit);
@@ -58834,8 +58990,18 @@ begin
   // Папка exe (Output\ у .lpi unIDE) может ещё не существовать
   if (Exe <> '') and not DirectoryExists(ExtractFilePath(Exe)) then
     ForceDirectories(ExtractFilePath(Exe));
+  // Сам редактор (SyntaxHLClaude.lpi) - пробной сборкой
+  // SyntaxHLClaude_laz64NEW.exe, рабочий exe не заменяется (LazOwnHold)
+  OwnLaz := (Exe <> '') and
+            (CompareText(ChangeFileExt(ExtractFileName(Lpi), ''),
+                         OwnProjectBase) = 0);
+  if OwnLaz then
+  begin
+    if not LazOwnHold(Exe, KeptExe) then
+      Exit;
+  end
   // Запущенный exe переименовывается в .old (как у Delphi и FreeBASIC)
-  if (Exe <> '') and not FreeBusyExe(Exe) then
+  else if (Exe <> '') and not FreeBusyExe(Exe) then
     Exit;
   FLastBuildDir := Dir;
   FLastUnitPath := LazUnitPathOf(Lpi);
@@ -58909,12 +59075,25 @@ begin
       BusyEnd('Компиляция: готово', True)
     else
       BusyEnd('Компиляция: ошибки', False);
+    // Новый exe - пробным, рабочий - на своё место
+    if OwnLaz then
+      TrialExe := LazOwnRelease(Exe, KeptExe, Built);
   end;
   Result := Built;
+  if OwnLaz and Built then
+  begin
+    if TrialExe = '' then
+      Result := False;
+    Exe := TrialExe;
+  end;
 
   if Built then
   begin
-    if Exe <> '' then
+    if OwnLaz and (Exe <> '') then
+      LogComp(Format('--- Готово, %d мс: пробная сборка %s. Рабочий exe не ' +
+      'изменён; пробная станет рабочей, если запустится и закроется ' +
+      'обычным образом', [GetTickCount - StartTick, Exe]))
+    else if Exe <> '' then
       LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - StartTick, Exe]))
     else
       LogComp(Format('--- Готово, %d мс', [GetTickCount - StartTick]));
@@ -65144,6 +65323,8 @@ begin
         Result := LazBitsExe(LazExeOf(TargetSrc))
       else
         Result := LazTargetExe(TargetSrc);
+      // Сам редактор - пробная сборка, если есть
+      Result := OwnLazRunExe(TargetSrc, Result);
     end
     else
     begin
@@ -68364,7 +68545,7 @@ begin
 
   // 3. Сам редактор - в Output
   if CompareText(ChangeFileExt(ExtractFileName(ADpr), ''),
-                 OwnExeBase) = 0 then
+                 OwnProjectBase) = 0 then
   begin
     Result := IncludeTrailingPathDelimiter(DprDir + 'Output');
     Exit;
@@ -68391,7 +68572,8 @@ var
 begin
   Result := DelphiExeOf(ADpr);
   if (Result = '') or
-     (CompareText(ChangeFileExt(ExtractFileName(ADpr), ''), OwnExeBase) <> 0) then
+     (CompareText(ChangeFileExt(ExtractFileName(ADpr), ''),
+                  OwnProjectBase) <> 0) then
     Exit;
   TrialExe := OwnTrialExeOf(Result);
   if FileExists(TrialExe) then
@@ -68413,8 +68595,8 @@ begin
   // Папки - с обратной косой в конце: имя файла дописывается к ним прямо
   StageDir := IncludeTrailingPathDelimiter(AStageDir);
   StageExe := StageDir + ABase + '.exe';
-  TrialExe := IncludeTrailingPathDelimiter(AExeDir) + ABase + OwnTrialSuffix +
-  '.exe';
+  TrialExe := OwnTrialExeOf(IncludeTrailingPathDelimiter(AExeDir) + ABase +
+                           '.exe');
 if not FileExists(StageExe) then
   begin
     LogComp('Пробная сборка: dcc32 не создал ' + StageExe);
@@ -68726,6 +68908,8 @@ begin
         Exe := LazBitsExe(LazExeOf(Dpr))
       else
         Exe := LazTargetExe(Dpr);
+      // Сам редактор - пробная сборка, если есть
+      Exe := OwnLazRunExe(Dpr, Exe);
     end;
     if Exe = '' then
     begin
