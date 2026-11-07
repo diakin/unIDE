@@ -147,6 +147,8 @@ unit UnFar;
 //      изменения отдельно ('2270  Created 02.10.26 19:38  Modified
 //      04.10.26 08:52'); узкая панель - как раньше, размер и время изменения.
 //    - b.66: строка о папке под курсором: 'Folder  Created 02.10.26 19:38'.
+//    - b.67: редактор F4: номера строк слева (как в редакторе unIDE),
+//      номер строки с кареткой - цветом текста.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -182,7 +184,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.66';
+  FarBuild = 'b.67';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -876,6 +878,8 @@ type
     function EditorShown(APanelIndex: Integer): Boolean;
     function EditorActive: Boolean;
     procedure EditBounds(var AX0, AWidth: Integer);
+    function EditGutterW: Integer;
+    procedure EditTextBounds(var AX0, AWidth: Integer);
     function EditTextRows: Integer;
     procedure EditEnsureVisible;
     procedure OpenEditor(const AFileName: WideString);
@@ -9692,6 +9696,35 @@ begin
     PanelBounds(FEditPanel, AX0, AWidth);
 end;
 
+// Ширина полосы номеров строк: цифры последнего номера (не меньше трёх)
+// и пробел
+function TFarView.EditGutterW: Integer;
+var
+  Digits: Integer;
+begin
+  Result := 0;
+  if FEditor = nil then
+    Exit;
+  Digits := Length(IntToStr(FEditor.Count));
+  if Digits < 3 then
+    Digits := 3;
+  Result := Digits + 1;
+end;
+
+// Место текста редактора: без полосы номеров строк (узкое окно - без неё)
+procedure TFarView.EditTextBounds(var AX0, AWidth: Integer);
+var
+  GutterW: Integer;
+begin
+  EditBounds(AX0, AWidth);
+  GutterW := EditGutterW;
+  if AWidth - GutterW >= 8 then
+  begin
+    Inc(AX0, GutterW);
+    Dec(AWidth, GutterW);
+  end;
+end;
+
 // Строк текста: панель без строки заголовка
 function TFarView.EditTextRows: Integer;
 begin
@@ -9707,7 +9740,7 @@ var
 begin
   if FEditor = nil then
     Exit;
-  EditBounds(EditX, EditW);
+  EditTextBounds(EditX, EditW);
   Rows := EditTextRows;
   if FEditor.Row < FEditor.TopRow then
     FEditor.TopRow := FEditor.Row;
@@ -10173,7 +10206,7 @@ var
 begin
   if FEditor = nil then
     Exit;
-  EditBounds(EditX, EditW);
+  EditTextBounds(EditX, EditW);
   CellCol := AX div FCellW - EditX;
   CellRow := AY div FCellH;
   if CellCol < 0 then
@@ -10206,6 +10239,9 @@ var
   SchemeFg, SchemeBg: TColor;
   CaretX, CaretRow: Integer;
   ShownCh: WideChar;
+  GutterX, GutterW: Integer;
+  GutterFg: TColor;
+  NumText: WideString;
 begin
   Ed := FEditor;
   EditBounds(EditX, EditW);
@@ -10244,12 +10280,34 @@ begin
   SelFg := FPal[fpEditSelText];
   SelBg := FPal[fpEditSelBack];
   HasSel := Ed.SelRange(Row1, Col1, Row2, Col2);
+  // Номера строк: полоса слева, текст - правее (EditTextBounds)
+  GutterX := EditX;
+  EditTextBounds(EditX, EditW);
+  GutterW := EditX - GutterX;
+  // Цвет номеров - между цветом текста и фона
+  GutterFg := RGB((GetRValue(TextFg) + GetRValue(PageBg)) div 2,
+    (GetGValue(TextFg) + GetGValue(PageBg)) div 2,
+    (GetBValue(TextFg) + GetBValue(PageBg)) div 2);
   SetLength(CellFg, EditW);
   SetLength(CellBg, EditW);
   Runs := nil;
   for ScreenRow := 1 to PanelH - 1 do
   begin
     LineIdx := Ed.TopRow + ScreenRow - 1;
+    if GutterW > 0 then
+    begin
+      FillCells(GutterX, ScreenRow, GutterW, PageBg);
+      if LineIdx < Ed.Count then
+      begin
+        NumText := WideString(IntToStr(LineIdx + 1));
+        if LineIdx = Ed.Row then
+          PutText(GutterX + GutterW - 1 - Length(NumText), ScreenRow,
+            Length(NumText), NumText, TextFg, PageBg)
+        else
+          PutText(GutterX + GutterW - 1 - Length(NumText), ScreenRow,
+            Length(NumText), NumText, GutterFg, PageBg);
+      end;
+    end;
     if LineIdx >= Ed.Count then
     begin
       FillCells(EditX, ScreenRow, EditW, PageBg);
