@@ -19,7 +19,8 @@ unit SplashLoad;
 interface
 
 uses
-  Windows, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls;
+  Windows, SysUtils, Classes, Graphics, Controls, Forms, StdCtrls, ExtCtrls,
+  ClrScheme; // ClrReadTag - версия чтения схем в заголовке окна
 
 procedure StartupSplashShow;
 procedure StartupStage(const AName: string);
@@ -134,7 +135,9 @@ begin
     Splash.lblTitle.Parent := Splash;
     Splash.lblTitle.SetBounds(16, 12, 408, 16);
     Splash.lblTitle.Font.Style := [fsBold];
-    Splash.lblTitle.Caption := 'unIDE - загрузка';
+    // Версия чтения схем подсветки: видно, из какого ClrScheme.pas собран
+    // exe (пробная сборка laz64NEW, 07.11)
+    Splash.lblTitle.Caption := 'unIDE - загрузка   (схемы ' + ClrReadTag + ')';
     Splash.lblStage := TLabel.Create(Splash);
     Splash.lblStage.Parent := Splash;
     Splash.lblStage.AutoSize := False;

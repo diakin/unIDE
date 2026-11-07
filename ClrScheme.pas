@@ -356,7 +356,8 @@ procedure ClrLoadLines(ALines: TStrings; const APath: string);
 // Для журнала (30561): версия чтения схем и байты метки - в шестнадцатеричном
 // виде; так видно, из какого ClrScheme.pas собран exe
 const
-  ClrReadVersion = 'ClrScheme 2026-11-07c (метка в любой кодировке)';
+  ClrReadTag = '2026-11-07c';
+  ClrReadVersion = 'ClrScheme ' + ClrReadTag + ' (метка в любой кодировке)';
 function ClrHexBytes(const AStr: string; AMax: Integer): string;
 procedure ClrSaveLines(ALines: TStrings; const APath: string);
 function SchemaMarkerValue(const Str: string): string;
