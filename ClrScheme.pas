@@ -356,7 +356,7 @@ procedure ClrLoadLines(ALines: TStrings; const APath: string);
 // Для журнала (30561): версия чтения схем и байты метки - в шестнадцатеричном
 // виде; так видно, из какого ClrScheme.pas собран exe
 const
-  ClrReadTag = '2026-11-07c';
+  ClrReadTag = '2026-11-07d';
   ClrReadVersion = 'ClrScheme ' + ClrReadTag + ' (метка в любой кодировке)';
 function ClrHexBytes(const AStr: string; AMax: Integer): string;
 procedure ClrSaveLines(ALines: TStrings; const APath: string);
@@ -1021,41 +1021,80 @@ begin
   Result := TrimRight(Result);
 end;
 
+// Файл - байтами через TFileStream, строки режутся по #10 (#13 перед ним
+// снимается). Не TStrings.LoadFromFile: в FPC сборки Андрея (07.11) он и с
+// IgnoreEncoding = True перекодировал CP1251 в UTF-8 - метка 95 A0
+// становилась E2 80 A2 C2 A0 (журнал 30561). Байты, положенные в строку
+// через SetLength и Read, не перекодируются ни в Delphi, ни в FPC
 procedure ClrLoadLines(ALines: TStrings; const APath: string);
+var
+  Stream: TFileStream;
+  Raw: string;
+  LineStart, CharIdx, LineEnd: Integer;
 begin
-  {$IFDEF FPC}
-  ALines.LoadFromFile(APath, True);
-  {$ELSE}
-  ALines.LoadFromFile(APath);
-  {$ENDIF}
+  Stream := TFileStream.Create(APath, fmOpenRead or fmShareDenyNone);
+  try
+    SetLength(Raw, Stream.Size);
+    if Length(Raw) > 0 then
+      Stream.ReadBuffer(Raw[1], Length(Raw));
+  finally
+    Stream.Free;
+  end;
+  ALines.BeginUpdate;
+  try
+    ALines.Clear;
+    LineStart := 1;
+    for CharIdx := 1 to Length(Raw) do
+      if Raw[CharIdx] = #10 then
+      begin
+        LineEnd := CharIdx - 1;
+        if (LineEnd >= LineStart) and (Raw[LineEnd] = #13) then
+          Dec(LineEnd);
+        ALines.Add(Copy(Raw, LineStart, LineEnd - LineStart + 1));
+        LineStart := CharIdx + 1;
+      end;
+    // Последняя строка без перевода строки
+    if LineStart <= Length(Raw) then
+    begin
+      LineEnd := Length(Raw);
+      if Raw[LineEnd] = #13 then
+        Dec(LineEnd);
+      ALines.Add(Copy(Raw, LineStart, LineEnd - LineStart + 1));
+    end;
+  finally
+    ALines.EndUpdate;
+  end;
   ClrNormalizeHeads(ALines);
 end;
 
-// Запись: метка программы - байтами файла (149 160)
+// Запись: байты строк через TFileStream, строки через CR LF; метка
+// программы - байтами файла (149 160)
 procedure ClrSaveLines(ALines: TStrings; const APath: string);
+const
+  LineBreak: array[0..1] of Byte = (13, 10);
 var
-  OutLines: TStringList;
+  Stream: TFileStream;
   Own, FileMark, Line: string;
   LineIdx: Integer;
 begin
   Own := SchemaHeadMark;
   FileMark := ClrFileMark;
-  OutLines := TStringList.Create;
+  Stream := TFileStream.Create(APath, fmCreate);
   try
     for LineIdx := 0 to ALines.Count - 1 do
     begin
       Line := ALines[LineIdx];
-      if (Own <> FileMark) and (Copy(Line, 1, Length(Own)) = Own) then
-        Line := FileMark + Copy(Line, Length(Own) + 1, MaxInt);
-      OutLines.Add(Line);
+      if Copy(Line, 1, Length(Own)) = Own then
+      begin
+        Stream.WriteBuffer(FileMark[1], Length(FileMark));
+        Line := Copy(Line, Length(Own) + 1, MaxInt);
+      end;
+      if Length(Line) > 0 then
+        Stream.WriteBuffer(Line[1], Length(Line));
+      Stream.WriteBuffer(LineBreak, SizeOf(LineBreak));
     end;
-    {$IFDEF FPC}
-    OutLines.SaveToFile(APath, True);
-    {$ELSE}
-    OutLines.SaveToFile(APath);
-    {$ENDIF}
   finally
-    OutLines.Free;
+    Stream.Free;
   end;
 end;
 
