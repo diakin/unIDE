@@ -342,6 +342,13 @@ type
 function ThemeKey(const AName: string): string;
 // Строка - заголовок раздела (с меткой SchemaHeadMark)
 function IsSchemaHead(const Str: string): Boolean;
+// Строки файла .clr как есть, без перекодировки (и запись так же). В
+// сборке Lazarus TStrings.LoadFromFile перекодирует текст из кодовой
+// страницы Windows в UTF-8, и метка заголовка #149#160 в прочитанном
+// тексте становится другими байтами: ни один раздел не узнаётся. Delphi 7
+// читает байты как есть - так же и здесь
+procedure ClrLoadLines(ALines: TStrings; const APath: string);
+procedure ClrSaveLines(ALines: TStrings; const APath: string);
 function SchemaMarkerValue(const Str: string): string;
 function  IsKeywordSection(const AName: string): Boolean;
 function  SplitMarkers(const Str: string; var AStart, AEnd: string): Boolean;
@@ -924,6 +931,24 @@ begin
   Result := Copy(Str, 1, Length(SchemaHeadMark)) = SchemaHeadMark;
 end;
 
+procedure ClrLoadLines(ALines: TStrings; const APath: string);
+begin
+  {$IFDEF FPC}
+  ALines.LoadFromFile(APath, True);
+  {$ELSE}
+  ALines.LoadFromFile(APath);
+  {$ENDIF}
+end;
+
+procedure ClrSaveLines(ALines: TStrings; const APath: string);
+begin
+  {$IFDEF FPC}
+  ALines.SaveToFile(APath, True);
+  {$ELSE}
+  ALines.SaveToFile(APath);
+  {$ENDIF}
+end;
+
 // Значение маркера из строки данных: слово none - маркера нет
 function SchemaMarkerValue(const Str: string): string;
 begin
@@ -1099,7 +1124,7 @@ begin
   Lines := TStringList.Create;
   ParamSL := TStringList.Create;
   try
-    Lines.LoadFromFile(APath);
+    ClrLoadLines(Lines, APath);
 
     // Заголовок раздела начинается с SchemaHeadMark - так строку данных с
     // заголовком не спутать, даже если в маркере есть пробелы
@@ -1896,7 +1921,7 @@ begin
     end;
 
     // Сохраняем файл схемы на диск
-    SL.SaveToFile(ClrPath);
+    ClrSaveLines(SL, ClrPath);
   finally
     // DefaultSectionOrder отдаёт СВОЙ список - его и освобождаем; сам
     // SchemaSections живёт до закрытия программы

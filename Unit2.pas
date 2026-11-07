@@ -1907,9 +1907,9 @@ begin
   DstNames := TStringList.Create;
   try
     if FileExists(ASrcPath) then
-      SrcLines.LoadFromFile(ASrcPath);
+      ClrLoadLines(SrcLines, ASrcPath);
     if FileExists(ADstPath) then
-      AOut.LoadFromFile(ADstPath);
+      ClrLoadLines(AOut, ADstPath);
     DstNames.CaseSensitive := True;
     for LineIdx := 0 to AOut.Count - 1 do
       if IsSchemaHead(AOut[LineIdx]) then
@@ -2041,7 +2041,7 @@ begin
   try
     MergeSchemaText(ASrcPath, Target, DoReplace, DoAdd, Merged,
       ReplacedCount, AddedCount);
-    Merged.SaveToFile(TempPath);
+    ClrSaveLines(Merged, TempPath);
     Form1.LoadSchemaFileForEdit(TempPath);
     DeleteFile(TempPath);
   finally
