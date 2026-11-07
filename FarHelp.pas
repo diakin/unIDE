@@ -613,6 +613,7 @@ begin
   AddText('   #Shift+F2#              записать как');
   AddText('   #F5#                    на всю ширину / в панели');
   AddText('   #F7#                    поиск, #Shift+F7# - следующий');
+  AddText('   #Ctrl+F7#               замена');
   AddText('   #Shift+F8#              кодировка записи (ANSI, UTF-8, UTF-8');
   AddText('                         с BOM, UTF-16)');
   AddText('   #Alt+F8#                перейти на строку');
@@ -633,6 +634,14 @@ begin
   AddText('');
   AddText(' Подсветка - по схеме .clr из папки schemes.');
 
+  AddText('');
+  AddText(' #F7# - окно Search: Search for (стрелка вниз - прежние значения),');
+  AddText(' Case sensitive, Whole words, Reverse search (назад), Regular');
+  AddText(' expressions. Выделенный в одной строке текст сразу попадает в поле.');
+  AddText(' #[ All ]# - список всех вхождений, #Enter# - к вхождению.');
+  AddText(' #Ctrl+F7# - окно Replace: на каждом вхождении вопрос Replace / All /');
+  AddText(' Skip / Cancel. В регулярном выражении в замене $1..$9 - группы.');
+  AddText('');
   AddText('@Archives');
   AddText('$Архивы');
   AddText(' Архивы открываются через 7-Zip (tools\7zip рядом с программой;');

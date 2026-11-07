@@ -160,6 +160,10 @@ unit UnFar;
 //    - b.70: каретка редактора F4 и командной строки мигает; символ под
 //      кареткой в F4 подсвечивается цветами раздела CaretChar схемы (нет
 //      цвета фона - фон чуть отличается от обычного).
+//    - b.71: редактор F4: F7 - окно поиска как в FAR (история в поле,
+//      Case sensitive, Whole words, Reverse search, Regular expressions;
+//      выделение - в поле поиска; [ All ] - список всех вхождений),
+//      Ctrl+F7 - замена с вопросом Replace / All / Skip / Cancel.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -193,10 +197,10 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, ExtCtrls,
   IniBuf, SzSetup, ProcRun, FarFind, FarVolumes, FarFtp, FarProgress,
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp, SchemeFiles,
-  SchemeData;
+  SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.70';
+  FarBuild = 'b.71';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -242,7 +246,7 @@ type
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
     fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr,
-    fdOverwrite, fdOverRename);
+    fdOverwrite, fdOverRename, fdEditReplace, fdEditReplAsk);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -305,7 +309,8 @@ type
   // Открытое меню: смена диска (Alt+F1 / Alt+F2), сортировка (Ctrl+F12),
   // история папок (Alt+F12)
   TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory, fmOptions,
-    fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmEditEncoding);
+    fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmEditEncoding,
+    fmEditFindAll);
 
   TFarMenuItem = record
     Text: WideString;       // '&' перед буквой быстрого выбора
@@ -325,6 +330,13 @@ type
     Swatch2: TColor;
   end;
   TFarMenuItems = array of TFarMenuItem;
+
+  // Вхождение найденного в редакторе ([ All ] окна поиска)
+  TFarEditHit = record
+    Row: Integer;
+    Col: Integer;      // с 0
+    Len: Integer;
+  end;
 
   // Окно Schemes: схема в правке (ключ '' - •default•.clr), есть ли
   // незаписанные изменения
@@ -525,6 +537,21 @@ type
     FEditWide: Boolean;
     FEditFind: WideString;
     FEditFindCase: Boolean;
+    // Поиск и замена (F7, Ctrl+F7): флажки, текст замены, история полей,
+    // подготовленный текст поиска (FEditNeedle) или выражение, вхождения
+    // для [ All ], счётчик замен
+    FEditFindWhole: Boolean;
+    FEditFindReverse: Boolean;
+    FEditFindRegex: Boolean;
+    FEditReplace: WideString;
+    FEditFindHist: TFarNames;
+    FEditReplHist: TFarNames;
+    FEditNeedle: WideString;
+    {$IFDEF FPC}
+    FEditRegex: TRegExpr;
+    {$ENDIF}
+    FEditHits: array of TFarEditHit;
+    FEditReplCount: Integer;
     FEditSaveName: WideString;
     FEditQuitAfterSave: Boolean;
     FEditDragging: Boolean;
@@ -956,8 +983,22 @@ type
     procedure EditQuit;
     procedure EditSave(const AFileName: WideString;
       AEncoding: TFarEditEncoding; AAllowLossy: Boolean);
-    procedure EditFindConfirm;
+    procedure EditFindDialog(AReplace: Boolean);
+    function EditFindTakeRows: Boolean;
+    function EditFindPrepare: Boolean;
+    function EditMatchLine(const ALine: WideString; AFrom: Integer;
+      ALast: Boolean; ABefore: Integer; var APos, ALen: Integer): Boolean;
+    function EditFindStep(AWrap: Boolean): Boolean;
+    procedure EditFindConfirm(AAll: Boolean);
     procedure EditFindNext;
+    procedure EditFindAll;
+    procedure EditGoHit(AIndex: Integer);
+    function EditReplacement: WideString;
+    procedure EditReplaceConfirm;
+    procedure EditReplaceAsk;
+    procedure EditReplaceDone;
+    procedure EditReplaceOne;
+    procedure EditReplaceAnswer(AButton: Integer);
     procedure EditGoto(const AText: WideString);
     procedure EditEncodingMenu;
     procedure EditChar(ACh: WideChar);
@@ -3600,6 +3641,9 @@ begin
   FOnStatus := nil;
   FreeAndNil(FHelp);
   SwFreeAll;
+  {$IFDEF FPC}
+  FreeAndNil(FEditRegex);
+  {$ENDIF}
   DirSizeStop;
   FSzTimer.Enabled := False;
   if FFindTimer <> nil then
@@ -5796,9 +5840,20 @@ begin
     Exit;
   end;
   // Редактор: поиск
-  if (FDlgKind = fdEditFind) and (AButton = 0) then
+  if (FDlgKind = fdEditFind) and (AButton <= 1) then
   begin
-    EditFindConfirm;
+    EditFindConfirm(AButton = 1);
+    Exit;
+  end;
+  // Редактор: замена - [ Replace ]; вопрос о вхождении - ответ
+  if (FDlgKind = fdEditReplace) and (AButton = 0) then
+  begin
+    EditReplaceConfirm;
+    Exit;
+  end;
+  if FDlgKind = fdEditReplAsk then
+  begin
+    EditReplaceAnswer(AButton);
     Exit;
   end;
   // История папок: очистить? Потом - снова меню истории (если что-то
@@ -7090,6 +7145,8 @@ begin
         ApplyTheme(FarThemeNames[Item.Tag], Pal);
     fmHiRules:
       PickOpenRule(Item.Tag);
+    fmEditFindAll:
+      EditGoHit(Item.Tag);
     fmEditEncoding:
       if FEditor <> nil then
       begin
@@ -7170,7 +7227,8 @@ begin
     AreaX := 0;
     AreaW := FCols;
   end
-  else if (FMenuKind = fmEditEncoding) and (FEditor <> nil) then
+  else if (FMenuKind in [fmEditEncoding, fmEditFindAll]) and
+          (FEditor <> nil) then
     EditBounds(AreaX, AreaW)
   else
     PanelBounds(FMenuPanel, AreaX, AreaW);
@@ -10125,32 +10183,6 @@ begin
   Invalidate;
 end;
 
-// [ Find ] в окне поиска
-procedure TFarView.EditFindConfirm;
-begin
-  if Length(FDlgRows) < 2 then
-    Exit;
-  FEditFind := FDlgRows[0].Text;
-  FEditFindCase := FDlgRows[1].Index = 1;
-  DlgClose;
-  EditFindNext;
-end;
-
-procedure TFarView.EditFindNext;
-begin
-  if (FEditor = nil) or (FEditFind = '') then
-    Exit;
-  if FEditor.FindNext(FEditFind, FEditFindCase) then
-  begin
-    EditEnsureVisible;
-    Status(FarProduct + ': найдено - строка ' + IntToStr(FEditor.Row + 1) +
-      ' (Shift+F7 - дальше)');
-  end
-  else
-    Status(FarProduct + ': не найдено: ' + string(FEditFind));
-  Invalidate;
-end;
-
 // Shift+F8: кодировка, в которой F2 запишет файл. Текст в редакторе -
 // Unicode, перекодируется при записи. Не та, что у файла на диске, - файл
 // считается изменённым (звёздочка в заголовке). Символов нет в кодировке
@@ -10241,13 +10273,7 @@ begin
             EditEnsureVisible;
           end;
         VK_F7:
-          begin
-            DlgOpen(fdEditFind, 'Search', ['Search in the text'], False,
-              False, False, '', ['Find', 'Cancel']);
-            DlgAddRow('Search for:', False, False, FEditFind, [], 0);
-            DlgAddCheck('Case sensitive', FEditFindCase);
-            FDlgRow := 0;
-          end;
+          EditFindDialog(False);
         VK_F10:
           EditQuit;
       else
@@ -10259,6 +10285,8 @@ begin
         True, Ed.FileName, ['Save', 'Cancel'])
     else if Plain and AShift and (AKey = VK_F7) then
       EditFindNext
+    else if ACtrl and not AAlt and not AShift and (AKey = VK_F7) then
+      EditFindDialog(True)
     else if Plain and AShift and (AKey = VK_F8) then
       EditEncodingMenu
     else if AAlt and not ACtrl and not AShift and (AKey = VK_F8) then
@@ -17198,6 +17226,504 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  Редактор F4: поиск (F7) и замена (Ctrl+F7) - как в FAR.
+//  Search for / Replace with - поля со списком прежних значений (стрелка
+//  вниз), флажки Case sensitive, Whole words, Reverse search, Regular
+//  expressions. Выделение в одной строке - сразу в поле поиска.
+//  [ Search ] - следующее вхождение, [ All ] - список всех вхождений
+//  (Enter - к вхождению). Замена спрашивает про каждое вхождение:
+//  Replace / All / Skip / Cancel. Регулярные выражения - TRegExpr (только
+//  сборка Free Pascal); в замене $1..$9 - группы.
+// ---------------------------------------------------------------------------
+
+function FarEdWordChar(ACh: WideChar): Boolean;
+begin
+  Result := ((ACh >= 'a') and (ACh <= 'z')) or ((ACh >= 'A') and (ACh <= 'Z')) or
+    ((ACh >= '0') and (ACh <= '9')) or (ACh = '_') or (Ord(ACh) >= 192);
+end;
+
+// Окно поиска или замены
+procedure TFarView.EditFindDialog(AReplace: Boolean);
+var
+  Ed: TFarEditor;
+  Row1, Col1, Row2, Col2: Integer;
+  SearchText: WideString;
+begin
+  Ed := FEditor;
+  if Ed = nil then
+    Exit;
+  SearchText := FEditFind;
+  // Выделение в одной строке - то, что ищем
+  if Ed.SelRange(Row1, Col1, Row2, Col2) and (Row1 = Row2) and
+     (Col2 > Col1) then
+    SearchText := Ed.SelectedText;
+  if AReplace then
+    DlgOpen(fdEditReplace, 'Replace', ['Replace in the text'], False, False, False, '',
+      ['Replace', 'Cancel'])
+  else
+    DlgOpen(fdEditFind, 'Search', ['Search in the text'], False, False, False, '',
+      ['Search', 'All', 'Cancel']);
+  DlgAddCombo('Search for:', SearchText, FEditFindHist);
+  if AReplace then
+    DlgAddCombo('Replace with:', FEditReplace, FEditReplHist);
+  DlgAddCheck('Case sensitive', FEditFindCase);
+  DlgAddCheck('Whole words', FEditFindWhole);
+  DlgAddCheck('Reverse search', FEditFindReverse);
+  DlgAddCheck('Regular expressions', FEditFindRegex);
+  FDlgRow := 0;
+end;
+
+// Поля окна поиска / замены - в настройки поиска. False - искать нечего
+function TFarView.EditFindTakeRows: Boolean;
+var
+  FirstCheck: Integer;
+begin
+  Result := False;
+  if Length(FDlgRows) < 5 then
+    Exit;
+  FEditFind := FDlgRows[0].Text;
+  FirstCheck := 1;
+  if FDlgKind = fdEditReplace then
+  begin
+    FEditReplace := FDlgRows[1].Text;
+    FarHistoryPush(FEditReplHist, FEditReplace, FarFindHistoryMax);
+    FirstCheck := 2;
+  end;
+  if Length(FDlgRows) < FirstCheck + 4 then
+    Exit;
+  FEditFindCase := FDlgRows[FirstCheck].Index = 1;
+  FEditFindWhole := FDlgRows[FirstCheck + 1].Index = 1;
+  FEditFindReverse := FDlgRows[FirstCheck + 2].Index = 1;
+  FEditFindRegex := FDlgRows[FirstCheck + 3].Index = 1;
+  FarHistoryPush(FEditFindHist, FEditFind, FarFindHistoryMax);
+  Result := FEditFind <> '';
+  {$IFNDEF FPC}
+  if FEditFindRegex then
+  begin
+    FEditFindRegex := False;
+    Status(FarProduct + ': регулярные выражения есть только в uniFAR - ' +
+      'ищется как текст');
+  end;
+  {$ENDIF}
+end;
+
+// Готовит поиск: текст в верхнем регистре или регулярное выражение.
+// False - выражение с ошибкой
+function TFarView.EditFindPrepare: Boolean;
+begin
+  Result := True;
+  if FEditFindCase then
+    FEditNeedle := FEditFind
+  else
+    FEditNeedle := WideUpperCase(FEditFind);
+  {$IFDEF FPC}
+  FreeAndNil(FEditRegex);
+  if FEditFindRegex then
+  begin
+    FEditRegex := TRegExpr.Create;
+    try
+      if FEditFindWhole then
+        FEditRegex.Expression := '\b(?:' + UnicodeString(FEditFind) + ')\b'
+      else
+        FEditRegex.Expression := UnicodeString(FEditFind);
+      FEditRegex.ModifierI := not FEditFindCase;
+      FEditRegex.Compile;
+    except
+      on Err: Exception do
+      begin
+        FreeAndNil(FEditRegex);
+        Status(FarProduct + ': ошибка в выражении: ' + Err.Message);
+        Result := False;
+      end;
+    end;
+  end;
+  {$ENDIF}
+end;
+
+// Вхождение в строке ALine, начиная с символа AFrom (с 1). ALast - взять
+// последнее вхождение, которое начинается до ABefore (с 1; 0 - до конца)
+function TFarView.EditMatchLine(const ALine: WideString; AFrom: Integer;
+  ALast: Boolean; ABefore: Integer; var APos, ALen: Integer): Boolean;
+var
+  Hay: WideString;
+  SearchPos, FoundPos, FoundLen, NeedleLen: Integer;
+  WholeOk: Boolean;
+begin
+  Result := False;
+  if AFrom < 1 then
+    AFrom := 1;
+  {$IFDEF FPC}
+  if FEditRegex <> nil then
+  begin
+    if AFrom > Length(ALine) + 1 then
+      Exit;
+    FEditRegex.InputString := UnicodeString(ALine);
+    SearchPos := AFrom;
+    while (SearchPos <= Length(ALine)) and FEditRegex.ExecPos(SearchPos) do
+    begin
+      FoundPos := FEditRegex.MatchPos[0];
+      FoundLen := FEditRegex.MatchLen[0];
+      if (ABefore > 0) and (FoundPos >= ABefore) then
+        Break;
+      if FoundLen > 0 then
+      begin
+        APos := FoundPos;
+        ALen := FoundLen;
+        Result := True;
+        if not ALast then
+          Exit;
+        SearchPos := FoundPos + 1;
+      end
+      else
+        SearchPos := FoundPos + 1;
+    end;
+    Exit;
+  end;
+  {$ENDIF}
+  NeedleLen := Length(FEditNeedle);
+  if NeedleLen = 0 then
+    Exit;
+  if FEditFindCase then
+    Hay := ALine
+  else
+    Hay := WideUpperCase(ALine);
+  SearchPos := AFrom;
+  while SearchPos <= Length(Hay) - NeedleLen + 1 do
+  begin
+    FoundPos := Pos(FEditNeedle, Copy(Hay, SearchPos, MaxInt));
+    if FoundPos = 0 then
+      Break;
+    FoundPos := FoundPos + SearchPos - 1;
+    if (ABefore > 0) and (FoundPos >= ABefore) then
+      Break;
+    WholeOk := True;
+    if FEditFindWhole then
+      WholeOk := ((FoundPos = 1) or not FarEdWordChar(Hay[FoundPos - 1])) and
+        ((FoundPos + NeedleLen > Length(Hay)) or
+         not FarEdWordChar(Hay[FoundPos + NeedleLen]));
+    if WholeOk then
+    begin
+      APos := FoundPos;
+      ALen := NeedleLen;
+      Result := True;
+      if not ALast then
+        Exit;
+    end;
+    SearchPos := FoundPos + 1;
+  end;
+end;
+
+// Следующее вхождение от каретки (назад - Reverse search); AWrap - по
+// кругу. Найдено - выделено
+function TFarView.EditFindStep(AWrap: Boolean): Boolean;
+var
+  Ed: TFarEditor;
+  Row1, Col1, Row2, Col2, StartRow, StartCol, RowIdx, Pass: Integer;
+  FoundPos, FoundLen: Integer;
+  Found: Boolean;
+begin
+  Result := False;
+  Ed := FEditor;
+  if (Ed = nil) or (Ed.Count = 0) then
+    Exit;
+  if Ed.SelRange(Row1, Col1, Row2, Col2) then
+  begin
+    if FEditFindReverse then
+    begin
+      StartRow := Row1;
+      StartCol := Col1;
+    end
+    else
+    begin
+      StartRow := Row2;
+      StartCol := Col2;
+    end;
+  end
+  else
+  begin
+    StartRow := Ed.Row;
+    StartCol := Ed.Col;
+  end;
+  for Pass := 0 to Ord(AWrap) do
+  begin
+    if not FEditFindReverse then
+    begin
+      for RowIdx := 0 to Ed.Count - 1 do
+      begin
+        if (Pass = 0) and (RowIdx < StartRow) then
+          Continue;
+        if (Pass = 1) and (RowIdx > StartRow) then
+          Break;
+        if (Pass = 0) and (RowIdx = StartRow) then
+          Found := EditMatchLine(Ed.Lines[RowIdx], StartCol + 1, False, 0,
+            FoundPos, FoundLen)
+        else
+          Found := EditMatchLine(Ed.Lines[RowIdx], 1, False, 0, FoundPos,
+            FoundLen);
+        if Found then
+        begin
+          Ed.MoveTo(RowIdx, FoundPos - 1, False);
+          Ed.MoveTo(RowIdx, FoundPos - 1 + FoundLen, True);
+          Result := True;
+          Exit;
+        end;
+      end;
+    end
+    else
+    begin
+      for RowIdx := Ed.Count - 1 downto 0 do
+      begin
+        if (Pass = 0) and (RowIdx > StartRow) then
+          Continue;
+        if (Pass = 1) and (RowIdx < StartRow) then
+          Break;
+        if (Pass = 0) and (RowIdx = StartRow) then
+        begin
+          if StartCol <= 0 then
+            Continue;
+          Found := EditMatchLine(Ed.Lines[RowIdx], 1, True, StartCol + 1,
+            FoundPos, FoundLen);
+        end
+        else
+          Found := EditMatchLine(Ed.Lines[RowIdx], 1, True, 0, FoundPos,
+            FoundLen);
+        if Found then
+        begin
+          // Назад: каретка - в начале вхождения
+          Ed.MoveTo(RowIdx, FoundPos - 1 + FoundLen, False);
+          Ed.MoveTo(RowIdx, FoundPos - 1, True);
+          Result := True;
+          Exit;
+        end;
+      end;
+    end;
+  end;
+end;
+
+// [ Search ] / [ All ] в окне поиска
+procedure TFarView.EditFindConfirm(AAll: Boolean);
+var
+  Ok: Boolean;
+begin
+  Ok := EditFindTakeRows;
+  DlgClose;
+  if not Ok or not EditFindPrepare then
+    Exit;
+  if AAll then
+    EditFindAll
+  else
+    EditFindNext;
+end;
+
+// Shift+F7, [ Search ]: дальше в ту же сторону
+procedure TFarView.EditFindNext;
+begin
+  if (FEditor = nil) or (FEditFind = '') then
+    Exit;
+  if (FEditNeedle = '') and not EditFindPrepare then
+    Exit;
+  if EditFindStep(True) then
+  begin
+    EditEnsureVisible;
+    Status(FarProduct + ': найдено - строка ' + IntToStr(FEditor.Row + 1) +
+      ' (Shift+F7 - дальше)');
+  end
+  else
+    Status(FarProduct + ': не найдено: ' + string(FEditFind));
+  Invalidate;
+end;
+
+// [ All ]: все вхождения - меню 'строка:колонка  текст строки'
+procedure TFarView.EditFindAll;
+var
+  Ed: TFarEditor;
+  Items: TFarMenuItems;
+  RowIdx, FromPos, FoundPos, FoundLen, LineCount, HitIdx, CharIdx: Integer;
+  LineText, PlaceText: WideString;
+  LineCounted: Boolean;
+begin
+  Ed := FEditor;
+  if Ed = nil then
+    Exit;
+  SetLength(FEditHits, 0);
+  LineCount := 0;
+  for RowIdx := 0 to Ed.Count - 1 do
+  begin
+    FromPos := 1;
+    LineCounted := False;
+    while EditMatchLine(Ed.Lines[RowIdx], FromPos, False, 0, FoundPos,
+          FoundLen) do
+    begin
+      SetLength(FEditHits, Length(FEditHits) + 1);
+      FEditHits[High(FEditHits)].Row := RowIdx;
+      FEditHits[High(FEditHits)].Col := FoundPos - 1;
+      FEditHits[High(FEditHits)].Len := FoundLen;
+      if not LineCounted then
+      begin
+        Inc(LineCount);
+        LineCounted := True;
+      end;
+      FromPos := FoundPos + FoundLen;
+      if Length(FEditHits) >= 5000 then
+        Break;
+    end;
+    if Length(FEditHits) >= 5000 then
+      Break;
+  end;
+  if Length(FEditHits) = 0 then
+  begin
+    Status(FarProduct + ': не найдено: ' + string(FEditFind));
+    Exit;
+  end;
+  SetLength(Items, Length(FEditHits));
+  for HitIdx := 0 to High(FEditHits) do
+  begin
+    LineText := Ed.Lines[FEditHits[HitIdx].Row];
+    for CharIdx := 1 to Length(LineText) do
+      if Ord(LineText[CharIdx]) < 32 then
+        LineText[CharIdx] := ' ';
+    PlaceText := WideString(IntToStr(FEditHits[HitIdx].Row + 1) + ':' +
+      IntToStr(FEditHits[HitIdx].Col + 1));
+    while Length(PlaceText) < 9 do
+      PlaceText := PlaceText + ' ';
+    Items[HitIdx].Text := PlaceText + '| ' + LineText;
+    Items[HitIdx].Mark := ' ';
+    Items[HitIdx].Tag := HitIdx;
+  end;
+  MenuOpen(fmEditFindAll, WideString('Occurrences: ' +
+    IntToStr(Length(FEditHits)) + ', lines: ' + IntToStr(LineCount)), Items,
+    0, FEditPanel);
+  Status(FarProduct + ': Enter - к вхождению, Esc - закрыть');
+end;
+
+// Меню всех вхождений: Enter - к вхождению (выделено)
+procedure TFarView.EditGoHit(AIndex: Integer);
+begin
+  if (FEditor = nil) or (AIndex < 0) or (AIndex > High(FEditHits)) then
+    Exit;
+  FEditor.MoveTo(FEditHits[AIndex].Row, FEditHits[AIndex].Col, False);
+  FEditor.MoveTo(FEditHits[AIndex].Row, FEditHits[AIndex].Col +
+    FEditHits[AIndex].Len, True);
+  EditEnsureVisible;
+end;
+
+// Текст замены найденного: в регулярном выражении $1..$9 - группы
+function TFarView.EditReplacement: WideString;
+{$IFDEF FPC}
+var
+  Row1, Col1, Row2, Col2: Integer;
+{$ENDIF}
+begin
+  Result := FEditReplace;
+  {$IFDEF FPC}
+  if (FEditRegex <> nil) and (FEditor <> nil) and
+     FEditor.SelRange(Row1, Col1, Row2, Col2) and (Row1 = Row2) then
+  begin
+    FEditRegex.InputString := UnicodeString(FEditor.Lines[Row1]);
+    if FEditRegex.ExecPos(Col1 + 1) and (FEditRegex.MatchPos[0] = Col1 + 1) then
+      Result := WideString(FEditRegex.Substitute(UnicodeString(FEditReplace)));
+  end;
+  {$ENDIF}
+end;
+
+// [ Replace ] в окне замены: первое вхождение и вопрос о нём
+procedure TFarView.EditReplaceConfirm;
+var
+  Ok: Boolean;
+  Row1, Col1, Row2, Col2: Integer;
+begin
+  Ok := EditFindTakeRows;
+  DlgClose;
+  if not Ok or not EditFindPrepare then
+    Exit;
+  FEditReplCount := 0;
+  // Вхождение, которое уже выделено, - тоже под замену: каретку - в его
+  // начало (назад - в конец)
+  if FEditor.SelRange(Row1, Col1, Row2, Col2) then
+  begin
+    if FEditFindReverse then
+      FEditor.MoveTo(Row2, Col2, False)
+    else
+      FEditor.MoveTo(Row1, Col1, False);
+  end;
+  EditReplaceAsk;
+end;
+
+// Найти следующее и спросить: Replace / All / Skip / Cancel
+procedure TFarView.EditReplaceAsk;
+begin
+  if not EditFindStep(False) then
+  begin
+    EditReplaceDone;
+    Exit;
+  end;
+  EditEnsureVisible;
+  DlgOpen(fdEditReplAsk, 'Replace', ['Replace', '"' + FEditor.SelectedText +
+    '"', 'with', '"' + EditReplacement + '"'], True, False, False, '',
+    ['Replace', 'All', 'Skip', 'Cancel']);
+end;
+
+procedure TFarView.EditReplaceDone;
+begin
+  if FEditReplCount > 0 then
+    Status(FarProduct + ': заменено: ' + IntToStr(FEditReplCount))
+  else
+    Status(FarProduct + ': не найдено: ' + string(FEditFind));
+  Invalidate;
+end;
+
+// Выделенное вхождение - на текст замены; каретка - куда искать дальше
+procedure TFarView.EditReplaceOne;
+var
+  Row1, Col1, Row2, Col2: Integer;
+  NewText: WideString;
+begin
+  if not FEditor.SelRange(Row1, Col1, Row2, Col2) then
+    Exit;
+  NewText := EditReplacement;
+  FEditor.InsertText(NewText);
+  Inc(FEditReplCount);
+  if FEditFindReverse then
+    FEditor.MoveTo(Row1, Col1, False);
+end;
+
+// Ответ на вопрос о замене (кнопка AButton)
+procedure TFarView.EditReplaceAnswer(AButton: Integer);
+var
+  Guard: Integer;
+begin
+  DlgClose;
+  case AButton of
+    0:
+      begin
+        EditReplaceOne;
+        EditReplaceAsk;
+      end;
+    1:
+      begin
+        // Все оставшиеся - без вопросов, до конца (назад - до начала)
+        EditReplaceOne;
+        Guard := 0;
+        while EditFindStep(False) and (Guard < 100000) do
+        begin
+          EditReplaceOne;
+          Inc(Guard);
+        end;
+        EditEnsureVisible;
+        EditReplaceDone;
+      end;
+    2:
+      // Skip: поиск - за выделенным вхождением (назад - перед ним)
+      EditReplaceAsk;
+  else
+    begin
+      FEditor.ClearSelection;
+      EditReplaceDone;
+    end;
+  end;
+end;
+
 // Save setup (Shift+F9): папки панелей, сортировка, история - в editor.ini
 procedure TFarView.SaveSetup;
 begin
@@ -17330,7 +17856,21 @@ begin
       FarHistoryPush(FFindTextHist, FarDecodePath(Ini.ReadString(
         FarFindHistorySection, 'Text' + IntToStr(HistoryIndex), '')),
         FarFindHistoryMax);
+      FarHistoryPush(FEditFindHist, FarDecodePath(Ini.ReadString(
+        FarFindHistorySection, 'EdFind' + IntToStr(HistoryIndex), '')),
+        FarFindHistoryMax);
+      FarHistoryPush(FEditReplHist, FarDecodePath(Ini.ReadString(
+        FarFindHistorySection, 'EdRepl' + IntToStr(HistoryIndex), '')),
+        FarFindHistoryMax);
     end;
+    if Length(FEditFindHist) > 0 then
+      FEditFind := FEditFindHist[0];
+    if Length(FEditReplHist) > 0 then
+      FEditReplace := FEditReplHist[0];
+    FEditFindCase := Ini.ReadInteger(FarIniSection, 'EdFindCase', 0) = 1;
+    FEditFindWhole := Ini.ReadInteger(FarIniSection, 'EdFindWhole', 0) = 1;
+    FEditFindReverse := Ini.ReadInteger(FarIniSection, 'EdFindReverse', 0) = 1;
+    FEditFindRegex := Ini.ReadInteger(FarIniSection, 'EdFindRegex', 0) = 1;
     if Length(FFindMaskHist) = 0 then
       FarHistoryPush(FFindMaskHist, FFindMask, FarFindHistoryMax);
     if Length(FFindTextHist) = 0 then
@@ -17447,6 +17987,17 @@ begin
     for HistoryIndex := 0 to High(FFindTextHist) do
       Ini.WriteString(FarFindHistorySection, 'Text' +
         IntToStr(HistoryIndex + 1), FarEncodePath(FFindTextHist[HistoryIndex]));
+    // Редактор F4: поиск и замена
+    for HistoryIndex := 0 to High(FEditFindHist) do
+      Ini.WriteString(FarFindHistorySection, 'EdFind' +
+        IntToStr(HistoryIndex + 1), FarEncodePath(FEditFindHist[HistoryIndex]));
+    for HistoryIndex := 0 to High(FEditReplHist) do
+      Ini.WriteString(FarFindHistorySection, 'EdRepl' +
+        IntToStr(HistoryIndex + 1), FarEncodePath(FEditReplHist[HistoryIndex]));
+    Ini.WriteInteger(FarIniSection, 'EdFindCase', Ord(FEditFindCase));
+    Ini.WriteInteger(FarIniSection, 'EdFindWhole', Ord(FEditFindWhole));
+    Ini.WriteInteger(FarIniSection, 'EdFindReverse', Ord(FEditFindReverse));
+    Ini.WriteInteger(FarIniSection, 'EdFindRegex', Ord(FEditFindRegex));
     if FHalfWidth > 0 then
       Ini.WriteInteger(FarIniSection, 'HalfWidth', FHalfWidth);
   finally
@@ -17466,7 +18017,7 @@ begin
       Result := FarHelpDrives;
     fmOptions, fmPalGroups, fmPalItems, fmHiRules, fmThemes:
       Result := FarHelpOptions;
-    fmEditEncoding:
+    fmEditEncoding, fmEditFindAll:
       Result := FarHelpEditor;
     fmSort, fmHistory:
       Result := FarHelpPanels;
@@ -17487,6 +18038,7 @@ begin
       fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite:
         Result := FarHelpFtp;
       fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto,
+      fdEditReplace, fdEditReplAsk,
       fdEditError:
         Result := FarHelpEditor;
       fdViewFind, fdViewGoto:
