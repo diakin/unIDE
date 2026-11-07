@@ -43285,6 +43285,10 @@ begin
   if (FDesigner = nil) or (FDesigner.Form = nil) or not IsOwnProject or
      (OwnLiveForm(FObjFormClass) = nil) then
     Exit;
+  // Элементы Ui* своей формы - тоже в теме IDE: форма конструктора не
+  // берёт для них светлые цвета по умолчанию (UiThemeAddDesignRoot в
+  // TFormDesigner.Load - для чужих форм)
+  UiThemeRemoveDesignRoot(FDesigner.Form);
   // Сама форма
   if FIdeDark then
     FDesigner.Form.Color := UiColor('Ide.WindowBG');
