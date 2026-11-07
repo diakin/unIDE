@@ -153,6 +153,10 @@ unit UnFar;
 //      Color schemes - разделы файла .clr, цвет текста и фона, строка
 //      данных; Editor options - шаг табуляции, номера строк; File types -
 //      какое расширение какой схемой (schemes\alias.ini).
+//    - b.69: Schemes - одно окно вместо цепочки меню: вкладки, таблица
+//      разделов (Section, Text, Back, Data), строка данных под ней, кнопки
+//      Save & Exit и Cancel (окно закрывается только ими). При открытии -
+//      схема файла под курсором (по расширению).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -189,7 +193,7 @@ uses
   SchemeData;
 
 const
-  FarBuild = 'b.68';
+  FarBuild = 'b.69';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -235,7 +239,7 @@ type
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
     fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr,
-    fdOverwrite, fdOverRename, fdSchemeData, fdSchemeTab, fdSchemeType);
+    fdOverwrite, fdOverRename);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -298,9 +302,7 @@ type
   // Открытое меню: смена диска (Alt+F1 / Alt+F2), сортировка (Ctrl+F12),
   // история папок (Alt+F12)
   TFarMenuKind = (fmNone, fmDrive, fmSort, fmHistory, fmOptions,
-    fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmEditEncoding,
-    fmSchemes, fmSchemeFiles, fmSchemeItems, fmSchemeEdit, fmSchemeEditor,
-    fmSchemeTypes, fmSchemeTypePick);
+    fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmEditEncoding);
 
   TFarMenuItem = record
     Text: WideString;       // '&' перед буквой быстрого выбора
@@ -320,6 +322,22 @@ type
     Swatch2: TColor;
   end;
   TFarMenuItems = array of TFarMenuItem;
+
+  // Окно Schemes: схема в правке (ключ '' - •default•.clr), есть ли
+  // незаписанные изменения
+  TFarSwScheme = record
+    Key: string;
+    Scheme: TClrScheme;
+    Dirty: Boolean;
+  end;
+  // Строка File types: Kind 0 - alias.ini, 1 - встроенное, 2 - своя схема
+  TFarSwType = record
+    Ext: string;
+    Scheme: string;
+    From: string;
+    Kind: Integer;
+    Changed: Boolean;
+  end;
 
   // Одна панель: папка, её список и курсор
   TFarPanel = class
@@ -551,10 +569,35 @@ type
     FSchemeTheme: string;
     FSchemeFontColor: TColor;
     FSchemeBgColor: TColor;
-    FSchemeEdit: TClrScheme;
-    FSchemeEditKey: string;
-    FSchemeEditSec: string;
-    FSchemeTypeExt: string;
+    // Окно Schemes (Sw*): вкладка, фокус, схемы в правке, таблица
+    // разделов, поле ввода, список схем, File types, места на экране
+    FSwOpen: Boolean;
+    FSwPage: Integer;
+    FSwFocus: Integer;
+    FSwSchemes: array of TFarSwScheme;
+    FSwCur: Integer;
+    FSwNames: TStringList;
+    FSwSections: TStringList;
+    FSwRow, FSwTop, FSwCol: Integer;
+    FSwEditing: Boolean;
+    FSwEditText: WideString;
+    FSwEditPos: Integer;
+    FSwTabText: WideString;
+    FSwTabPos: Integer;
+    FSwLineNumbers: Boolean;
+    FSwTypes: array of TFarSwType;
+    FSwTypesDel: TStringList;
+    FSwTypesLoaded: Boolean;
+    FSwTypeRow, FSwTypeTop: Integer;
+    FSwAdding: Boolean;
+    FSwDropOpen: Boolean;
+    FSwDropItems: array of string;
+    FSwDropIdx, FSwDropTop, FSwDropRows: Integer;
+    FSwDropLeft, FSwDropTopRow, FSwDropW: Integer;
+    FSwTabsRow, FSwFieldRow, FSwFieldCol, FSwGridTop, FSwGridRows: Integer;
+    FSwLineRow, FSwBtnRow, FSwColText, FSwColBack, FSwColData: Integer;
+    FSwTabCol: array[0..3] of Integer;
+    FSwBtnCol: array[0..1] of Integer;
     FOnSchemesDialog: TNotifyEvent;
     // Тема (F9 - Options - Themes) и свои цвета окна выбора цвета
     FThemeName: string;
@@ -955,23 +998,43 @@ type
     procedure ShowThemesMenu;
     procedure ApplyTheme(const AName: string; const APalette: TFarPalette);
     procedure ThemeImport;
-    procedure ShowSchemesMenu(ACursor: Integer);
-    procedure ShowSchemeFiles(const ACursorKey: string);
-    procedure SchemeOpenFile(const AKey: string);
-    procedure ShowSchemeItems(const ACursorSec: string);
-    procedure ShowSchemeEdit(ACursorTag: Integer);
-    procedure SchemeChooseColor(ABack: Boolean);
-    procedure SchemeDataDialog;
-    procedure SchemeSave;
     procedure SchemeReloadEditor;
-    procedure ShowSchemeEditor(ACursor: Integer);
-    procedure ShowSchemeTypes(const ACursorExt: string);
-    procedure ShowSchemeTypePick(const AExt, ACurrent: string);
-    function SchemeMenuKey(AKey: Word): Boolean;
-    function SchemeMenuBack: Boolean;
-    procedure SchemeDlgDone(AOk: Boolean);
     function SchemeShownBack(AColor: TColor): TColor;
     procedure SchemeIniWrite(const ASection, AKey, AValue: string);
+    procedure OpenSchemeWindow;
+    function SwScheme: TClrScheme;
+    procedure SwFreeAll;
+    function SwKeyForFile(const AFileName: WideString): string;
+    procedure SwSelectScheme(const AKey: string);
+    function SwSection: string;
+    function SwCellOk(const ASec: string; ACol: Integer): Boolean;
+    procedure SwFixCol(ADir: Integer);
+    function SwZoneOk(AZone: Integer): Boolean;
+    procedure SwSetFocus(AZone: Integer);
+    procedure SwMoveFocus(ADelta: Integer);
+    procedure SwCommitLine;
+    procedure SwHint;
+    procedure SwSetPage(APage: Integer);
+    procedure SwChooseColor(ABack: Boolean);
+    procedure SwLoadTypes;
+    procedure SwOpenDrop;
+    procedure SwDropChoose;
+    procedure SwDropCancel;
+    procedure SwAddTypeDone;
+    procedure SwDeleteType;
+    procedure SwClose;
+    procedure SwSaveExit;
+    procedure SwButton(AIndex: Integer);
+    function SwRowCount: Integer;
+    procedure SwMoveRow(ADelta: Integer);
+    function SwDropKey(AKey: Word): Boolean;
+    function SwKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure SwChar(ACh: WideChar);
+    procedure SwWheel(ADelta: Integer);
+    procedure SwPutEdit(ACol, ARow, AWidth: Integer; const AText: WideString;
+      APos: Integer; AFocused: Boolean);
+    procedure DrawSchemeWin;
+    procedure SwMouse(AX, AY: Integer);
     procedure PickOpenRule(AIndex: Integer);
     procedure PickClose;
     function PickButtonText(AIndex: Integer): WideString;
@@ -3479,6 +3542,7 @@ begin
   FEditLineNumbers := True;
   FSchemeFontColor := clBlack;
   FSchemeBgColor := clWhite;
+  FSwCur := -1;
   FFtpEditIdx := -1;
   FFtpPassPanel := -1;
   FFtpDelIdx := -1;
@@ -3515,7 +3579,7 @@ var
 begin
   FOnStatus := nil;
   FreeAndNil(FHelp);
-  FreeAndNil(FSchemeEdit);
+  SwFreeAll;
   DirSizeStop;
   FSzTimer.Enabled := False;
   if FFindTimer <> nil then
@@ -4302,6 +4366,8 @@ begin
         DrawDialog;
       if FPickOpen then
         DrawPick;
+      if FSwOpen then
+        DrawSchemeWin;
       if FHelp <> nil then
         DrawHelp;
     end;
@@ -4413,6 +4479,14 @@ begin
   begin
     if Button = mbLeft then
       PickMouse(PosX, PosY);
+    Invalidate;
+    Exit;
+  end;
+  // Окно Schemes: щелчки - только ему
+  if FSwOpen then
+  begin
+    if Button = mbLeft then
+      SwMouse(PosX, PosY);
     Invalidate;
     Exit;
   end;
@@ -4608,6 +4682,15 @@ begin
   end;
   if FPickOpen then
     Exit;
+  if FSwOpen then
+  begin
+    if Message.WheelDelta > 0 then
+      SwWheel(-3)
+    else if Message.WheelDelta < 0 then
+      SwWheel(3);
+    Invalidate;
+    Exit;
+  end;
   if FMenuKind <> fmNone then
   begin
     if Message.WheelDelta > 0 then
@@ -4778,6 +4861,16 @@ begin
       Result := True;
       Exit;
     end;
+    // Окно Schemes: поля ввода
+    if FSwOpen then
+    begin
+      WideCh := KeyChar(AMsg.wParam);
+      if (KeyCode >= 32) and (WideCh <> #0) then
+        SwChar(WideCh);
+      Invalidate;
+      Result := True;
+      Exit;
+    end;
     if (FDlgKind <> fdNone) and (KeyCode >= 32) and
        ((FDlgHasEdit and (FDlgFocus < 0)) or DlgRowIsEdit) then
     begin
@@ -4868,6 +4961,11 @@ begin
   begin
     OpenHelp(HelpContext);
     Result := True;
+  end
+  else if FSwOpen then
+  begin
+    Result := SwKey(KeyCode, ShiftDown, CtrlDown, AltDown);
+    Invalidate;
   end
   else if FPickOpen then
   begin
@@ -5549,11 +5647,7 @@ begin
   ButtonCount := Length(FDlgButtons);
   case AKey of
     VK_ESCAPE, VK_F10:
-      // Окна Schemes: отмена - обратно в меню
-      if FDlgKind in [fdSchemeData, fdSchemeTab, fdSchemeType] then
-        SchemeDlgDone(False)
-      else
-        DlgClose;
+      DlgClose;
     VK_RETURN:
       if FDlgFocus < 0 then
         DlgActivate(0)
@@ -5653,12 +5747,6 @@ var
   EditText, SavedTemp: WideString;
   SavedAction: TFarArcAction;
 begin
-  // Окна Schemes: OK / Cancel - обратно в меню
-  if FDlgKind in [fdSchemeData, fdSchemeTab, fdSchemeType] then
-  begin
-    SchemeDlgDone(AButton = 0);
-    Exit;
-  end;
   // Shift+F1, Add: сначала проверка полей - окно закрывается, только если
   // всё верно
   if (FDlgKind = fdArcAdd) and (AButton = 0) then
@@ -6207,7 +6295,7 @@ end;
 function TFarView.TabsAllowed: Boolean;
 begin
   Result := (FDlgKind = fdNone) and (FMenuKind = fmNone) and
-    not FFindOpen and not FPickOpen and (FHelp = nil) and
+    not FFindOpen and not FPickOpen and not FSwOpen and (FHelp = nil) and
     not FPanelsHidden and not EditorShown(FActive) and not ActivePanel.IsFtp and
     not ActivePanel.IsArchive;
 end;
@@ -6753,9 +6841,6 @@ begin
   // Правила раскраски: Ins, Del, пробел, F4, Ctrl+стрелки
   if (FMenuKind = fmHiRules) and HiRulesKey(AKey, AShift, ACtrl, AAlt) then
     Exit;
-  // Schemes: Ins, Del, F4
-  if not AShift and not ACtrl and not AAlt and SchemeMenuKey(AKey) then
-    Exit;
   // Элементы палитры: Del - стандартный цвет
   if (FMenuKind = fmPalItems) and (AKey = VK_DELETE) and
      (FMenuCursor >= 0) and (FMenuCursor <= High(FMenuItems)) then
@@ -6768,8 +6853,7 @@ begin
       // Элементы палитры - обратно в группы
       if (AKey = VK_ESCAPE) and (FMenuKind = fmPalItems) then
         ShowPalGroups(FarPalGroupIndex(FPalGroupFirst))
-      // Меню Schemes: Esc - на уровень выше
-      else if (AKey <> VK_ESCAPE) or not SchemeMenuBack then
+      else
         MenuClose;
     VK_UP:
       MenuMove(-1);
@@ -6937,74 +7021,7 @@ begin
           if Assigned(FOnSchemesDialog) then
             FOnSchemesDialog(Self)
           else
-            ShowSchemesMenu(0);
-      end;
-    fmSchemes:
-      case Item.Tag of
-        0:
-          // Курсор - на схеме файла в редакторе
-          if FEditor <> nil then
-            ShowSchemeFiles(SchemeKeyForFile(FSchemesDir,
-              string(FEditor.FileName), False))
-          else
-            ShowSchemeFiles('');
-        1:
-          ShowSchemeEditor(0);
-        2:
-          ShowSchemeTypes('');
-      end;
-    fmSchemeFiles:
-      SchemeOpenFile(string(Item.Data));
-    fmSchemeItems:
-      begin
-        FSchemeEditSec := string(Item.Data);
-        ShowSchemeEdit(0);
-      end;
-    fmSchemeEdit:
-      case Item.Tag of
-        0:
-          SchemeChooseColor(False);
-        1:
-          SchemeChooseColor(True);
-        2:
-          SchemeDataDialog;
-      end;
-    fmSchemeEditor:
-      if Item.Tag = 0 then
-        DlgOpen(fdSchemeTab, 'Tab size', ['Tab size (1..32):'], False, False,
-          True, IntToStr(FEditTabSize), ['OK', 'Cancel'])
-      else
-      begin
-        FEditLineNumbers := not FEditLineNumbers;
-        SchemeIniWrite(FarIniSection, 'EditLineNumbers',
-          IntToStr(Ord(FEditLineNumbers)));
-        if FEditor <> nil then
-          EditEnsureVisible;
-        ShowSchemeEditor(1);
-      end;
-    fmSchemeTypes:
-      if Item.Tag < 0 then
-        DlgOpen(fdSchemeType, 'New file type', ['Extension (without dot):'],
-          False, False, True, '', ['OK', 'Cancel'])
-      else if Item.Tag = 2 then
-      begin
-        ShowSchemeTypes(Copy(string(Item.Data), 1,
-          Pos('=', string(Item.Data)) - 1));
-        Status(FarProduct + ': у расширения своя схема - она важнее ' +
-          'соответствия; чтобы сменить, файл схемы нужно убрать из папки');
-      end
-      else
-        ShowSchemeTypePick(Copy(string(Item.Data), 1,
-          Pos('=', string(Item.Data)) - 1), Copy(string(Item.Data),
-          Pos('=', string(Item.Data)) + 1, MaxInt));
-    fmSchemeTypePick:
-      begin
-        if not SchemeAliasSet(FSchemesDir, FSchemeTypeExt,
-           string(Item.Data)) then
-          Status(FarProduct + ': alias.ini не записан')
-        else
-          SchemeReloadEditor;
-        ShowSchemeTypes(FSchemeTypeExt);
+            OpenSchemeWindow;
       end;
     fmPalGroups:
       if Item.Tag >= 0 then
@@ -15655,22 +15672,32 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-//  F9 - Options - Schemes (uniFAR): меню вместо окна IDE Options unIDE.
-//  Schemes: Color schemes, Editor options, File types.
-//  Color schemes: файл схемы - разделы (цвет текста и фона квадратиками) -
-//  раздел: Foreground, Background (окно выбора цвета), Data (строка данных
-//  раздела). Каждое изменение сразу пишется в файл схемы, редактор F4
-//  берёт схему заново. Esc - на уровень выше.
+//  F9 - Options - Schemes (uniFAR): окно настроек вместо окна IDE Options
+//  unIDE. Вкладки Color schemes, Editor options, File types; кнопки
+//  Save & Exit и Cancel. Окно закрывается только ими: Esc отменяет правку
+//  поля или закрывает список, иначе ставит фокус на Cancel.
+//
+//  Color schemes: файл схемы (при открытии - схема файла под курсором,
+//  по расширению; в редакторе - схема его файла), таблица разделов:
+//  подпись (цветами раздела), Text, Back, Data; под таблицей - строка
+//  данных раздела под курсором целиком, в ней она и правится. Изменения
+//  копятся в памяти (схем может быть несколько) и пишутся в файлы .clr по
+//  Save & Exit.
+//  Editor options: шаг табуляции, номера строк.
+//  File types: расширение - схема (schemes\alias.ini).
 // ---------------------------------------------------------------------------
 
-function SchemeShortText(const AText: string; AMax: Integer): string;
-begin
-  Result := AText;
-  if Length(Result) > AMax then
-    Result := Copy(Result, 1, AMax - 3) + '...';
-end;
+const
+  swzTabs = 0;      // строка вкладок
+  swzField = 1;     // файл схемы / шаг табуляции
+  swzGrid = 2;      // таблица разделов / номера строк / таблица типов
+  swzLine = 3;      // строка данных / новое расширение
+  swzSave = 4;
+  swzCancel = 5;
+  SwTabTexts: array[0..2] of string = ('Color schemes', 'Editor options',
+    'File types');
+  SwButtonTexts: array[0..1] of string = ('Save & Exit', 'Cancel');
 
-// Имя файла схемы для заголовков: '' - •default•.clr
 function SchemeKeyTitle(const AKey: string): WideString;
 begin
   if AKey = '' then
@@ -15681,12 +15708,15 @@ end;
 
 // Фон раздела для показа: clNone - фон текста схемы (или редактора)
 function TFarView.SchemeShownBack(AColor: TColor): TColor;
+var
+  Scheme: TClrScheme;
 begin
   Result := AColor;
   if Result <> clNone then
     Exit;
-  if (FSchemeEdit <> nil) and (FSchemeEdit.FTextBG <> clNone) then
-    Result := FSchemeEdit.FTextBG
+  Scheme := SwScheme;
+  if (Scheme <> nil) and (Scheme.FTextBG <> clNone) then
+    Result := Scheme.FTextBG
   else
     Result := FSchemeBgColor;
 end;
@@ -15705,264 +15735,6 @@ begin
   end;
 end;
 
-procedure TFarView.ShowSchemesMenu(ACursor: Integer);
-const
-  ItemTexts: array[0..2] of string = ('&Color schemes', '&Editor options',
-    '&File types');
-var
-  Items: TFarMenuItems;
-  ItemIndex: Integer;
-begin
-  SetLength(Items, 3);
-  for ItemIndex := 0 to 2 do
-  begin
-    Items[ItemIndex].Text := WideString(ItemTexts[ItemIndex]);
-    Items[ItemIndex].Mark := ' ';
-    Items[ItemIndex].Tag := ItemIndex;
-  end;
-  MenuOpen(fmSchemes, 'Schemes', Items, ACursor, FActive);
-end;
-
-// Файлы схем: •default•.clr первым, затем <расширение>.clr
-procedure TFarView.ShowSchemeFiles(const ACursorKey: string);
-var
-  Items: TFarMenuItems;
-  Names: TStringList;
-  NameIdx, CursorIdx: Integer;
-begin
-  Names := TStringList.Create;
-  try
-    SchemeNameList(FSchemesDir, Names);
-    // Имя •default•.clr в другой кодировке - не в списке схем языков
-    for NameIdx := Names.Count - 1 downto 0 do
-      if (Pos('default', Names[NameIdx]) > 0) and (Names[NameIdx] <> '') and
-         not (Names[NameIdx][1] in ['a'..'z', '0'..'9', '_']) then
-        Names.Delete(NameIdx);
-    SetLength(Items, Names.Count + 1);
-    CursorIdx := 0;
-    Items[0].Text := SchemeKeyTitle('');
-    Items[0].RightText := 'base';
-    Items[0].Mark := ' ';
-    Items[0].Data := '';
-    for NameIdx := 0 to Names.Count - 1 do
-    begin
-      Items[NameIdx + 1].Text := SchemeKeyTitle(Names[NameIdx]);
-      Items[NameIdx + 1].Mark := ' ';
-      Items[NameIdx + 1].Data := WideString(Names[NameIdx]);
-      if CompareText(Names[NameIdx], ACursorKey) = 0 then
-        CursorIdx := NameIdx + 1;
-    end;
-  finally
-    Names.Free;
-  end;
-  MenuOpen(fmSchemeFiles, 'Color schemes', Items, CursorIdx, FActive);
-  Status(FarProduct + ': Enter - разделы схемы, Esc - назад; папка ' +
-    FSchemesDir);
-end;
-
-// Схема для правки: •default•.clr одна или схема расширения поверх него
-// (как в окне IDE Options unIDE)
-procedure TFarView.SchemeOpenFile(const AKey: string);
-begin
-  FreeAndNil(FSchemeEdit);
-  FSchemeEdit := SchemeLoadForEdit(FSchemesDir, AKey, FSchemeTheme,
-    FSchemeFontColor, FSchemeBgColor);
-  if FSchemeEdit = nil then
-  begin
-    ShowSchemeFiles(AKey);
-    Status(FarProduct + ': схема не прочитана: ' +
-      string(SchemeKeyTitle(AKey)));
-    Exit;
-  end;
-  FSchemeEditKey := AKey;
-  ShowSchemeItems('');
-  if FSchemeEdit.FLoadError <> '' then
-    Status(FarProduct + ': ' + FSchemeEdit.FLoadError);
-end;
-
-// Разделы схемы в порядке файла; справа - цвет текста и фона, у разделов
-// без цветов - строка данных
-procedure TFarView.ShowSchemeItems(const ACursorSec: string);
-var
-  Items: TFarMenuItems;
-  SecIdx, ItemIdx, CursorIdx: Integer;
-  SecName, DataText: string;
-  FgColor, BgColor: TColor;
-begin
-  if FSchemeEdit = nil then
-    Exit;
-  SetLength(Items, 0);
-  CursorIdx := 0;
-  for SecIdx := 0 to FSchemeEdit.SchemaSections.Count - 1 do
-  begin
-    SecName := FSchemeEdit.SchemaSections[SecIdx];
-    if SchemeSectionHidden(SecName) then
-      Continue;
-    SetLength(Items, Length(Items) + 1);
-    ItemIdx := High(Items);
-    Items[ItemIdx].Text := WideString(SchemeSectionCaption(SecName));
-    Items[ItemIdx].Mark := ' ';
-    Items[ItemIdx].Data := WideString(SecName);
-    if SchemeSectionHasColors(SecName) and
-       FSchemeEdit.SectionColors(SecName, FgColor, BgColor) then
-    begin
-      Items[ItemIdx].SwatchCount := 2;
-      Items[ItemIdx].Swatch1 := FgColor;
-      Items[ItemIdx].Swatch2 := SchemeShownBack(BgColor);
-      // Образец: подпись - цветами раздела
-      Items[ItemIdx].HasColors := True;
-      Items[ItemIdx].Fore := FgColor;
-      Items[ItemIdx].Back := SchemeShownBack(BgColor);
-    end
-    else if SchemeSectionData(FSchemeEdit, SecName, DataText) then
-      Items[ItemIdx].RightText := WideString(SchemeShortText(DataText, 24));
-    if SecName = ACursorSec then
-      CursorIdx := ItemIdx;
-  end;
-  if Length(Items) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0].Text := '(в схеме нет разделов)';
-    Items[0].Mark := ' ';
-    Items[0].Disabled := True;
-  end;
-  MenuOpen(fmSchemeItems, 'Color scheme ' + SchemeKeyTitle(FSchemeEditKey),
-    Items, CursorIdx, FActive);
-  Status(FarProduct + ': Enter - изменить раздел, F4 - строка данных, ' +
-    'Esc - к файлам схем');
-end;
-
-// Раздел: что у него можно поменять. ACursorTag - пункт под курсором
-// (0 - текст, 1 - фон, 2 - данные)
-procedure TFarView.ShowSchemeEdit(ACursorTag: Integer);
-var
-  Items: TFarMenuItems;
-  FgColor, BgColor: TColor;
-  DataText: string;
-  CursorIdx, ItemIdx: Integer;
-begin
-  if FSchemeEdit = nil then
-    Exit;
-  SetLength(Items, 0);
-  if SchemeSectionHasColors(FSchemeEditSec) and
-     FSchemeEdit.SectionColors(FSchemeEditSec, FgColor, BgColor) then
-  begin
-    SetLength(Items, 2);
-    Items[0].Text := '&Foreground';
-    Items[0].Mark := ' ';
-    Items[0].Tag := 0;
-    Items[0].SwatchCount := 1;
-    Items[0].Swatch1 := FgColor;
-    Items[1].Text := '&Background';
-    Items[1].Mark := ' ';
-    Items[1].Tag := 1;
-    Items[1].SwatchCount := 1;
-    Items[1].Swatch1 := SchemeShownBack(BgColor);
-  end;
-  if SchemeSectionData(FSchemeEdit, FSchemeEditSec, DataText) then
-  begin
-    SetLength(Items, Length(Items) + 1);
-    ItemIdx := High(Items);
-    Items[ItemIdx].Text := '&Data';
-    Items[ItemIdx].Mark := ' ';
-    Items[ItemIdx].Tag := 2;
-    if DataText = '' then
-      Items[ItemIdx].RightText := '(пусто)'
-    else
-      Items[ItemIdx].RightText := WideString(SchemeShortText(DataText, 30));
-  end;
-  if Length(Items) = 0 then
-  begin
-    ShowSchemeItems(FSchemeEditSec);
-    Status(FarProduct + ': в разделе ' + FSchemeEditSec +
-      ' менять нечего');
-    Exit;
-  end;
-  CursorIdx := 0;
-  for ItemIdx := 0 to High(Items) do
-    if Items[ItemIdx].Tag = ACursorTag then
-      CursorIdx := ItemIdx;
-  MenuOpen(fmSchemeEdit, WideString(SchemeSectionCaption(FSchemeEditSec)),
-    Items, CursorIdx, FActive);
-  Status(FarProduct + ': Enter - изменить, Esc - к разделам схемы');
-end;
-
-// Цвет текста (ABack = False) или фона раздела - окном выбора цвета
-procedure TFarView.SchemeChooseColor(ABack: Boolean);
-var
-  FgColor, BgColor, NewColor: TColor;
-  Title: WideString;
-  Changed: Boolean;
-begin
-  Changed := False;
-  if (FSchemeEdit <> nil) and
-     FSchemeEdit.SectionColors(FSchemeEditSec, FgColor, BgColor) then
-  begin
-    if ABack then
-    begin
-      NewColor := SchemeShownBack(BgColor);
-      Title := 'Background: ';
-    end
-    else
-    begin
-      NewColor := FgColor;
-      Title := 'Foreground: ';
-    end;
-    Title := Title + WideString(SchemeSectionCaption(FSchemeEditSec));
-    if ChooseColor(NewColor, Title) then
-    begin
-      if ABack then
-        BgColor := NewColor
-      else
-        FgColor := NewColor;
-      FSchemeEdit.SetSectionColors(FSchemeEditSec, FgColor, BgColor);
-      Changed := True;
-    end;
-  end;
-  ShowSchemeEdit(Ord(ABack));
-  if Changed then
-    SchemeSave;
-end;
-
-// Строка данных раздела: слова, маркеры, символы операторов
-procedure TFarView.SchemeDataDialog;
-var
-  DataText: string;
-begin
-  if (FSchemeEdit = nil) or
-     not SchemeSectionData(FSchemeEdit, FSchemeEditSec, DataText) then
-  begin
-    ShowSchemeItems(FSchemeEditSec);
-    Status(FarProduct + ': у раздела ' + FSchemeEditSec +
-      ' нет строки данных');
-    Exit;
-  end;
-  DlgOpen(fdSchemeData, WideString(SchemeSectionCaption(FSchemeEditSec)),
-    [WideString(SchemeSectionHint(FSchemeEditSec))], False, False, True,
-    WideString(DataText), ['OK', 'Cancel']);
-end;
-
-// Схема - в её файл; редактор F4 - со схемой с диска
-procedure TFarView.SchemeSave;
-var
-  ClrPath: string;
-begin
-  if FSchemeEdit = nil then
-    Exit;
-  ClrPath := SchemeEditPath(FSchemesDir, FSchemeEditKey);
-  try
-    FSchemeEdit.SaveClrSchemaTo(ClrPath);
-  except
-    on Err: Exception do
-    begin
-      Status(FarProduct + ': схема не записана: ' + Err.Message);
-      Exit;
-    end;
-  end;
-  SchemeReloadEditor;
-  Status(FarProduct + ': записано в ' + string(SchemeKeyTitle(FSchemeEditKey)));
-end;
-
 procedure TFarView.SchemeReloadEditor;
 var
   Scheme: TClrScheme;
@@ -15974,258 +15746,1388 @@ begin
   Invalidate;
 end;
 
-// Editor options: шаг табуляции, номера строк
-procedure TFarView.ShowSchemeEditor(ACursor: Integer);
-var
-  Items: TFarMenuItems;
+function TFarView.SwScheme: TClrScheme;
 begin
-  SetLength(Items, 2);
-  Items[0].Text := '&Tab size';
-  Items[0].Mark := ' ';
-  Items[0].RightText := WideString(IntToStr(FEditTabSize));
-  Items[0].Tag := 0;
-  Items[1].Text := '&Line numbers';
-  if FEditLineNumbers then
-    Items[1].Mark := FarCheckMark
-  else
-    Items[1].Mark := ' ';
-  Items[1].Tag := 1;
-  MenuOpen(fmSchemeEditor, 'Editor options', Items, ACursor, FActive);
-  Status(FarProduct + ': Enter - изменить, Esc - назад');
+  Result := nil;
+  if (FSwCur >= 0) and (FSwCur <= High(FSwSchemes)) then
+    Result := FSwSchemes[FSwCur].Scheme;
 end;
 
-// File types: расширение - схема (alias.ini, встроенное, своя схема)
-procedure TFarView.ShowSchemeTypes(const ACursorExt: string);
+procedure TFarView.SwFreeAll;
 var
-  Items: TFarMenuItems;
-  Rows: TStringList;
-  RowIdx, TabPos, CursorIdx: Integer;
-  ExtName, Rest, SchemeName, FromText: string;
+  SchemeIdx: Integer;
 begin
+  for SchemeIdx := 0 to High(FSwSchemes) do
+    FreeAndNil(FSwSchemes[SchemeIdx].Scheme);
+  SetLength(FSwSchemes, 0);
+  FSwCur := -1;
+  FreeAndNil(FSwNames);
+  FreeAndNil(FSwSections);
+  FreeAndNil(FSwTypesDel);
+  SetLength(FSwTypes, 0);
+  SetLength(FSwDropItems, 0);
+end;
+
+// Ключ схемы для файла: своя <ext>.clr или по соответствию; нет файла
+// схемы - '' (•default•.clr)
+function TFarView.SwKeyForFile(const AFileName: WideString): string;
+begin
+  Result := '';
+  if (FSchemesDir = '') or (AFileName = '') then
+    Exit;
+  Result := SchemeKeyForFile(FSchemesDir, string(AFileName), False);
+  if (Result <> '') and not FileExists(FSchemesDir + Result + '.clr') then
+    Result := '';
+end;
+
+procedure TFarView.OpenSchemeWindow;
+var
+  StartKey, FileExt: string;
+  CursorName: WideString;
+  Panel: TFarPanel;
+begin
+  if FSchemesDir = '' then
+  begin
+    Status(FarProduct + ': папка schemes не найдена');
+    Exit;
+  end;
+  SwFreeAll;
+  FSwNames := TStringList.Create;
+  SchemeNameList(FSchemesDir, FSwNames);
+  FSwNames.Sorted := False;
+  FSwNames.Insert(0, '');   // •default•.clr - первым
+  FSwSections := TStringList.Create;
+  FSwTypesDel := TStringList.Create;
+  FSwTypesLoaded := False;
+  FSwTypeRow := 0;
+  FSwTypeTop := 0;
+  FSwAdding := False;
+  FSwDropOpen := False;
+  FSwEditing := False;
+  // Схема файла в редакторе, иначе файла под курсором активной панели
+  CursorName := '';
+  if (FEditor <> nil) and EditorShown(FActive) then
+    CursorName := FEditor.FileName
+  else
+  begin
+    Panel := ActivePanel;
+    if (Panel.Cursor >= 0) and (Panel.Cursor < Panel.Count) and
+       not Panel.FItems[Panel.Cursor].IsDir then
+      CursorName := Panel.FItems[Panel.Cursor].Name;
+  end;
+  StartKey := SwKeyForFile(CursorName);
+  FSwTabText := WideString(IntToStr(FEditTabSize));
+  FSwLineNumbers := FEditLineNumbers;
+  FSwPage := 0;
+  FSwFocus := swzGrid;
+  FSwOpen := True;
+  SwSelectScheme(StartKey);
+  FileExt := LowerCase(ExtractFileExt(string(CursorName)));
+  if (StartKey = '') and (FileExt <> '') then
+    Status(FarProduct + ': для *' + FileExt + ' своей схемы нет - ' +
+      string(SchemeKeyTitle('')))
+  else
+    SwHint;
+  Invalidate;
+end;
+
+// Схема AKey - в таблицу; прочитана раньше - из памяти, с правками
+procedure TFarView.SwSelectScheme(const AKey: string);
+var
+  SchemeIdx, SecIdx: Integer;
+  Scheme: TClrScheme;
+begin
+  FSwCur := -1;
+  for SchemeIdx := 0 to High(FSwSchemes) do
+    if FSwSchemes[SchemeIdx].Key = AKey then
+      FSwCur := SchemeIdx;
+  if FSwCur < 0 then
+  begin
+    Scheme := SchemeLoadForEdit(FSchemesDir, AKey, FSchemeTheme,
+      FSchemeFontColor, FSchemeBgColor);
+    if Scheme = nil then
+    begin
+      Status(FarProduct + ': схема не прочитана: ' +
+        string(SchemeKeyTitle(AKey)));
+      if AKey <> '' then
+        SwSelectScheme('');
+      Exit;
+    end;
+    SetLength(FSwSchemes, Length(FSwSchemes) + 1);
+    FSwCur := High(FSwSchemes);
+    FSwSchemes[FSwCur].Key := AKey;
+    FSwSchemes[FSwCur].Scheme := Scheme;
+    FSwSchemes[FSwCur].Dirty := False;
+    if Scheme.FLoadError <> '' then
+      Status(FarProduct + ': ' + Scheme.FLoadError);
+  end;
+  FSwSections.Clear;
+  Scheme := FSwSchemes[FSwCur].Scheme;
+  for SecIdx := 0 to Scheme.SchemaSections.Count - 1 do
+    if not SchemeSectionHidden(Scheme.SchemaSections[SecIdx]) then
+      FSwSections.Add(Scheme.SchemaSections[SecIdx]);
+  FSwRow := 0;
+  FSwTop := 0;
+  FSwCol := 0;
+  if FSwSections.Count > 0 then
+    SwFixCol(1);
+end;
+
+function TFarView.SwSection: string;
+begin
+  Result := '';
+  if (FSwSections <> nil) and (FSwRow >= 0) and (FSwRow < FSwSections.Count) then
+    Result := FSwSections[FSwRow];
+end;
+
+// Есть ли у раздела ячейка: 0 - Text, 1 - Back, 2 - Data
+function TFarView.SwCellOk(const ASec: string; ACol: Integer): Boolean;
+var
+  FgColor, BgColor: TColor;
+  DataText: string;
+begin
+  Result := False;
+  if (ASec = '') or (SwScheme = nil) then
+    Exit;
+  if ACol < 2 then
+    Result := SchemeSectionHasColors(ASec) and
+      SwScheme.SectionColors(ASec, FgColor, BgColor)
+  else
+    Result := SchemeSectionData(SwScheme, ASec, DataText);
+end;
+
+// Столбец под курсором - тот, что есть у раздела; ищем в сторону ADir
+procedure TFarView.SwFixCol(ADir: Integer);
+var
+  Tries: Integer;
+begin
+  for Tries := 0 to 2 do
+  begin
+    if SwCellOk(SwSection, FSwCol) then
+      Exit;
+    FSwCol := (FSwCol + ADir + 3) mod 3;
+  end;
+end;
+
+function TFarView.SwZoneOk(AZone: Integer): Boolean;
+begin
+  case AZone of
+    swzField:
+      Result := FSwPage <> 2;
+    swzLine:
+      if FSwPage = 0 then
+        Result := SwCellOk(SwSection, 2)
+      else
+        Result := (FSwPage = 2) and FSwAdding;
+  else
+    Result := True;
+  end;
+end;
+
+// Фокус - на AZone: строка данных начинает правку, уход с неё - запись
+procedure TFarView.SwSetFocus(AZone: Integer);
+var
+  DataText: string;
+begin
+  if (FSwFocus = swzLine) and (AZone <> swzLine) and FSwEditing then
+    SwCommitLine;
+  FSwFocus := AZone;
+  if (AZone = swzLine) and (FSwPage = 0) and not FSwEditing and
+     (SwScheme <> nil) and
+     SchemeSectionData(SwScheme, SwSection, DataText) then
+  begin
+    FSwEditText := WideString(DataText);
+    FSwEditPos := Length(FSwEditText);
+    FSwEditing := True;
+  end;
+  if AZone = swzField then
+    FSwTabPos := Length(FSwTabText);
+  SwHint;
+end;
+
+procedure TFarView.SwMoveFocus(ADelta: Integer);
+var
+  Zone, Tries: Integer;
+begin
+  Zone := FSwFocus;
+  for Tries := 0 to 6 do
+  begin
+    Zone := (Zone + ADelta + 6) mod 6;
+    if SwZoneOk(Zone) then
+      Break;
+  end;
+  SwSetFocus(Zone);
+end;
+
+// Строка данных: правку - в схему
+procedure TFarView.SwCommitLine;
+var
+  OldText: string;
+begin
+  FSwEditing := False;
+  if FSwPage = 0 then
+  begin
+    if (SwScheme = nil) or not SchemeSectionData(SwScheme, SwSection,
+       OldText) then
+      Exit;
+    if string(FSwEditText) <> OldText then
+    begin
+      SchemeSetSectionData(SwScheme, SwSection, string(FSwEditText));
+      FSwSchemes[FSwCur].Dirty := True;
+    end;
+  end;
+end;
+
+procedure TFarView.SwHint;
+begin
+  case FSwFocus of
+    swzTabs:
+      Status(FarProduct + ': Left/Right - вкладка, Tab - дальше');
+    swzField:
+      if FSwPage = 0 then
+        Status(FarProduct + ': Enter - список схем, Left/Right - ' +
+          'предыдущая/следующая')
+      else
+        Status(FarProduct + ': шаг табуляции, 1..32');
+    swzGrid:
+      case FSwPage of
+        0:
+          Status(FarProduct + ': Enter - цвет / строка данных, F4 - строка ' +
+            'данных, Left/Right - столбец');
+        1:
+          Status(FarProduct + ': пробел - вкл/выкл');
+      else
+        Status(FarProduct + ': Enter - схема, Ins - добавить, Del - ' +
+          'удалить (alias.ini)');
+      end;
+    swzLine:
+      if FSwPage = 0 then
+        Status(FarProduct + ': Enter - принять, Esc - отменить правку')
+      else
+        Status(FarProduct + ': расширение без точки, Enter - выбрать схему');
+    swzSave:
+      Status(FarProduct + ': записать изменения и закрыть');
+    swzCancel:
+      Status(FarProduct + ': закрыть без записи');
+  end;
+end;
+
+procedure TFarView.SwSetPage(APage: Integer);
+begin
+  if FSwEditing then
+    SwCommitLine;
+  FSwAdding := False;
+  FSwPage := (APage + 3) mod 3;
+  if (FSwPage = 2) and not FSwTypesLoaded then
+    SwLoadTypes;
+  FSwFocus := swzTabs;
+  SwHint;
+end;
+
+procedure TFarView.SwChooseColor(ABack: Boolean);
+var
+  FgColor, BgColor, NewColor: TColor;
+  Title: WideString;
+begin
+  if (SwScheme = nil) or not SwScheme.SectionColors(SwSection, FgColor,
+     BgColor) then
+    Exit;
+  if ABack then
+  begin
+    NewColor := SchemeShownBack(BgColor);
+    Title := 'Background: ';
+  end
+  else
+  begin
+    NewColor := FgColor;
+    Title := 'Foreground: ';
+  end;
+  Title := Title + WideString(SchemeSectionCaption(SwSection));
+  if not ChooseColor(NewColor, Title) then
+    Exit;
+  if ABack then
+    BgColor := NewColor
+  else
+    FgColor := NewColor;
+  SwScheme.SetSectionColors(SwSection, FgColor, BgColor);
+  FSwSchemes[FSwCur].Dirty := True;
+end;
+
+// Таблица File types из alias.ini, встроенных соответствий и своих схем
+procedure TFarView.SwLoadTypes;
+var
+  Rows: TStringList;
+  RowIdx, TabPos: Integer;
+  ExtName, Rest: string;
+begin
+  FSwTypesLoaded := True;
   Rows := TStringList.Create;
   try
     SchemeAliasRows(FSchemesDir, Rows);
-    SetLength(Items, Rows.Count);
-    CursorIdx := 0;
+    SetLength(FSwTypes, Rows.Count);
     for RowIdx := 0 to Rows.Count - 1 do
     begin
       ExtName := Rows.Names[RowIdx];
       Rest := Copy(Rows[RowIdx], Length(ExtName) + 2, MaxInt);
       TabPos := Pos(#9, Rest);
-      SchemeName := Copy(Rest, 1, TabPos - 1);
-      FromText := Copy(Rest, TabPos + 1, MaxInt);
-      Items[RowIdx].Text := WideString('*.' + ExtName);
-      Items[RowIdx].Mark := ' ';
-      Items[RowIdx].Data := WideString(ExtName + '=' + SchemeName);
-      if FromText = SchemeFromAlias then
-        Items[RowIdx].Tag := 0
-      else if FromText = SchemeFromBuiltin then
-        Items[RowIdx].Tag := 1
+      FSwTypes[RowIdx].Ext := ExtName;
+      FSwTypes[RowIdx].Scheme := Copy(Rest, 1, TabPos - 1);
+      FSwTypes[RowIdx].From := Copy(Rest, TabPos + 1, MaxInt);
+      if FSwTypes[RowIdx].From = SchemeFromAlias then
+        FSwTypes[RowIdx].Kind := 0
+      else if FSwTypes[RowIdx].From = SchemeFromBuiltin then
+        FSwTypes[RowIdx].Kind := 1
       else
-        Items[RowIdx].Tag := 2;
-      // Своя схема ext.clr важнее соответствия
-      if (Items[RowIdx].Tag <> 2) and
-         FileExists(FSchemesDir + ExtName + '.clr') then
-        FromText := FromText + ', не действует';
-      Items[RowIdx].RightText := WideString(SchemeName + '.clr  ' + FromText);
-      if ExtName = ACursorExt then
-        CursorIdx := RowIdx;
+        FSwTypes[RowIdx].Kind := 2;
+      FSwTypes[RowIdx].Changed := False;
     end;
   finally
     Rows.Free;
   end;
-  if Length(Items) = 0 then
-  begin
-    SetLength(Items, 1);
-    Items[0].Text := '(нет - Ins: добавить)';
-    Items[0].Mark := ' ';
-    Items[0].Tag := -1;
-  end;
-  MenuOpen(fmSchemeTypes, 'File types', Items, CursorIdx, FActive);
-  Status(FarProduct + ': Enter / F4 - выбрать схему, Ins - добавить, Del - ' +
-    'удалить строку alias.ini, Esc - назад');
 end;
 
-// Схема для расширения AExt: список файлов схем
-procedure TFarView.ShowSchemeTypePick(const AExt, ACurrent: string);
+// Список под полем: файлы схем (вкладка 1) или схема для типа (вкладка 3)
+procedure TFarView.SwOpenDrop;
 var
-  Items: TFarMenuItems;
-  Names: TStringList;
-  NameIdx, CursorIdx: Integer;
+  NameIdx, StartIdx: Integer;
+  Current: string;
 begin
-  FSchemeTypeExt := AExt;
-  Names := TStringList.Create;
-  try
-    SchemeNameList(FSchemesDir, Names);
-    SetLength(Items, Names.Count);
-    CursorIdx := 0;
-    for NameIdx := 0 to Names.Count - 1 do
-    begin
-      Items[NameIdx].Text := WideString(Names[NameIdx] + '.clr');
-      Items[NameIdx].Data := WideString(Names[NameIdx]);
-      if CompareText(Names[NameIdx], ACurrent) = 0 then
-      begin
-        Items[NameIdx].Mark := FarCheckMark;
-        CursorIdx := NameIdx;
-      end
-      else
-        Items[NameIdx].Mark := ' ';
-    end;
-  finally
-    Names.Free;
-  end;
-  if Length(Items) = 0 then
+  SetLength(FSwDropItems, 0);
+  FSwDropIdx := 0;
+  FSwDropTop := 0;
+  if FSwPage = 0 then
   begin
-    ShowSchemeTypes(AExt);
+    if FSwCur < 0 then
+      Exit;
+    StartIdx := 0;
+    Current := FSwSchemes[FSwCur].Key;
+  end
+  else
+  begin
+    if (FSwTypeRow < 0) or (FSwTypeRow > High(FSwTypes)) then
+      Exit;
+    StartIdx := 1;   // без •default•.clr
+    Current := FSwTypes[FSwTypeRow].Scheme;
+  end;
+  for NameIdx := StartIdx to FSwNames.Count - 1 do
+  begin
+    SetLength(FSwDropItems, Length(FSwDropItems) + 1);
+    FSwDropItems[High(FSwDropItems)] := FSwNames[NameIdx];
+    if FSwNames[NameIdx] = Current then
+      FSwDropIdx := High(FSwDropItems);
+  end;
+  FSwDropOpen := Length(FSwDropItems) > 0;
+  if not FSwDropOpen then
     Status(FarProduct + ': в папке схем нет файлов .clr');
-    Exit;
-  end;
-  MenuOpen(fmSchemeTypePick, WideString('*.' + AExt + ' - scheme'), Items,
-    CursorIdx, FActive);
-  Status(FarProduct + ': Enter - выбрать, Esc - назад');
 end;
 
-// Клавиши меню Schemes сверх обычных. True - разобрана
-function TFarView.SchemeMenuKey(AKey: Word): Boolean;
+procedure TFarView.SwDropChoose;
 var
-  Item: TFarMenuItem;
-  ExtName: string;
+  Chosen: string;
 begin
-  Result := False;
-  if (FMenuCursor < 0) or (FMenuCursor > High(FMenuItems)) then
+  FSwDropOpen := False;
+  if (FSwDropIdx < 0) or (FSwDropIdx > High(FSwDropItems)) then
     Exit;
-  Item := FMenuItems[FMenuCursor];
-  case FMenuKind of
-    fmSchemeItems:
-      if (AKey = VK_F4) and not Item.Disabled then
-      begin
-        Result := True;
-        FSchemeEditSec := string(Item.Data);
-        MenuClose;
-        SchemeDataDialog;
-      end;
-    fmSchemeTypes:
-      if AKey = VK_F4 then
-      begin
-        Result := True;
-        MenuActivate(FMenuCursor);
-      end
-      else if AKey = VK_INSERT then
-      begin
-        Result := True;
-        MenuClose;
-        DlgOpen(fdSchemeType, 'New file type', ['Extension (without dot):'],
-          False, False, True, '', ['OK', 'Cancel']);
-      end
-      else if AKey = VK_DELETE then
-      begin
-        Result := True;
-        if Item.Tag <> 0 then
-        begin
-          Status(FarProduct + ': удаляются только строки alias.ini; ' +
-            'встроенное соответствие можно переназначить (Enter)');
-          Exit;
-        end;
-        ExtName := Copy(string(Item.Data), 1, Pos('=', string(Item.Data)) - 1);
-        if SchemeAliasSet(FSchemesDir, ExtName, '') then
-          SchemeReloadEditor
-        else
-          Status(FarProduct + ': alias.ini не записан');
-        ShowSchemeTypes(ExtName);
-      end;
+  Chosen := FSwDropItems[FSwDropIdx];
+  if FSwPage = 0 then
+    SwSelectScheme(Chosen)
+  else if (FSwTypeRow >= 0) and (FSwTypeRow <= High(FSwTypes)) then
+  begin
+    FSwTypes[FSwTypeRow].Scheme := Chosen;
+    FSwTypes[FSwTypeRow].Changed := True;
+    FSwTypes[FSwTypeRow].Kind := 0;
+    FSwTypes[FSwTypeRow].From := SchemeFromAlias;
+    if FSwTypesDel.IndexOf(FSwTypes[FSwTypeRow].Ext) >= 0 then
+      FSwTypesDel.Delete(FSwTypesDel.IndexOf(FSwTypes[FSwTypeRow].Ext));
   end;
 end;
 
-// Esc в меню Schemes: на уровень выше. False - не меню Schemes
-function TFarView.SchemeMenuBack: Boolean;
+// Список закрыт без выбора: новая строка типа без схемы - убрать
+procedure TFarView.SwDropCancel;
+var
+  RowIdx: Integer;
+begin
+  FSwDropOpen := False;
+  if (FSwPage = 2) and (FSwTypeRow >= 0) and (FSwTypeRow <= High(FSwTypes)) and
+     (FSwTypes[FSwTypeRow].Scheme = '') then
+  begin
+    for RowIdx := FSwTypeRow to High(FSwTypes) - 1 do
+      FSwTypes[RowIdx] := FSwTypes[RowIdx + 1];
+    SetLength(FSwTypes, Length(FSwTypes) - 1);
+    if FSwTypeRow > High(FSwTypes) then
+      FSwTypeRow := High(FSwTypes);
+    if FSwTypeRow < 0 then
+      FSwTypeRow := 0;
+  end;
+end;
+
+// File types: новое расширение принято - строка и список схем для неё
+procedure TFarView.SwAddTypeDone;
+var
+  ExtName: string;
+  RowIdx, Place: Integer;
+begin
+  FSwAdding := False;
+  ExtName := LowerCase(Trim(string(FSwEditText)));
+  if Copy(ExtName, 1, 2) = '*.' then
+    Delete(ExtName, 1, 2);
+  if (ExtName <> '') and (ExtName[1] = '.') then
+    Delete(ExtName, 1, 1);
+  FSwFocus := swzGrid;
+  if (ExtName = '') or (Pos('=', ExtName) > 0) or (Pos('.', ExtName) > 0) or
+     (Pos(' ', ExtName) > 0) then
+  begin
+    Status(FarProduct + ': расширение - без точки внутри и без "=", ' +
+      'например: inc');
+    Exit;
+  end;
+  for RowIdx := 0 to High(FSwTypes) do
+    if FSwTypes[RowIdx].Ext = ExtName then
+    begin
+      FSwTypeRow := RowIdx;
+      if FSwTypes[RowIdx].Kind = 2 then
+        Status(FarProduct + ': у *.' + ExtName + ' своя схема ' + ExtName +
+          '.clr')
+      else
+        SwOpenDrop;
+      Exit;
+    end;
+  Place := 0;
+  while (Place <= High(FSwTypes)) and (FSwTypes[Place].Ext < ExtName) do
+    Inc(Place);
+  SetLength(FSwTypes, Length(FSwTypes) + 1);
+  for RowIdx := High(FSwTypes) downto Place + 1 do
+    FSwTypes[RowIdx] := FSwTypes[RowIdx - 1];
+  FSwTypes[Place].Ext := ExtName;
+  FSwTypes[Place].Scheme := '';
+  FSwTypes[Place].From := SchemeFromAlias;
+  FSwTypes[Place].Kind := 0;
+  FSwTypes[Place].Changed := True;
+  FSwTypeRow := Place;
+  SwOpenDrop;
+end;
+
+procedure TFarView.SwDeleteType;
+var
+  RowIdx: Integer;
+begin
+  if (FSwTypeRow < 0) or (FSwTypeRow > High(FSwTypes)) then
+    Exit;
+  if FSwTypes[FSwTypeRow].Kind <> 0 then
+  begin
+    Status(FarProduct + ': удаляются только строки alias.ini; ' +
+      'встроенное соответствие можно переназначить (Enter)');
+    Exit;
+  end;
+  if FSwTypesDel.IndexOf(FSwTypes[FSwTypeRow].Ext) < 0 then
+    FSwTypesDel.Add(FSwTypes[FSwTypeRow].Ext);
+  for RowIdx := FSwTypeRow to High(FSwTypes) - 1 do
+    FSwTypes[RowIdx] := FSwTypes[RowIdx + 1];
+  SetLength(FSwTypes, Length(FSwTypes) - 1);
+  if FSwTypeRow > High(FSwTypes) then
+    FSwTypeRow := High(FSwTypes);
+  if FSwTypeRow < 0 then
+    FSwTypeRow := 0;
+end;
+
+procedure TFarView.SwClose;
+begin
+  FSwOpen := False;
+  FSwDropOpen := False;
+  FSwEditing := False;
+  SwFreeAll;
+  Invalidate;
+end;
+
+// Save & Exit: схемы, alias.ini, настройки редактора. Ошибка - окно
+// остаётся открытым
+procedure TFarView.SwSaveExit;
+var
+  TabValue, SchemeIdx, RowIdx, Saved: Integer;
+  FailText: string;
+begin
+  if FSwEditing then
+    SwCommitLine;
+  TabValue := StrToIntDef(Trim(string(FSwTabText)), 0);
+  if (TabValue < 1) or (TabValue > 32) then
+  begin
+    SwSetPage(1);
+    SwSetFocus(swzField);
+    Status(FarProduct + ': шаг табуляции - от 1 до 32');
+    Exit;
+  end;
+  Saved := 0;
+  FailText := '';
+  for SchemeIdx := 0 to High(FSwSchemes) do
+    if FSwSchemes[SchemeIdx].Dirty then
+    try
+      FSwSchemes[SchemeIdx].Scheme.SaveClrSchemaTo(SchemeEditPath(FSchemesDir,
+        FSwSchemes[SchemeIdx].Key));
+      FSwSchemes[SchemeIdx].Dirty := False;
+      Inc(Saved);
+    except
+      on Err: Exception do
+        FailText := string(SchemeKeyTitle(FSwSchemes[SchemeIdx].Key)) + ': ' +
+          Err.Message;
+    end;
+  for RowIdx := 0 to FSwTypesDel.Count - 1 do
+    if not SchemeAliasSet(FSchemesDir, FSwTypesDel[RowIdx], '') then
+      FailText := 'alias.ini';
+  for RowIdx := 0 to High(FSwTypes) do
+    if FSwTypes[RowIdx].Changed and (FSwTypes[RowIdx].Scheme <> '') then
+    begin
+      if SchemeAliasSet(FSchemesDir, FSwTypes[RowIdx].Ext,
+         FSwTypes[RowIdx].Scheme) then
+        FSwTypes[RowIdx].Changed := False
+      else
+        FailText := 'alias.ini';
+    end;
+  FSwTypesDel.Clear;
+  if FailText <> '' then
+  begin
+    Status(FarProduct + ': не записано: ' + FailText);
+    Exit;
+  end;
+  if TabValue <> FEditTabSize then
+  begin
+    FEditTabSize := TabValue;
+    if FEditor <> nil then
+      FEditor.TabSize := TabValue;
+    if FViewer <> nil then
+      FViewer.TabSize := TabValue;
+    SchemeIniWrite('Editor', 'TabChars', IntToStr(TabValue));
+  end;
+  if FSwLineNumbers <> FEditLineNumbers then
+  begin
+    FEditLineNumbers := FSwLineNumbers;
+    SchemeIniWrite(FarIniSection, 'EditLineNumbers',
+      IntToStr(Ord(FEditLineNumbers)));
+  end;
+  SwClose;
+  SchemeReloadEditor;
+  if FEditor <> nil then
+    EditEnsureVisible;
+  Status(FarProduct + ': Schemes - записано (схем: ' + IntToStr(Saved) + ')');
+end;
+
+procedure TFarView.SwButton(AIndex: Integer);
+begin
+  if AIndex = 0 then
+    SwSaveExit
+  else
+  begin
+    SwClose;
+    Status(FarProduct + ': Schemes - изменения не записаны');
+  end;
+end;
+
+// Строк в таблице: столько поместилось при последней отрисовке
+function TFarView.SwRowCount: Integer;
+begin
+  if FSwPage = 0 then
+    Result := FSwSections.Count
+  else
+    Result := Length(FSwTypes);
+end;
+
+procedure TFarView.SwMoveRow(ADelta: Integer);
+var
+  RowNo: Integer;
+begin
+  if FSwPage = 0 then
+    RowNo := FSwRow
+  else
+    RowNo := FSwTypeRow;
+  Inc(RowNo, ADelta);
+  if RowNo > SwRowCount - 1 then
+    RowNo := SwRowCount - 1;
+  if RowNo < 0 then
+    RowNo := 0;
+  if FSwPage = 0 then
+  begin
+    FSwRow := RowNo;
+    SwFixCol(1);
+  end
+  else
+    FSwTypeRow := RowNo;
+end;
+
+function TFarView.SwDropKey(AKey: Word): Boolean;
+var
+  ItemCount: Integer;
 begin
   Result := True;
-  case FMenuKind of
-    fmSchemeFiles:
-      ShowSchemesMenu(0);
-    fmSchemeItems:
-      begin
-        FreeAndNil(FSchemeEdit);
-        ShowSchemeFiles(FSchemeEditKey);
-      end;
-    fmSchemeEdit:
-      ShowSchemeItems(FSchemeEditSec);
-    fmSchemeEditor:
-      ShowSchemesMenu(1);
-    fmSchemeTypes:
-      ShowSchemesMenu(2);
-    fmSchemeTypePick:
-      ShowSchemeTypes(FSchemeTypeExt);
-  else
-    Result := False;
+  ItemCount := Length(FSwDropItems);
+  case AKey of
+    VK_ESCAPE, VK_F10:
+      SwDropCancel;
+    VK_RETURN, VK_SPACE:
+      SwDropChoose;
+    VK_UP:
+      if FSwDropIdx > 0 then
+        Dec(FSwDropIdx);
+    VK_DOWN:
+      if FSwDropIdx < ItemCount - 1 then
+        Inc(FSwDropIdx);
+    VK_PRIOR:
+      FSwDropIdx := FSwDropIdx - FSwDropRows + 1;
+    VK_NEXT:
+      FSwDropIdx := FSwDropIdx + FSwDropRows - 1;
+    VK_HOME:
+      FSwDropIdx := 0;
+    VK_END:
+      FSwDropIdx := ItemCount - 1;
   end;
+  if FSwDropIdx > ItemCount - 1 then
+    FSwDropIdx := ItemCount - 1;
+  if FSwDropIdx < 0 then
+    FSwDropIdx := 0;
 end;
 
-// Окна Schemes закрыты: AOk - OK (Enter), иначе отмена. Потом - снова меню
-procedure TFarView.SchemeDlgDone(AOk: Boolean);
+// Клавиши окна Schemes. False - клавиша - символ поля ввода (WM_CHAR)
+function TFarView.SwKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
 var
-  Kind: TFarDlgKind;
-  EditText, ExtName: string;
-  TabValue: Integer;
+  IsEditKey: Boolean;
+  EditText: WideString;
+  EditPos: Integer;
 begin
-  Kind := FDlgKind;
-  EditText := string(FDlgEdit);
-  DlgClose;
-  case Kind of
-    fdSchemeData:
-      begin
-        if FSchemeEdit = nil then
-          Exit;
-        if AOk then
-          SchemeSetSectionData(FSchemeEdit, FSchemeEditSec, EditText);
-        ShowSchemeEdit(2);
-        if AOk then
-          SchemeSave;
+  Result := True;
+  if FSwDropOpen then
+  begin
+    SwDropKey(AKey);
+    Exit;
+  end;
+  // Вкладки: Ctrl+Tab, Ctrl+PgDn / Ctrl+PgUp
+  if ACtrl and ((AKey = VK_TAB) or (AKey = VK_NEXT) or (AKey = VK_PRIOR)) then
+  begin
+    if (AKey = VK_PRIOR) or ((AKey = VK_TAB) and AShift) then
+      SwSetPage(FSwPage - 1)
+    else
+      SwSetPage(FSwPage + 1);
+    Exit;
+  end;
+  if AKey = VK_TAB then
+  begin
+    if AShift then
+      SwMoveFocus(-1)
+    else
+      SwMoveFocus(1);
+    Exit;
+  end;
+  // Поля ввода: строка данных, новое расширение, шаг табуляции
+  IsEditKey := (FSwFocus = swzLine) or ((FSwFocus = swzField) and
+    (FSwPage = 1));
+  if IsEditKey then
+  begin
+    case AKey of
+      VK_ESCAPE:
+        if FSwFocus = swzLine then
+        begin
+          // Отмена правки
+          FSwEditing := False;
+          if FSwPage = 2 then
+            FSwAdding := False;
+          FSwFocus := swzGrid;
+          SwHint;
+        end
+        else
+          SwSetFocus(swzCancel);
+      VK_RETURN:
+        if FSwFocus = swzLine then
+        begin
+          if FSwPage = 2 then
+            SwAddTypeDone
+          else
+          begin
+            SwCommitLine;
+            FSwFocus := swzGrid;
+            SwHint;
+          end;
+        end
+        else
+          SwMoveFocus(1);
+      VK_UP:
+        SwMoveFocus(-1);
+      VK_DOWN:
+        SwMoveFocus(1);
+      VK_BACK, VK_DELETE, VK_LEFT, VK_RIGHT, VK_HOME, VK_END:
+        begin
+          if FSwFocus = swzLine then
+          begin
+            EditText := FSwEditText;
+            EditPos := FSwEditPos;
+            PickEditKey(EditText, EditPos, AKey, #0);
+            FSwEditText := EditText;
+            FSwEditPos := EditPos;
+          end
+          else
+          begin
+            EditText := FSwTabText;
+            EditPos := FSwTabPos;
+            PickEditKey(EditText, EditPos, AKey, #0);
+            FSwTabText := EditText;
+            FSwTabPos := EditPos;
+          end;
+        end;
+    else
+      // Символ - придёт WM_CHAR
+      if not ((AKey >= VK_F1) and (AKey <= VK_F12)) then
+        Result := False;
+    end;
+    Exit;
+  end;
+  if (AKey = VK_ESCAPE) or (AKey = VK_F10) then
+  begin
+    // Окно закрывают только кнопки: Esc - к кнопке Cancel
+    SwSetFocus(swzCancel);
+    Status(FarProduct + ': Enter - Cancel (закрыть без записи), ' +
+      'Save & Exit - записать');
+    Exit;
+  end;
+  case FSwFocus of
+    swzTabs:
+      case AKey of
+        VK_LEFT:
+          SwSetPage(FSwPage - 1);
+        VK_RIGHT:
+          SwSetPage(FSwPage + 1);
+        VK_DOWN, VK_RETURN:
+          SwMoveFocus(1);
+        VK_UP:
+          SwMoveFocus(-1);
       end;
-    fdSchemeTab:
-      begin
-        ShowSchemeEditor(0);
-        if not AOk then
-          Exit;
-        TabValue := StrToIntDef(Trim(EditText), 0);
-        if (TabValue < 1) or (TabValue > 32) then
-        begin
-          Status(FarProduct + ': шаг табуляции - от 1 до 32');
-          Exit;
-        end;
-        FEditTabSize := TabValue;
-        if FEditor <> nil then
-          FEditor.TabSize := TabValue;
-        if FViewer <> nil then
-          FViewer.TabSize := TabValue;
-        SchemeIniWrite('Editor', 'TabChars', IntToStr(TabValue));
-        ShowSchemeEditor(0);
+    swzField:
+      // Вкладка 1: файл схемы
+      case AKey of
+        VK_RETURN, VK_SPACE, VK_F4:
+          SwOpenDrop;
+        VK_LEFT, VK_RIGHT:
+          if (FSwNames.Count > 0) and (FSwCur >= 0) then
+          begin
+            EditPos := FSwNames.IndexOf(FSwSchemes[FSwCur].Key);
+            if AKey = VK_LEFT then
+              EditPos := (EditPos - 1 + FSwNames.Count) mod FSwNames.Count
+            else
+              EditPos := (EditPos + 1) mod FSwNames.Count;
+            SwSelectScheme(FSwNames[EditPos]);
+          end;
+        VK_DOWN:
+          if AAlt then
+            SwOpenDrop
+          else
+            SwMoveFocus(1);
+        VK_UP:
+          SwMoveFocus(-1);
       end;
-    fdSchemeType:
-      begin
-        if not AOk then
-        begin
-          ShowSchemeTypes('');
-          Exit;
+    swzGrid:
+      if FSwPage = 1 then
+        case AKey of
+          VK_SPACE, VK_RETURN:
+            FSwLineNumbers := not FSwLineNumbers;
+          VK_UP:
+            SwMoveFocus(-1);
+          VK_DOWN:
+            SwMoveFocus(1);
+        end
+      else
+        case AKey of
+          VK_UP:
+            if (FSwPage = 0) and (FSwRow = 0) or
+               (FSwPage = 2) and (FSwTypeRow = 0) then
+              SwMoveFocus(-1)
+            else
+              SwMoveRow(-1);
+          VK_DOWN:
+            SwMoveRow(1);
+          VK_PRIOR:
+            SwMoveRow(-FSwGridRows + 1);
+          VK_NEXT:
+            SwMoveRow(FSwGridRows - 1);
+          VK_HOME:
+            SwMoveRow(-MaxInt div 2);
+          VK_END:
+            SwMoveRow(MaxInt div 2);
+          VK_LEFT, VK_RIGHT:
+            if FSwPage = 0 then
+            begin
+              if AKey = VK_LEFT then
+                FSwCol := (FSwCol + 2) mod 3
+              else
+                FSwCol := (FSwCol + 1) mod 3;
+              if AKey = VK_LEFT then
+                SwFixCol(-1)
+              else
+                SwFixCol(1);
+            end;
+          VK_RETURN, VK_SPACE, VK_F4:
+            if FSwPage = 0 then
+            begin
+              if (AKey <> VK_F4) and (FSwCol < 2) and SwCellOk(SwSection,
+                 FSwCol) then
+                SwChooseColor(FSwCol = 1)
+              else if SwCellOk(SwSection, 2) then
+                SwSetFocus(swzLine)
+              else
+                Status(FarProduct + ': у раздела нет строки данных');
+            end
+            else if (FSwTypeRow >= 0) and (FSwTypeRow <= High(FSwTypes)) then
+            begin
+              if FSwTypes[FSwTypeRow].Kind = 2 then
+                Status(FarProduct + ': у *.' + FSwTypes[FSwTypeRow].Ext +
+                  ' своя схема - она важнее соответствия')
+              else
+                SwOpenDrop;
+            end;
+          VK_INSERT:
+            if FSwPage = 2 then
+            begin
+              FSwAdding := True;
+              FSwEditText := '';
+              FSwEditPos := 0;
+              FSwFocus := swzLine;
+              SwHint;
+            end;
+          VK_DELETE:
+            if FSwPage = 2 then
+              SwDeleteType;
         end;
-        ExtName := LowerCase(Trim(EditText));
-        if Copy(ExtName, 1, 2) = '*.' then
-          Delete(ExtName, 1, 2);
-        if (ExtName <> '') and (ExtName[1] = '.') then
-          Delete(ExtName, 1, 1);
-        if (ExtName = '') or (Pos('=', ExtName) > 0) or
-           (Pos('.', ExtName) > 0) then
-        begin
-          ShowSchemeTypes('');
-          Status(FarProduct + ': расширение - без точки внутри и без "=", ' +
-            'например: inc');
-          Exit;
-        end;
-        ShowSchemeTypePick(ExtName, '');
+    swzSave, swzCancel:
+      case AKey of
+        VK_RETURN, VK_SPACE:
+          SwButton(FSwFocus - swzSave);
+        VK_LEFT, VK_UP:
+          SwMoveFocus(-1);
+        VK_RIGHT, VK_DOWN:
+          SwMoveFocus(1);
       end;
   end;
 end;
 
+procedure TFarView.SwChar(ACh: WideChar);
+begin
+  if FSwDropOpen then
+    Exit;
+  if FSwFocus = swzLine then
+  begin
+    Insert(WideString(ACh), FSwEditText, FSwEditPos + 1);
+    Inc(FSwEditPos);
+  end
+  else if (FSwFocus = swzField) and (FSwPage = 1) then
+  begin
+    Insert(WideString(ACh), FSwTabText, FSwTabPos + 1);
+    Inc(FSwTabPos);
+  end;
+end;
+
+procedure TFarView.SwWheel(ADelta: Integer);
+begin
+  if FSwDropOpen then
+  begin
+    FSwDropIdx := FSwDropIdx + ADelta;
+    if FSwDropIdx > High(FSwDropItems) then
+      FSwDropIdx := High(FSwDropItems);
+    if FSwDropIdx < 0 then
+      FSwDropIdx := 0;
+  end
+  else if FSwPage <> 1 then
+    SwMoveRow(ADelta);
+end;
+
+// Поле ввода с кареткой: AText с позиции прокрутки, каретка - если фокус
+procedure TFarView.SwPutEdit(ACol, ARow, AWidth: Integer;
+  const AText: WideString; APos: Integer; AFocused: Boolean);
+var
+  Scroll, CaretX: Integer;
+begin
+  Scroll := 0;
+  if AFocused and (APos > AWidth - 1) then
+    Scroll := APos - AWidth + 1;
+  PutText(ACol, ARow, AWidth, Copy(AText, Scroll + 1, AWidth),
+    FPal[fpDlgEditText], FPal[fpDlgEditBack]);
+  if AFocused then
+  begin
+    CaretX := (ACol + APos - Scroll) * FCellW;
+    FBuffer.Canvas.Brush.Style := bsSolid;
+    FBuffer.Canvas.Brush.Color := FPal[fpDlgEditText];
+    FBuffer.Canvas.FillRect(Rect(CaretX, ARow * FCellH + 1, CaretX + 2,
+      (ARow + 1) * FCellH - 1));
+  end;
+end;
+
+procedure TFarView.DrawSchemeWin;
+var
+  BoxW, BoxH, BoxLeft, BoxTop, Inner, InnerW, Row, SepY, TabIdx, ColPos: Integer;
+  PageTop, PageBottom, RowIdx, ShowIdx, ButtonIdx, ButtonsW, CapW: Integer;
+  Back, Fore, CellFore, CellBack, FgColor, BgColor, SampleFore: TColor;
+  Caption, ShownText: WideString;
+  SecName, DataText: string;
+  Scheme: TClrScheme;
+  IsCursor, HasColors: Boolean;
+
+  procedure HLine(ARow: Integer);
+  begin
+    SepY := ARow * FCellH + FCellH div 2;
+    with FBuffer.Canvas do
+    begin
+      Pen.Color := Fore;
+      MoveTo((BoxLeft + 2) * FCellW + FCellW div 2 + 1, SepY);
+      LineTo((BoxLeft + BoxW - 3) * FCellW + FCellW div 2, SepY);
+    end;
+  end;
+
+  // Подпись или кнопка: с фокусом - цветом фокуса
+  procedure PutFocused(ACol, ARow: Integer; const AText: WideString;
+    AFocused: Boolean);
+  begin
+    if AFocused then
+      PutText(ACol, ARow, Length(AText), AText, FPal[fpDlgFocusText],
+        FPal[fpDlgFocusBack])
+    else
+      PutText(ACol, ARow, Length(AText), AText, Fore, Back);
+  end;
+
+  // Квадратик цвета в ячейке таблицы; ячейка под курсором - в скобках
+  procedure PutSwatchCell(ACol, ARow: Integer; AColor: TColor;
+    ASelected: Boolean);
+  begin
+    if ASelected then
+    begin
+      PutText(ACol - 1, ARow, 1, '[', FPal[fpDlgFocusText],
+        FPal[fpDlgFocusBack]);
+      PutText(ACol + FarSwatchCells, ARow, 1, ']', FPal[fpDlgFocusText],
+        FPal[fpDlgFocusBack]);
+    end;
+    DrawSwatch(ACol, ARow, AColor, Fore);
+  end;
+
+begin
+  BoxW := FCols - 4;
+  if BoxW > 110 then
+    BoxW := 110;
+  BoxH := PanelHeight - 2;
+  if BoxH > 34 then
+    BoxH := 34;
+  if (BoxW < 50) or (BoxH < 14) then
+    Exit;
+  BoxLeft := (FCols - BoxW) div 2;
+  BoxTop := (PanelHeight - BoxH) div 2;
+  if BoxTop < 0 then
+    BoxTop := 0;
+  Inner := BoxLeft + 4;
+  InnerW := BoxW - 8;
+  Back := FPal[fpDlgBack];
+  Fore := FPal[fpDlgText];
+  for Row := BoxTop to BoxTop + BoxH - 1 do
+    FillCells(BoxLeft, Row, BoxW, Back);
+  DrawBox(BoxLeft + 2, BoxTop + 1, BoxLeft + BoxW - 3, BoxTop + BoxH - 2, Fore);
+  PutCentered(BoxLeft, BoxTop + 1, BoxW, ' Schemes ', Fore, Back);
+
+  // Вкладки
+  Row := BoxTop + 2;
+  FSwTabsRow := Row;
+  ColPos := Inner;
+  for TabIdx := 0 to 2 do
+  begin
+    Caption := WideString(' ' + SwTabTexts[TabIdx] + ' ');
+    FSwTabCol[TabIdx] := ColPos;
+    if TabIdx = FSwPage then
+    begin
+      if FSwFocus = swzTabs then
+        PutText(ColPos, Row, Length(Caption), Caption, FPal[fpDlgFocusText],
+          FPal[fpDlgFocusBack])
+      else
+        PutText(ColPos, Row, Length(Caption), Caption, FPal[fpDlgEditText],
+          FPal[fpDlgEditBack]);
+    end
+    else
+      PutText(ColPos, Row, Length(Caption), Caption, Fore, Back);
+    Inc(ColPos, Length(Caption) + 1);
+  end;
+  FSwTabCol[3] := ColPos;
+  HLine(Row + 1);
+
+  PageTop := Row + 2;
+  PageBottom := BoxTop + BoxH - 5;   // последняя строка страницы
+  FSwBtnRow := BoxTop + BoxH - 3;
+  HLine(FSwBtnRow - 1);
+  FSwGridRows := 1;
+  Scheme := SwScheme;
+
+  case FSwPage of
+    0:
+      begin
+        // Файл схемы
+        Row := PageTop;
+        FSwFieldRow := Row;
+        FSwFieldCol := Inner + 8;
+        PutText(Inner, Row, 7, 'Scheme:', Fore, Back);
+        if FSwCur >= 0 then
+          Caption := ' ' + SchemeKeyTitle(FSwSchemes[FSwCur].Key)
+        else
+          Caption := '';
+        if (FSwCur >= 0) and FSwSchemes[FSwCur].Dirty then
+          Caption := Caption + ' *';
+        if FSwFocus = swzField then
+          PutText(FSwFieldCol, Row, 26, Caption, FPal[fpDlgFocusText],
+            FPal[fpDlgFocusBack])
+        else
+          PutText(FSwFieldCol, Row, 26, Caption, FPal[fpDlgEditText],
+            FPal[fpDlgEditBack]);
+        PutText(FSwFieldCol + 26, Row, 3, '[' + WideChar($2193) + ']', Fore,
+          Back);
+        PutText(FSwFieldCol + 31, Row, InnerW - 39, '* - есть изменения',
+          FarBlend(Fore, Back, 40), Back);
+
+        // Заголовок таблицы
+        Row := PageTop + 2;
+        CapW := 32;
+        if CapW > InnerW - 30 then
+          CapW := InnerW - 30;
+        FSwColText := Inner + CapW + 2;
+        FSwColBack := FSwColText + FarSwatchCells + 3;
+        FSwColData := FSwColBack + FarSwatchCells + 3;
+        PutText(Inner, Row, CapW, 'Section', Fore, Back);
+        PutText(FSwColText, Row, 4, 'Text', Fore, Back);
+        PutText(FSwColBack, Row, 4, 'Back', Fore, Back);
+        PutText(FSwColData, Row, 4, 'Data', Fore, Back);
+
+        // Строки разделов; под таблицей - строка данных целиком
+        FSwGridTop := Row + 1;
+        FSwLineRow := PageBottom;
+        FSwGridRows := FSwLineRow - 1 - FSwGridTop;
+        if FSwGridRows < 1 then
+          FSwGridRows := 1;
+        if FSwRow < FSwTop then
+          FSwTop := FSwRow;
+        if FSwRow >= FSwTop + FSwGridRows then
+          FSwTop := FSwRow - FSwGridRows + 1;
+        if FSwTop < 0 then
+          FSwTop := 0;
+        for RowIdx := 0 to FSwGridRows - 1 do
+        begin
+          ShowIdx := FSwTop + RowIdx;
+          if (Scheme = nil) or (ShowIdx >= FSwSections.Count) then
+            Break;
+          Row := FSwGridTop + RowIdx;
+          SecName := FSwSections[ShowIdx];
+          IsCursor := ShowIdx = FSwRow;
+          if IsCursor then
+            FillCells(Inner - 1, Row, InnerW + 2, FarBlend(Back, Fore, 18));
+          Caption := WideString(SchemeSectionCaption(SecName));
+          HasColors := SchemeSectionHasColors(SecName) and
+            Scheme.SectionColors(SecName, FgColor, BgColor);
+          if HasColors then
+          begin
+            // Подпись - цветами раздела, как в тексте
+            SampleFore := FgColor;
+            if SampleFore = clNone then
+              SampleFore := FSchemeFontColor;
+            PutText(Inner, Row, Length(Caption), Caption, SampleFore,
+              SchemeShownBack(BgColor));
+            PutSwatchCell(FSwColText, Row, FgColor, IsCursor and
+              (FSwFocus = swzGrid) and (FSwCol = 0));
+            PutSwatchCell(FSwColBack, Row, SchemeShownBack(BgColor),
+              IsCursor and (FSwFocus = swzGrid) and (FSwCol = 1));
+          end
+          else if IsCursor then
+            PutText(Inner, Row, Length(Caption), Caption, Fore,
+              FarBlend(Back, Fore, 18))
+          else
+            PutText(Inner, Row, Length(Caption), Caption, Fore, Back);
+          if SchemeSectionData(Scheme, SecName, DataText) then
+          begin
+            ShownText := WideString(DataText);
+            if ShownText = '' then
+              ShownText := '-';
+            if IsCursor and (FSwFocus = swzGrid) and (FSwCol = 2) then
+            begin
+              CellFore := FPal[fpDlgFocusText];
+              CellBack := FPal[fpDlgFocusBack];
+            end
+            else
+            begin
+              CellFore := Fore;
+              if IsCursor then
+                CellBack := FarBlend(Back, Fore, 18)
+              else
+                CellBack := Back;
+            end;
+            ColPos := Inner + InnerW - FSwColData;
+            if Length(ShownText) > ColPos then
+              ShownText := Copy(ShownText, 1, ColPos - 3) + '...';
+            PutText(FSwColData, Row, Length(ShownText), ShownText, CellFore,
+              CellBack);
+          end;
+        end;
+
+        // Строка данных раздела под курсором
+        Row := FSwLineRow;
+        PutText(Inner, Row, 6, 'Data:', Fore, Back);
+        if FSwEditing then
+          SwPutEdit(Inner + 6, Row, InnerW - 6, FSwEditText, FSwEditPos,
+            FSwFocus = swzLine)
+        else if (Scheme <> nil) and SchemeSectionData(Scheme, SwSection,
+           DataText) then
+          PutText(Inner + 6, Row, InnerW - 6, WideString(DataText),
+            FPal[fpDlgEditText], FPal[fpDlgEditBack])
+        else
+          PutText(Inner + 6, Row, InnerW - 6, '(у раздела нет строки данных)',
+            FarBlend(Fore, Back, 40), Back);
+      end;
+    1:
+      begin
+        Row := PageTop + 1;
+        FSwFieldRow := Row;
+        FSwFieldCol := Inner + 18;
+        PutFocused(Inner, Row, 'Tab size:', False);
+        SwPutEdit(FSwFieldCol, Row, 6, FSwTabText, FSwTabPos,
+          FSwFocus = swzField);
+        PutText(FSwFieldCol + 8, Row, 20, '(1..32)', FarBlend(Fore, Back, 40),
+          Back);
+        Row := PageTop + 3;
+        FSwGridTop := Row;
+        if FSwLineNumbers then
+          Caption := '[x] Line numbers'
+        else
+          Caption := '[ ] Line numbers';
+        PutFocused(Inner, Row, Caption, FSwFocus = swzGrid);
+        PutText(Inner + 18, Row, 40, '(номера строк слева в редакторе F4)',
+          FarBlend(Fore, Back, 40), Back);
+      end;
+    2:
+      begin
+        Row := PageTop;
+        CapW := 16;
+        FSwColText := Inner + CapW;
+        FSwColBack := FSwColText + 18;
+        PutText(Inner, Row, CapW, 'Extension', Fore, Back);
+        PutText(FSwColText, Row, 10, 'Scheme', Fore, Back);
+        PutText(FSwColBack, Row, 10, 'Source', Fore, Back);
+        FSwGridTop := Row + 1;
+        FSwLineRow := PageBottom;
+        FSwGridRows := FSwLineRow - 1 - FSwGridTop;
+        if FSwGridRows < 1 then
+          FSwGridRows := 1;
+        if FSwTypeRow < FSwTypeTop then
+          FSwTypeTop := FSwTypeRow;
+        if FSwTypeRow >= FSwTypeTop + FSwGridRows then
+          FSwTypeTop := FSwTypeRow - FSwGridRows + 1;
+        if FSwTypeTop < 0 then
+          FSwTypeTop := 0;
+        for RowIdx := 0 to FSwGridRows - 1 do
+        begin
+          ShowIdx := FSwTypeTop + RowIdx;
+          if ShowIdx > High(FSwTypes) then
+            Break;
+          Row := FSwGridTop + RowIdx;
+          IsCursor := ShowIdx = FSwTypeRow;
+          if IsCursor and (FSwFocus = swzGrid) then
+          begin
+            CellFore := FPal[fpDlgFocusText];
+            CellBack := FPal[fpDlgFocusBack];
+          end
+          else if IsCursor then
+          begin
+            CellFore := Fore;
+            CellBack := FarBlend(Back, Fore, 18);
+          end
+          else
+          begin
+            CellFore := Fore;
+            CellBack := Back;
+          end;
+          FillCells(Inner - 1, Row, InnerW + 2, CellBack);
+          PutText(Inner, Row, CapW, WideString('*.' + FSwTypes[ShowIdx].Ext),
+            CellFore, CellBack);
+          if FSwTypes[ShowIdx].Scheme <> '' then
+            PutText(FSwColText, Row, 18, WideString(FSwTypes[ShowIdx].Scheme +
+              '.clr'), CellFore, CellBack);
+          DataText := FSwTypes[ShowIdx].From;
+          if FSwTypes[ShowIdx].Changed then
+            DataText := DataText + ' *';
+          if (FSwTypes[ShowIdx].Kind <> 2) and
+             FileExists(FSchemesDir + FSwTypes[ShowIdx].Ext + '.clr') then
+            DataText := DataText + ' (не действует: есть своя ' +
+              FSwTypes[ShowIdx].Ext + '.clr)';
+          PutText(FSwColBack, Row, Inner + InnerW - FSwColBack,
+            WideString(DataText), CellFore, CellBack);
+        end;
+        Row := FSwLineRow;
+        if FSwAdding then
+        begin
+          PutText(Inner, Row, 15, 'New extension:', Fore, Back);
+          SwPutEdit(Inner + 15, Row, 16, FSwEditText, FSwEditPos,
+            FSwFocus = swzLine);
+        end
+        else
+          PutText(Inner, Row, InnerW, 'Ins - добавить, Del - удалить строку ' +
+            'alias.ini, Enter - схема', FarBlend(Fore, Back, 40), Back);
+      end;
+  end;
+
+  // Кнопки
+  ButtonsW := 0;
+  for ButtonIdx := 0 to 1 do
+    Inc(ButtonsW, Length(SwButtonTexts[ButtonIdx]) + 5);
+  Dec(ButtonsW);
+  ColPos := BoxLeft + (BoxW - ButtonsW) div 2;
+  for ButtonIdx := 0 to 1 do
+  begin
+    Caption := WideString('[ ' + SwButtonTexts[ButtonIdx] + ' ]');
+    FSwBtnCol[ButtonIdx] := ColPos;
+    PutFocused(ColPos, FSwBtnRow, Caption, FSwFocus = swzSave + ButtonIdx);
+    Inc(ColPos, Length(Caption) + 1);
+  end;
+
+  // Список схем - под полем (вкладка 1) или у строки типа (вкладка 3)
+  if FSwDropOpen then
+  begin
+    FSwDropW := 28;
+    if FSwPage = 0 then
+    begin
+      FSwDropLeft := FSwFieldCol;
+      FSwDropTopRow := FSwFieldRow + 1;
+    end
+    else
+    begin
+      FSwDropLeft := FSwColText;
+      FSwDropTopRow := FSwGridTop + FSwTypeRow - FSwTypeTop + 1;
+    end;
+    FSwDropRows := Length(FSwDropItems);
+    if FSwDropTopRow + FSwDropRows + 2 > BoxTop + BoxH - 1 then
+      FSwDropRows := BoxTop + BoxH - 3 - FSwDropTopRow;
+    if FSwDropRows < 3 then
+    begin
+      // Мало места внизу - список выше строки
+      FSwDropRows := Length(FSwDropItems);
+      if FSwDropRows > 12 then
+        FSwDropRows := 12;
+      FSwDropTopRow := FSwDropTopRow - FSwDropRows - 3;
+      if FSwDropTopRow < BoxTop then
+        FSwDropTopRow := BoxTop;
+    end;
+    if FSwDropIdx < FSwDropTop then
+      FSwDropTop := FSwDropIdx;
+    if FSwDropIdx >= FSwDropTop + FSwDropRows then
+      FSwDropTop := FSwDropIdx - FSwDropRows + 1;
+    if FSwDropTop < 0 then
+      FSwDropTop := 0;
+    for Row := FSwDropTopRow to FSwDropTopRow + FSwDropRows + 1 do
+      FillCells(FSwDropLeft, Row, FSwDropW, FPal[fpMenuBack]);
+    DrawBox(FSwDropLeft, FSwDropTopRow, FSwDropLeft + FSwDropW - 1,
+      FSwDropTopRow + FSwDropRows + 1, FPal[fpMenuFrame]);
+    for RowIdx := 0 to FSwDropRows - 1 do
+    begin
+      ShowIdx := FSwDropTop + RowIdx;
+      if ShowIdx > High(FSwDropItems) then
+        Break;
+      Caption := ' ' + SchemeKeyTitle(FSwDropItems[ShowIdx]);
+      if ShowIdx = FSwDropIdx then
+        PutText(FSwDropLeft + 1, FSwDropTopRow + 1 + RowIdx, FSwDropW - 2,
+          Caption, FPal[fpMenuText], FPal[fpMenuCursorBack])
+      else
+        PutText(FSwDropLeft + 1, FSwDropTopRow + 1 + RowIdx, FSwDropW - 2,
+          Caption, FPal[fpMenuText], FPal[fpMenuBack]);
+    end;
+  end;
+end;
+
+// Щелчок в окне Schemes
+procedure TFarView.SwMouse(AX, AY: Integer);
+var
+  Col, Row, TabIdx, ButtonIdx, ShowIdx: Integer;
+begin
+  Col := AX div FCellW;
+  Row := AY div FCellH;
+  if FSwDropOpen then
+  begin
+    ShowIdx := FSwDropTop + Row - FSwDropTopRow - 1;
+    if (Col > FSwDropLeft) and (Col < FSwDropLeft + FSwDropW - 1) and
+       (Row > FSwDropTopRow) and (Row <= FSwDropTopRow + FSwDropRows) and
+       (ShowIdx <= High(FSwDropItems)) then
+    begin
+      FSwDropIdx := ShowIdx;
+      SwDropChoose;
+    end
+    else
+      SwDropCancel;
+    Exit;
+  end;
+  if Row = FSwTabsRow then
+  begin
+    for TabIdx := 0 to 2 do
+      if (Col >= FSwTabCol[TabIdx]) and (Col < FSwTabCol[TabIdx + 1] - 1) then
+        SwSetPage(TabIdx);
+    Exit;
+  end;
+  if Row = FSwBtnRow then
+  begin
+    for ButtonIdx := 0 to 1 do
+      if (Col >= FSwBtnCol[ButtonIdx]) and (Col < FSwBtnCol[ButtonIdx] +
+         Length(SwButtonTexts[ButtonIdx]) + 4) then
+      begin
+        SwSetFocus(swzSave + ButtonIdx);
+        SwButton(ButtonIdx);
+        Exit;
+      end;
+    Exit;
+  end;
+  case FSwPage of
+    0:
+      if Row = FSwFieldRow then
+      begin
+        SwSetFocus(swzField);
+        SwOpenDrop;
+      end
+      else if Row = FSwLineRow then
+      begin
+        if SwCellOk(SwSection, 2) then
+          SwSetFocus(swzLine);
+      end
+      else if (Row >= FSwGridTop) and (Row < FSwGridTop + FSwGridRows) and
+              (FSwTop + Row - FSwGridTop < FSwSections.Count) then
+      begin
+        if FSwEditing then
+          SwCommitLine;
+        FSwRow := FSwTop + Row - FSwGridTop;
+        FSwFocus := swzGrid;
+        // Щелчок по квадратику - сразу окно выбора цвета
+        if (Col >= FSwColText) and (Col < FSwColText + FarSwatchCells) and
+           SwCellOk(SwSection, 0) then
+        begin
+          FSwCol := 0;
+          SwChooseColor(False);
+        end
+        else if (Col >= FSwColBack) and (Col < FSwColBack + FarSwatchCells) and
+                SwCellOk(SwSection, 1) then
+        begin
+          FSwCol := 1;
+          SwChooseColor(True);
+        end
+        else if (Col >= FSwColData) and SwCellOk(SwSection, 2) then
+          FSwCol := 2
+        else
+          SwFixCol(1);
+        SwHint;
+      end;
+    1:
+      if Row = FSwFieldRow then
+        SwSetFocus(swzField)
+      else if Row = FSwGridTop then
+      begin
+        SwSetFocus(swzGrid);
+        FSwLineNumbers := not FSwLineNumbers;
+      end;
+    2:
+      if (Row >= FSwGridTop) and (Row < FSwGridTop + FSwGridRows) and
+         (FSwTypeTop + Row - FSwGridTop <= High(FSwTypes)) then
+      begin
+        FSwTypeRow := FSwTypeTop + Row - FSwGridTop;
+        FSwAdding := False;
+        SwSetFocus(swzGrid);
+      end;
+  end;
+end;
 
 // Save setup (Shift+F9): папки панелей, сортировка, история - в editor.ini
 procedure TFarView.SaveSetup;
@@ -16493,9 +17395,7 @@ begin
   case FMenuKind of
     fmDrive:
       Result := FarHelpDrives;
-    fmOptions, fmPalGroups, fmPalItems, fmHiRules, fmThemes, fmSchemes,
-    fmSchemeFiles, fmSchemeItems, fmSchemeEdit, fmSchemeEditor, fmSchemeTypes,
-    fmSchemeTypePick:
+    fmOptions, fmPalGroups, fmPalItems, fmHiRules, fmThemes:
       Result := FarHelpOptions;
     fmEditEncoding:
       Result := FarHelpEditor;
@@ -16506,7 +17406,7 @@ begin
   end;
   if Result <> '' then
     Exit;
-  if FPickOpen then
+  if FPickOpen or FSwOpen then
     Result := FarHelpOptions
   else
     case FDlgKind of
@@ -16522,7 +17422,7 @@ begin
         Result := FarHelpEditor;
       fdViewFind, fdViewGoto:
         Result := FarHelpViewer;
-      fdHiDelete, fdSchemeData, fdSchemeTab, fdSchemeType:
+      fdHiDelete:
         Result := FarHelpOptions;
       fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew, fdOverwrite,
       fdOverRename:
