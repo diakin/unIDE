@@ -91,6 +91,8 @@ type
     // Смещения строк по возрастанию (для шагов: поиск начала строки)
     FSortedOfs: TDbgOffsetArray;
     FMinOfs, FMaxOfs: Cardinal;
+    // Разделы, где номера строк перешли через 65535 и восстановлены
+    FWrapUnits: string;
     procedure AddLine(AOffset: Cardinal; ALine, AUnit: Integer);
     procedure AddModule(const AName: string; AStart, ALen: Cardinal);
     procedure BuildIndex;
@@ -112,6 +114,9 @@ type
     // смещение - в модуле, у которого есть номера строк
     function HasLines(AOffset: Cardinal): Boolean;
     property LineCount: Integer read FLineCount;
+    // Файлы, у которых номера строк в .map записаны по модулю 65536
+    // (Delphi 7 хранит номер строки в 16 битах) и восстановлены; '' - нет
+    property WrapUnits: string read FWrapUnits;
   end;
 
   TDbgStopEvent = procedure(Sender: TObject; AOffset: Cardinal) of object;
@@ -567,9 +572,13 @@ var
   InSegments: Boolean;
   Ofs, SegLen: Cardinal;
   LenValue: Integer;
+  LineBase, PrevLine: Integer;
 begin
   Result := False;
   FLineCount := 0;
+  FWrapUnits := '';
+  LineBase := 0;
+  PrevLine := 0;
   FUnitFile.Clear;
   FUnitModule.Clear;
   FModName.Clear;
@@ -603,6 +612,8 @@ begin
       if Copy(Row, 1, 17) = 'Line numbers for ' then
       begin
         InSegments := False;
+        LineBase := 0;
+        PrevLine := 0;
         // "Line numbers for Unit1(Unit1.pas) segment CODE"
         OpenPos := Pos('(', Row);
         ClosePos := Pos(')', Row);
@@ -659,6 +670,24 @@ begin
           LineNo := StrToIntDef(Words[WordIdx], -1);
           if (LineNo > 0) and MapCodeOfs(Words[WordIdx + 1], Ofs) then
           begin
+            // Delphi 7 пишет номер строки в 16 битах: после 65535 идёт
+            // 0, 1, ... Код модуля в разделе идёт по порядку текста,
+            // поэтому резкий спад номера (больше чем на 32768) - переход
+            // через 65536, а не начало другой процедуры.
+            if (LineNo < 65536) and
+               (LineNo + LineBase < PrevLine - 32768) then
+            begin
+              Inc(LineBase, 65536);
+              if Pos(', ' + FUnitFile[UnitIdx] + ';',
+                     ', ' + FWrapUnits + ';') = 0 then
+              begin
+                if FWrapUnits <> '' then
+                  FWrapUnits := FWrapUnits + ', ';
+                FWrapUnits := FWrapUnits + FUnitFile[UnitIdx];
+              end;
+            end;
+            Inc(LineNo, LineBase);
+            PrevLine := LineNo;
             AddLine(Ofs, LineNo, UnitIdx);
             Inc(WordIdx, 2);
           end
