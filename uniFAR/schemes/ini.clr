@@ -1,15 +1,21 @@
 • Operators $00D81CDD $00F8F8F8
 ()*+,-./:;<=>@[]^{}
+• Operators@Dark $00FF46A3 $001A1A1A
 • LineComment clGreen $00F8F8F8
 //
+• LineComment@Dark $0000E100 $0047695F
 • BlockComment $00A40000 $00CEFFCE
 [ ]
+• BlockComment@Dark $00009B00 $001A1A1A
 • Strings $00008CFF $00F8F8F8
 '
+• Strings@Dark $000077F9 $001A1A1A
 • Digits clRed clWhite
 0x
+• Digits@Dark clRed $00464646
 • CUSTOM1 $00336600 $00BBFFBB
 !
+• CUSTOM1@Dark $0091F9E9 $00007500
 • CUSTOM2 $00CA0065 $00AAD5FF
 !!
 • CUSTOM3 clYellow clRed
@@ -18,12 +24,12 @@
 !!!!
 • CUSTOM5 clRed clWhite
 !!!!!
+• CUSTOM5@Dark clRed $00A0A0A0
 • Text $FFFFFFFF $00F8F8F8
 • LineMark clNone $00FFFF80
 [
-• Operators@Dark $00FF46A3 $001A1A1A
-
-• BlockComment@Dark $00009B00 $001A1A1A
-none
-• Strings@Dark $000077F9 $001A1A1A
-none
+• LineMark@Dark clNone $006A6A00
+• PairMark clNone $0080FFFF
+• PairMark@Dark clNone $0053449B
+• CaretChar clNone clNone
+• CaretChar@Dark $0068FDFA $00D500D5

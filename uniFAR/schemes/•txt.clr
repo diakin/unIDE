@@ -10,6 +10,7 @@
 0x
 • CUSTOM1 $00FF80FF clRed
 !
+• CUSTOM1@Dark $00D9F28C clRed
 • CUSTOM2 $00FF80FF clRed
 !!
 • CUSTOM3 $00FF80FF clRed
@@ -19,3 +20,4 @@
 • CUSTOM5 $00FF80FF clRed
 !!!!!
 • Text $00400040 $00E6EEF7
+• PairMark clNone $0080FFFF
