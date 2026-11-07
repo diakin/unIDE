@@ -950,6 +950,57 @@ begin
   Result := Copy(Str, 1, Length(SchemaHeadMark)) = SchemaHeadMark;
 end;
 
+// Метка заголовка в файле - байты 149 160 (CP1251: '•' и неразрывный
+// пробел). Строка собирается из байтов во время работы: константа
+// SchemaHeadMark в сборке Lazarus ({$CODEPAGE UTF8}) может храниться
+// другими байтами, и тогда заголовки файла с ней не совпадают (30561)
+function ClrFileMark: string;
+begin
+  SetLength(Result, 2);
+  Result[1] := Chr(149);
+  Result[2] := Chr(160);
+end;
+
+// Байты в строку без перекодировки
+function ClrBytes(const ACodes: array of Byte): string;
+var
+  ByteIdx: Integer;
+begin
+  SetLength(Result, Length(ACodes));
+  for ByteIdx := 0 to High(ACodes) do
+    Result[ByteIdx + 1] := Chr(ACodes[ByteIdx]);
+end;
+
+// Метка в начале строки в любом из видов - на метку программы
+// (SchemaHeadMark): как в файле (149 160), в UTF-8 из CP1251 ('•' + NBSP:
+// E2 80 A2 C2 A0 - файл перезаписан с перекодировкой) и в UTF-8 по кодам
+// символов (C2 95 C2 A0)
+procedure ClrNormalizeHeads(ALines: TStrings);
+var
+  Marks: array[0..2] of string;
+  Own, Line: string;
+  LineIdx, MarkIdx: Integer;
+begin
+  Own := SchemaHeadMark;
+  Marks[0] := ClrFileMark;
+  Marks[1] := ClrBytes([$E2, $80, $A2, $C2, $A0]);
+  Marks[2] := ClrBytes([$C2, $95, $C2, $A0]);
+  for LineIdx := 0 to ALines.Count - 1 do
+  begin
+    Line := ALines[LineIdx];
+    if (Line = '') or (Ord(Line[1]) < 128) then
+      Continue;
+    for MarkIdx := 0 to High(Marks) do
+      if (Marks[MarkIdx] <> Own) and
+         (Copy(Line, 1, Length(Marks[MarkIdx])) = Marks[MarkIdx]) then
+      begin
+        ALines[LineIdx] := Own + Copy(Line, Length(Marks[MarkIdx]) + 1,
+          MaxInt);
+        Break;
+      end;
+  end;
+end;
+
 procedure ClrLoadLines(ALines: TStrings; const APath: string);
 begin
   {$IFDEF FPC}
@@ -957,15 +1008,35 @@ begin
   {$ELSE}
   ALines.LoadFromFile(APath);
   {$ENDIF}
+  ClrNormalizeHeads(ALines);
 end;
 
+// Запись: метка программы - байтами файла (149 160)
 procedure ClrSaveLines(ALines: TStrings; const APath: string);
+var
+  OutLines: TStringList;
+  Own, FileMark, Line: string;
+  LineIdx: Integer;
 begin
-  {$IFDEF FPC}
-  ALines.SaveToFile(APath, True);
-  {$ELSE}
-  ALines.SaveToFile(APath);
-  {$ENDIF}
+  Own := SchemaHeadMark;
+  FileMark := ClrFileMark;
+  OutLines := TStringList.Create;
+  try
+    for LineIdx := 0 to ALines.Count - 1 do
+    begin
+      Line := ALines[LineIdx];
+      if (Own <> FileMark) and (Copy(Line, 1, Length(Own)) = Own) then
+        Line := FileMark + Copy(Line, Length(Own) + 1, MaxInt);
+      OutLines.Add(Line);
+    end;
+    {$IFDEF FPC}
+    OutLines.SaveToFile(APath, True);
+    {$ELSE}
+    OutLines.SaveToFile(APath);
+    {$ENDIF}
+  finally
+    OutLines.Free;
+  end;
 end;
 
 // Значение маркера из строки данных: слово none - маркера нет
