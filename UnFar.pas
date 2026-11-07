@@ -143,6 +143,9 @@ unit UnFar;
 //    - b.64: F3 на папке: итог - в строке панели о папке под курсором:
 //      'файлов N, папок M' и в конце размер с единицей ('... байт');
 //      в строке сообщений - только общий итог нескольких папок.
+//    - b.65: строка о файле под курсором: размер, время создания и время
+//      изменения отдельно ('2270  Created 02.10.26 19:38  Modified
+//      04.10.26 08:52'); узкая панель - как раньше, размер и время изменения.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -178,7 +181,7 @@ uses
   ClrScheme, SchemeLine, FarEdit, FarViewer, FarHelp;
 
 const
-  FarBuild = 'b.64';
+  FarBuild = 'b.65';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -4023,7 +4026,19 @@ begin
       else if IsDir then
         RightText := 'Folder'
       else
-        RightText := IntToStr(Size) + ' ' + FarFileDate(WriteTime);
+      begin
+        // Размер, время создания и изменения; не помещается с именем -
+        // размер и время изменения
+        // (у файлов архива и FTP времени создания нет - тоже как раньше)
+        RightText := WideString(IntToStr(Size)) + '  Created ' +
+          WideString(FarFileDate(CreateTime)) + '  Modified ' +
+          WideString(FarFileDate(WriteTime));
+        if (Length(RightText) + FarMinNameW >= InnerW) or
+           ((CreateTime.dwLowDateTime = 0) and
+            (CreateTime.dwHighDateTime = 0)) then
+          RightText := WideString(IntToStr(Size)) + ' ' +
+            WideString(FarFileDate(WriteTime));
+      end;
       if Length(RightText) > InnerW then
         RightText := '';
       NameW := InnerW - Length(RightText) - 1;
