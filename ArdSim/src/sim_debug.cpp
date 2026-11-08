@@ -804,6 +804,73 @@ void simDebugAttach(void *area)
   SimDebugWanted = 1;
 }
 
+// ---- live arguments
+volatile uint32_t *SimArgTable = nullptr;
+
+namespace
+{
+struct FontRec
+{
+  const char *Name;
+  const uint8_t *Font;
+};
+std::vector<FontRec> &fonts()
+{
+  static std::vector<FontRec> list;
+  return list;
+}
+}
+
+SimFontReg::SimFontReg(const char *name, const uint8_t *font)
+{
+  FontRec rec;
+  rec.Name = name;
+  rec.Font = font;
+  fonts().push_back(rec);
+}
+
+void simArgAttach(void *area)
+{
+  SimArgTable = (volatile uint32_t *)area;
+}
+
+bool simArgLookup(int code, uint32_t hash, int occurrence, int index, SimArgHit &hit)
+{
+  if (!SimArgTable)
+    return false;
+  uint32_t count = SimArgTable[0];
+  if (count > SimArgMaxEntries)
+    count = SimArgMaxEntries;
+  const size_t entryWords = SimArgEntryBytes / 4;
+  for (uint32_t entry = 0; entry < count; entry++)
+  {
+    volatile uint32_t *fields = SimArgTable + 4 + entry * entryWords;
+    if (fields[0] != (uint32_t)code || fields[1] != hash || fields[2] != (uint32_t)occurrence ||
+        fields[3] != (uint32_t)index)
+      continue;
+    hit.Kind = (int)fields[4];
+    hit.Number = (int32_t)fields[5];
+    hit.Font = nullptr;
+    if (hit.Kind == 2)
+    {
+      char name[41];
+      volatile char *text = (volatile char *)(fields + 6);
+      size_t length = 0;
+      while (length < 40 && text[length])
+      {
+        name[length] = text[length];
+        length++;
+      }
+      name[length] = 0;
+      for (const FontRec &rec : fonts())
+        if (strcmp(rec.Name, name) == 0)
+          hit.Font = rec.Font;
+    }
+    return hit.Kind == 1 || hit.Kind == 2;
+  }
+  return false;
+}
+
 // Host loop (every 20 ms): wake simStep up when there is something to do
 void simDebugHostTick()
 {

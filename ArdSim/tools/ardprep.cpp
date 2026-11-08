@@ -7,10 +7,17 @@
 //     function can be called above its definition;
 //   - #line directives, so compiler errors point at the .ino lines;
 //   - debugger hooks (ardsim_debug.h): SIM_STEP before statements,
-//     SimFrame in functions, Watch registration of variables.
-// Usage: ardprep [-plain] sketch.ino output.cpp
+//     SimFrame in functions, Watch registration of variables;
+//   - live arguments: SIM_ARG around the arguments of screen calls and
+//     SimFontReg after extern font declarations (unIDE inspector changes
+//     a font, color or number while the emulator runs).
+// Usage: ardprep [-plain] [-fontlist file] [-fontdir dir] [-fontfile file]
+//                sketch.ino output.cpp
 #include <algorithm>
 #include <cctype>
+#include <cstdint>
+#include <cstdlib>
+#include <map>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -1033,6 +1040,462 @@ void Instrumenter::run(int &functionCount, int &globalCount)
 // ---------------------------------------------------------------- files
 // Other .ino files of the sketch folder, sorted, as the Arduino IDE adds
 // them after the main one
+// ---------------------------------------------------------------- live arguments
+// The unIDE inspector changes an argument of a screen call while the
+// emulator runs (ArdSimHost.pas, SetArgOverride): each argument that can
+// take a number or a font is wrapped as
+//   SIM_ARG(code, hash, occurrence, index, expression)
+// and simArg() (ardsim_debug.h) gives the host's value for this place, or
+// the expression. code = (file << 20) | line of the call (the object of a
+// method), hash = FNV-1a of the method or function name, occurrence =
+// calls of that name on the line before this one, index = argument from 0.
+// Text arguments, references and other types are not wrapped.
+// Inserted text has no line breaks: #line numbers stay right.
+static uint32_t nameHash(const std::string &name)
+{
+  uint32_t hash = 2166136261u;
+  for (unsigned char value : name)
+  {
+    hash ^= value;
+    hash *= 16777619u;
+  }
+  return hash;
+}
+
+static std::vector<std::string> wordsOf(const std::string &text)
+{
+  std::vector<std::string> words;
+  std::string word;
+  for (char value : text)
+  {
+    if (isalnum((unsigned char)value) || value == '_')
+      word += value;
+    else if (!word.empty())
+    {
+      words.push_back(word);
+      word.clear();
+    }
+  }
+  if (!word.empty())
+    words.push_back(word);
+  return words;
+}
+
+// Parameter "int Left", "uint8_t Font[]", "uint16_t Color": a number or
+// a font - wrapped; "String Caption", "int &x", "char *s" - not
+static bool wrappableParam(const std::string &param)
+{
+  if (param.find('&') != std::string::npos || param.find('(') != std::string::npos)
+    return false;
+  std::vector<std::string> words = wordsOf(param);
+  bool pointer = param.find('*') != std::string::npos || param.find('[') != std::string::npos;
+  static const char *Numbers[] = {
+    "int", "long", "short", "byte", "word", "unsigned", "signed", "char", "float", "double",
+    "bool", "boolean", "uint8_t", "int8_t", "uint16_t", "int16_t", "uint32_t", "int32_t",
+    "uint64_t", "int64_t", "size_t", nullptr};
+  // the last word is the name (an unnamed parameter has none: then all are type words)
+  size_t typeWords = words.size() > 1 ? words.size() - 1 : words.size();
+  if (pointer)
+  {
+    for (size_t index = 0; index < typeWords; index++)
+      if (words[index] == "uint8_t" || words[index] == "fontdatatype")
+        return true;
+    return false;
+  }
+  for (size_t index = 0; index < typeWords; index++)
+    for (int number = 0; Numbers[number]; number++)
+      if (words[index] == Numbers[number])
+        return true;
+  return false;
+}
+
+// "void Label(int Left, String Caption)" -> name and per parameter: wrap
+static bool signatureParams(const std::string &text, std::string &name, std::vector<bool> &wrap)
+{
+  size_t open = text.find('(');
+  size_t close = text.rfind(')');
+  if (open == std::string::npos || close == std::string::npos || close < open)
+    return false;
+  std::vector<std::string> before = wordsOf(text.substr(0, open));
+  if (before.empty())
+    return false;
+  name = before.back();
+  std::string params = text.substr(open + 1, close - open - 1);
+  wrap.clear();
+  if (wordsOf(params).empty() || collapseSpaces(params) == "void")
+    return true;
+  int depth = 0;
+  std::string current;
+  for (char value : params)
+  {
+    if (value == '(' || value == '[' || value == '<')
+      depth++;
+    else if (value == ')' || value == ']' || value == '>')
+      depth--;
+    if (value == ',' && depth == 0)
+    {
+      wrap.push_back(wrappableParam(current));
+      current.clear();
+    }
+    else
+      current += value;
+  }
+  wrap.push_back(wrappableParam(current));
+  return true;
+}
+
+// UTFT methods: which arguments take numbers (text and bitmap data - not)
+static bool methodArgs(const std::string &method, size_t count, std::vector<bool> &wrap)
+{
+  wrap.assign(count, true);
+  if (method == "setColor" || method == "setBackColor" || method == "setFont" ||
+      method == "drawLine" || method == "drawRect" || method == "fillRect" ||
+      method == "drawRoundRect" || method == "fillRoundRect" || method == "drawCircle" ||
+      method == "fillCircle" || method == "drawPixel" || method == "fillScr" ||
+      method == "drawHLine" || method == "drawVLine")
+    return true;
+  if (method == "print" || method == "printChar")
+  {
+    if (count > 0)
+      wrap[0] = false;   // text
+    return true;
+  }
+  if (method == "printNumI" || method == "printNumF")
+  {
+    // printNumI(num, x, y, ...), printNumF(num, dec, x, y, ...): x, y only
+    size_t first = method == "printNumI" ? 1 : 2;
+    for (size_t index = 0; index < count; index++)
+      wrap[index] = index == first || index == first + 1;
+    return true;
+  }
+  if (method == "drawBitmap")
+  {
+    if (count > 4)
+      wrap[4] = false;   // data
+    return true;
+  }
+  return false;
+}
+
+class ArgWrapper
+{
+public:
+  ArgWrapper(const std::string &text, const std::vector<Token> &tokens, int fileIndex,
+             const std::map<std::string, std::vector<std::vector<bool>>> &functions,
+             const std::set<std::string> &screens, std::vector<Insertion> &out)
+    : Tokens(tokens), FileIndex(fileIndex), Functions(functions), Screens(screens), Out(out)
+  {
+    LineStarts.push_back(0);
+    for (size_t pos = 0; pos < text.size(); pos++)
+      if (text[pos] == '\n')
+        LineStarts.push_back(pos + 1);
+  }
+  int run();
+
+private:
+  const std::vector<Token> &Tokens;
+  int FileIndex;
+  const std::map<std::string, std::vector<std::vector<bool>>> &Functions;
+  const std::set<std::string> &Screens;
+  std::vector<Insertion> &Out;
+  std::vector<size_t> LineStarts;
+
+  bool punct(size_t index, const char *text) const
+  {
+    return index < Tokens.size() && Tokens[index].Kind == TokPunct && Tokens[index].Text == text;
+  }
+  int lineAt(size_t offset) const
+  {
+    size_t low = 0, high = LineStarts.size();
+    while (high - low > 1)
+    {
+      size_t middle = (low + high) / 2;
+      if (LineStarts[middle] <= offset)
+        low = middle;
+      else
+        high = middle;
+    }
+    return (int)low + 1;
+  }
+};
+
+int ArgWrapper::run()
+{
+  int wrapped = 0;
+  int depth = 0;
+  std::map<std::pair<int, std::string>, int> seen;   // (line, name) -> calls so far
+  for (size_t index = 0; index < Tokens.size(); index++)
+  {
+    if (punct(index, "{"))
+    {
+      depth++;
+      continue;
+    }
+    if (punct(index, "}"))
+    {
+      depth--;
+      continue;
+    }
+    if (depth <= 0 || Tokens[index].Kind != TokIdent || !punct(index + 1, "("))
+      continue;
+    const std::string &name = Tokens[index].Text;
+    size_t callStart = index;
+    bool method = false;
+    if (index >= 2 && punct(index - 1, ".") && Tokens[index - 2].Kind == TokIdent &&
+        Screens.count(Tokens[index - 2].Text))
+    {
+      method = true;
+      callStart = index - 2;
+    }
+    else if (index >= 1 && (punct(index - 1, ".") || punct(index - 1, "->") || punct(index - 1, "::")))
+      continue;
+    else if (!Functions.count(name))
+      continue;
+    int line = lineAt(Tokens[callStart].Start);
+    int occurrence = seen[std::make_pair(line, name)]++;
+    // arguments: token ranges at depth 0 of the call's parentheses
+    std::vector<std::pair<size_t, size_t>> args;
+    int level = 0;
+    size_t argFirst = index + 2;
+    size_t close = Tokens.size();
+    for (size_t scan = index + 1; scan < Tokens.size(); scan++)
+    {
+      const Token &token = Tokens[scan];
+      if (token.Kind == TokPunct && (token.Text == "(" || token.Text == "[" || token.Text == "{"))
+        level++;
+      else if (token.Kind == TokPunct && (token.Text == ")" || token.Text == "]" || token.Text == "}"))
+      {
+        level--;
+        if (level == 0)
+        {
+          close = scan;
+          if (scan > argFirst)
+            args.push_back(std::make_pair(argFirst, scan - 1));
+          break;
+        }
+      }
+      else if (level == 1 && token.Kind == TokPunct && token.Text == ",")
+      {
+        args.push_back(std::make_pair(argFirst, scan - 1));
+        argFirst = scan + 1;
+      }
+      else if (level == 1 && token.Kind == TokPunct && token.Text == ";")
+        break;   // not a call after all
+    }
+    if (close >= Tokens.size())
+      continue;
+    std::vector<bool> wrap;
+    if (method)
+    {
+      if (!methodArgs(name, args.size(), wrap))
+        continue;
+    }
+    else
+    {
+      // overloads: those with this number of parameters; an argument is
+      // wrapped only when every such overload takes a number or font there
+      bool found = false;
+      for (const std::vector<bool> &params : Functions.at(name))
+        if (params.size() == args.size())
+        {
+          if (!found)
+            wrap = params;
+          else
+            for (size_t arg = 0; arg < wrap.size(); arg++)
+              wrap[arg] = wrap[arg] && params[arg];
+          found = true;
+        }
+      if (!found)
+        continue;
+    }
+    std::string head = "SIM_ARG(" + std::to_string((FileIndex << 20) | line) + "," +
+                       std::to_string(nameHash(name)) + "u," + std::to_string(occurrence) + ",";
+    for (size_t arg = 0; arg < args.size(); arg++)
+    {
+      if (!wrap[arg] || args[arg].first > args[arg].second)
+        continue;
+      // a braced list has no type to deduce
+      if (punct(args[arg].first, "{"))
+        continue;
+      Insertion open, end;
+      open.Offset = Tokens[args[arg].first].Start;
+      open.Text = head + std::to_string(arg) + ",";
+      end.Offset = Tokens[args[arg].second].End;
+      end.Text = ")";
+      Out.push_back(open);
+      Out.push_back(end);
+      wrapped++;
+    }
+  }
+  return wrapped;
+}
+
+// Sketch functions that draw on the screen: a UTFT method in the body or
+// a call of another such function. Only their calls get SIM_ARG - helper
+// functions (math, SD, serial) stay as they are.
+static void drawingFunctions(const std::vector<std::string> &masks, const std::set<std::string> &screens,
+                             const std::map<std::string, std::vector<std::vector<bool>>> &known,
+                             std::set<std::string> &drawing)
+{
+  std::map<std::string, std::set<std::string>> callees;
+  for (const std::string &mask : masks)
+  {
+    std::vector<Token> tokens = tokenize(mask);
+    for (size_t index = 0; index < tokens.size(); index++)
+    {
+      if (!(tokens[index].Kind == TokPunct && tokens[index].Text == "{"))
+        continue;
+      // "name ( ... ) [const] {" at the top level
+      size_t before = index;
+      while (before > 0 && tokens[before - 1].Kind == TokIdent && tokens[before - 1].Text == "const")
+        before--;
+      if (before == 0 || tokens[before - 1].Text != ")")
+        continue;
+      int level = 0;
+      size_t open = tokens.size();
+      for (size_t back = before; back-- > 0;)
+      {
+        if (tokens[back].Text == ")")
+          level++;
+        else if (tokens[back].Text == "(" && --level == 0)
+        {
+          open = back;
+          break;
+        }
+      }
+      if (open == tokens.size() || open == 0 || tokens[open - 1].Kind != TokIdent)
+        continue;
+      std::string name = tokens[open - 1].Text;
+      int depth = 0;
+      size_t scan = index;
+      std::set<std::string> &calls = callees[name];
+      for (; scan < tokens.size(); scan++)
+      {
+        const Token &token = tokens[scan];
+        if (token.Kind == TokPunct && token.Text == "{")
+          depth++;
+        else if (token.Kind == TokPunct && token.Text == "}")
+        {
+          if (--depth == 0)
+            break;
+        }
+        else if (token.Kind == TokIdent && scan + 2 < tokens.size() && screens.count(token.Text) &&
+                 tokens[scan + 1].Text == "." && tokens[scan + 2].Kind == TokIdent)
+          drawing.insert(name);
+        else if (token.Kind == TokIdent && scan + 1 < tokens.size() && tokens[scan + 1].Text == "(" &&
+                 known.count(token.Text))
+          calls.insert(token.Text);
+      }
+      index = scan;   // bodies of the top level only
+    }
+  }
+  bool changed = true;
+  while (changed)
+  {
+    changed = false;
+    for (const auto &item : callees)
+      if (!drawing.count(item.first))
+        for (const std::string &callee : item.second)
+          if (drawing.count(callee))
+          {
+            drawing.insert(item.first);
+            changed = true;
+            break;
+          }
+  }
+}
+
+// Objects declared "UTFT name(...)" in the sketch
+static void collectScreens(const std::vector<Token> &tokens, std::set<std::string> &screens)
+{
+  for (size_t index = 0; index + 1 < tokens.size(); index++)
+    if (tokens[index].Kind == TokIdent && tokens[index].Text == "UTFT" &&
+        tokens[index + 1].Kind == TokIdent)
+      screens.insert(tokens[index + 1].Text);
+}
+
+// Font arrays that the build links: "Name[...] =" in the .c files the
+// build compiles (sketch folder, %ARDSIM_FONTS%, unIDE list, stand-ins)
+static void collectFontArrays(const std::vector<std::string> &files, std::set<std::string> &arrays)
+{
+  for (const std::string &file : files)
+  {
+    std::string text = maskSource(readFile(file));
+    std::vector<Token> tokens = tokenize(text);
+    for (size_t index = 0; index + 1 < tokens.size(); index++)
+      if (tokens[index].Kind == TokIdent && tokens[index + 1].Kind == TokPunct &&
+          tokens[index + 1].Text == "[")
+      {
+        size_t scan = index + 2;
+        while (scan < tokens.size() && !(tokens[scan].Kind == TokPunct && tokens[scan].Text == "]"))
+          scan++;
+        if (scan + 1 < tokens.size() && tokens[scan + 1].Kind == TokPunct && tokens[scan + 1].Text == "=")
+          arrays.insert(tokens[index].Text);
+      }
+  }
+}
+
+static void listFolder(const std::string &folder, std::vector<std::string> &files)
+{
+  if (folder.empty())
+    return;
+  DIR *dir = opendir(folder.c_str());
+  if (!dir)
+    return;
+  std::vector<std::string> names;
+  while (dirent *entry = readdir(dir))
+  {
+    std::string name = entry->d_name;
+    if (name.size() > 2 && name.compare(name.size() - 2, 2, ".c") == 0)
+      names.push_back(name);
+  }
+  closedir(dir);
+  std::sort(names.begin(), names.end());
+  char separator = folder.find('\\') != std::string::npos ? '\\' : '/';
+  std::string prefix = folder;
+  if (prefix.back() != '\\' && prefix.back() != '/')
+    prefix += separator;
+  for (const std::string &name : names)
+    files.push_back(prefix + name);
+}
+
+// "extern uint8_t Name[];" (or fontdatatype) at the top level: after it
+// "static SimFontReg ...("Name", Name);" when the build links Name, so
+// the host can switch a font by its name
+static int registerFonts(const std::vector<Token> &tokens, int fileIndex,
+                         const std::set<std::string> &arrays, std::vector<Insertion> &out)
+{
+  int count = 0;
+  int depth = 0;
+  for (size_t index = 0; index + 5 < tokens.size(); index++)
+  {
+    const Token &token = tokens[index];
+    if (token.Kind == TokPunct && token.Text == "{")
+      depth++;
+    else if (token.Kind == TokPunct && token.Text == "}")
+      depth--;
+    if (depth != 0 || token.Kind != TokIdent || token.Text != "extern")
+      continue;
+    size_t scan = index + 1;
+    if (tokens[scan].Kind == TokIdent && tokens[scan].Text == "const")
+      scan++;
+    if (scan + 4 >= tokens.size() || tokens[scan].Kind != TokIdent ||
+        (tokens[scan].Text != "uint8_t" && tokens[scan].Text != "fontdatatype"))
+      continue;
+    const Token &nameToken = tokens[scan + 1];
+    if (nameToken.Kind != TokIdent || tokens[scan + 2].Text != "[" || tokens[scan + 3].Text != "]" ||
+        tokens[scan + 4].Text != ";" || !arrays.count(nameToken.Text))
+      continue;
+    Insertion item;
+    item.Offset = tokens[scan + 4].End;
+    item.Text = " static SimFontReg simFontReg" + std::to_string(fileIndex) + "_" +
+                std::to_string(count) + "_(\"" + nameToken.Text + "\", " + nameToken.Text + ");";
+    out.push_back(item);
+    count++;
+  }
+  return count;
+}
+
 static std::vector<std::string> sketchFiles(const std::string &mainPath)
 {
   std::vector<std::string> result;
@@ -1092,10 +1555,27 @@ int main(int argc, char **argv)
 {
   bool instrument = true;
   std::vector<std::string> args;
+  std::vector<std::string> fontFiles;   // .c files with fonts the build compiles
   for (int index = 1; index < argc; index++)
   {
     if (strcmp(argv[index], "-plain") == 0)
       instrument = false;
+    else if (strcmp(argv[index], "-fontlist") == 0 && index + 1 < argc)
+    {
+      std::ifstream list(argv[++index]);
+      std::string line;
+      while (std::getline(list, line))
+      {
+        while (!line.empty() && (line.back() == '\r' || line.back() == ' '))
+          line.pop_back();
+        if (!line.empty())
+          fontFiles.push_back(line);
+      }
+    }
+    else if (strcmp(argv[index], "-fontdir") == 0 && index + 1 < argc)
+      listFolder(argv[++index], fontFiles);
+    else if (strcmp(argv[index], "-fontfile") == 0 && index + 1 < argc)
+      fontFiles.push_back(argv[++index]);
     else
       args.push_back(argv[index]);
   }
@@ -1107,6 +1587,16 @@ int main(int argc, char **argv)
     return 2;
   }
   std::vector<std::string> files = sketchFiles(args[0]);
+  {
+    size_t slash = args[0].find_last_of("\\/");
+    listFolder(slash == std::string::npos ? std::string(".") : args[0].substr(0, slash), fontFiles);
+    const char *envFonts = getenv("ARDSIM_FONTS");
+    if (envFonts)
+      listFolder(envFonts, fontFiles);
+  }
+  std::set<std::string> fontArrays;
+  collectFontArrays(fontFiles, fontArrays);
+  int argTotal = 0, fontRegTotal = 0;
   std::string output = "#include \"Arduino.h\"\n";
   std::string registrations;
   int counter = 0, functionTotal = 0, globalTotal = 0, prototypeTotal = 0;
@@ -1128,6 +1618,38 @@ int main(int argc, char **argv)
     texts.push_back(text);
     masks.push_back(mask);
   }
+  // live arguments: sketch functions (parameters that take numbers or
+  // fonts) and UTFT objects of all files
+  std::map<std::string, std::vector<std::vector<bool>>> wrapFunctions;
+  std::set<std::string> screens;
+  if (instrument)
+  {
+    for (const Signature &function : allFunctions)
+    {
+      std::string name;
+      std::vector<bool> wrap;
+      if (signatureParams(function.Text, name, wrap) && !wrap.empty() &&
+          name != "setup" && name != "loop")
+        wrapFunctions[name].push_back(wrap);
+    }
+    for (const std::string &mask : masks)
+      collectScreens(tokenize(mask), screens);
+    std::map<std::string, std::vector<std::vector<bool>>> allKnown;
+    for (const Signature &function : allFunctions)
+    {
+      std::string name;
+      std::vector<bool> wrap;
+      if (signatureParams(function.Text, name, wrap))
+        allKnown[name].push_back(wrap);
+    }
+    std::set<std::string> drawing;
+    drawingFunctions(masks, screens, allKnown, drawing);
+    for (auto item = wrapFunctions.begin(); item != wrapFunctions.end();)
+      if (drawing.count(item->first))
+        ++item;
+      else
+        item = wrapFunctions.erase(item);
+  }
   for (size_t fileIndex = 0; fileIndex < files.size(); fileIndex++)
   {
     const std::string &text = texts[fileIndex];
@@ -1138,6 +1660,9 @@ int main(int argc, char **argv)
       std::vector<Token> tokens = tokenize(masks[fileIndex]);
       Instrumenter instrumenter(text, tokens, (int)fileIndex, counter, insertions);
       instrumenter.run(functionTotal, globalTotal);
+      ArgWrapper wrapper(text, tokens, (int)fileIndex, wrapFunctions, screens, insertions);
+      argTotal += wrapper.run();
+      fontRegTotal += registerFonts(tokens, (int)fileIndex, fontArrays, insertions);
       registrations += "static SimFileReg simFile" + std::to_string(fileIndex) + "_(" +
                        std::to_string(fileIndex) + ", " + lineName + ");\n";
     }
@@ -1177,7 +1702,8 @@ int main(int argc, char **argv)
   }
   std::cout << "ardprep: " << files.size() << " file(s), " << prototypeTotal << " prototypes";
   if (instrument)
-    std::cout << ", debugger: " << functionTotal << " functions, " << globalTotal << " globals";
+    std::cout << ", debugger: " << functionTotal << " functions, " << globalTotal << " globals"
+              << ", live arguments: " << argTotal << ", fonts: " << fontRegTotal;
   std::cout << "\n";
   return 0;
 }

@@ -204,5 +204,54 @@ struct SimFileReg
 {
   SimFileReg(int index, const char *path);
 };
+
+// ---- live arguments (ardprep): the unIDE inspector changes a number,
+// color or font of a screen call while the emulator runs. ardprep wraps
+// the arguments as SIM_ARG(code, hash, occurrence, index, expression):
+// code = (file << 20) | line of the call, hash = FNV-1a of the method or
+// function name, occurrence = calls of that name earlier on the line,
+// index = argument from 0. Fonts: SimFontReg after "extern uint8_t X[];".
+struct SimFontReg
+{
+  SimFontReg(const char *name, const uint8_t *font);
+};
+// Table of the host (shared memory, sim_host.cpp); null or count 0 - no
+// overrides, simArg returns the expression at once
+extern volatile uint32_t *SimArgTable;
+struct SimArgHit
+{
+  int Kind;               // 1 - number, 2 - font
+  long long Number;
+  const uint8_t *Font;    // Kind 2: registered font, null - unknown name
+};
+bool simArgLookup(int code, uint32_t hash, int occurrence, int index, SimArgHit &hit);
+
+template <class ValueType>
+inline ValueType simArg(int code, uint32_t hash, int occurrence, int index, ValueType value)
+{
+  if (!SimArgTable || SimArgTable[0] == 0)
+    return value;
+  typedef typename std::remove_cv<ValueType>::type Plain;
+  if constexpr (std::is_arithmetic<Plain>::value || std::is_pointer<Plain>::value)
+  {
+    SimArgHit hit;
+    if (!simArgLookup(code, hash, occurrence, index, hit))
+      return value;
+    if constexpr (std::is_arithmetic<Plain>::value)
+    {
+      if (hit.Kind == 1)
+        return (ValueType)hit.Number;
+    }
+    else
+    {
+      typedef typename std::remove_cv<typename std::remove_pointer<Plain>::type>::type Target;
+      if constexpr (std::is_same<Target, uint8_t>::value)
+        if (hit.Kind == 2 && hit.Font)
+          return (ValueType)hit.Font;
+    }
+  }
+  return value;
+}
+#define SIM_ARG(code, hash, occurrence, index, expr) simArg((code), (hash), (occurrence), (index), (expr))
 #endif
 #endif

@@ -50,7 +50,7 @@ echo ArdSim: g++ = %GXX%
 if not exist "%OBJDIR%\fonts" mkdir "%OBJDIR%\fonts"
 
 rem ---- ardprep (once; the number changes with ardprep.cpp - then built again)
-set ARDPREP=%SIMDIR%\tools\ardprep3.exe
+set ARDPREP=%SIMDIR%\tools\ardprep4.exe
 if not exist "%ARDPREP%" (
   echo ArdSim: building ardprep
   "%GXX%" -std=gnu++17 -O1 -static -o "%ARDPREP%" "%SIMDIR%\tools\ardprep.cpp"
@@ -110,6 +110,9 @@ rem unIDE list: fonts from the libraries folders. The number in the object
 rem name: two libraries may have files with the same name
 set FONTLIST=%OUTDIR%\ardsim_fonts.txt
 set FONTNUM=0
+rem fonts for ardprep: it registers the linked ones (live font change)
+set PREPFONTS=-fontdir "%SIMDIR%\fonts"
+if exist "%FONTLIST%" set PREPFONTS=!PREPFONTS! -fontlist "%FONTLIST%"
 if exist "%FONTLIST%" (
   for /f "usebackq delims=" %%F in ("%FONTLIST%") do (
     set /a FONTNUM+=1
@@ -126,11 +129,12 @@ if not exist "%FONTLIST%" if "%ARDSIM_FONTS%"=="" (
     "%GCC%" %FONTFLAGS% -c "!UTFTFONTS!" -o "%OBJDIR%\utft_DefaultFonts.o"
     if errorlevel 1 exit /b 1
     set FONTOBJS=!FONTOBJS! "%OBJDIR%\utft_DefaultFonts.o"
+    set PREPFONTS=!PREPFONTS! -fontfile "!UTFTFONTS!"
   )
 )
 
 rem ---- the sketch
-"%ARDPREP%" "%SKETCH%" "%OBJDIR%\%SKETCHNAME%_sim.cpp"
+"%ARDPREP%" !PREPFONTS! "%SKETCH%" "%OBJDIR%\%SKETCHNAME%_sim.cpp"
 if errorlevel 1 exit /b 1
 echo   %SKETCHNAME%.ino
 "%GXX%" %CXXFLAGS% -Wno-write-strings -I"%SKETCHDIR%" -c "%OBJDIR%\%SKETCHNAME%_sim.cpp" -o "%OBJDIR%\%SKETCHNAME%_sim.o"

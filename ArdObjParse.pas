@@ -170,6 +170,9 @@ type
     // вычисляются
     function TextPreview(ACall: TArdCall; AFontArg: Integer;
                          var AInfo: TArdTextPreview): Boolean;
+    // Число по тексту выражения (литерал, #define, глобальная переменная с
+    // начальным значением, + - * / ...): False - не вычисляется
+    function EvalText(const AText: string; var AValue: Integer): Boolean;
   end;
 
 // Параметр функции скетча - цвет / шрифт / строка (по имени и типу)
@@ -1888,6 +1891,25 @@ begin
     if Found < 0 then
       Exit;
     Result := Trim(Defines.ValueFromIndex[Found]);
+  end;
+end;
+
+function TArdSketch.EvalText(const AText: string; var AValue: Integer): Boolean;
+var
+  Temp: TArdSketch;
+  Value: TArdValue;
+begin
+  Temp := TArdSketch.Create;
+  try
+    Temp.FText := AText;
+    Temp.Tokenize;
+    Temp.FParent := Self;
+    Result := (Temp.FTokens.Count > 0) and
+              Temp.EvalTokens(0, Temp.FTokens.Count - 1, 0, Value);
+    if Result then
+      AValue := Round(Value.Num);
+  finally
+    Temp.Free;
   end;
 end;
 

@@ -97,6 +97,17 @@ const size_t SimDbgInfoOffset = 12544;
 const size_t SimDbgInfoBytes = 65536;
 const size_t SimDbgAreaBytes = SimDbgInfoOffset + SimDbgInfoBytes;
 void simDebugAttach(void *area);
+// Live arguments (ardsim_debug.h, SIM_ARG): table of the host after the
+// debug area. Offsets from its start:
+//   0     uint32 count of entries in use (host; entries are only added
+//         or changed in place, kind written last)
+//   16    entries of SimArgEntryBytes:
+//         uint32 code, hash, occurrence, index, kind (0 - empty, 1 -
+//         number, 2 - font); int32 number; char font[40] (array name)
+const size_t SimArgEntryBytes = 64;
+const size_t SimArgMaxEntries = 256;
+const size_t SimArgTableBytes = 16 + SimArgEntryBytes * SimArgMaxEntries;
+void simArgAttach(void *area);
 void simDebugHostTick();
 // Screen texts for "where is this drawn" (sim_utft.cpp -> sim_debug.cpp):
 // a text with its rectangle and the call stack; a filled area forgets

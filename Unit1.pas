@@ -2117,6 +2117,12 @@ type
     // Шрифт выбран из списка: превью остаётся на экране эмулятора, пока
     // скетч не перерисует это место (TArdSimPanel.DrawPreview)
     FArdPreviewKeep: Boolean;
+    // Правка аргумента - в работающий эмулятор (ArdSendOverride): какой
+    // вызов (имя, строка с 0, какой по счёту с этим именем в строке),
+    // аргумент (-1 - все аргументы set...), шрифт ли
+    FArdOvName: string;
+    FArdOvLine, FArdOvOcc, FArdOvArg: Integer;
+    FArdOvFont: Boolean;
     FArdPreviewLine: Integer;
     FArdPreviewName: string;
     // Снимок программы RapidQ (RapidQProbeRun)
@@ -3149,6 +3155,7 @@ type
     procedure ArdSyncFromCaret;
     procedure ArdFontPreview(const AFontName: string);
     procedure ArdFontPreviewOff;
+    procedure ArdSendOverride(const ANewText: string);
     procedure WMArdPreviewClosed(var Msg: TMessage); message WM_USER + 331;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
@@ -34030,6 +34037,8 @@ var
   IsColor, IsFont: Boolean;
   CellRect: TRect;
   Preview: TArdTextPreview;
+  OvCall: TArdCall;
+  CallIdx: Integer;
 begin
   Node := TDfmNode(FObjCurNode);
   Sketch := TArdSketch(FArdSketch);
@@ -34071,6 +34080,8 @@ begin
     FArdEditSrc := Copy(Setter.ArgsText, 1, Setter.ArgsLen);
     IsFont := RowData = ArdRowFont;
     IsColor := not IsFont;
+    OvCall := Setter;
+    FArdOvArg := -1;
   end
   else
   begin
@@ -34085,6 +34096,8 @@ begin
     FArdEditLine := Call.ArgLine[RowData];
     FArdEditCol := Call.ArgCol[RowData];
     FArdEditSrc := Call.Args[RowData];
+    OvCall := Call;
+    FArdOvArg := RowData;
     if (Call.Kind = ackUser) and (Call.Target <> nil) and
        (RowData < Call.Target.ParamNames.Count) then
     begin
@@ -34097,6 +34110,17 @@ begin
       IsColor := True;
   end;
   OldText := Trim(FArdEditSrc);
+  // Вызов для подмены в эмуляторе: как ardprep считает SIM_ARG - по
+  // имени, строке и номеру среди вызовов с этим именем в строке
+  FArdOvName := OvCall.Name;
+  FArdOvLine := OvCall.Line;
+  FArdOvFont := IsFont;
+  FArdOvOcc := 0;
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+    if (TArdCall(Sketch.Calls[CallIdx]).Line = OvCall.Line) and
+       (TArdCall(Sketch.Calls[CallIdx]).Name = OvCall.Name) and
+       (TArdCall(Sketch.Calls[CallIdx]).Col < OvCall.Col) then
+      Inc(FArdOvOcc);
 
   FObjEditName := AItem.Caption;
   FObjEditIdx := RowData;
@@ -34253,7 +34277,107 @@ begin
   end;
   LogComp('Инспектор ino: ' + FObjEditName + ' = ' + NewText +
           '   (строка ' + IntToStr(FArdEditLine + 1) + ')');
+  ArdSendOverride(NewText);
   ObjScheduleRelines(Obj, FObjEditName);
+end;
+
+// Правка аргумента - сразу в работающий эмулятор: SIM_ARG этого места
+// берёт новое значение, и скетч, перерисовав экран, рисует уже с ним, без
+// пересборки. Число и цвет - числом (цвет RGB565), шрифт - именем массива.
+// Текст и то, что не вычисляется, - только после сборки.
+procedure TForm1.ArdSendOverride(const ANewText: string);
+var
+  Sketch: TArdSketch;
+  Parts: TStringList;
+  FileIdx, BuildLine, PartIdx, Number, ColorValue, Sent, Depth, CharIdx: Integer;
+  FontName, Piece: string;
+begin
+  Sketch := TArdSketch(FArdSketch);
+  if (Sketch = nil) or (FArdSim = nil) or not FArdSim.Running or
+     (FArdOvName = '') then
+    Exit;
+  if not FArdSim.ArgOverrideAvailable then
+  begin
+    LogComp('Эмулятор: собран без подмены аргументов на лету - ' +
+            'пересоберите (Build), тогда правки из инспектора будут видны сразу');
+    Exit;
+  end;
+  FileIdx := FArdSim.DbgFileIndex(FCurrentFileName);
+  // Номер строки - как в собранном exe: правки после запуска сдвигают
+  BuildLine := DbgLineThen(FCurrentFileName, FArdOvLine);
+  if (FileIdx < 0) or (BuildLine < 0) then
+    Exit;
+  Sent := 0;
+  if FArdOvFont then
+  begin
+    FontName := Sketch.FontArrayName(ANewText, FArdOvLine);
+    // setFont(...) - его единственный аргумент
+    PartIdx := FArdOvArg;
+    if PartIdx < 0 then
+      PartIdx := 0;
+    if FArdSim.SetArgOverride(FileIdx, BuildLine + 1, FArdOvName, FArdOvOcc,
+                              PartIdx, 0, FontName) then
+      Inc(Sent);
+  end
+  else
+  begin
+    // Аргументы set...(r, g, b) - каждый; иначе один
+    Parts := TStringList.Create;
+    try
+      if FArdOvArg < 0 then
+      begin
+        Depth := 0;
+        Piece := '';
+        for CharIdx := 1 to Length(ANewText) do
+        begin
+          if ANewText[CharIdx] = '(' then
+            Inc(Depth)
+          else if ANewText[CharIdx] = ')' then
+            Dec(Depth);
+          if (ANewText[CharIdx] = ',') and (Depth = 0) then
+          begin
+            Parts.Add(Trim(Piece));
+            Piece := '';
+          end
+          else
+            Piece := Piece + ANewText[CharIdx];
+        end;
+        Parts.Add(Trim(Piece));
+      end
+      else
+        Parts.Add(Trim(ANewText));
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        if not Sketch.EvalText(Parts[PartIdx], Number) then
+        begin
+          // RGB24TOLCD(0xRRGGBB), имя цвета: TColor -> RGB565
+          if not Sketch.ColorOf(Parts[PartIdx], ColorValue) then
+            Continue;
+          Number := (((ColorValue and $FF) shr 3) shl 11) or
+                    ((((ColorValue shr 8) and $FF) shr 2) shl 5) or
+                    (((ColorValue shr 16) and $FF) shr 3);
+        end;
+        if FArdOvArg < 0 then
+        begin
+          if FArdSim.SetArgOverride(FileIdx, BuildLine + 1, FArdOvName,
+                                    FArdOvOcc, PartIdx, Number, '') then
+            Inc(Sent);
+        end
+        else if FArdSim.SetArgOverride(FileIdx, BuildLine + 1, FArdOvName,
+                                       FArdOvOcc, FArdOvArg, Number, '') then
+          Inc(Sent);
+      end;
+    finally
+      Parts.Free;
+    end;
+  end;
+  if Sent > 0 then
+    LogComp('Эмулятор: ' + FArdOvName + ' (строка ' +
+            IntToStr(FArdOvLine + 1) + ') - новое значение передано, ' +
+            'видно при следующей перерисовке этого места')
+  else
+    LogComp('Эмулятор: значение "' + ANewText + '" не вычисляется - ' +
+            'будет видно после сборки');
 end;
 
 // Инспектор для файла RapidQ: дерево объектов CREATE. Свойств у узлов пока

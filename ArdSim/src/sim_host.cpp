@@ -8,6 +8,7 @@
 //   offset 128   uint16 screen[320][480], RGB565, as UTFT
 //   offset 307328 char serial[65536], ring buffer
 //   offset 372864 debug area (sim_internal.h, SimDbg*)
+//   offset 450944 live arguments table (sim_internal.h, SimArg*)
 // The signal settings stay in ardsim.ini next to the exe: it is reloaded
 // when it changes, so the host edits the file.
 #define WIN32_LEAN_AND_MEAN
@@ -33,6 +34,7 @@ enum HeaderIndex
   HdrSerialWrite = 7,   // simulator: bytes put into the ring (counter)
   HdrState = 8,         // simulator: 1 running, 2 ended
   HdrStopRequest = 9,   // host: 1 - end the simulator
+  HdrArgTable = 10,     // simulator: 1 - reads the live arguments table
   HdrKeyQueue = 16      // 16 slots: row * 4 + col
 };
 const int KeyQueueSize = 16;
@@ -40,7 +42,10 @@ const size_t HeaderBytes = 128;
 const size_t ScreenBytes = SIM_SCREEN_W * SIM_SCREEN_H * 2;
 const size_t SerialRingBytes = 65536;
 const size_t DebugOffset = HeaderBytes + ScreenBytes + SerialRingBytes;
-const size_t SharedBytes = DebugOffset + SimDbgAreaBytes;
+const size_t ArgOffset = DebugOffset + SimDbgAreaBytes;
+// an older host makes the mapping without the table: then no table
+const size_t SharedBytesOld = ArgOffset;
+const size_t SharedBytes = ArgOffset + SimArgTableBytes;
 const int KeyHoldMs = 300;
 const DWORD KeyGapMs = 150;   // one key per scan; the next waits a little
 
@@ -85,7 +90,13 @@ int simHostRun(const char *name)
   HANDLE mapping = OpenFileMappingA(FILE_MAP_ALL_ACCESS, FALSE, mapName.c_str());
   if (!mapping)
     return 3;
+  bool hasArgTable = true;
   void *view = MapViewOfFile(mapping, FILE_MAP_ALL_ACCESS, 0, 0, SharedBytes);
+  if (!view)
+  {
+    hasArgTable = false;
+    view = MapViewOfFile(mapping, FILE_MAP_ALL_ACCESS, 0, 0, SharedBytesOld);
+  }
   if (!view)
     return 3;
   Header = (volatile uint32_t *)view;
@@ -100,6 +111,11 @@ int simHostRun(const char *name)
   FILETIME iniTime = iniWriteTime(iniPath);
 
   simDebugAttach((char *)view + DebugOffset);
+  if (hasArgTable)
+  {
+    simArgAttach((char *)view + ArgOffset);
+    Header[HdrArgTable] = 1;
+  }
   Header[HdrSimPid] = GetCurrentProcessId();
   Header[HdrState] = 1;
   simStartSketch();

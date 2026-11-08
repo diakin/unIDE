@@ -309,6 +309,17 @@ type
       ATransparent: Boolean);
     procedure ClearTextPreview;
     function PreviewShown: Boolean;
+
+    // ---- подмена аргументов на лету (SIM_ARG в эмуляторе)
+    // Эмулятор собран с SIM_ARG и читает таблицу
+    function ArgOverrideAvailable: Boolean;
+    // Аргумент AArgIdx вызова AName (метод UTFT или функция скетча) в
+    // строке ALine (с 1) файла AFileIdx, AOccurrence-го с таким именем в
+    // строке: число ANumber или шрифт AFont (имя массива, AFont <> '').
+    // False - таблица полна или эмулятор её не читает
+    function SetArgOverride(AFileIdx, ALine: Integer; const AName: string;
+      AOccurrence, AArgIdx: Integer; ANumber: Integer;
+      const AFont: string): Boolean;
     // Ответ: строки (файл shl 20 or строка с 1) - оператор, который
     // нарисовал надпись, затем вызовы, которые к нему привели (наружу);
     // пусто - в этой точке надписи нет
@@ -399,6 +410,7 @@ const
   HdrSerialWrite = 7;
   HdrState = 8;
   HdrStopRequest = 9;
+  HdrArgTable = 10;     // эмулятор: 1 - читает таблицу подмен аргументов
   HdrKeyQueue = 16;
   KeyQueueSize = 16;
   HeaderBytes = 128;
@@ -439,7 +451,15 @@ const
   DbgInfoOffset = 12544;
   DbgInfoMax = 65536;
   DbgAreaBytes = DbgInfoOffset + DbgInfoMax;
-  SharedBytes = DbgOffset + DbgAreaBytes;
+  // Подмены аргументов (SIM_ARG, sim_internal.h SimArg*): после области
+  // отладчика. Число записей, с 16-го байта записи по 64 байта: code,
+  // hash, occurrence, index, kind (1 число, 2 шрифт), number, font[40]
+  ArgOffset = DbgOffset + DbgAreaBytes;
+  ArgEntryBytes = 64;
+  ArgMaxEntries = 256;
+  ArgFontChars = 40;
+  ArgTableBytes = 16 + ArgEntryBytes * ArgMaxEntries;
+  SharedBytes = ArgOffset + ArgTableBytes;
   SerialMaxChars = 60000;
 
   // Корпус: зелёные поля вокруг экрана 480x320, точек. Обычно
@@ -2563,6 +2583,94 @@ end;
 function TArdSimPanel.PreviewShown: Boolean;
 begin
   Result := FPreviewOn;
+end;
+
+function TArdSimPanel.ArgOverrideAvailable: Boolean;
+begin
+  {$IFDEF MSWINDOWS}
+  Result := (FView <> nil) and Running and (Header(HdrArgTable) = 1);
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
+end;
+
+// FNV-1a имени: как nameHash в ArdSim\tools\ardprep.cpp
+function ArgNameHash(const AName: string): Cardinal;
+var
+  CharIdx: Integer;
+begin
+  Result := 2166136261;
+  for CharIdx := 1 to Length(AName) do
+  begin
+    Result := Result xor Ord(AName[CharIdx]);
+    // в Int64 без переполнения, младшие 32 бита
+    Result := Cardinal((Int64(Result) * 16777619) and $FFFFFFFF);
+  end;
+end;
+
+function TArdSimPanel.SetArgOverride(AFileIdx, ALine: Integer;
+  const AName: string; AOccurrence, AArgIdx: Integer; ANumber: Integer;
+  const AFont: string): Boolean;
+{$IFDEF MSWINDOWS}
+var
+  Table, Fields: PCardinal;
+  Count, EntryIdx, Found, CharIdx: Integer;
+  Code, Hash: Cardinal;
+  FontText: PAnsiChar;
+
+  function Field(AEntry, AIndex: Integer): PCardinal;
+  begin
+    Result := PCardinal(PAnsiChar(Table) + 16 + AEntry * ArgEntryBytes +
+                        AIndex * 4);
+  end;
+{$ENDIF}
+begin
+  Result := False;
+  {$IFDEF MSWINDOWS}
+  if not ArgOverrideAvailable or (AFileIdx < 0) or (ALine <= 0) then
+    Exit;
+  Table := PCardinal(PAnsiChar(FView) + ArgOffset);
+  Code := (Cardinal(AFileIdx) shl 20) or Cardinal(ALine);
+  Hash := ArgNameHash(AName);
+  Count := Table^;
+  if Count > ArgMaxEntries then
+    Count := ArgMaxEntries;
+  Found := -1;
+  for EntryIdx := 0 to Count - 1 do
+    if (Field(EntryIdx, 0)^ = Code) and (Field(EntryIdx, 1)^ = Hash) and
+       (Field(EntryIdx, 2)^ = Cardinal(AOccurrence)) and
+       (Field(EntryIdx, 3)^ = Cardinal(AArgIdx)) then
+    begin
+      Found := EntryIdx;
+      Break;
+    end;
+  if Found < 0 then
+  begin
+    if Count >= ArgMaxEntries then
+      Exit;
+    Found := Count;
+  end;
+  // Вид - последним: эмулятор читает запись без блокировки
+  Field(Found, 4)^ := 0;
+  Field(Found, 0)^ := Code;
+  Field(Found, 1)^ := Hash;
+  Field(Found, 2)^ := Cardinal(AOccurrence);
+  Field(Found, 3)^ := Cardinal(AArgIdx);
+  Field(Found, 5)^ := Cardinal(ANumber);
+  FontText := PAnsiChar(Field(Found, 6));
+  FillChar(FontText^, ArgFontChars, 0);
+  for CharIdx := 1 to Length(AFont) do
+    if CharIdx < ArgFontChars then
+      FontText[CharIdx - 1] := AnsiChar(AFont[CharIdx]);
+  Fields := Field(Found, 4);
+  if AFont <> '' then
+    Fields^ := 2
+  else
+    Fields^ := 1;
+  if Found >= Count then
+    Table^ := Found + 1;
+  Result := True;
+  {$ENDIF}
 end;
 
 // Превью в FPixels (копия экрана для показа): прежняя надпись стирается
