@@ -45,6 +45,23 @@ type
 
   TArdFunc = class;
 
+  // Надпись-объект TLabel из подключённого файла форм (BS10Forms.h):
+  //   LBLCONST TLabel lblK1 = { /*Left*/ 10, /*Top*/ 120, ... };
+  // значения - по порядку аргументов Label()
+  TArdLabel = class
+  public
+    Name: string;
+    FileIdx: Integer;          // номер в TArdSketch.IncludeFiles, от 1
+    Line: Integer;             // строка объявления в том файле, от 0
+    Values: TStringList;       // текст значений, без комментариев
+    ValLine, ValCol, ValLen: array of Integer;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  // Текст подключённого файла (#include "Имя"): APath - полный путь
+  TArdIncludeEvent = function(const AName: string; var APath, AText: string): Boolean of object;
+
   TArdCall = class
   public
     Name: string;       // print, drawLine, Label
@@ -69,6 +86,14 @@ type
     // Текст и графика: последний setColor / setBackColor / setFont выше в
     // той же функции, nil - в функции не задан
     ColorCall, BackCall, FontCall: TArdCall;
+    // Вывод объекта TLabel: lblX.Draw() или lblX.Top(y).Caption(s).Draw().
+    // Name - имя объекта, Target - Label(), Args - все 13 значений: из
+    // вызова (lblX.Top(...)) или из объявления. ArgFile: 0 - значение в
+    // самом скетче, N - в IncludeFiles[N - 1] (ArgLine/ArgCol - там);
+    // у значений из объявления ArgFirstTok = -1
+    IsLabel: Boolean;
+    LabelDecl: TArdLabel;
+    ArgFile: array of Integer;
     constructor Create;
     destructor Destroy; override;
     function KindText: string;
@@ -134,6 +159,12 @@ type
                          const AObj, AName: string; ANameTok: Integer): Integer;
     function EvalColor(const AExpr: string; ADepth: Integer;
                        var AColor: Integer): Boolean;
+    procedure LoadLabels;
+    procedure AddLabelFile(AFileIdx: Integer; const AText: string);
+    function ParseLabelCallAt(ANameIdx: Integer; AFunc: TArdFunc;
+                              ALabel: TArdLabel): Integer;
+    function EvalArgValue(ACall: TArdCall; AArgIdx, ADepth: Integer;
+                          var AValue: TArdValue): Boolean;
   public
     Funcs: TList;              // TArdFunc - все функции с телом
     Calls: TList;              // TArdCall - все найденные вызовы
@@ -141,6 +172,14 @@ type
     Defines: TStringList;      // #define ИМЯ значение: Name=Value
     MacroFuncs: TStringList;   // #define ИМЯ(...) - имена
     ScreenObjs: TStringList;   // объекты UTFT
+    Includes: TStringList;     // #include "Имя" скетча, по порядку
+    // Прочитанные подключённые файлы (полные пути) и надписи TLabel в них:
+    // Name=TArdLabel
+    IncludeFiles: TStringList;
+    Labels: TStringList;
+    // Чтение подключённых файлов (задаёт Unit1 до Parse): без него TLabel
+    // не ищутся
+    OnInclude: TArdIncludeEvent;
     constructor Create;
     destructor Destroy; override;
     procedure Parse(const AText: string);
@@ -184,6 +223,12 @@ procedure ArdMethodParams(const AMethod: string; AArgCount: Integer;
 // Аргумент - одна строка в кавычках: True и текст без кавычек
 function ArdUnquote(const AArg: string; var AText: string): Boolean;
 function ArdQuote(const AText: string): string;
+
+const
+  // Свойства TLabel - по порядку аргументов Label() и полей объявления
+  ArdLabelProps: array[0..12] of string = (
+    'Left', 'Top', 'Width', 'Height', 'Caption', 'Color', 'Font',
+    'FontColor', 'Filled', 'Rounded', 'BorderColor', 'LineWidth', 'Rect');
 
 implementation
 
@@ -370,6 +415,20 @@ begin
   Result := Result + '"';
 end;
 
+{ TArdLabel }
+
+constructor TArdLabel.Create;
+begin
+  inherited Create;
+  Values := TStringList.Create;
+end;
+
+destructor TArdLabel.Destroy;
+begin
+  Values.Free;
+  inherited Destroy;
+end;
+
 { TArdCall }
 
 constructor TArdCall.Create;
@@ -440,6 +499,9 @@ begin
   Defines := TStringList.Create;
   MacroFuncs := TStringList.Create;
   ScreenObjs := TStringList.Create;
+  Includes := TStringList.Create;
+  IncludeFiles := TStringList.Create;
+  Labels := TStringList.Create;
 end;
 
 destructor TArdSketch.Destroy;
@@ -459,6 +521,11 @@ begin
   Defines.Free;
   MacroFuncs.Free;
   ScreenObjs.Free;
+  for Idx := 0 to Labels.Count - 1 do
+    Labels.Objects[Idx].Free;
+  Labels.Free;
+  IncludeFiles.Free;
+  Includes.Free;
   inherited Destroy;
 end;
 
@@ -558,6 +625,15 @@ var
     while (NameStart <= Length(Body)) and (Body[NameStart] in IdentChars) do
       Inc(NameStart);
     Directive := Copy(Body, 1, NameStart - 1);
+    // #include "Файл.h" - имя (своих файлов скетча, не <библиотек>)
+    if Directive = 'include' then
+    begin
+      Body := Trim(Copy(Body, NameStart, MaxInt));
+      if (Length(Body) > 2) and (Body[1] = '"') and
+         (Pos('"', Copy(Body, 2, MaxInt)) > 1) then
+        Includes.Add(Copy(Body, 2, Pos('"', Copy(Body, 2, MaxInt)) - 1));
+      Exit;
+    end;
     if Directive <> 'define' then
       Exit;
     Body := TrimLeft(Copy(Body, NameStart, MaxInt));
@@ -929,6 +1005,8 @@ var
     SetLength(Call.ArgLen, ArgNo + 1);
     SetLength(Call.ArgFirstTok, ArgNo + 1);
     SetLength(Call.ArgLastTok, ArgNo + 1);
+    SetLength(Call.ArgFile, ArgNo + 1);
+    Call.ArgFile[ArgNo] := 0;
     Call.ArgFirstTok[ArgNo] := AFrom;
     Call.ArgLastTok[ArgNo] := ATo;
     if FirstTok.Line = LastTok.EndLine then
@@ -1011,6 +1089,11 @@ begin
     while Idx < BodyEnd do
     begin
       Tok := TArdTok(FTokens[Idx]);
+      // lblX.Draw(), lblX.Top(y).Caption(s).Draw()
+      if (Tok.Kind = atkIdent) and TokIs(FTokens, Idx + 1, '.') and
+         not TokIs(FTokens, Idx - 1, '.') and (Labels.IndexOf(Tok.Text) >= 0) then
+        ParseLabelCallAt(Idx, Func,
+                         TArdLabel(Labels.Objects[Labels.IndexOf(Tok.Text)]));
       if (Tok.Kind = atkIdent) and TokIs(FTokens, Idx + 1, '(') then
       begin
         ObjTok := nil;
@@ -1045,7 +1128,9 @@ begin
   for CallIdx := 0 to Calls.Count - 1 do
   begin
     Call := TArdCall(Calls[CallIdx]);
-    if Call.Kind = ackUser then
+    if Call.IsLabel then
+      Call.Target := FuncByName('Label')
+    else if Call.Kind = ackUser then
       Call.Target := FuncByName(Call.Name);
     if Call.Kind in [ackText, ackGraph, ackImage, ackScreen] then
       Call.Func.Draws := True;
@@ -1122,6 +1207,7 @@ begin
   ScanTopLevel;
   if ScreenObjs.Count = 0 then
     ScreenObjs.Add('myGLCD');
+  LoadLabels;
   ScanBodies;
   ResolveDraws;
   LinkSetters;
@@ -1238,6 +1324,241 @@ begin
       Exit;
   end;
   Result := nil;
+end;
+
+// ---------------------------------------------------------------------------
+//  Надписи TLabel (BS10Controls.h / BS10Forms.h)
+// ---------------------------------------------------------------------------
+
+// Подключённые файлы скетча - через OnInclude; в каждом - объявления TLabel
+procedure TArdSketch.LoadLabels;
+var
+  Idx: Integer;
+  FilePath, FileText: string;
+begin
+  if not Assigned(OnInclude) then
+    Exit;
+  for Idx := 0 to Includes.Count - 1 do
+  begin
+    FilePath := '';
+    FileText := '';
+    if not OnInclude(Includes[Idx], FilePath, FileText) then
+      Continue;
+    if IncludeFiles.IndexOf(FilePath) >= 0 then
+      Continue;
+    IncludeFiles.Add(FilePath);
+    AddLabelFile(IncludeFiles.Count, FileText);
+  end;
+end;
+
+// Объявления "TLabel Имя = { значение, ... };" в тексте AText: значения
+// по запятым нулевого уровня, комментарии /*Left*/ - не в счёт (их
+// пропускает Tokenize)
+procedure TArdSketch.AddLabelFile(AFileIdx: Integer; const AText: string);
+var
+  Part: TArdSketch;
+  Decl: TArdLabel;
+  Idx, CloseIdx, ValStart, ValIdx: Integer;
+  FirstTok, LastTok, Tok: TArdTok;
+
+  procedure AddValue(AFrom, ATo: Integer);
+  var
+    Slot: Integer;
+  begin
+    if AFrom > ATo then
+      Exit;
+    FirstTok := TArdTok(Part.FTokens[AFrom]);
+    LastTok := TArdTok(Part.FTokens[ATo]);
+    Slot := Decl.Values.Count;
+    Decl.Values.Add(Copy(AText, FirstTok.StartPos,
+                         LastTok.EndPos - FirstTok.StartPos + 1));
+    SetLength(Decl.ValLine, Slot + 1);
+    SetLength(Decl.ValCol, Slot + 1);
+    SetLength(Decl.ValLen, Slot + 1);
+    if FirstTok.Line = LastTok.EndLine then
+      Decl.ValLine[Slot] := FirstTok.Line
+    else
+      Decl.ValLine[Slot] := -1;
+    Decl.ValCol[Slot] := FirstTok.Col;
+    Decl.ValLen[Slot] := LastTok.EndPos - FirstTok.StartPos + 1;
+  end;
+
+begin
+  Part := TArdSketch.Create;
+  try
+    Part.FText := AText;
+    Part.Tokenize;
+    Idx := 0;
+    while Idx + 3 < Part.FTokens.Count do
+    begin
+      if (Part.TokText(Idx) = 'TLabel') and
+         (TArdTok(Part.FTokens[Idx + 1]).Kind = atkIdent) and
+         (Part.TokText(Idx + 2) = '=') and (Part.TokText(Idx + 3) = '{') then
+      begin
+        CloseIdx := MatchClose(Part.FTokens, Idx + 3);
+        if CloseIdx < 0 then
+          Break;
+        Decl := TArdLabel.Create;
+        Decl.Name := Part.TokText(Idx + 1);
+        Decl.FileIdx := AFileIdx;
+        Decl.Line := TArdTok(Part.FTokens[Idx]).Line;
+        ValStart := Idx + 4;
+        ValIdx := Idx + 4;
+        while ValIdx < CloseIdx do
+        begin
+          Tok := TArdTok(Part.FTokens[ValIdx]);
+          if (Tok.Kind = atkPunct) and ((Tok.Text = '(') or (Tok.Text = '[') or
+                                        (Tok.Text = '{')) then
+          begin
+            ValIdx := MatchClose(Part.FTokens, ValIdx) + 1;
+            if ValIdx <= 0 then
+              Break;
+            Continue;
+          end;
+          if (Tok.Kind = atkPunct) and (Tok.Text = ',') then
+          begin
+            AddValue(ValStart, ValIdx - 1);
+            ValStart := ValIdx + 1;
+          end;
+          Inc(ValIdx);
+        end;
+        AddValue(ValStart, CloseIdx - 1);
+        if (Decl.Values.Count = Length(ArdLabelProps)) and
+           (Labels.IndexOf(Decl.Name) < 0) then
+          Labels.AddObject(Decl.Name, Decl)
+        else
+          Decl.Free;
+        Idx := CloseIdx + 1;
+        Continue;
+      end;
+      Inc(Idx);
+    end;
+  finally
+    Part.Free;
+  end;
+end;
+
+// Вывод надписи с именем в ANameIdx: .Свойство(значение) ... .Draw().
+// Без .Draw() в конце (lblX.Top(5); отдельно) - не вывод, не в списке.
+// Возвращает номер ')' у Draw или -1.
+function TArdSketch.ParseLabelCallAt(ANameIdx: Integer; AFunc: TArdFunc;
+                                     ALabel: TArdLabel): Integer;
+var
+  Call: TArdCall;
+  Idx, CloseIdx, PropIdx, ArgIdx: Integer;
+  FirstTok, LastTok, NameTok: TArdTok;
+  SetFrom, SetTo: array[0..12] of Integer;
+begin
+  Result := -1;
+  for PropIdx := 0 to High(SetFrom) do
+  begin
+    SetFrom[PropIdx] := -1;
+    SetTo[PropIdx] := -1;
+  end;
+  Idx := ANameIdx + 1;
+  CloseIdx := -1;
+  while TokIs(FTokens, Idx, '.') and (TokAt(FTokens, Idx + 1) <> nil) and
+        (TokAt(FTokens, Idx + 1).Kind = atkIdent) and
+        TokIs(FTokens, Idx + 2, '(') do
+  begin
+    CloseIdx := MatchClose(FTokens, Idx + 2);
+    if CloseIdx < 0 then
+      Exit;
+    if TokText(Idx + 1) = 'Draw' then
+    begin
+      Result := CloseIdx;
+      Break;
+    end;
+    for PropIdx := 0 to High(ArdLabelProps) do
+      if ArdLabelProps[PropIdx] = TokText(Idx + 1) then
+      begin
+        SetFrom[PropIdx] := Idx + 3;
+        SetTo[PropIdx] := CloseIdx - 1;
+      end;
+    Idx := CloseIdx + 1;
+  end;
+  if Result < 0 then
+    Exit;
+
+  Call := TArdCall.Create;
+  Call.Name := ALabel.Name;
+  Call.IsLabel := True;
+  Call.LabelDecl := ALabel;
+  Call.Kind := ackUser;
+  Call.Func := AFunc;
+  NameTok := TArdTok(FTokens[ANameIdx]);
+  Call.Line := NameTok.Line;
+  Call.Col := NameTok.Col;
+  Call.NameTok := ANameIdx;
+  Call.CloseTok := Result;
+  Call.CloseLine := TArdTok(FTokens[Result]).Line;
+  Call.CloseCol := TArdTok(FTokens[Result]).Col;
+  SetLength(Call.ArgLine, Length(ArdLabelProps));
+  SetLength(Call.ArgCol, Length(ArdLabelProps));
+  SetLength(Call.ArgLen, Length(ArdLabelProps));
+  SetLength(Call.ArgFirstTok, Length(ArdLabelProps));
+  SetLength(Call.ArgLastTok, Length(ArdLabelProps));
+  SetLength(Call.ArgFile, Length(ArdLabelProps));
+  for ArgIdx := 0 to High(ArdLabelProps) do
+    if (SetFrom[ArgIdx] >= 0) and (SetFrom[ArgIdx] <= SetTo[ArgIdx]) then
+    begin
+      // Задано в этом выводе: lblX.Top(intop)
+      FirstTok := TArdTok(FTokens[SetFrom[ArgIdx]]);
+      LastTok := TArdTok(FTokens[SetTo[ArgIdx]]);
+      Call.Args.Add(Copy(FText, FirstTok.StartPos,
+                         LastTok.EndPos - FirstTok.StartPos + 1));
+      Call.ArgFirstTok[ArgIdx] := SetFrom[ArgIdx];
+      Call.ArgLastTok[ArgIdx] := SetTo[ArgIdx];
+      Call.ArgFile[ArgIdx] := 0;
+      if FirstTok.Line = LastTok.EndLine then
+        Call.ArgLine[ArgIdx] := FirstTok.Line
+      else
+        Call.ArgLine[ArgIdx] := -1;
+      Call.ArgCol[ArgIdx] := FirstTok.Col;
+      Call.ArgLen[ArgIdx] := LastTok.EndPos - FirstTok.StartPos + 1;
+    end
+    else
+    begin
+      // Из объявления
+      Call.Args.Add(ALabel.Values[ArgIdx]);
+      Call.ArgFirstTok[ArgIdx] := -1;
+      Call.ArgLastTok[ArgIdx] := -1;
+      Call.ArgFile[ArgIdx] := ALabel.FileIdx;
+      Call.ArgLine[ArgIdx] := ALabel.ValLine[ArgIdx];
+      Call.ArgCol[ArgIdx] := ALabel.ValCol[ArgIdx];
+      Call.ArgLen[ArgIdx] := ALabel.ValLen[ArgIdx];
+    end;
+  Call.ArgsText := '';
+  Calls.Add(Call);
+  AFunc.Calls.Add(Call);
+end;
+
+// Значение аргумента: по словам скетча или (значение из файла форм) по
+// тексту
+function TArdSketch.EvalArgValue(ACall: TArdCall; AArgIdx, ADepth: Integer;
+                                 var AValue: TArdValue): Boolean;
+var
+  Temp: TArdSketch;
+begin
+  Result := False;
+  if (AArgIdx < 0) or (AArgIdx >= ACall.Args.Count) then
+    Exit;
+  if ACall.ArgFirstTok[AArgIdx] >= 0 then
+  begin
+    Result := EvalTokens(ACall.ArgFirstTok[AArgIdx], ACall.ArgLastTok[AArgIdx],
+                         ADepth, AValue);
+    Exit;
+  end;
+  Temp := TArdSketch.Create;
+  try
+    Temp.FText := ACall.Args[AArgIdx];
+    Temp.Tokenize;
+    Temp.FParent := Self;
+    Result := (Temp.FTokens.Count > 0) and
+              Temp.EvalTokens(0, Temp.FTokens.Count - 1, ADepth, AValue);
+  finally
+    Temp.Free;
+  end;
 end;
 
 // Конец выражения справа от '=' в AFrom: ';' или ',' или ')' нулевого
@@ -1593,8 +1914,7 @@ begin
         Inc(CallCount);
         Caller := Call.Func;
         if (Caller = Func) or
-           not EvalTokens(Call.ArgFirstTok[ParamIdx], Call.ArgLastTok[ParamIdx],
-                          ADepth + 1, ArgValue) then
+           not EvalArgValue(Call, ParamIdx, ADepth + 1, ArgValue) then
         begin
           Same := False;
           Break;
@@ -1695,14 +2015,16 @@ begin
   ALine := -1;
   if (AArgIdx < 0) or (AArgIdx >= ACall.Args.Count) then
     Exit;
-  Known := EvalTokens(ACall.ArgFirstTok[AArgIdx], ACall.ArgLastTok[AArgIdx], 0,
-                      Value);
+  Known := EvalArgValue(ACall, AArgIdx, 0, Value);
   // Переменные аргумента: имя=значение и строка присваивания
   Parts := '';
   Seen := TStringList.Create;
   try
+    // У значения из файла форм слов в скетче нет: Idx от -1 до -1 - мимо
     for Idx := ACall.ArgFirstTok[AArgIdx] to ACall.ArgLastTok[AArgIdx] do
     begin
+      if Idx < 0 then
+        Break;
       Tok := TArdTok(FTokens[Idx]);
       if (Tok.Kind <> atkIdent) or (TokText(Idx + 1) = '(') or
          (TokText(Idx - 1) = '.') or (Seen.IndexOf(Tok.Text) >= 0) then
@@ -1943,8 +2265,7 @@ var
     ArgValue: TArdValue;
   begin
     Result := (AArgIdx < ACallOf.Args.Count) and
-              EvalTokens(ACallOf.ArgFirstTok[AArgIdx],
-                         ACallOf.ArgLastTok[AArgIdx], 0, ArgValue);
+              EvalArgValue(ACallOf, AArgIdx, 0, ArgValue);
     if Result then
       AResult := Round(ArgValue.Num);
   end;
@@ -1992,8 +2313,7 @@ begin
     begin
       FBindNames.Add(Target.ParamNames[ParamIdx]);
       FBindKnown[ParamIdx] := (ParamIdx < ACall.Args.Count) and
-        EvalTokens(ACall.ArgFirstTok[ParamIdx], ACall.ArgLastTok[ParamIdx], 0,
-                   Value);
+        EvalArgValue(ACall, ParamIdx, 0, Value);
       FBindValues[ParamIdx] := Value;
     end;
     FBindFunc := Target;

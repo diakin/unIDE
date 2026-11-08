@@ -2094,6 +2094,9 @@ type
     // Правка значения вызова: строка, колонка и текст аргумента до правки
     FArdEditLine, FArdEditCol: Integer;
     FArdEditSrc: string;
+    // Значение надписи TLabel из файла форм: правка - в этот файл на диске
+    // ('' - в текст активной вкладки)
+    FArdEditFile: string;
     // Узел записанной правки: выделить его снова, когда дерево
     // перестроится по новому тексту (подпись могла измениться)
     FArdKeepName: string;
@@ -3148,6 +3151,8 @@ type
     procedure ArdFillObjTables(AObj: TObject);
     procedure ArdBeginEdit(AItem: TListItem);
     procedure ArdApplyEdit;
+    function  ArdApplyFileEdit(const ANewText: string): Boolean;
+    function  ArdLoadInclude(const AName: string; var APath, AText: string): Boolean;
     procedure ArdColumns(AOn: Boolean);
     procedure ArdSyncFromCaret;
     procedure ArdFontPreview(const AFontName: string);
@@ -33655,7 +33660,8 @@ var
   ParamType: string;
 begin
   Call := TArdCall(ACall);
-  if Call.ObjName <> '' then
+  // Надпись TLabel - имя объекта, без скобок
+  if (Call.ObjName <> '') or Call.IsLabel then
     Result := Call.Name
   else
     Result := Call.Name + '()';
@@ -33744,6 +33750,8 @@ begin
   FArdSketch := nil;
   Sketch := TArdSketch.Create;
   FArdSketch := Sketch;
+  // #include "BS10Forms.h" - надписи TLabel из папки скетча
+  Sketch.OnInclude := ArdLoadInclude;
   Sketch.Parse(SrcText);
 
   // Плоский список: все вызовы вывода по порядку текста, без узлов
@@ -33857,13 +33865,22 @@ begin
   if (Node.Line >= 0) and (Node.Line < Sketch.Calls.Count) then
   begin
     Call := TArdCall(Sketch.Calls[Node.Line]);
-    if Call.ObjName <> '' then
-      FObjHeader.Caption := '  ' + Call.ObjName + '.' + Call.Name
+    if Call.IsLabel then
+      FObjHeader.Caption := '  ' + Call.Name + ': TLabel   строка ' +
+        IntToStr(Call.Line + 1) + ', в функции ' + Call.Func.Name +
+        '()  - объявление ' +
+        ExtractFileName(Sketch.IncludeFiles[Call.LabelDecl.FileIdx - 1]) +
+        ', стр. ' + IntToStr(Call.LabelDecl.Line + 1)
     else
-      FObjHeader.Caption := '  ' + Call.Name;
-    FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
-      IntToStr(Call.Line + 1) + ', в функции ' + Call.Func.Name + '()  - ' +
-      Call.KindText;
+    begin
+      if Call.ObjName <> '' then
+        FObjHeader.Caption := '  ' + Call.ObjName + '.' + Call.Name
+      else
+        FObjHeader.Caption := '  ' + Call.Name;
+      FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
+        IntToStr(Call.Line + 1) + ', в функции ' + Call.Func.Name + '()  - ' +
+        Call.KindText;
+    end;
     Names := TStringList.Create;
     try
       if (Call.Kind = ackUser) and (Call.Target <> nil) then
@@ -33882,6 +33899,12 @@ begin
         // EdUiText
         AddUiRow(Names[ArgIdx], EdUiText(Call.Args[ArgIdx]),
                  ValueText, ValueLine, ArgIdx);
+        // Надпись TLabel: значение из объявления - где оно в файле форм
+        if Call.IsLabel and (Call.ArgFile[ArgIdx] > 0) and
+           (Item.SubItems.Count >= 3) then
+          Item.SubItems[2] :=
+            ExtractFileName(Sketch.IncludeFiles[Call.ArgFile[ArgIdx] - 1]) +
+            ':' + IntToStr(Call.ArgLine[ArgIdx] + 1);
       end;
     finally
       Names.Free;
@@ -34043,6 +34066,7 @@ begin
   Sketch := TArdSketch(FArdSketch);
   if (Node = nil) or (Sketch = nil) or (AItem = nil) then
     Exit;
+  FArdEditFile := '';
   RowData := Integer(AItem.Data);
   // Строки функции и сводки, незаданный setColor - только просмотр
   if (RowData < 0) or (Node.Line < 0) or (Node.Line >= Sketch.Calls.Count) then
@@ -34095,6 +34119,8 @@ begin
     FArdEditLine := Call.ArgLine[RowData];
     FArdEditCol := Call.ArgCol[RowData];
     FArdEditSrc := Call.Args[RowData];
+    if Call.IsLabel and (Call.ArgFile[RowData] > 0) then
+      FArdEditFile := Sketch.IncludeFiles[Call.ArgFile[RowData] - 1];
     OvCall := Call;
     FArdOvArg := RowData;
     if (Call.Kind = ackUser) and (Call.Target <> nil) and
@@ -34120,6 +34146,9 @@ begin
        (TArdCall(Sketch.Calls[CallIdx]).Name = OvCall.Name) and
        (TArdCall(Sketch.Calls[CallIdx]).Col < OvCall.Col) then
       Inc(FArdOvOcc);
+  // TLabel в эмулятор на лету пока не передаётся (SIM_ARG у него нет)
+  if OvCall.IsLabel then
+    FArdOvName := '';
 
   FObjEditName := AItem.Caption;
   FObjEditIdx := RowData;
@@ -34241,6 +34270,25 @@ begin
     Exit;
   Obj := TDfmNode(FObjCurNode);
 
+  // Значение из объявления TLabel - в файл форм
+  if FArdEditFile <> '' then
+  begin
+    if ArdApplyFileEdit(NewText) then
+    begin
+      FArdKeepName := Obj.Name;
+      // Текст скетча тот же - разобрать заново всё равно: файл форм другой
+      FArdTextKey := '';
+      FArdEdKey := '';
+      LogComp('Инспектор ino: ' + FObjEditName + ' = ' + NewText + '   (' +
+              ExtractFileName(FArdEditFile) + ', строка ' +
+              IntToStr(FArdEditLine + 1) + ')');
+      if (FArdSim <> nil) and FArdSim.Running then
+        LogComp('Эмулятор: надпись TLabel изменится после сборки');
+    end;
+    ObjScheduleRelines(Obj, FObjEditName);
+    Exit;
+  end;
+
   // Заменяется текст без пробелов по краям: у setColor( clw ) пробелы
   // остаются на месте
   OldTrim := Trim(FArdEditSrc);
@@ -34277,6 +34325,112 @@ begin
           '   (строка ' + IntToStr(FArdEditLine + 1) + ')');
   ArdSendOverride(NewText);
   ObjScheduleRelines(Obj, FObjEditName);
+end;
+
+// Правка значения TLabel в файле форм (FArdEditFile) прямо на диске: строка
+// FArdEditLine, колонка FArdEditCol, прежний текст FArdEditSrc. Кодировка
+// файла сохраняется (ANSI или UTF-8, с BOM или без). Файл открыт во вкладке
+// - не трогаем: там могут быть свои правки.
+function TForm1.ArdApplyFileEdit(const ANewText: string): Boolean;
+var
+  Raw, Text, LineText, OldTrim: string;
+  Lines: TStringList;
+  IsUtf8, HasBom: Boolean;
+  ValCol: Integer;
+  Stream: TFileStream;
+  Bom: array[0..2] of Byte;
+begin
+  Result := False;
+  if IndexOfWindowByFile(FArdEditFile) >= 0 then
+  begin
+    ShowMessage(ExtractFileName(FArdEditFile) + ' открыт во вкладке - ' +
+      'правьте значение там (строка ' + IntToStr(FArdEditLine + 1) +
+      ') или закройте вкладку.');
+    Exit;
+  end;
+  if not FileExists(FArdEditFile) then
+  begin
+    ShowMessage('Нет файла ' + FArdEditFile);
+    Exit;
+  end;
+  Raw := ReadWholeFile(FArdEditFile);
+  HasBom := (Length(Raw) >= 3) and (Byte(Raw[1]) = $EF) and
+            (Byte(Raw[2]) = $BB) and (Byte(Raw[3]) = $BF);
+  if HasBom then
+    Delete(Raw, 1, 3);
+  IsUtf8 := HasBom or LooksLikeUtf8(Raw);
+  if IsUtf8 then
+    Text := Utf8ToAnsiFull(Raw)
+  else
+    Text := Raw;
+  Lines := TStringList.Create;
+  try
+    Lines.Text := Text;
+    OldTrim := Trim(FArdEditSrc);
+    if (FArdEditLine < 0) or (FArdEditLine >= Lines.Count) then
+      LineText := ''
+    else
+      LineText := Lines[FArdEditLine];
+    ValCol := FArdEditCol + Pos(OldTrim, FArdEditSrc) - 1;
+    if (OldTrim = '') or (Copy(LineText, ValCol, Length(OldTrim)) <> OldTrim) then
+    begin
+      ShowMessage(ExtractFileName(FArdEditFile) + ' изменился после разбора - ' +
+        'инспектор обновлён, повторите правку.');
+      FArdTextKey := '';
+      FArdEdKey := '';
+      Exit;
+    end;
+    Lines[FArdEditLine] := Copy(LineText, 1, ValCol - 1) + ANewText +
+                           Copy(LineText, ValCol + Length(OldTrim), MaxInt);
+    Text := Lines.Text;
+    // TStringList.Text кончается переводом строки; у исходного его могло
+    // не быть
+    if (Raw <> '') and not (Raw[Length(Raw)] in [#10, #13]) then
+      while (Text <> '') and (Text[Length(Text)] in [#10, #13]) do
+        Delete(Text, Length(Text), 1);
+    // Переводы строк - как были в файле (CRLF или LF)
+    Text := StringReplace(Text, #13#10, #10, [rfReplaceAll]);
+    if Pos(#13#10, Raw) > 0 then
+      Text := StringReplace(Text, #10, #13#10, [rfReplaceAll]);
+  finally
+    Lines.Free;
+  end;
+  if IsUtf8 then
+    Raw := AnsiToUtf8(Text)
+  else
+    Raw := Text;
+  Stream := TFileStream.Create(FArdEditFile, fmCreate);
+  try
+    if HasBom then
+    begin
+      Bom[0] := $EF; Bom[1] := $BB; Bom[2] := $BF;
+      Stream.WriteBuffer(Bom, 3);
+    end;
+    if Raw <> '' then
+      Stream.WriteBuffer(Raw[1], Length(Raw));
+  finally
+    Stream.Free;
+  end;
+  Result := True;
+end;
+
+// Подключённый файл скетча (#include "Имя") из его папки: текст как ANSI
+function TForm1.ArdLoadInclude(const AName: string; var APath, AText: string): Boolean;
+var
+  Raw: string;
+begin
+  APath := ExpandFileName(ExtractFilePath(FCurrentFileName) + AName);
+  Result := FileExists(APath);
+  if not Result then
+    Exit;
+  Raw := ReadWholeFile(APath);
+  if (Length(Raw) >= 3) and (Byte(Raw[1]) = $EF) and (Byte(Raw[2]) = $BB) and
+     (Byte(Raw[3]) = $BF) then
+    AText := Utf8ToAnsiFull(Copy(Raw, 4, MaxInt))
+  else if LooksLikeUtf8(Raw) then
+    AText := Utf8ToAnsiFull(Raw)
+  else
+    AText := Raw;
 end;
 
 // Правка аргумента - сразу в работающий эмулятор: SIM_ARG этого места
