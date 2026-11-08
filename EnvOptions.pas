@@ -1,8 +1,8 @@
 unit EnvOptions;
 
-// Настройки среды - вкладки Preferences, Designer и Environment Variables
-// окна IDE Options (как Tools - Environment Options в Delphi 7). Хранятся в
-// editor.ini: [Preferences], [Designer], [EnvironmentVariables].
+// Настройки среды - вкладки Preferences, Designer, Environment Variables и
+// Git окна IDE Options (как Tools - Environment Options в Delphi 7). Хранятся
+// в editor.ini: [Preferences], [Designer], [EnvironmentVariables], [Git].
 //
 // Переменные окружения: «системные» - окружение программы при запуске (до
 // подмен), «подмены пользователя» - пары имя=значение из editor.ini. Подмены
@@ -113,6 +113,49 @@ procedure EnvSaveOverrides(const AIniFile: string; AList: TStrings);
 // Поставить подмены AList в окружение среды. Переменные, подменённые
 // прошлым вызовом и отсутствующие в AList, возвращаются к исходным.
 procedure EnvApplyOverrides(AList: TStrings);
+
+// ---------------------------------------------------------------------------
+//  Git (IDE Options - Git, editor.ini [Git]): пробелы при слиянии и в
+//  просмотре разницы. Действуют только на команды, которые запускает сама
+//  среда (панель Git, окна Commit и History); git из консоли - через
+//  алиасы (кнопка на вкладке, git config --global).
+// ---------------------------------------------------------------------------
+const
+  // Слияние: pull, merge, cherry-pick, revert получают -X<вариант>
+  GitMergeWsNone = 0;
+  GitMergeWsEol = 1;        // -Xignore-space-at-eol
+  GitMergeWsChange = 2;     // -Xignore-space-change
+  GitMergeWsAll = 3;        // -Xignore-all-space
+  GitMergeWsMax = 3;
+  GitMergeWsArgs: array[0..3] of string = (
+    '', '-Xignore-space-at-eol', '-Xignore-space-change', '-Xignore-all-space');
+  // Просмотр разницы: git diff / git show получают ключ
+  GitDiffWsNone = 0;
+  GitDiffWsEol = 1;         // --ignore-space-at-eol
+  GitDiffWsChange = 2;      // -b
+  GitDiffWsAll = 3;         // -w
+  GitDiffWsMax = 3;
+  GitDiffWsArgs: array[0..3] of string = (
+    '', '--ignore-space-at-eol', '-b', '-w');
+
+type
+  TGitOptions = record
+    MergeWs: Integer;       // GitMergeWs*
+    DiffWs: Integer;        // GitDiffWs*
+  end;
+
+var
+  // Действующие настройки; читает TForm1.EnvInit, правит вкладка Git
+  GitOpts: TGitOptions;
+
+procedure GitDefaultOptions(var AOpts: TGitOptions);
+procedure GitLoadOptions(const AIniFile: string; var AOpts: TGitOptions);
+procedure GitSaveOptions(const AIniFile: string; const AOpts: TGitOptions);
+// Ключ для команд слияния по GitOpts: '-Xignore-all-space' и т.п. с
+// пробелом в конце, или '' - ставится сразу после имени команды
+function GitMergeWsArg: string;
+// Ключ для git diff / git show по GitOpts: '-w ' и т.п. или ''
+function GitDiffWsArg: string;
 
 implementation
 
@@ -521,9 +564,80 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+//  Git
+// ---------------------------------------------------------------------------
+
+const
+  SecGit = 'Git';
+
+function GitWsValue(AValue, AMax: Integer): Integer;
+begin
+  Result := AValue;
+  if (Result < 0) or (Result > AMax) then
+    Result := 0;
+end;
+
+procedure GitDefaultOptions(var AOpts: TGitOptions);
+begin
+  // Как было до вкладки: пробелы учитываются, ключей нет
+  AOpts.MergeWs := GitMergeWsNone;
+  AOpts.DiffWs := GitDiffWsNone;
+end;
+
+procedure GitLoadOptions(const AIniFile: string; var AOpts: TGitOptions);
+var
+  Ini: TIniFile;
+begin
+  GitDefaultOptions(AOpts);
+  if (AIniFile = '') or not FileExists(AIniFile) then
+    Exit;
+  Ini := TIniFile.Create(AIniFile);
+  try
+    AOpts.MergeWs := GitWsValue(Ini.ReadInteger(SecGit, 'MergeWhitespace',
+      AOpts.MergeWs), GitMergeWsMax);
+    AOpts.DiffWs := GitWsValue(Ini.ReadInteger(SecGit, 'DiffWhitespace',
+      AOpts.DiffWs), GitDiffWsMax);
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure GitSaveOptions(const AIniFile: string; const AOpts: TGitOptions);
+var
+  Ini: TIniFile;
+begin
+  if AIniFile = '' then
+    Exit;
+  Ini := TIniFile.Create(AIniFile);
+  try
+    Ini.WriteInteger(SecGit, 'MergeWhitespace',
+      GitWsValue(AOpts.MergeWs, GitMergeWsMax));
+    Ini.WriteInteger(SecGit, 'DiffWhitespace',
+      GitWsValue(AOpts.DiffWs, GitDiffWsMax));
+  finally
+    Ini.Free;
+  end;
+end;
+
+function GitMergeWsArg: string;
+begin
+  Result := GitMergeWsArgs[GitWsValue(GitOpts.MergeWs, GitMergeWsMax)];
+  if Result <> '' then
+    Result := Result + ' ';
+end;
+
+function GitDiffWsArg: string;
+begin
+  Result := GitDiffWsArgs[GitWsValue(GitOpts.DiffWs, GitDiffWsMax)];
+  if Result <> '' then
+    Result := Result + ' ';
+end;
+
 initialization
   // Окружение - как при запуске, до любых подмен
   TakeSystemSnapshot;
+  GitDefaultOptions(GitOpts);
 
 finalization
   FreeAndNil(AppliedNames);

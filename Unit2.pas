@@ -234,6 +234,21 @@ type
     btnEnvNew: TUiButton;
     btnEnvEdit: TUiButton;
     btnEnvDelete: TUiButton;
+    // --- Git: пробелы при слиянии и в разнице (EnvOptions.GitOpts,
+    // editor.ini [Git]), алиасы для git из консоли
+    tsGit: TTabSheet;
+    grpGitMerge: TUiGroupBox;
+    lblGitMergeWs: TLabel;
+    cmbGitMergeWs: TUiComboBox;
+    lblGitMergeNote: TLabel;
+    grpGitDiff: TUiGroupBox;
+    lblGitDiffWs: TLabel;
+    cmbGitDiffWs: TUiComboBox;
+    lblGitDiffNote: TLabel;
+    grpGitAliases: TUiGroupBox;
+    lblGitAliasNote: TLabel;
+    memGitAliases: TUiMemo;
+    btnGitAliases: TUiButton;
     // --- File Types: расширение -> схема подсветки ---
     tsFileTypes: TTabSheet;
     lblFtHint: TLabel;
@@ -318,6 +333,8 @@ type
     procedure ArdCfgLoadClick(Sender: TObject);
     procedure ArdCfgWriteClick(Sender: TObject);
     procedure EnvOptionClick(Sender: TObject);
+    procedure GitWsChange(Sender: TObject);
+    procedure btnGitAliasesClick(Sender: TObject);
     procedure EnvGridChange(Sender: TObject);
     procedure EnvPreviewDelayChange(Sender: TObject);
     procedure EnvOverrideClick(Sender: TObject);
@@ -465,6 +482,7 @@ type
     procedure ArdCliIdle(var ACancel: Boolean);
     procedure ArdNetEnable;
     procedure EnvTabsLoad;
+    procedure GitTabLoad;
     procedure EnvFillLists;
     function  EnvEditDialog(const ATitle: string; var AName, AValue: string;
                             ANameFixed: Boolean): Boolean;
@@ -4521,6 +4539,10 @@ begin
   if (Sender is TPageControl) and (tsFileTypes <> nil) and
      (TPageControl(Sender).ActivePage = tsFileTypes) then
     FtFill;
+  // Алиасы могли задать в консоли - перечитать
+  if (Sender is TPageControl) and (tsGit <> nil) and
+     (TPageControl(Sender).ActivePage = tsGit) then
+    GitTabLoad;
 end;
 
 // «Импорт из RQdb.ini» (Compilers - Arduino): пути из раздела [Arduino]
@@ -5704,10 +5726,64 @@ begin
     chkDsgHints.Checked := Form1.FEnv.DsgShowHints;
     chkDsgExtHints.Checked := Form1.FEnv.DsgExtendedHints;
     chkDsgExtHints.Enabled := chkDsgHints.Checked;
+    cmbGitMergeWs.ItemIndex := GitOpts.MergeWs;
+    cmbGitDiffWs.ItemIndex := GitOpts.DiffWs;
   finally
     FEnvLoading := False;
   end;
   EnvFillLists;
+end;
+
+// ---------------------------------------------------------------------------
+//  Вкладка Git: пробелы при слиянии (-X у pull, merge, cherry-pick, revert)
+//  и в просмотре разницы (-w, -b у diff в окнах Commit, History, Compare).
+//  Значения - EnvOptions.GitOpts, в editor.ini [Git] пишутся сразу.
+// ---------------------------------------------------------------------------
+
+// Выбор в списках и алиасы git config --global
+procedure TForm2.GitTabLoad;
+begin
+  if (Form1 = nil) or not FBuilt then
+    Exit;
+  FEnvLoading := True;
+  try
+    cmbGitMergeWs.ItemIndex := GitOpts.MergeWs;
+    cmbGitDiffWs.ItemIndex := GitOpts.DiffWs;
+  finally
+    FEnvLoading := False;
+  end;
+  Screen.Cursor := crHourGlass;
+  try
+    memGitAliases.Lines.Text := Form1.GitReadAliases;
+  finally
+    Screen.Cursor := crDefault;
+  end;
+end;
+
+procedure TForm2.GitWsChange(Sender: TObject);
+begin
+  if FEnvLoading or not FBuilt or (Form1 = nil) then
+    Exit;
+  if cmbGitMergeWs.ItemIndex >= 0 then
+    GitOpts.MergeWs := cmbGitMergeWs.ItemIndex;
+  if cmbGitDiffWs.ItemIndex >= 0 then
+    GitOpts.DiffWs := cmbGitDiffWs.ItemIndex;
+  GitSaveOptions(Form1.SettingsFileName, GitOpts);
+end;
+
+procedure TForm2.btnGitAliasesClick(Sender: TObject);
+var
+  Report: string;
+begin
+  if Form1 = nil then
+    Exit;
+  Screen.Cursor := crHourGlass;
+  try
+    Form1.GitWriteAliases(Report);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  memGitAliases.Lines.Text := Report;
 end;
 
 // Флажки Preferences и Designer - в Form1.FEnv, в editor.ini, применить

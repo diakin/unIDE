@@ -2308,6 +2308,132 @@ object Form2: TForm2
         end
       end
     end
+    object tsGit: TTabSheet
+      Caption = 'Git'
+      object grpGitMerge: TUiGroupBox
+        Left = 8
+        Top = 8
+        Width = 590
+        Height = 124
+        Caption = ' Merge, pull, cherry-pick, revert '
+        TabOrder = 0
+        object lblGitMergeWs: TLabel
+          Left = 12
+          Top = 26
+          Caption = 'Whitespace'
+        end
+        object cmbGitMergeWs: TUiComboBox
+          Left = 150
+          Top = 22
+          Width = 300
+          Height = 21
+          Style = csDropDownList
+          ItemHeight = 13
+          TabOrder = 0
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Ключ -X<вариант>, который среда добавляет к git pull, git merge (Merge..., слияние веток) и к cherry-pick / revert из окна History'
+          OnChange = GitWsChange
+          Items.Strings = (
+            'do not ignore (git default)'
+            '-Xignore-space-at-eol: spaces at line end'
+            '-Xignore-space-change: amount of whitespace'
+            '-Xignore-all-space: all whitespace')
+        end
+        object lblGitMergeNote: TLabel
+          Left = 12
+          Top = 52
+          Width = 566
+          Height = 64
+          AutoSize = False
+          WordWrap = True
+          Caption = 'Правки только в пробелах не дают конфликта. В куске, где одна сторона изменила только пробелы, а другая - текст, берётся версия с правкой текста целиком. Новые отступы другой стороны при этом теряются: после такого слияния файл обычно форматируют заново. Действует на команды, которые запускает среда.'
+        end
+      end
+      object grpGitDiff: TUiGroupBox
+        Left = 8
+        Top = 140
+        Width = 590
+        Height = 104
+        Caption = ' Diff view '
+        TabOrder = 1
+        object lblGitDiffWs: TLabel
+          Left = 12
+          Top = 26
+          Caption = 'Whitespace'
+        end
+        object cmbGitDiffWs: TUiComboBox
+          Left = 150
+          Top = 22
+          Width = 300
+          Height = 21
+          Style = csDropDownList
+          ItemHeight = 13
+          TabOrder = 0
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Ключ, который среда добавляет к git diff / git show в окнах Commit, History и при сравнении веток'
+          OnChange = GitWsChange
+          Items.Strings = (
+            'do not ignore (git default)'
+            '--ignore-space-at-eol: spaces at line end'
+            '-b: amount of whitespace'
+            '-w: all whitespace')
+        end
+        object lblGitDiffNote: TLabel
+          Left = 12
+          Top = 52
+          Width = 566
+          Height = 44
+          AutoSize = False
+          WordWrap = True
+          Caption = 'Только просмотр: изменения в пробелах в коммит всё равно попадают. Окно Commit показывает разницу файла без них, файл с одними пробельными правками - как «разницы нет».'
+        end
+      end
+      object grpGitAliases: TUiGroupBox
+        Left = 8
+        Top = 252
+        Width = 590
+        Height = 196
+        Caption = ' Command line aliases (git config --global) '
+        TabOrder = 2
+        object lblGitAliasNote: TLabel
+          Left = 12
+          Top = 20
+          Width = 566
+          Height = 44
+          AutoSize = False
+          WordWrap = True
+          Caption = 'Для git из консоли (Git Bash): git dw = diff -w, git bw = blame -w, git mergew и git pullw = merge и pull с -Xignore-all-space. Отдельной настройки «всегда без пробелов» для diff и blame у git нет.'
+        end
+        object memGitAliases: TUiMemo
+          Left = 12
+          Top = 68
+          Width = 566
+          Height = 84
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -12
+          Font.Name = 'Courier New'
+          Font.Style = []
+          ParentFont = False
+          ReadOnly = True
+          TabOrder = 0
+        end
+        object btnGitAliases: TUiButton
+          Left = 398
+          Top = 160
+          Width = 180
+          Height = 26
+          Caption = 'Write aliases'
+          TabOrder = 1
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Записать алиасы dw, bw, mergew, pullw в git config --global (~/.gitconfig); те, что уже есть с этими именами, заменяются'
+          OnClick = btnGitAliasesClick
+        end
+      end
+    end
     object tsFileTypes: TTabSheet
       Caption = 'File Types'
       object lblFtHint: TLabel

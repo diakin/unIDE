@@ -4591,6 +4591,10 @@ type
     procedure RestoreFormBounds(Ini: TIniFile);
 
     procedure SaveActiveClrSchema; // В public, чтобы Unit2 мог её вызвать
+    // IDE Options - Git: алиасы dw, bw, mergew, pullw в git config --global
+    // (запись) и их текущие значения (чтение). Вызывает Unit2.
+    function  GitWriteAliases(var AReport: string): Boolean;
+    function  GitReadAliases: string;
     // Смена внешнего вида редактора БЕЗ пометки файла изменённым.
     // В public по той же причине: вызывает Unit2.
     procedure ApplyEditorLook(AFont: TFont; AFontColor, ABkColor: TColor);
@@ -76940,7 +76944,70 @@ var
   Git, Repo: string;
 begin
   if GitPrepare(Git, Repo) then
-    GitLongOp(Git, Repo, '-c pull.rebase=false pull --no-edit');
+    // -X<вариант> (IDE Options - Git, пробелы при слиянии) git pull
+    // передаёт слиянию
+    GitLongOp(Git, Repo, '-c pull.rebase=false pull ' + GitMergeWsArg +
+      '--no-edit');
+end;
+
+// Алиасы для git из консоли (IDE Options - Git): у git нет настройки
+// «всегда без пробелов» для diff и blame, а -X у merge задаётся только
+// в командной строке или в branch.<имя>.mergeOptions каждой ветки
+const
+  GitAliasNames: array[0..3] of string = ('dw', 'bw', 'mergew', 'pullw');
+  GitAliasValues: array[0..3] of string = ('diff -w', 'blame -w',
+    'merge -Xignore-all-space', 'pull -Xignore-all-space');
+
+function TForm1.GitWriteAliases(var AReport: string): Boolean;
+var
+  Git: string;
+  Output: WideString;
+  AliasIdx: Integer;
+begin
+  Result := False;
+  AReport := '';
+  Git := GitExePath(True);
+  if Git = '' then
+  begin
+    AReport := 'git не найден';
+    Exit;
+  end;
+  for AliasIdx := Low(GitAliasNames) to High(GitAliasNames) do
+    if GitRunIn(Git, ExtractFilePath(ParamStr(0)), 'config --global alias.' +
+       GitAliasNames[AliasIdx] + ' "' + GitAliasValues[AliasIdx] + '"',
+       True, Output) <> 0 then
+    begin
+      AReport := 'git config --global alias.' + GitAliasNames[AliasIdx] +
+        ' не вышел - см. Git log';
+      Exit;
+    end;
+  AReport := GitReadAliases;
+  Result := True;
+end;
+
+// Строки «git dw = diff -w» по алиасам GitAliasNames; не задан - «нет»
+function TForm1.GitReadAliases: string;
+var
+  Git, Value: string;
+  AliasIdx: Integer;
+begin
+  Result := '';
+  Git := GitExePath(False);
+  if Git = '' then
+  begin
+    Result := 'git не найден';
+    Exit;
+  end;
+  for AliasIdx := Low(GitAliasNames) to High(GitAliasNames) do
+  begin
+    Value := Trim(GitQuery(Git, ExtractFilePath(ParamStr(0)),
+      'config --global --get alias.' + GitAliasNames[AliasIdx]));
+    if Value = '' then
+      Value := '(нет)';
+    if Result <> '' then
+      Result := Result + #13#10;
+    Result := Result + 'git ' + GitAliasNames[AliasIdx] + ' = ' + Value;
+  end;
 end;
 
 // Push; ветки на сервере нет - опубликовать (push -u origin <ветка>)
@@ -76995,12 +77062,15 @@ begin
       string(GitQuote(AChange.Path))
   else if FGitDlgHasHead then
   begin
-    Args := 'diff --no-color HEAD -- ' + string(GitQuote(AChange.Path));
+    // Пробелы - по IDE Options - Git (-w, -b ...)
+    Args := 'diff --no-color ' + GitDiffWsArg + 'HEAD -- ' +
+      string(GitQuote(AChange.Path));
     if AChange.OrigPath <> '' then
       Args := Args + ' ' + string(GitQuote(AChange.OrigPath));
   end
   else
-    Args := 'diff --no-color --cached -- ' + string(GitQuote(AChange.Path));
+    Args := 'diff --no-color ' + GitDiffWsArg + '--cached -- ' +
+      string(GitQuote(AChange.Path));
   StartTick := GetTickCount;
   // Новый файл - разница строится здесь, без git: git diff --no-index
   // большого файла в Windows шёл секундами (2,9 МБ - 5,3 с по Git log),
@@ -77019,7 +77089,11 @@ begin
     ' КБ, ' + IntToStr(GetTickCount - StartTick) + ' мс');
   if (ExitCode < 0) or ((ExitCode > 1) and (Result = '')) then
     Result := 'git diff не вышел (код ' + IntToStr(ExitCode) + ')';
-  if Trim(string(Result)) = '' then
+  if (Trim(string(Result)) = '') and (GitDiffWsArg <> '') then
+    Result := 'Разницы в тексте без учёта пробелов нет (IDE Options - Git: ' +
+      Trim(GitDiffWsArg) + '). Изменения в пробелах, правах файла или ' +
+      'переименование без правок в коммит всё равно попадут.'
+  else if Trim(string(Result)) = '' then
     Result := 'Разницы в тексте нет (изменились права файла, ' +
       'переименование без правок или двоичный файл).';
   if Length(Result) > DiffMax then
@@ -78416,7 +78490,7 @@ begin
     LogGit('Git: основная ветка сервера не найдена (сначала Fetch)');
     Exit;
   end;
-  GitLongOp(Git, Repo, 'merge --no-edit ' +
+  GitLongOp(Git, Repo, 'merge ' + GitMergeWsArg + '--no-edit ' +
     string(GitQuote(WideString(DefaultBranch))));
 end;
 
@@ -78446,7 +78520,7 @@ begin
   end;
   if Target = '' then
     Exit;
-  if GitLongOp(Git, Repo, 'merge --no-edit ' +
+  if GitLongOp(Git, Repo, 'merge ' + GitMergeWsArg + '--no-edit ' +
      string(GitQuote(WideString(Target)))) <> 0 then
     LogGit('Git: при конфликте - исправить файлы и Commit, или отменить ' +
             'слияние в Git Bash: git merge --abort');
@@ -78511,9 +78585,9 @@ begin
     LogGit('  коммитов только в ' + LeftBranch + ': ' +
             Copy(Counts, 1, TabPos - 1) + ', только в ' + RightBranch + ': ' +
             Trim(Copy(Counts, TabPos + 1, MaxInt)));
-  LogGit('  разные файлы (git diff --stat ' + LeftBranch + ' ' +
-          RightBranch + '):');
-  GitRunIn(Git, Repo, 'diff --stat --no-color ' +
+  LogGit('  разные файлы (git diff --stat ' + GitDiffWsArg + LeftBranch +
+          ' ' + RightBranch + '):');
+  GitRunIn(Git, Repo, 'diff --stat --no-color ' + GitDiffWsArg +
     string(GitQuote(WideString(LeftBranch))) + ' ' +
     string(GitQuote(WideString(RightBranch))), True, Output);
 
@@ -78686,7 +78760,8 @@ begin
     GitLongOp(Git, Repo, 'checkout ' + QuoteArg(Source));
     Exit;
   end;
-  if GitLongOp(Git, Repo, 'merge --no-edit ' + QuoteArg(Source)) <> 0 then
+  if GitLongOp(Git, Repo, 'merge ' + GitMergeWsArg + '--no-edit ' +
+     QuoteArg(Source)) <> 0 then
   begin
     LogGit('Git: конфликт - сейчас ветка ' + Target + '. Исправить файлы ' +
             'и Commit, затем Push и обратно на ' + Source + '; или отменить ' +
@@ -78810,7 +78885,8 @@ begin
       case HistAction of
         ghaCherryPick:
           begin
-            if GitLongOp(Git, Repo, 'cherry-pick -x' + Hashes) <> 0 then
+            if GitLongOp(Git, Repo, 'cherry-pick ' + GitMergeWsArg + '-x' +
+               Hashes) <> 0 then
             begin
               LogGit('Git: при конфликте - исправить файлы и Commit (или в ' +
                       'Git Bash: git cherry-pick --continue), отменить - ' +
@@ -78832,7 +78908,7 @@ begin
                ' целиком (git merge)?', mtConfirmation, [mbOK, mbCancel],
                0) <> mrOk then
               Continue;
-            if GitLongOp(Git, Repo, 'merge --no-edit ' +
+            if GitLongOp(Git, Repo, 'merge ' + GitMergeWsArg + '--no-edit ' +
                string(GitQuote(WideString(Target)))) <> 0 then
             begin
               LogGit('Git: при конфликте - исправить файлы и Commit, или ' +
@@ -79178,7 +79254,8 @@ begin
        'история не переписывается. Отправить его на сервер - Push.',
        mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
       Exit;
-    if GitLongOp(FGitHistGit, FGitHistRepo, 'revert --no-edit ' + Hash) <> 0 then
+    if GitLongOp(FGitHistGit, FGitHistRepo, 'revert ' + GitMergeWsArg +
+       '--no-edit ' + Hash) <> 0 then
       LogGit('Git: при конфликте - исправить файлы и Commit, или отменить ' +
               'в Git Bash: git revert --abort');
   end
@@ -81984,6 +82061,8 @@ begin
   EnvLoadOverrides(SettingsFileName, FEnvOverrides);
   // Подмены - в окружение среды до первой сборки и первого запуска
   EnvApplyOverrides(FEnvOverrides);
+  // IDE Options - Git: пробелы при слиянии и в просмотре разницы
+  GitLoadOptions(SettingsFileName, GitOpts);
   // Editor Options - Margin and gutter, Code Insight
   EdInsightLoad;
   EdApplyGutter;

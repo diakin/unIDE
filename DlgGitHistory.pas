@@ -200,6 +200,9 @@ const
 
 implementation
 
+uses
+  EnvOptions;    // GitDiffWsArg - пробелы в разнице (IDE Options - Git)
+
 constructor TDlgGitHistory.CreateDlg(AOwner: TComponent; const ATitle,
   AWebUrl: string; AOnQuery: TGitQueryEvent; const ARevs: string);
 begin
@@ -1014,18 +1017,22 @@ begin
     Exit;
   if FCurHasParent then
   begin
-    Args := 'diff -M --no-color ' + FCurHash + '^ ' + FCurHash + ' -- ' +
+    Args := 'diff -M --no-color ' + GitDiffWsArg + FCurHash + '^ ' +
+      FCurHash + ' -- ' +
       string(GitQuote(FFiles[AIndex].Path));
     if FFiles[AIndex].OrigPath <> '' then
       Args := Args + ' ' + string(GitQuote(FFiles[AIndex].OrigPath));
   end
   else
-    Args := 'show --no-color --format= ' + FCurHash + ' -- ' +
+    Args := 'show --no-color --format= ' + GitDiffWsArg + FCurHash + ' -- ' +
       string(GitQuote(FFiles[AIndex].Path));
   Screen.Cursor := crHourGlass;
   try
     Query(Args, Output);
-    if Trim(string(Output)) = '' then
+    if (Trim(string(Output)) = '') and (GitDiffWsArg <> '') then
+      Output := 'Разницы в тексте без учёта пробелов нет (IDE Options - ' +
+        'Git: ' + Trim(GitDiffWsArg) + ').'
+    else if Trim(string(Output)) = '' then
       Output := 'Разницы в тексте нет (двоичный файл, права или ' +
         'переименование без правок).';
     if Length(Output) > GitHistDiffMax then
