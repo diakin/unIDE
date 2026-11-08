@@ -61,6 +61,7 @@ const
 
 type
   TArdSimTextEvent = procedure(Sender: TObject; const AText: string) of object;
+  TArdSimSaveEvent = function(Sender: TObject): Boolean of object;
   // Строки точек останова: (номер файла shl 20) or строка с 1
   TArdDbgCodes = array of Cardinal;
 
@@ -136,6 +137,7 @@ type
     FOnLog: TArdSimTextEvent;
     FOnOpenFile: TArdSimTextEvent;
     FOnNeedSketch: TNotifyEvent;
+    FOnSaveFiles: TArdSimSaveEvent;
     FOnStateChange: TNotifyEvent;
     // Отладчик: последние StopSeq и InfoSeq эмулятора, его ответ (строки
     // "S/F/L/G/W<TAB>..."), пути .ino по номерам, отправленные точки и
@@ -212,6 +214,7 @@ type
     procedure SetStatus(const AText: string);
     procedure UpdateButtons;
     function SketchReady: Boolean;
+    function SaveFiles: Boolean;
     function ExeOfSketch: string;
     function IniOfSketch: string;
     procedure StartBuild(ARunAfter: Boolean);
@@ -301,6 +304,9 @@ type
     property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
     property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
     property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
+    // Перед сборкой и запуском: Unit1 сохраняет изменённые вкладки и проект;
+    // False - не всё сохранено, сборки и запуска нет
+    property OnSaveFiles: TArdSimSaveEvent read FOnSaveFiles write FOnSaveFiles;
   end;
 
   // Отдельное окно эмулятора. При первом показе встаёт у правого края
@@ -1122,6 +1128,16 @@ begin
   end;
 end;
 
+// build_sim.cmd собирает файлы с диска, а не текст редактора
+function TArdSimPanel.SaveFiles: Boolean;
+begin
+  Result := True;
+  if Assigned(FOnSaveFiles) then
+    Result := FOnSaveFiles(Self);
+  if not Result then
+    SetStatus('Не всё сохранено');
+end;
+
 function TArdSimPanel.ExeOfSketch: string;
 begin
   Result := ExtractFilePath(FSketchFile) + 'ardsim_build\' +
@@ -1135,7 +1151,7 @@ end;
 
 procedure TArdSimPanel.BtnBuildClick(Sender: TObject);
 begin
-  if Building or not SketchReady then
+  if Building or not SketchReady or not SaveFiles then
     Exit;
   StopSim;
   StartBuild(True);
@@ -1143,7 +1159,7 @@ end;
 
 procedure TArdSimPanel.BtnRunClick(Sender: TObject);
 begin
-  if Building or not SketchReady then
+  if Building or not SketchReady or not SaveFiles then
     Exit;
   if not FileExists(ExeOfSketch) then
   begin

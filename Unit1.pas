@@ -1135,6 +1135,7 @@ type
     procedure ArdSimPlaced(Sender: TObject);
     procedure ArdSimHidden(Sender: TObject);
     procedure ArdSimNeedSketch(Sender: TObject);
+    function  ArdSimSaveFiles(Sender: TObject): Boolean;
     procedure ArdSimLog(Sender: TObject; const AText: string);
     procedure ArdSimOpenFile(Sender: TObject; const AText: string);
     // Отладчик эмулятора: F5/F7/F8/Shift+F8/F4/F9/Ctrl+F2 и окно Watch
@@ -28857,6 +28858,7 @@ begin
   FArdSim := FArdSimWin.Panel;
   FArdSim.ShowToolbar := False;
   FArdSim.OnNeedSketch := ArdSimNeedSketch;
+  FArdSim.OnSaveFiles := ArdSimSaveFiles;
   FArdSim.OnLog := ArdSimLog;
   FArdSim.OnOpenFile := ArdSimOpenFile;
   FArdSim.OnStateChange := ArdSimStateChange;
@@ -28999,6 +29001,29 @@ begin
   if Settings.Arduino15Path <> '' then
     FArdSim.FontRoots.Add(IncludeTrailingPathDelimiter(Settings.Arduino15Path) +
       'libraries');
+end;
+
+// Перед сборкой и запуском эмулятора: изменённые вкладки - на диск
+// (build_sim.cmd собирает файлы, а не текст редактора), затем проект.
+// Не сохранились - в журнал, сборки нет
+function TForm1.ArdSimSaveFiles(Sender: TObject): Boolean;
+var
+  Failed: TStringList;
+begin
+  Failed := TStringList.Create;
+  try
+    Result := SaveAllModified(Failed);
+    if not Result then
+    begin
+      ShowCompLog;
+      LogComp('ArdSim: не сохранены файлы, эмулятор не собирается: ' +
+        StringReplace(Trim(Failed.Text), #13#10, ', ', [rfReplaceAll]));
+    end;
+  finally
+    Failed.Free;
+  end;
+  if FCurrentProject <> '' then
+    SaveProjectTo(FCurrentProject);
 end;
 
 procedure TForm1.ArdSimLog(Sender: TObject; const AText: string);
