@@ -537,6 +537,13 @@ uint32_t SimOwnerMap[SIM_SCREEN_H][SIM_SCREEN_W];
 
 namespace
 {
+// simCtlPoll redraws a control: frame depth at the start and the lines of
+// the control's last drawing by the sketch (simCtlDrawing)
+bool CtlRedrawActive = false;
+int CtlRedrawDepth = 0;
+uint32_t CtlRedrawCodes[SimDbgWhereMax];
+int CtlRedrawCodeCount = 0;
+
 struct ScreenText
 {
   short X1, Y1, X2, Y2;
@@ -585,15 +592,32 @@ void forgetInside(int x1, int y1, int x2, int y2)
 }
 
 // the statement being executed and the call lines outwards
+void collectChain(uint32_t *codes, int &count, int lowestFrame)
+{
+  count = 0;
+  if (SimTopLine != 0)
+    codes[count++] = (uint32_t)SimTopLine;
+  int depth = FrameDepth < MaxFrames ? FrameDepth : MaxFrames;
+  for (int index = depth - 1; index >= lowestFrame && count < SimDbgWhereMax; index--)
+    if (Frames[index].CallerLine != 0)
+      codes[count++] = (uint32_t)Frames[index].CallerLine;
+}
+
 bool collectCodes(ScreenText &item)
 {
-  item.CodeCount = 0;
-  if (SimTopLine != 0)
-    item.Codes[item.CodeCount++] = (uint32_t)SimTopLine;
-  int depth = FrameDepth < MaxFrames ? FrameDepth : MaxFrames;
-  for (int index = depth - 1; index >= 0 && item.CodeCount < SimDbgWhereMax; index--)
-    if (Frames[index].CallerLine != 0)
-      item.Codes[item.CodeCount++] = (uint32_t)Frames[index].CallerLine;
+  if (!CtlRedrawActive)
+    collectChain(item.Codes, item.CodeCount, 0);
+  else
+  {
+    // a control redrawn from simPoll: the lines inside its drawing, then
+    // the lines of its last drawing by the sketch (not the statement that
+    // simPoll interrupted)
+    item.CodeCount = 0;
+    if (FrameDepth > CtlRedrawDepth)
+      collectChain(item.Codes, item.CodeCount, CtlRedrawDepth + 1);
+    for (int index = 0; index < CtlRedrawCodeCount && item.CodeCount < SimDbgWhereMax; index++)
+      item.Codes[item.CodeCount++] = CtlRedrawCodes[index];
+  }
   return item.CodeCount != 0;   // zero: not an instrumented sketch
 }
 
@@ -757,13 +781,19 @@ void answerWhere()
         found = entry;
       }
     }
-  if (!found)
-    found = fill;
   if (found)
   {
     count = found->CodeCount;
     memcpy(codes, found->Codes, sizeof(codes));
     memcpy(text, found->Text, sizeof(text));
+  }
+  // inside a control (TLabel) but not on its text or frame: the control
+  // (a wide label with a short caption), before the fill under it
+  else if (!simCtlWhere(px, py, codes, count) && fill)
+  {
+    count = fill->CodeCount;
+    memcpy(codes, fill->Codes, sizeof(codes));
+    memcpy(text, fill->Text, sizeof(text));
   }
   textUnlock();
   for (int index = 0; index < SimDbgWhereMax; index++)
@@ -881,6 +911,12 @@ struct CtlRec
   uint32_t Hash;
   void *Control;
   SimCtlRedrawFn Redraw;
+  uint32_t Codes[SimDbgWhereMax];   // lines of the last drawing by the sketch
+  int CodeCount;
+  // box of pixels on the screen (simCtlShown), Clears = SimScreenClears
+  // then; 0xFFFFFFFF - not drawn
+  int BoxLeft, BoxTop, BoxRight, BoxBottom;
+  uint32_t Clears;
 };
 std::vector<CtlRec> &controls()
 {
@@ -992,6 +1028,9 @@ void simCtlRegister(const char *name, void *control, SimCtlRedrawFn redraw)
   rec.Hash = ctlHash(name);
   rec.Control = control;
   rec.Redraw = redraw;
+  rec.CodeCount = 0;
+  rec.BoxLeft = rec.BoxTop = rec.BoxRight = rec.BoxBottom = 0;
+  rec.Clears = 0xFFFFFFFFu;
   controls().push_back(rec);
   ctlShownInit(controls().size() - 1);
 }
@@ -1004,6 +1043,42 @@ void simCtlAttach(void *area)
     ctlShownInit(index);
 }
 
+void simCtlDrawing(const void *control)
+{
+  if (CtlRedrawing)
+    return;
+  for (CtlRec &rec : controls())
+    if (rec.Control == control)
+    {
+      collectChain(rec.Codes, rec.CodeCount, 0);
+      return;
+    }
+}
+
+bool simCtlWhere(int px, int py, uint32_t *codes, int &count)
+{
+  const CtlRec *best = nullptr;
+  long bestArea = 0;
+  for (const CtlRec &rec : controls())
+  {
+    if (rec.Clears != SimScreenClears || rec.CodeCount == 0 || px < rec.BoxLeft ||
+        px > rec.BoxRight || py < rec.BoxTop || py > rec.BoxBottom)
+      continue;
+    long area = (long)(rec.BoxRight - rec.BoxLeft + 1) * (rec.BoxBottom - rec.BoxTop + 1);
+    if (!best || area < bestArea)
+    {
+      best = &rec;
+      bestArea = area;
+    }
+  }
+  if (!best)
+    return false;
+  count = best->CodeCount;
+  for (int index = 0; index < SimDbgWhereMax; index++)
+    codes[index] = index < count ? best->Codes[index] : 0;
+  return true;
+}
+
 void simCtlScreenCleared()
 {
   SimScreenClears++;
@@ -1014,11 +1089,15 @@ void simCtlScreenCleared()
 void simCtlShown(const void *control, int left, int top, int boxLeft, int boxTop,
                  int boxRight, int boxBottom)
 {
-  if (!CtlTable)
-    return;
   for (size_t index = 0; index < controls().size(); index++)
     if (controls()[index].Control == control)
     {
+      CtlRec &rec = controls()[index];
+      rec.BoxLeft = boxLeft;
+      rec.BoxTop = boxTop;
+      rec.BoxRight = boxRight;
+      rec.BoxBottom = boxBottom;
+      rec.Clears = SimScreenClears;
       volatile uint32_t *fields = ctlShownEntry(index);
       if (!fields)
         return;
@@ -1095,7 +1174,14 @@ void simCtlPoll()
   for (uint32_t hash : changed)
     for (const CtlRec &rec : controls())
       if (rec.Hash == hash && rec.Redraw)
+      {
+        CtlRedrawActive = true;
+        CtlRedrawDepth = FrameDepth;
+        CtlRedrawCodeCount = rec.CodeCount;
+        memcpy(CtlRedrawCodes, rec.Codes, sizeof(CtlRedrawCodes));
         rec.Redraw(rec.Control);
+        CtlRedrawActive = false;
+      }
   CtlRedrawing = false;
 }
 

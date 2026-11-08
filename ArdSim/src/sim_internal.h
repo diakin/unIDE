@@ -133,6 +133,9 @@ const size_t SimCtlTableBytes = SimCtlShownOffset + 16 + SimCtlShownBytes * SimC
 void simCtlAttach(void *area);
 // clrScr / fillScr: SimScreenClears + 1, also in the host table
 void simCtlScreenCleared();
+// the point is inside a control drawn on this screen: the lines of its
+// drawing (smallest control there); false - none
+bool simCtlWhere(int px, int py, uint32_t *codes, int &count);
 // simPoll: redraw controls whose host entries changed
 void simCtlPoll();
 void simDebugHostTick();
