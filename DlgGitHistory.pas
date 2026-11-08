@@ -73,6 +73,11 @@ type
     FRevs: string;          // что показывать: 'HEAD' или 'A...B'
     FCompare: Boolean;      // сравнение веток (FRevs с '...')
     FUnmerged: Boolean;     // коммиты веток, которых нет в FBase
+    // Новые коммиты после Fetch: ветка с сервера (Names) и что ей
+    // показывать (Values: 'старый..новый' или 'новый --not ...').
+    // Список - Unit1, живёт, пока открыто окно
+    FFetched: Boolean;
+    FFetchRanges: TStrings;
     FBase: string;
     // Ветки (Names) и их ссылки через пробел (Values: 'x origin/x');
     // Objects - сколько коммитов ветки не в FBase. Список - Unit1
@@ -125,6 +130,7 @@ type
     procedure Build(const ATitle: string);
     procedure LoadCommits;
     procedure LoadUnmerged;
+    procedure LoadFetched;
     procedure FillList;
     function BranchColor(AIndex: Integer): TColor;
     procedure ListCustomDrawItem(Sender: TCustomListView; Item: TListItem;
@@ -165,6 +171,10 @@ type
     constructor CreateUnmerged(AOwner: TComponent; const ATitle,
       AWebUrl: string; AOnQuery: TGitQueryEvent; const ABase: string;
       ABranchRefs: TStrings; AOnProgress: TGitProgressEvent = nil);
+    // Новые коммиты после Fetch: ARanges - строки 'ветка=диапазон', по
+    // порядку показа (текущая ветка - первой)
+    constructor CreateFetched(AOwner: TComponent; const ATitle,
+      AWebUrl: string; AOnQuery: TGitQueryEvent; ARanges: TStrings);
     destructor Destroy; override;
     // Положение и размер окна, разделители, ширина колонок списка - из
     // файла настроек AIniFile; при закрытии - туда же
@@ -229,6 +239,25 @@ begin
   FRevs := ABase;
   FWebUrl := AWebUrl;
   Build(ATitle);
+end;
+
+constructor TDlgGitHistory.CreateFetched(AOwner: TComponent; const ATitle,
+  AWebUrl: string; AOnQuery: TGitQueryEvent; ARanges: TStrings);
+begin
+  inherited CreateNew(AOwner);
+  FOnQuery := AOnQuery;
+  FFetched := True;
+  FFetchRanges := ARanges;
+  FRevs := 'HEAD';
+  FWebUrl := AWebUrl;
+  Build(ATitle);
+  // Сразу показать самый новый коммит: сведения, файлы, разница
+  // (OnSelectItem до показа окна приходит не везде - сведения напрямую)
+  if Length(FCommits) > 0 then
+  begin
+    SelectCommit(FCommits[0].Hash);
+    ShowCommit(0);
+  end;
 end;
 
 destructor TDlgGitHistory.Destroy;
@@ -304,7 +333,7 @@ begin
   FCommitList.ReadOnly := True;
   FCommitList.RowSelect := True;
   FCommitList.HideSelection := False;
-  if FCompare or FUnmerged then
+  if FCompare or FUnmerged or FFetched then
   begin
     Column := FCommitList.Columns.Add;
     Column.Caption := 'Ветка';
@@ -394,6 +423,8 @@ begin
   FBtnBranch.Hint := 'Новая ветка от выбранного коммита и переход на неё';
   FBtnBranch.ShowHint := True;
   FBtnBranch.OnClick := BtnBranchClick;
+  // После Fetch - только просмотр
+  FBtnBranch.Visible := not FFetched;
 
   FBtnRevert := TUiButton.Create(Self);
   FBtnRevert.Parent := FBtnPanel;
@@ -402,7 +433,7 @@ begin
     '(git revert); история не переписывается';
   FBtnRevert.ShowHint := True;
   FBtnRevert.OnClick := BtnRevertClick;
-  FBtnRevert.Visible := not FCompare and not FUnmerged;
+  FBtnRevert.Visible := not FCompare and not FUnmerged and not FFetched;
 
   FBtnWorktree := TUiButton.Create(Self);
   FBtnWorktree.Parent := FBtnPanel;
@@ -413,7 +444,7 @@ begin
     'копия переименовывается. Рабочая папка и ветка не меняются';
   FBtnWorktree.ShowHint := True;
   FBtnWorktree.OnClick := BtnWorktreeClick;
-  FBtnWorktree.Visible := not FCompare and not FUnmerged;
+  FBtnWorktree.Visible := not FCompare and not FUnmerged and not FFetched;
 
   FBtnGood := TUiButton.Create(Self);
   FBtnGood.Parent := FBtnPanel;
@@ -425,7 +456,7 @@ begin
   FBtnGood.ShowHint := True;
   FBtnGood.Tag := Ord(ghaBisectGood);
   FBtnGood.OnClick := BtnBisectClick;
-  FBtnGood.Visible := not FCompare and not FUnmerged;
+  FBtnGood.Visible := not FCompare and not FUnmerged and not FFetched;
 
   FBtnBad := TUiButton.Create(Self);
   FBtnBad.Parent := FBtnPanel;
@@ -435,7 +466,7 @@ begin
   FBtnBad.ShowHint := True;
   FBtnBad.Tag := Ord(ghaBisectBad);
   FBtnBad.OnClick := BtnBisectClick;
-  FBtnBad.Visible := not FCompare and not FUnmerged;
+  FBtnBad.Visible := not FCompare and not FUnmerged and not FFetched;
 
   FBtnSkip := TUiButton.Create(Self);
   FBtnSkip.Parent := FBtnPanel;
@@ -445,7 +476,7 @@ begin
   FBtnSkip.ShowHint := True;
   FBtnSkip.Tag := Ord(ghaBisectSkip);
   FBtnSkip.OnClick := BtnBisectClick;
-  FBtnSkip.Visible := not FCompare and not FUnmerged;
+  FBtnSkip.Visible := not FCompare and not FUnmerged and not FFetched;
 
   FBtnBisectEnd := TUiButton.Create(Self);
   FBtnBisectEnd.Parent := FBtnPanel;
@@ -455,7 +486,7 @@ begin
   FBtnBisectEnd.ShowHint := True;
   FBtnBisectEnd.Tag := Ord(ghaBisectEnd);
   FBtnBisectEnd.OnClick := BtnBisectClick;
-  FBtnBisectEnd.Visible := not FCompare and not FUnmerged;
+  FBtnBisectEnd.Visible := not FCompare and not FUnmerged and not FFetched;
 
   FBtnPick := TUiButton.Create(Self);
   FBtnPick.Parent := FBtnPanel;
@@ -592,6 +623,11 @@ begin
     LoadUnmerged;
     Exit;
   end;
+  if FFetched then
+  begin
+    LoadFetched;
+    Exit;
+  end;
   Screen.Cursor := crHourGlass;
   try
     // Сравнение: %m - '<' или '>' (с какой стороны коммит) перед заголовком;
@@ -672,6 +708,76 @@ begin
   end;
 end;
 
+// Новые коммиты после Fetch: по каждой ветке FFetchRanges - git log её
+// диапазона; коммит, который пришёл в нескольких ветках, - одной строкой
+// с ветками через ', '. Цвет - по ветке
+procedure TDlgGitHistory.LoadFetched;
+var
+  Output: WideString;
+  Part: TGitCommits;
+  Seen: TStringList;
+  RangeIdx, PartIdx, Found, Count, BranchesWith, BranchCount: Integer;
+  BranchName: string;
+  Truncated: Boolean;
+begin
+  SetLength(FCommits, 0);
+  SetLength(FCommitBranch, 0);
+  SetLength(FCommitColor, 0);
+  Count := 0;
+  BranchesWith := 0;
+  Truncated := False;
+  Seen := TStringList.Create;
+  Screen.Cursor := crHourGlass;
+  try
+    Seen.Sorted := True;
+    for RangeIdx := 0 to FFetchRanges.Count - 1 do
+    begin
+      BranchName := FFetchRanges.Names[RangeIdx];
+      if Query('log ' + GitLogFormat + ' -n ' + IntToStr(FLimit) + ' ' +
+         FFetchRanges.ValueFromIndex[RangeIdx], Output) <> 0 then
+        Continue;
+      GitParseLog(Output, Part);
+      if Length(Part) >= FLimit then
+        Truncated := True;
+      BranchCount := 0;
+      for PartIdx := 0 to High(Part) do
+      begin
+        Inc(BranchCount);
+        Found := Seen.IndexOf(Part[PartIdx].Hash);
+        if Found >= 0 then
+        begin
+          Found := Integer(Seen.Objects[Found]);
+          FCommitBranch[Found] := FCommitBranch[Found] + ', ' + BranchName;
+          Continue;
+        end;
+        SetLength(FCommits, Count + 1);
+        SetLength(FCommitBranch, Count + 1);
+        SetLength(FCommitColor, Count + 1);
+        FCommits[Count] := Part[PartIdx];
+        FCommitBranch[Count] := BranchName;
+        FCommitColor[Count] := RangeIdx mod GitBranchColorCount;
+        Seen.AddObject(Part[PartIdx].Hash, TObject(Count));
+        Inc(Count);
+      end;
+      if BranchCount > 0 then
+        Inc(BranchesWith);
+    end;
+    FillList;
+    if Count = 0 then
+      FLblInfo.Caption := 'Новых коммитов нет'
+    else
+      FLblInfo.Caption := 'Новых коммитов: ' + IntToStr(Count) +
+        ' (веток: ' + IntToStr(BranchesWith) + ')';
+    if Truncated then
+      FLblInfo.Caption := FLblInfo.Caption + '; показаны первые ' +
+        IntToStr(FLimit) + ' на ветку';
+    FBtnMore.Enabled := False;
+  finally
+    Screen.Cursor := crDefault;
+    Seen.Free;
+  end;
+end;
+
 // Список - по FCommits (и FCommitBranch в сравнении и Unmerged)
 procedure TDlgGitHistory.FillList;
 var
@@ -687,7 +793,7 @@ begin
     for CommitIdx := 0 to High(FCommits) do
     begin
       Item := FCommitList.Items.Add;
-      if FCompare or FUnmerged then
+      if FCompare or FUnmerged or FFetched then
       begin
         Item.Caption := FCommitBranch[CommitIdx];
         Item.SubItems.Add(string(FCommits[CommitIdx].Subject));
@@ -1217,6 +1323,8 @@ function TDlgGitHistory.PlaceSection: string;
 begin
   if FUnmerged then
     Result := 'GitUnmergedWindow'
+  else if FFetched then
+    Result := 'GitFetchedWindow'
   else if FCompare then
     Result := 'GitCompareWindow'
   else

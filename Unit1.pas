@@ -3524,6 +3524,10 @@ type
     procedure GitAddRemoteOnlyBranches(const AGit, ARepo: string;
                             AList: TStrings);
     function  GitLongOp(const AGit, ARepo, AArgs: string): Integer;
+    // Fetch: ветки с сервера до и после, окно новых коммитов
+    procedure GitRemoteRefs(const AGit, ARepo: string; AList: TStringList);
+    procedure GitShowFetched(const AGit, ARepo: string;
+      ABefore, AAfter: TStringList);
     function  GitExplain(const AArgs: string; const AOutput: WideString;
                          AExitCode: Integer; var AIsError: Boolean): string;
     procedure GitSetHint(const AText: string; AIsError: Boolean);
@@ -77046,9 +77050,135 @@ end;
 procedure TForm1.GitFetchClick(Sender: TObject);
 var
   Git, Repo: string;
+  RefsBefore, RefsAfter: TStringList;
 begin
-  if GitPrepare(Git, Repo) then
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  // IDE Options - Git - Show new commits after Fetch: ветки с сервера до
+  // и после - что пришло, показать окном
+  if not GitOpts.FetchShowNew then
+  begin
     GitLongOp(Git, Repo, 'fetch --all --prune');
+    Exit;
+  end;
+  RefsBefore := TStringList.Create;
+  RefsAfter := TStringList.Create;
+  try
+    GitRemoteRefs(Git, Repo, RefsBefore);
+    if GitLongOp(Git, Repo, 'fetch --all --prune') <> 0 then
+      Exit;
+    GitRemoteRefs(Git, Repo, RefsAfter);
+    GitShowFetched(Git, Repo, RefsBefore, RefsAfter);
+  finally
+    RefsBefore.Free;
+    RefsAfter.Free;
+  end;
+end;
+
+// Ветки с сервера (refs/remotes, без */HEAD): строки 'origin/main=<sha>'
+procedure TForm1.GitRemoteRefs(const AGit, ARepo: string; AList: TStringList);
+const
+  RemotesPrefix = 'refs/remotes/';
+var
+  Output: WideString;
+  Lines: TStringList;
+  LineIdx, SpacePos: Integer;
+  Line, RefName: string;
+begin
+  AList.Clear;
+  // %20 - пробел: аргумент без кавычек
+  if GitRunIn(AGit, ARepo, 'for-each-ref --format=%(objectname)%20%(refname) ' +
+     RemotesPrefix, False, Output) <> 0 then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    Lines.Text := string(Output);
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[LineIdx]);
+      SpacePos := Pos(' ', Line);
+      if SpacePos = 0 then
+        Continue;
+      RefName := Copy(Line, SpacePos + 1, MaxInt);
+      if Copy(RefName, 1, Length(RemotesPrefix)) = RemotesPrefix then
+        Delete(RefName, 1, Length(RemotesPrefix));
+      if (RefName = '') or
+         (Copy(RefName, Length(RefName) - 4, 5) = '/HEAD') then
+        Continue;
+      AList.Add(RefName + '=' + Copy(Line, 1, SpacePos - 1));
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+// После Fetch: ветки с сервера, которые сдвинулись или появились, - в Git
+// log по числу новых коммитов и окном (TDlgGitHistory.CreateFetched):
+// коммиты по веткам, файлы, разница. Текущая ветка - первой. Ничего не
+// пришло - окна нет
+procedure TForm1.GitShowFetched(const AGit, ARepo: string;
+  ABefore, AAfter: TStringList);
+var
+  Ranges: TStringList;
+  OldShas, Upstream, RefName, NewSha, OldSha, Revs, CountText: string;
+  Remote, WebUrl: string;
+  RefIdx, Found: Integer;
+  Dlg: TDlgGitHistory;
+begin
+  Ranges := TStringList.Create;
+  try
+    // Новая ветка: коммиты, которых не было ни в одной ветке с сервера и
+    // нет в локальных
+    OldShas := '';
+    for RefIdx := 0 to ABefore.Count - 1 do
+      OldShas := OldShas + ' ' + ABefore.ValueFromIndex[RefIdx];
+    Upstream := GitQuery(AGit, ARepo, 'rev-parse --abbrev-ref @{u}');
+    for RefIdx := 0 to AAfter.Count - 1 do
+    begin
+      RefName := AAfter.Names[RefIdx];
+      NewSha := AAfter.ValueFromIndex[RefIdx];
+      Found := ABefore.IndexOfName(RefName);
+      if Found >= 0 then
+        OldSha := ABefore.ValueFromIndex[Found]
+      else
+        OldSha := '';
+      if OldSha = NewSha then
+        Continue;
+      if OldSha <> '' then
+        Revs := OldSha + '..' + NewSha
+      else
+        Revs := NewSha + ' --not' + OldShas + ' --branches';
+      CountText := GitQuery(AGit, ARepo, 'rev-list --count ' + Revs);
+      if StrToIntDef(CountText, 0) <= 0 then
+        Continue;
+      if OldSha = '' then
+        LogGit('  новая ветка ' + RefName + ': коммитов ' + CountText)
+      else
+        LogGit('  ' + RefName + ': новых коммитов ' + CountText);
+      if RefName = Upstream then
+        Ranges.Insert(0, RefName + '=' + Revs)
+      else
+        Ranges.Add(RefName + '=' + Revs);
+    end;
+    if Ranges.Count = 0 then
+      Exit;
+    FGitDlgGit := AGit;
+    FGitDlgRepo := ARepo;
+    Remote := GitQuery(AGit, ARepo, 'config --get remote.origin.url');
+    WebUrl := string(GitHubWebUrl(WideString(Remote)));
+    Dlg := TDlgGitHistory.CreateFetched(Self, 'Fetch - новые коммиты - ' +
+      ExtractFileName(ExcludeTrailingPathDelimiter(ARepo)), WebUrl,
+      GitHistQuery, Ranges);
+    Dlg.SetSchemeProvider(SchemeCopyFor);
+    Dlg.SetPlacementIni(SettingsFileName);
+    try
+      Dlg.ShowModal;
+    finally
+      Dlg.Free;
+    end;
+  finally
+    Ranges.Free;
+  end;
 end;
 
 // Pull - слиянием (как GitHub Desktop по умолчанию), без окна редактора

@@ -249,6 +249,8 @@ type
     lblGitAliasNote: TLabel;
     memGitAliases: TUiMemo;
     btnGitAliases: TUiButton;
+    grpGitFetch: TUiGroupBox;
+    chkGitFetchShow: TUiCheckBox;
     // --- File Types: расширение -> схема подсветки ---
     tsFileTypes: TTabSheet;
     lblFtHint: TLabel;
@@ -5728,6 +5730,7 @@ begin
     chkDsgExtHints.Enabled := chkDsgHints.Checked;
     cmbGitMergeWs.ItemIndex := GitOpts.MergeWs;
     cmbGitDiffWs.ItemIndex := GitOpts.DiffWs;
+    chkGitFetchShow.Checked := GitOpts.FetchShowNew;
   finally
     FEnvLoading := False;
   end;
@@ -5749,6 +5752,7 @@ begin
   try
     cmbGitMergeWs.ItemIndex := GitOpts.MergeWs;
     cmbGitDiffWs.ItemIndex := GitOpts.DiffWs;
+    chkGitFetchShow.Checked := GitOpts.FetchShowNew;
   finally
     FEnvLoading := False;
   end;
@@ -5768,6 +5772,7 @@ begin
     GitOpts.MergeWs := cmbGitMergeWs.ItemIndex;
   if cmbGitDiffWs.ItemIndex >= 0 then
     GitOpts.DiffWs := cmbGitDiffWs.ItemIndex;
+  GitOpts.FetchShowNew := chkGitFetchShow.Checked;
   GitSaveOptions(Form1.SettingsFileName, GitOpts);
 end;
 

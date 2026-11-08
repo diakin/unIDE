@@ -142,6 +142,7 @@ type
   TGitOptions = record
     MergeWs: Integer;       // GitMergeWs*
     DiffWs: Integer;        // GitDiffWs*
+    FetchShowNew: Boolean;  // после Fetch - окно с новыми коммитами
   end;
 
 var
@@ -583,6 +584,7 @@ begin
   // Как было до вкладки: пробелы учитываются, ключей нет
   AOpts.MergeWs := GitMergeWsNone;
   AOpts.DiffWs := GitDiffWsNone;
+  AOpts.FetchShowNew := True;
 end;
 
 procedure GitLoadOptions(const AIniFile: string; var AOpts: TGitOptions);
@@ -598,6 +600,8 @@ begin
       AOpts.MergeWs), GitMergeWsMax);
     AOpts.DiffWs := GitWsValue(Ini.ReadInteger(SecGit, 'DiffWhitespace',
       AOpts.DiffWs), GitDiffWsMax);
+    AOpts.FetchShowNew := Ini.ReadBool(SecGit, 'FetchShowNewCommits',
+      AOpts.FetchShowNew);
   finally
     Ini.Free;
   end;
@@ -615,6 +619,7 @@ begin
       GitWsValue(AOpts.MergeWs, GitMergeWsMax));
     Ini.WriteInteger(SecGit, 'DiffWhitespace',
       GitWsValue(AOpts.DiffWs, GitDiffWsMax));
+    Ini.WriteBool(SecGit, 'FetchShowNewCommits', AOpts.FetchShowNew);
   finally
     Ini.Free;
   end;

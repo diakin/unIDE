@@ -2433,6 +2433,26 @@ object Form2: TForm2
           OnClick = btnGitAliasesClick
         end
       end
+      object grpGitFetch: TUiGroupBox
+        Left = 8
+        Top = 456
+        Width = 590
+        Height = 48
+        Caption = ' Fetch '
+        TabOrder = 3
+        object chkGitFetchShow: TUiCheckBox
+          Left = 12
+          Top = 20
+          Width = 566
+          Height = 20
+          Caption = 'Show new commits after Fetch'
+          TabOrder = 0
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'После Fetch окно с коммитами, которые пришли с сервера: по веткам, с файлами и разницей. Нового нет - окна нет'
+          OnClick = GitWsChange
+        end
+      end
     end
     object tsFileTypes: TTabSheet
       Caption = 'File Types'
