@@ -3155,6 +3155,7 @@ type
     function  ArdLoadInclude(const AName: string; var APath, AText: string): Boolean;
     procedure ArdColumns(AOn: Boolean);
     procedure ArdSyncFromCaret;
+    procedure ArdSelectCallAtLine(ALine: Integer);
     procedure ArdFontPreview(const AFontName: string);
     procedure ArdFontPreviewOff;
     procedure ArdSendOverride(const ANewText: string);
@@ -29726,14 +29727,10 @@ begin
     LogComp('--- Эмулятор: в этой точке экрана нет надписи');
     Exit;
   end;
-  // повторный клик по той же надписи - строка вызова на уровень выше
-  // у графики текста нет - ключ повтора включает строку, которая рисовала
+  // Строка, где задана надпись; повторный клик - та же строка (Андрей:
+  // переключаться по стеку не надо)
   WhereKey := FArdSim.WhereText + #1 + IntToStr(Codes[0]);
-  if (WhereKey = FArdWhereText) and
-     (GetTickCount - FArdWhereTick < 3000) then
-    Level := (FArdWhereLevel + 1) mod Length(Codes)
-  else
-    Level := ArdWhereGuess(Codes, FArdSim.WhereText);
+  Level := ArdWhereGuess(Codes, FArdSim.WhereText);
   FArdWhereText := WhereKey;
   FArdWhereTick := GetTickCount;
   FArdWhereLevel := Level;
@@ -29753,8 +29750,7 @@ begin
     What := '"' + FArdSim.WhereText + '"'
   else
     What := 'графика';
-  LogComp('--- Эмулятор: ' + What + ' - ' + Chain +
-          '. Повторный клик - строка вызова выше');
+  LogComp('--- Эмулятор: ' + What + ' - ' + Chain);
   Code := Codes[Level];
   SrcFile := FArdSim.DbgFileName(Code shr 20);
   SrcLine := Integer(Code and $FFFFF) - 1;
@@ -29771,6 +29767,8 @@ begin
   // номер строки - на момент сборки; правки после сборки его сдвигают
   SrcLine := DbgLineNow(SrcFile, SrcLine);
   GotoLine(SrcLine);
+  // и сразу её свойства в инспекторе
+  ArdSelectCallAtLine(SrcLine);
 end;
 
 procedure TForm1.ArdDbgResume(Sender: TObject);
@@ -34046,6 +34044,39 @@ begin
      (TDfmNode(FObjTree.Selected.Data).Name = NodeName) then
     Exit;
   ObjSelectAnyName(NodeName);
+end;
+
+// Вкладка Objects и в ней вызов вывода строки ALine (от 0): клик по
+// надписи на экране эмулятора - сразу к её свойствам. В строке несколько
+// вызовов - первый (надпись TLabel или Label(...) обычно одна в строке).
+procedure TForm1.ArdSelectCallAtLine(ALine: Integer);
+var
+  Sketch: TArdSketch;
+  Call: TArdCall;
+  CallIdx: Integer;
+begin
+  if (FRightPages = nil) or (FTabObjects = nil) then
+    Exit;
+  if FRightPages.ActivePage <> FTabObjects then
+  begin
+    FRightPages.ActivePage := FTabObjects;
+    RightPagesChange(FRightPages);
+  end
+  else
+    RefreshObjectInspector(False);
+  Sketch := TArdSketch(FArdSketch);
+  if (Sketch = nil) or not FObjArduino then
+    Exit;
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+  begin
+    Call := TArdCall(Sketch.Calls[CallIdx]);
+    if (Call.Line = ALine) and ArdCallListed(Call) then
+    begin
+      ObjSelectAnyName('c:' + Call.Name + ':' + IntToStr(Call.Line + 1) +
+                       ':' + IntToStr(Call.Col));
+      Exit;
+    end;
+  end;
 end;
 
 // Начало правки строки AItem таблицы вызова скетча
