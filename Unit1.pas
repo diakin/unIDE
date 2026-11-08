@@ -2237,6 +2237,9 @@ type
     FBusyStage: string;
     FBusyStart, FBusyLast: Cardinal;
     FBusyDepth: Integer;
+    // На FBusyPanel - "ничего не найдено" (NotFoundNote): убирается первым
+    // щелчком мыши (AppMessage)
+    FNotFoundShown: Boolean;
     // Ход разбора карты большого текста (от MapProgressMinLen) в той же
     // панели: этап и процент (MapProgressStage, MapProgress)
     FMapProgress: Boolean;
@@ -2779,6 +2782,8 @@ type
     procedure MapProgress(ADone, ATotal: Integer);
     procedure BusyEnd(const AResult: string; AOk: Boolean);
     procedure BusyNote(const AText: string; AOk: Boolean; AShowMs: Cardinal);
+    procedure NotFoundNote(const AText: string);
+    procedure NotFoundHide;
     procedure AppActivate(Sender: TObject);
     procedure WMCheckDisk(var Msg: TMessage); message WM_USER + 315;
     procedure WMObjRefresh(var Msg: TMessage); message WM_USER + 316;
@@ -22828,8 +22833,7 @@ begin
 
   if FoundPos < 0 then
   begin
-    StatusBar1.SimpleText := 'Не найдено: ' + EdUiText(Str);
-    StatusBar1.SimplePanel := True;
+    NotFoundNote('Ничего не найдено: ' + EdUiText(Str));
     Exit;
   end;
 
@@ -22868,8 +22872,7 @@ begin
 
   if Best < 0 then
   begin
-    StatusBar1.SimpleText := 'Выше ничего не найдено: ' + EdUiText(Str);
-    StatusBar1.SimplePanel := True;
+    NotFoundNote('Выше ничего не найдено: ' + EdUiText(Str));
     Exit;
   end;
 
@@ -23384,7 +23387,10 @@ begin
   end;
   FillMatchGrid;
   if Result = 0 then
-    FMatchForm.Caption := 'Match list - во вкладках ничего не найдено'
+  begin
+    FMatchForm.Caption := 'Match list - во вкладках ничего не найдено';
+    NotFoundNote('Во вкладках ничего не найдено');
+  end
   else
     FMatchForm.Caption := Format('Match list - %d в %d вкладках',
                                  [Result, Files]);
@@ -23510,8 +23516,7 @@ begin
   end;
   if RowIdx < 0 then
   begin
-    StatusBar1.SimpleText := 'Не найдено: ' + Pattern;
-    StatusBar1.SimplePanel := True;
+    NotFoundNote('Ничего не найдено: ' + Pattern);
     Exit;
   end;
   ShowMatchRow(RowIdx);
@@ -23893,8 +23898,7 @@ begin
       end;
     if Total = 0 then
     begin
-      StatusBar1.SimpleText := 'Не найдено: ' + Pattern;
-      StatusBar1.SimplePanel := True;
+      NotFoundNote('Ничего не найдено: ' + Pattern);
       Exit;
     end;
 
@@ -25711,7 +25715,10 @@ begin
     begin
       FifGridGrow;
       if Total = 0 then
-        FMatchForm.Caption := 'Match list - ничего не найдено'
+      begin
+        FMatchForm.Caption := 'Match list - ничего не найдено';
+        NotFoundNote('Find in Files: ничего не найдено');
+      end
       else if FFifFileMode then
         FMatchForm.Caption := Format('Match list - файлов: %d', [Files])
       else
@@ -27037,6 +27044,13 @@ var
   CursorPt: TPoint;
   PanelIdx: Integer;
 begin
+  // "Ничего не найдено" над редактором - до первого щелчка (сам щелчок
+  // идёт дальше как обычно)
+  if FNotFoundShown and
+     ((Msg.message = WM_LBUTTONDOWN) or (Msg.message = WM_RBUTTONDOWN) or
+      (Msg.message = WM_MBUTTONDOWN) or (Msg.message = WM_NCLBUTTONDOWN) or
+      (Msg.message = WM_NCRBUTTONDOWN)) then
+    NotFoundHide;
   // Открыта вкладка IDE colors окна настроек: щелчок по элементу главного
   // окна выбирает строку его цвета, сам элемент щелчка не получает
   if (Msg.message = WM_LBUTTONUP) and FUiPickUp then
@@ -55876,6 +55890,8 @@ begin
   if FBusyDepth > 1 then
     Exit;   // вложенный вызов: этап и отсчёт - у внешнего
   FBusyHide.Enabled := False;
+  FNotFoundShown := False;
+  FBusyPanel.Font.Color := clBlack;
   // Справа на панели объявления над редактором (FDeclPanel), поверх её
   // подписи, с якорем справа
   FBusyPanel.SetBounds(FDeclPanel.ClientWidth - 340, 1, 320,
@@ -55983,6 +55999,8 @@ begin
      (AText = '') then
     Exit;
   FBusyHide.Enabled := False;
+  FNotFoundShown := False;
+  FBusyPanel.Font.Color := clBlack;
   FBusyPanel.Caption := '  ' + AText;
   FBusyPanel.Hint := AText;
   FBusyPanel.ShowHint := True;
@@ -56005,6 +56023,32 @@ begin
   FBusyPanel.Update;
   FBusyHide.Interval := AShowMs;
   FBusyHide.Enabled := True;
+end;
+
+// Поиск ничего не нашёл: в строке состояния и на панели над редактором,
+// где жёлтый ход долгой работы, - чёрным на оранжевом. Держится до
+// первого щелчка мышью в любом месте (AppMessage, NotFoundHide)
+procedure TForm1.NotFoundNote(const AText: string);
+begin
+  StatusBar1.SimpleText := AText;
+  StatusBar1.SimplePanel := True;
+  if (FBusyPanel = nil) or (FDeclPanel = nil) or (FBusyDepth > 0) then
+    Exit;
+  BusyNote(AText, True, 60000);
+  FBusyHide.Enabled := False;
+  FBusyPanel.Color := $0000A5FF;     // оранжевый (RGB 255, 165, 0)
+  FBusyPanel.Font.Color := clBlack;
+  FBusyPanel.Update;
+  FNotFoundShown := True;
+end;
+
+procedure TForm1.NotFoundHide;
+begin
+  if not FNotFoundShown then
+    Exit;
+  FNotFoundShown := False;
+  if (FBusyDepth = 0) and (FBusyPanel <> nil) then
+    FBusyPanel.Visible := False;
 end;
 
 procedure TForm1.BusyHideTick(Sender: TObject);
