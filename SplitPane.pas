@@ -66,6 +66,8 @@ type
     FDiffBtn: TUiButton;
     FPrevBtn: TUiButton;
     FNextBtn: TUiButton;
+    // Галка «без пробелов»: не различать отступы и пробелы
+    FSpaceBtn: TUiButton;
     FTitleText: string;
     FTitleMark: string;
     FOnTitleClick: TNotifyEvent;
@@ -75,6 +77,7 @@ type
     FOnDiffClick: TNotifyEvent;
     FOnDiffPrev: TNotifyEvent;
     FOnDiffNext: TNotifyEvent;
+    FOnDiffSpace: TNotifyEvent;
     procedure DiffBtnClick(Sender: TObject);
     procedure TitleClick(Sender: TObject);
     procedure FmtBtnClick(Sender: TObject);
@@ -96,6 +99,9 @@ type
     // показать, AOn - сравнение включено (тогда видны и < >), AInfo -
     // надпись на кнопке при включённом сравнении ('3/7', '0')
     procedure SetDiff(AVisible, AOn: Boolean; const AInfo: string);
+    // Галка «без пробелов» (видна при включённом сравнении): AOn - отступы
+    // и пробелы не различаются
+    procedure SetDiffSpace(AOn: Boolean);
     // Пометка после имени файла (свой редактор); '' - без неё
     procedure SetTitleMark(const AMark: string);
     property Panel: TPanel read FPanel;
@@ -106,6 +112,7 @@ type
     property OnDiffClick: TNotifyEvent read FOnDiffClick write FOnDiffClick;
     property OnDiffPrev: TNotifyEvent read FOnDiffPrev write FOnDiffPrev;
     property OnDiffNext: TNotifyEvent read FOnDiffNext write FOnDiffNext;
+    property OnDiffSpace: TNotifyEvent read FOnDiffSpace write FOnDiffSpace;
   end;
 
   // Первая видимая строка текста второй панели сменилась
@@ -329,6 +336,20 @@ begin
     FPrevBtn.ShowHint := True;
     FPrevBtn.Visible := False;
     FPrevBtn.OnClick := DiffBtnClick;
+
+    FSpaceBtn := TUiButton.Create(FPanel);
+    FSpaceBtn.Parent := FPanel;
+    FSpaceBtn.Left := 100;
+    FSpaceBtn.Align := alRight;
+    FSpaceBtn.Width := 120;
+    FSpaceBtn.Caption := '[x] Без пробелов';
+    FSpaceBtn.TabStop := False;
+    FSpaceBtn.Hint := 'Не различать отступы и пробелы: табуляция и пробелы ' +
+      'в отступе и вокруг знаков не считаются отличием, между словами - ' +
+      'только есть / нет; в строках в кавычках - как есть';
+    FSpaceBtn.ShowHint := True;
+    FSpaceBtn.Visible := False;
+    FSpaceBtn.OnClick := DiffBtnClick;
   end;
 
   FFmtBtn := TUiButton.Create(FPanel);
@@ -463,18 +484,36 @@ begin
   begin
     FNextBtn.Left := FDiffBtn.Left - FNextBtn.Width;
     FPrevBtn.Left := FNextBtn.Left - FPrevBtn.Width;
+    FSpaceBtn.Left := FPrevBtn.Left - FSpaceBtn.Width;
   end;
   if FNextBtn.Visible <> (AVisible and AOn) then
   begin
     FNextBtn.Visible := AVisible and AOn;
     FPrevBtn.Visible := AVisible and AOn;
+    FSpaceBtn.Visible := AVisible and AOn;
   end;
+end;
+
+procedure TPaneHeader.SetDiffSpace(AOn: Boolean);
+var
+  NewCaption: string;
+begin
+  if FSpaceBtn = nil then
+    Exit;
+  if AOn then
+    NewCaption := '[x] Без пробелов'
+  else
+    NewCaption := '[ ] Без пробелов';
+  if FSpaceBtn.Caption <> NewCaption then
+    FSpaceBtn.Caption := NewCaption;
 end;
 
 procedure TPaneHeader.DiffBtnClick(Sender: TObject);
 begin
   if (Sender = FDiffBtn) and Assigned(FOnDiffClick) then
     FOnDiffClick(Self)
+  else if (Sender = FSpaceBtn) and Assigned(FOnDiffSpace) then
+    FOnDiffSpace(Self)
   else if (Sender = FPrevBtn) and Assigned(FOnDiffPrev) then
     FOnDiffPrev(Self)
   else if (Sender = FNextBtn) and Assigned(FOnDiffNext) then

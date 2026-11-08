@@ -3702,6 +3702,8 @@ type
     function  CmpViewActive: Boolean;
     function  CmpIsDark: Boolean;
     procedure CmpApplyColors;
+    function  CmpOptions: TDiffOptions;
+    procedure CmpSpaceClick(Sender: TObject);
     procedure CmpViewShow;
     procedure CmpViewHide(AToEditor: Boolean);
     procedure CmpViewChange(Sender: TObject);
@@ -4291,6 +4293,9 @@ type
     FCmpDiff: TSplitDiff;
     FCmpViewBuf: TEdBuffer;
     FCmpRelook: Boolean;
+    // Галка «без пробелов» в заголовке второй панели (editor.ini,
+    // [Editor] DiffIgnoreSpace): отступы и пробелы не различаются
+    FCmpIgnoreSpace: Boolean;
     // Отметки строк и направляющие второй панели (та же вкладка) - по
     // данным редактора; с этими данными панель нарисована в последний раз
     FSplitDecoMapVer: Cardinal;
@@ -8340,6 +8345,7 @@ begin
     FTabChars           := Ini.ReadInteger('Editor', 'TabChars', FTabChars);
     FMaxFile32MB        := Ini.ReadInteger('Editor', 'MaxFile32MB', FMaxFile32MB);
     FShowSpaces         := Ini.ReadBool('Editor', 'ShowSpaces', FShowSpaces);
+    FCmpIgnoreSpace     := Ini.ReadBool('Editor', 'DiffIgnoreSpace', True);
     FIndentKind         := Ini.ReadInteger('Editor', 'IndentKind', FIndentKind);
     if (FIndentKind < IndentSpaces) or (FIndentKind > IndentNone) then
       FIndentKind := IndentSpaces;
@@ -8504,6 +8510,7 @@ begin
     try
       SaveFormBounds(Ini);
       Ini.WriteBool('Editor', 'HotTabHighlight', FUseHotTab);
+      Ini.WriteBool('Editor', 'DiffIgnoreSpace', FCmpIgnoreSpace);
       Ini.WriteBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
       Ini.WriteInteger('Editor', 'TabChars', FTabChars);
       Ini.WriteInteger('Editor', 'MaxFile32MB', FMaxFile32MB);
@@ -27507,6 +27514,7 @@ begin
   FDsgLiveView := True;   // живой вид конструктора - при каждом запуске
   FTabChars := 4;
   FShowSpaces := False;
+  FCmpIgnoreSpace := True;
   FPairA1 := -1;
   FPairA2 := -1;
   FPairB1 := -1;
@@ -92121,6 +92129,7 @@ begin
   FSplit.Header.OnDiffClick := CmpDiffClick;
   FSplit.Header.OnDiffPrev := CmpPrevClick;
   FSplit.Header.OnDiffNext := CmpNextClick;
+  FSplit.Header.OnDiffSpace := CmpSpaceClick;
   FCmpCur := -1;
   FCmpEdWin := -1;
   FCmpPaneWin := -1;
@@ -93011,6 +93020,7 @@ begin
   if CmpViewMode then
   begin
     CmpViewShow;
+    FCmpDiff.Options := CmpOptions;
     FCmpDiff.Recalc;
     FCmpCount := FCmpDiff.Count;
     FCmpCur := FCmpDiff.Current;
@@ -93025,7 +93035,7 @@ begin
     try
       LeftLines.Text := SplitWinText(FWindowsIndex);
       RightLines.Text := SplitWinText(FSplitWin);
-      FCmpBlocks := DiffLines(LeftLines, RightLines, DiffDefaultOptions);
+      FCmpBlocks := DiffLines(LeftLines, RightLines, CmpOptions);
       SetLength(FCmpEdMark, LeftLines.Count);
       SetLength(FCmpPaneMark, RightLines.Count);
     finally
@@ -93093,6 +93103,7 @@ begin
   else
     Info := IntToStr(FCmpCount);
   FSplit.Header.SetDiff(SplitOwnEdText, FCmpOn, Info);
+  FSplit.Header.SetDiffSpace(FCmpIgnoreSpace);
 end;
 
 procedure TForm1.CmpRepaint;
@@ -93377,6 +93388,25 @@ begin
   FCmpView.BringToFront;
   CmpApplyColors;
   FCmpDiff.Attach(FCmpView, FSplit.EdView);
+end;
+
+// Параметры сравнения панелей: галка «без пробелов» - пробелы и табуляции
+// учитываются только между словами и в строках в кавычках
+// (IgnoreSpaceSmart); без неё - всё как есть
+function TForm1.CmpOptions: TDiffOptions;
+begin
+  Result := DiffDefaultOptions;
+  Result.IgnoreSpaceSmart := FCmpIgnoreSpace;
+end;
+
+// Галка «без пробелов» в заголовке второй панели
+procedure TForm1.CmpSpaceClick(Sender: TObject);
+begin
+  FCmpIgnoreSpace := not FCmpIgnoreSpace;
+  if FSplit <> nil then
+    FSplit.Header.SetDiffSpace(FCmpIgnoreSpace);
+  if FCmpOn then
+    CmpRecalc;
 end;
 
 // Цвета сравнения - из настроек (Options, цвета Diff.*)
