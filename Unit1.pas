@@ -33910,6 +33910,16 @@ begin
       for ArgIdx := 0 to Call.Args.Count - 1 do
       begin
         Sketch.ArgInfo(Call, ArgIdx, ValueText, ValueLine);
+        // Параметр-цвет: значение как RGB, и у числа (0 -> #000000)
+        if (Call.Kind = ackUser) and ArdParamIsColor(Names[ArgIdx], '') and
+           (Copy(ValueText, 1, 1) <> '#') then
+        begin
+          if Sketch.ColorOf(Call.Args[ArgIdx], ColorValue) or
+             ((ValueText <> '') and Sketch.ColorOf(ValueText, ColorValue)) then
+            ValueText := '#' + IntToHex(((ColorValue and $FF) shl 16) or
+                                        (ColorValue and $FF00) or
+                                        ((ColorValue shr 16) and $FF), 6);
+        end;
         // Пояснение собрано из имён (латиница) и слов интерфейса - без
         // EdUiText
         AddUiRow(Names[ArgIdx], EdUiText(Call.Args[ArgIdx]),
@@ -33920,6 +33930,24 @@ begin
           Item.SubItems[2] :=
             ExtractFileName(Sketch.IncludeFiles[Call.ArgFile[ArgIdx] - 1]) +
             ':' + IntToStr(Call.ArgLine[ArgIdx] + 1);
+        // Фон под текстом надписи: Label() ставит setBackColor(Color) -
+        // та же строка, что Color (правка меняет Color)
+        if Call.IsLabel and (ArgIdx = 7) and (Call.Args.Count > 5) then
+        begin
+          ValueText := '';
+          if Sketch.ColorOf(Call.Args[5], ColorValue) then
+            ValueText := '#' + IntToHex(((ColorValue and $FF) shl 16) or
+                                        (ColorValue and $FF00) or
+                                        ((ColorValue shr 16) and $FF), 6);
+          AddUiRow('BackColor (= Color)', EdUiText(Call.Args[5]), ValueText,
+                   -1, 5);
+          if Call.ArgFile[5] > 0 then
+            Item.SubItems[2] :=
+              ExtractFileName(Sketch.IncludeFiles[Call.ArgFile[5] - 1]) +
+              ':' + IntToStr(Call.ArgLine[5] + 1)
+          else
+            Item.SubItems[2] := IntToStr(Call.ArgLine[5] + 1);
+        end;
       end;
     finally
       Names.Free;
