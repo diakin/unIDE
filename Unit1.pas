@@ -7494,9 +7494,16 @@ end;
 // заменяет цветом роли (UiPaintColors). Любой другой цвет - свой цвет
 // элемента, тема его не трогает. Тот же список - в ObjCodeProps: разница
 // снимка и .dfm по такому цвету - от темы, а не от кода.
+// clDefault - умолчание LCL: в Lazarus у списков, полей, деревьев и таблиц
+// без Color в .dfm цвет фона clDefault, а не clWindow (а у шрифта без
+// Font.Color - clDefault, а не clWindowText). Без него такие списки в
+// тёмной теме оставались белыми (окно Windows - Del WinList, 2026-11-08).
+// В Delphi 7 clDefault тоже есть, у элементов его там не бывает.
 const
-  UiThemeBgSys: array[0..2] of TColor = (clBtnFace, clWindow, TColor($00F0F0F0));
-  UiThemeFgSys: array[0..2] of TColor = (clWindowText, clBtnText, clBlack);
+  UiThemeBgSys: array[0..3] of TColor = (clBtnFace, clWindow, TColor($00F0F0F0),
+                                         clDefault);
+  UiThemeFgSys: array[0..3] of TColor = (clWindowText, clBtnText, clBlack,
+                                         clDefault);
 
   // Значение цвета из .dfm (clBtnFace, $00F0F0F0, 15790320) - одно из ASys
 function UiThemeSysColor(const AValue: string;
