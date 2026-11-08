@@ -871,6 +871,179 @@ bool simArgLookup(int code, uint32_t hash, int occurrence, int index, SimArgHit 
   return false;
 }
 
+// ---- live controls
+namespace
+{
+volatile uint32_t *CtlTable = nullptr;
+struct CtlRec
+{
+  std::string Name;
+  uint32_t Hash;
+  void *Control;
+  SimCtlRedrawFn Redraw;
+};
+std::vector<CtlRec> &controls()
+{
+  static std::vector<CtlRec> list;
+  return list;
+}
+// entries as last seen by simCtlPoll: what changed since
+struct CtlSeen
+{
+  uint32_t Hash, Prop, Kind;
+  int32_t Number;
+  std::string Text;
+};
+std::vector<CtlSeen> CtlSeenEntries;
+uint32_t CtlSeenVersion = 0;
+bool CtlRedrawing = false;
+
+uint32_t ctlHash(const char *text)
+{
+  uint32_t hash = 2166136261u;
+  for (; *text; text++)
+  {
+    hash ^= (unsigned char)*text;
+    hash *= 16777619u;
+  }
+  return hash;
+}
+
+const CtlRec *ctlOf(const void *control)
+{
+  for (const CtlRec &rec : controls())
+    if (rec.Control == control)
+      return &rec;
+  return nullptr;
+}
+
+// entry of the host for this control and property, null - none
+volatile uint32_t *ctlEntry(const void *control, int prop)
+{
+  if (!CtlTable || CtlTable[0] == 0)
+    return nullptr;
+  const CtlRec *rec = ctlOf(control);
+  if (!rec)
+    return nullptr;
+  uint32_t count = CtlTable[0];
+  if (count > SimCtlMaxEntries)
+    count = SimCtlMaxEntries;
+  const size_t entryWords = SimCtlEntryBytes / 4;
+  for (uint32_t entry = 0; entry < count; entry++)
+  {
+    volatile uint32_t *fields = CtlTable + 4 + entry * entryWords;
+    if (fields[0] == rec->Hash && fields[1] == (uint32_t)prop && fields[2] != 0)
+      return fields;
+  }
+  return nullptr;
+}
+
+std::string ctlText(volatile uint32_t *fields)
+{
+  std::string text;
+  volatile char *chars = (volatile char *)(fields + 4);
+  for (size_t index = 0; index < SimCtlTextBytes - 1 && chars[index]; index++)
+    text += chars[index];
+  return text;
+}
+}
+
+uint32_t SimScreenClears = 0;
+
+uint32_t simPixelOwnerGet()
+{
+  return SimPixelOwner;
+}
+
+void simPixelOwnerSet(uint32_t owner)
+{
+  SimPixelOwner = owner;
+}
+
+void simCtlRegister(const char *name, void *control, SimCtlRedrawFn redraw)
+{
+  CtlRec rec;
+  rec.Name = name;
+  rec.Hash = ctlHash(name);
+  rec.Control = control;
+  rec.Redraw = redraw;
+  controls().push_back(rec);
+}
+
+void simCtlAttach(void *area)
+{
+  CtlTable = (volatile uint32_t *)area;
+}
+
+bool simCtlNumber(const void *control, int prop, long &value)
+{
+  volatile uint32_t *fields = ctlEntry(control, prop);
+  if (!fields || fields[2] != 1)
+    return false;
+  value = (int32_t)fields[3];
+  return true;
+}
+
+bool simCtlText(const void *control, int prop, String &value)
+{
+  volatile uint32_t *fields = ctlEntry(control, prop);
+  if (!fields || fields[2] != 3)
+    return false;
+  value = ctlText(fields).c_str();
+  return true;
+}
+
+bool simCtlFont(const void *control, int prop, uint8_t *&font)
+{
+  volatile uint32_t *fields = ctlEntry(control, prop);
+  if (!fields || fields[2] != 2)
+    return false;
+  std::string name = ctlText(fields);
+  for (const FontRec &rec : fonts())
+    if (name == rec.Name)
+    {
+      font = (uint8_t *)rec.Font;
+      return true;
+    }
+  return false;
+}
+
+void simCtlPoll()
+{
+  if (!CtlTable || CtlRedrawing || CtlTable[1] == CtlSeenVersion)
+    return;
+  CtlSeenVersion = CtlTable[1];
+  uint32_t count = CtlTable[0];
+  if (count > SimCtlMaxEntries)
+    count = SimCtlMaxEntries;
+  const size_t entryWords = SimCtlEntryBytes / 4;
+  std::vector<uint32_t> changed;
+  std::vector<CtlSeen> now;
+  for (uint32_t entry = 0; entry < count; entry++)
+  {
+    volatile uint32_t *fields = CtlTable + 4 + entry * entryWords;
+    CtlSeen seen;
+    seen.Hash = fields[0];
+    seen.Prop = fields[1];
+    seen.Kind = fields[2];
+    seen.Number = (int32_t)fields[3];
+    seen.Text = ctlText(fields);
+    bool same = entry < CtlSeenEntries.size() && CtlSeenEntries[entry].Hash == seen.Hash &&
+                CtlSeenEntries[entry].Prop == seen.Prop && CtlSeenEntries[entry].Kind == seen.Kind &&
+                CtlSeenEntries[entry].Number == seen.Number && CtlSeenEntries[entry].Text == seen.Text;
+    if (!same && std::find(changed.begin(), changed.end(), seen.Hash) == changed.end())
+      changed.push_back(seen.Hash);
+    now.push_back(seen);
+  }
+  CtlSeenEntries = now;
+  CtlRedrawing = true;
+  for (uint32_t hash : changed)
+    for (const CtlRec &rec : controls())
+      if (rec.Hash == hash && rec.Redraw)
+        rec.Redraw(rec.Control);
+  CtlRedrawing = false;
+}
+
 // Host loop (every 20 ms): wake simStep up when there is something to do
 void simDebugHostTick()
 {

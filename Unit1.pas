@@ -2123,6 +2123,10 @@ type
     FArdOvName: string;
     FArdOvLine, FArdOvOcc, FArdOvArg: Integer;
     FArdOvFont: Boolean;
+    // Правка свойства надписи TLabel: имя объекта и номер свойства (поле
+    // TLabel) - в эмулятор через таблицу правок объектов; '' - не TLabel
+    FArdOvLabel: string;
+    FArdOvProp: Integer;
     FArdPreviewLine: Integer;
     FArdPreviewName: string;
     // Снимок программы RapidQ (RapidQProbeRun)
@@ -3159,6 +3163,7 @@ type
     procedure ArdFontPreview(const AFontName: string);
     procedure ArdFontPreviewOff;
     procedure ArdSendOverride(const ANewText: string);
+    procedure ArdSendLabelOverride(const ANewText: string);
     procedure WMArdPreviewClosed(var Msg: TMessage); message WM_USER + 331;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
@@ -34177,9 +34182,14 @@ begin
        (TArdCall(Sketch.Calls[CallIdx]).Name = OvCall.Name) and
        (TArdCall(Sketch.Calls[CallIdx]).Col < OvCall.Col) then
       Inc(FArdOvOcc);
-  // TLabel в эмулятор на лету пока не передаётся (SIM_ARG у него нет)
+  // TLabel - в эмулятор через таблицу правок объектов, не SIM_ARG
+  FArdOvLabel := '';
   if OvCall.IsLabel then
+  begin
     FArdOvName := '';
+    FArdOvLabel := OvCall.Name;
+    FArdOvProp := RowData;
+  end;
 
   FObjEditName := AItem.Caption;
   FObjEditIdx := RowData;
@@ -34313,8 +34323,7 @@ begin
       LogComp('Инспектор ino: ' + FObjEditName + ' = ' + NewText + '   (' +
               ExtractFileName(FArdEditFile) + ', строка ' +
               IntToStr(FArdEditLine + 1) + ')');
-      if (FArdSim <> nil) and FArdSim.Running then
-        LogComp('Эмулятор: надпись TLabel изменится после сборки');
+      ArdSendLabelOverride(NewText);
     end;
     ObjScheduleRelines(Obj, FObjEditName);
     Exit;
@@ -34355,7 +34364,69 @@ begin
   LogComp('Инспектор ino: ' + FObjEditName + ' = ' + NewText +
           '   (строка ' + IntToStr(FArdEditLine + 1) + ')');
   ArdSendOverride(NewText);
+  ArdSendLabelOverride(NewText);
   ObjScheduleRelines(Obj, FObjEditName);
+end;
+
+// Правка свойства надписи TLabel - сразу в работающий эмулятор: он
+// записывает значение в объект и перерисовывает надпись (BS10Controls.h,
+// TLabelSimRedraw). Число и цвет - числом (цвет RGB565), шрифт - именем
+// массива, текст - если в кавычках; выражение - только после сборки.
+procedure TForm1.ArdSendLabelOverride(const ANewText: string);
+var
+  Sketch: TArdSketch;
+  Number, ColorValue, Kind: Integer;
+  Text: string;
+begin
+  Sketch := TArdSketch(FArdSketch);
+  if (FArdOvLabel = '') or (Sketch = nil) or (FArdSim = nil) or
+     not FArdSim.Running then
+    Exit;
+  if not FArdSim.CtlOverrideAvailable then
+  begin
+    LogComp('Эмулятор: собран без правки TLabel на лету - пересоберите ' +
+            '(Build), тогда правки из инспектора будут видны сразу');
+    Exit;
+  end;
+  Number := 0;
+  Text := '';
+  if FArdOvProp = 4 then
+  begin
+    // Caption
+    if not ArdUnquote(Trim(ANewText), Text) then
+    begin
+      LogComp('Эмулятор: текст ' + FArdOvLabel + ' - выражение, будет ' +
+              'виден после сборки');
+      Exit;
+    end;
+    Kind := 3;
+  end
+  else if FArdOvFont then
+  begin
+    Text := Sketch.FontArrayName(Trim(ANewText), FArdOvLine);
+    Kind := 2;
+  end
+  else
+  begin
+    if not Sketch.EvalText(Trim(ANewText), Number) then
+    begin
+      if not Sketch.ColorOf(Trim(ANewText), ColorValue) then
+      begin
+        LogComp('Эмулятор: значение "' + ANewText + '" не вычисляется - ' +
+                'будет видно после сборки');
+        Exit;
+      end;
+      Number := (((ColorValue and $FF) shr 3) shl 11) or
+                ((((ColorValue shr 8) and $FF) shr 2) shl 5) or
+                (((ColorValue shr 16) and $FF) shr 3);
+    end;
+    Kind := 1;
+  end;
+  if FArdSim.SetCtlOverride(FArdOvLabel, FArdOvProp, Kind, Number, Text) then
+    LogComp('Эмулятор: ' + FArdOvLabel + '.' + FObjEditName + ' = ' +
+            ANewText + ' - надпись перерисована')
+  else
+    LogComp('Эмулятор: таблица правок TLabel заполнена - пересоберите');
 end;
 
 // Правка значения TLabel в файле форм (FArdEditFile) прямо на диске: строка

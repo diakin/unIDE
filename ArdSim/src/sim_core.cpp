@@ -429,6 +429,8 @@ void simPoll()
     }
   }
   InIsr = false;
+  // Controls changed in the unIDE inspector: redraw them now
+  simCtlPoll();
 }
 
 // A wait like  do {} while (btnName == "---");  ends only through an

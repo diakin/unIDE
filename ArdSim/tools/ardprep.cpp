@@ -18,6 +18,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <map>
+#include <regex>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -1535,6 +1536,42 @@ static std::vector<std::string> sketchFiles(const std::string &mainPath)
   return result;
 }
 
+// Live controls: "TLabel name = {...}" in the sketch's own #include "..."
+// files (BS10Forms.h) -> SimCtlReg registrations (the class comes from the
+// control header, BS10Controls.h)
+static std::string controlRegistrations(const std::vector<std::string> &texts,
+                                        const std::string &folder, int &count)
+{
+  std::string result;
+  std::set<std::string> seenFiles, seenNames;
+  std::regex includeLine("^[ \\t]*#[ \\t]*include[ \\t]*\"([^\"]+)\"");
+  std::regex labelDecl("\\bTLabel[ \\t\\r\\n]+([A-Za-z_][A-Za-z0-9_]*)[ \\t\\r\\n]*=[ \\t\\r\\n]*\\{");
+  for (const std::string &text : texts)
+  {
+    std::istringstream lines(text);
+    std::string line;
+    while (std::getline(lines, line))
+    {
+      std::smatch found;
+      if (!std::regex_search(line, found, includeLine) || !seenFiles.insert(found[1]).second)
+        continue;
+      std::string header = readFile(folder + "/" + found[1].str());
+      if (header.empty())
+        continue;
+      std::string mask = maskSource(header);
+      for (std::sregex_iterator item(mask.begin(), mask.end(), labelDecl), end; item != end; ++item)
+      {
+        std::string name = (*item)[1];
+        if (!seenNames.insert(name).second)
+          continue;
+        result += "static SimCtlReg simCtl" + std::to_string(count) + "_(\"" + name + "\", &" + name + ");\n";
+        count++;
+      }
+    }
+  }
+  return result;
+}
+
 static std::string applyInsertions(const std::string &text, std::vector<Insertion> &insertions)
 {
   std::stable_sort(insertions.begin(), insertions.end(),
@@ -1692,6 +1729,14 @@ int main(int argc, char **argv)
     }
     output += applyInsertions(text, insertions);
   }
+  int controlTotal = 0;
+  if (instrument)
+  {
+    size_t slash = args[0].find_last_of("\\/");
+    output += controlRegistrations(texts, slash == std::string::npos ? std::string(".")
+                                                                    : args[0].substr(0, slash),
+                                   controlTotal);
+  }
   output += registrations;
   std::ofstream result(args[1].c_str(), std::ios::binary);
   result << output;
@@ -1703,7 +1748,8 @@ int main(int argc, char **argv)
   std::cout << "ardprep: " << files.size() << " file(s), " << prototypeTotal << " prototypes";
   if (instrument)
     std::cout << ", debugger: " << functionTotal << " functions, " << globalTotal << " globals"
-              << ", live arguments: " << argTotal << ", fonts: " << fontRegTotal;
+              << ", live arguments: " << argTotal << ", fonts: " << fontRegTotal
+              << ", controls: " << controlTotal;
   std::cout << "\n";
   return 0;
 }

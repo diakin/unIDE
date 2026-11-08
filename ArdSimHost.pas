@@ -309,6 +309,14 @@ type
     // ---- подмена аргументов на лету (SIM_ARG в эмуляторе)
     // Эмулятор собран с SIM_ARG и читает таблицу
     function ArgOverrideAvailable: Boolean;
+    // Объекты TLabel (BS10Controls.h): эмулятор собран с ними и читает
+    // таблицу правок
+    function CtlOverrideAvailable: Boolean;
+    // Новое значение свойства AProp (номер поля TLabel) объекта AName:
+    // AKind 1 - число ANumber, 2 - шрифт (имя массива в AText), 3 - текст
+    // AText. Эмулятор сразу перерисовывает надпись
+    function SetCtlOverride(const AName: string; AProp, AKind, ANumber: Integer;
+                            const AText: string): Boolean;
     // Аргумент AArgIdx вызова AName (метод UTFT или функция скетча) в
     // строке ALine (с 1) файла AFileIdx, AOccurrence-го с таким именем в
     // строке: число ANumber или шрифт AFont (имя массива, AFont <> '').
@@ -408,6 +416,7 @@ const
   HdrStopRequest = 9;
   HdrArgTable = 10;     // эмулятор: 1 - читает таблицу подмен аргументов
   HdrKeyQueue = 16;
+  HdrCtlTable = 11;     // эмулятор: 1 - читает таблицу правок объектов TLabel
   KeyQueueSize = 16;
   HeaderBytes = 128;
   ScreenBytes = ArdSimScreenW * ArdSimScreenH * 2;
@@ -455,7 +464,16 @@ const
   ArgMaxEntries = 256;
   ArgFontChars = 40;
   ArgTableBytes = 16 + ArgEntryBytes * ArgMaxEntries;
-  SharedBytes = ArgOffset + ArgTableBytes;
+  // Правки объектов TLabel (sim_internal.h SimCtl*): после подмен. Число
+  // записей, версия (+1 после каждой правки); с 16-го байта записи по 128
+  // байт: hash имени, номер свойства, kind (1 число, 2 шрифт, 3 текст),
+  // number, text[112]
+  CtlOffset = ArgOffset + ArgTableBytes;
+  CtlEntryBytes = 128;
+  CtlMaxEntries = 128;
+  CtlTextChars = CtlEntryBytes - 16;
+  CtlTableBytes = 16 + CtlEntryBytes * CtlMaxEntries;
+  SharedBytes = CtlOffset + CtlTableBytes;
   SerialMaxChars = 60000;
 
   // Корпус: зелёные поля вокруг экрана 480x320, точек. Обычно
@@ -2663,6 +2681,71 @@ begin
     // в Int64 без переполнения, младшие 32 бита
     Result := Cardinal((Int64(Result) * 16777619) and $FFFFFFFF);
   end;
+end;
+
+function TArdSimPanel.CtlOverrideAvailable: Boolean;
+begin
+  {$IFDEF MSWINDOWS}
+  Result := (FView <> nil) and Running and (Header(HdrCtlTable) = 1);
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
+end;
+
+function TArdSimPanel.SetCtlOverride(const AName: string; AProp, AKind,
+  ANumber: Integer; const AText: string): Boolean;
+{$IFDEF MSWINDOWS}
+var
+  Table: PCardinal;
+  Count, EntryIdx, Found, CharIdx: Integer;
+  Hash: Cardinal;
+  Text: PAnsiChar;
+
+  function Field(AEntry, AIndex: Integer): PCardinal;
+  begin
+    Result := PCardinal(PAnsiChar(Table) + 16 + AEntry * CtlEntryBytes +
+                        AIndex * 4);
+  end;
+{$ENDIF}
+begin
+  Result := False;
+  {$IFDEF MSWINDOWS}
+  if not CtlOverrideAvailable or (AKind < 1) or (AKind > 3) then
+    Exit;
+  Table := PCardinal(PAnsiChar(FView) + CtlOffset);
+  Hash := ArgNameHash(AName);
+  Count := Table^;
+  if Count > CtlMaxEntries then
+    Count := CtlMaxEntries;
+  Found := -1;
+  for EntryIdx := 0 to Count - 1 do
+    if (Field(EntryIdx, 0)^ = Hash) and (Field(EntryIdx, 1)^ = Cardinal(AProp)) then
+    begin
+      Found := EntryIdx;
+      Break;
+    end;
+  if Found < 0 then
+  begin
+    if Count >= CtlMaxEntries then
+      Exit;
+    Found := Count;
+  end;
+  // Вид - последним, версия - после всего: эмулятор читает без блокировки
+  Field(Found, 2)^ := 0;
+  Field(Found, 0)^ := Hash;
+  Field(Found, 1)^ := Cardinal(AProp);
+  Field(Found, 3)^ := Cardinal(ANumber);
+  Text := PAnsiChar(Field(Found, 4));
+  FillChar(Text^, CtlTextChars, 0);
+  for CharIdx := 1 to Length(AText) do
+    if CharIdx < CtlTextChars then
+      Text[CharIdx - 1] := AnsiChar(AText[CharIdx]);
+  Field(Found, 2)^ := Cardinal(AKind);
+  if Found >= Count then
+    Table^ := Found + 1;
+  Inc(PCardinal(PAnsiChar(Table) + 4)^);
+  Result := True;
+  {$ENDIF}
 end;
 
 function TArdSimPanel.SetArgOverride(AFileIdx, ALine: Integer;

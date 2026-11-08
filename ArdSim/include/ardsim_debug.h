@@ -253,5 +253,26 @@ inline ValueType simArg(int code, uint32_t hash, int occurrence, int index, Valu
   return value;
 }
 #define SIM_ARG(code, hash, occurrence, index, expr) simArg((code), (hash), (occurrence), (index), (expr))
+
+// ---- live controls: named objects of the sketch (TLabel in BS10Controls.h)
+// whose properties the unIDE inspector changes while the emulator runs.
+// ardprep registers every "TLabel name = {...}" of the sketch's own
+// #include "..." files (SimCtlReg, defined by the control header). The
+// host table (sim_internal.h, SimCtl*) holds name hash, property number
+// and the new value; the control asks for it when it draws, and simPoll
+// calls Redraw of a control whose entries changed.
+typedef void (*SimCtlRedrawFn)(void *control);
+void simCtlRegister(const char *name, void *control, SimCtlRedrawFn redraw);
+// value set by the host for property prop of control: false - none
+bool simCtlNumber(const void *control, int prop, long &value);
+bool simCtlText(const void *control, int prop, String &value);
+bool simCtlFont(const void *control, int prop, uint8_t *&font);
+// +1 at every clrScr / fillScr: a control drawn before is no longer on
+// the screen
+extern uint32_t SimScreenClears;
+// graphic entry of the pixels being drawn (where-is-it map): a redraw
+// from simPoll keeps the one of the interrupted drawing
+uint32_t simPixelOwnerGet();
+void simPixelOwnerSet(uint32_t owner);
 #endif
 #endif

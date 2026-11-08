@@ -108,6 +108,21 @@ const size_t SimArgEntryBytes = 64;
 const size_t SimArgMaxEntries = 256;
 const size_t SimArgTableBytes = 16 + SimArgEntryBytes * SimArgMaxEntries;
 void simArgAttach(void *area);
+// Live controls (ardsim_debug.h, simCtl*): host table after the arguments
+// table. Offsets from its start:
+//   0     uint32 count of entries in use; 4 uint32 version (host: +1 after
+//         every change)
+//   16    entries of SimCtlEntryBytes: uint32 hash (FNV-1a of the control
+//         name), property, kind (0 - empty, 1 - number, 2 - font, 3 -
+//         text); int32 number; char text[SimCtlTextBytes] (font array name
+//         or text, ANSI, zero-terminated)
+const size_t SimCtlEntryBytes = 128;
+const size_t SimCtlTextBytes = SimCtlEntryBytes - 16;
+const size_t SimCtlMaxEntries = 128;
+const size_t SimCtlTableBytes = 16 + SimCtlEntryBytes * SimCtlMaxEntries;
+void simCtlAttach(void *area);
+// simPoll: redraw controls whose host entries changed
+void simCtlPoll();
 void simDebugHostTick();
 // Screen texts for "where is this drawn" (sim_utft.cpp -> sim_debug.cpp):
 // a text with its rectangle and the call stack; a filled area forgets

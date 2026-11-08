@@ -88,6 +88,7 @@ void UTFT::vLine(int x, int y, int length)
 void UTFT::clrScr()
 {
   simPoll();
+  SimScreenClears++;
   memset(SimScreen, 0, sizeof(SimScreen));
   memset(SimOwnerMap, 0, sizeof(SimOwnerMap));
   simAreaFilled(0, 0, SIM_SCREEN_W - 1, SIM_SCREEN_H - 1);
@@ -103,6 +104,7 @@ void UTFT::fillScr(byte red, byte green, byte blue)
 void UTFT::fillScr(word color)
 {
   simPoll();
+  SimScreenClears++;
   for (int y = 0; y < SIM_SCREEN_H; y++)
     for (int x = 0; x < SIM_SCREEN_W; x++)
       SimScreen[y][x] = color;
