@@ -305,6 +305,12 @@ var
   LowType: string;
 begin
   LowType := LowerCase(AType);
+  // FontColor - цвет, не шрифт
+  if ArdParamIsColor(AName, AType) then
+  begin
+    Result := False;
+    Exit;
+  end;
   Result := (Pos('font', LowerCase(AName)) > 0) or
             ((Pos('uint8_t', LowType) > 0) and
              ((Pos('[', LowType) > 0) or (Pos('*', LowType) > 0))) or
