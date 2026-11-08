@@ -29579,8 +29579,13 @@ end;
 // потом форма перерисовывается целиком, со всеми дочерними окнами: иначе
 // части, которые Windows перенесла при сдвиге панели, оставались на экране
 // в прежнем виде.
+// Долгая смена ширины (раскладка или перерисовка дольше MsgTimerLimit) -
+// в HiLite log с разбивкой по частям: по нему видно, что тормозит.
 procedure TForm1.ApplyRightPanelWidth(ANewWidth: Integer);
+var
+  StartTick, LayoutTick, PaintTick: Cardinal;
 begin
+  StartTick := GetTickCount;
   SendMessage(Handle, WM_SETREDRAW, 0, 0);
   try
     FRightPanel.Width := ANewWidth;
@@ -29588,10 +29593,16 @@ begin
     // Видимая область редактора стала другой - полосы прокрутки заново
     FormResizeEvent(Self);
   finally
+    LayoutTick := GetTickCount;
     SendMessage(Handle, WM_SETREDRAW, 1, 0);
     RedrawWindow(Handle, nil, 0, RDW_ERASE or RDW_FRAME or RDW_INVALIDATE or
                  RDW_ALLCHILDREN or RDW_UPDATENOW);
+    PaintTick := GetTickCount;
   end;
+  if PaintTick - StartTick >= MsgTimerLimit then
+    Dbg(Format('Ширина правой панели %d: раскладка %d мс, перерисовка %d мс',
+               [ANewWidth, LayoutTick - StartTick, PaintTick - LayoutTick]),
+        clNavy);
 end;
 
 // Панель тянется влево - шире, вправо - уже. Уже RightPanelMinWidth и шире,
@@ -66036,8 +66047,10 @@ begin
   // движения мыши. Пока в конструкторе тянут компонент или рамку, вид
   // кнопок не меняется, а его пересчёт задерживал следующее движение -
   // рамка шла рывками.
+  // Так же и пока тянут разделитель правой панели (SplitBarMouseMove):
+  // каждое движение мыши - простой, а линия-след должна идти за мышью.
   if ((FDesigner <> nil) and FDesigner.Dragging) or
-     ((FRqDesigner <> nil) and FRqDesigner.Dragging) then
+     ((FRqDesigner <> nil) and FRqDesigner.Dragging) or FSplitDrag then
     Exit;
   StartTick := GetTickCount;
   // Снимок записанного текста - в простое, а не на первой клавише после
