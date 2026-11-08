@@ -116,11 +116,23 @@ void simArgAttach(void *area);
 //         name), property, kind (0 - empty, 1 - number, 2 - font, 3 -
 //         text); int32 number; char text[SimCtlTextBytes] (font array name
 //         or text, ANSI, zero-terminated)
+//   SimCtlShownOffset: what the controls show now (the simulator writes,
+//         the host draws the marker and drags): uint32 screen clears now
+//         (SimScreenClears), count of controls; from +16 entries of
+//         SimCtlShownBytes in the order of registration: uint32 hash of
+//         the name, screen clears at the last drawing (0xFFFFFFFF - not
+//         drawn), int16 left, top (as drawn), int16 box left, top, right,
+//         bottom (pixels it took)
 const size_t SimCtlEntryBytes = 128;
 const size_t SimCtlTextBytes = SimCtlEntryBytes - 16;
 const size_t SimCtlMaxEntries = 128;
-const size_t SimCtlTableBytes = 16 + SimCtlEntryBytes * SimCtlMaxEntries;
+const size_t SimCtlShownOffset = 16 + SimCtlEntryBytes * SimCtlMaxEntries;
+const size_t SimCtlShownBytes = 32;
+const size_t SimCtlMaxControls = 1024;
+const size_t SimCtlTableBytes = SimCtlShownOffset + 16 + SimCtlShownBytes * SimCtlMaxControls;
 void simCtlAttach(void *area);
+// clrScr / fillScr: SimScreenClears + 1, also in the host table
+void simCtlScreenCleared();
 // simPoll: redraw controls whose host entries changed
 void simCtlPoll();
 void simDebugHostTick();

@@ -938,6 +938,31 @@ volatile uint32_t *ctlEntry(const void *control, int prop)
   return nullptr;
 }
 
+// entry of the shown table for control number index, null - none
+volatile uint32_t *ctlShownEntry(size_t index)
+{
+  if (!CtlTable || index >= SimCtlMaxControls)
+    return nullptr;
+  return CtlTable + (SimCtlShownOffset + 16 + index * SimCtlShownBytes) / 4;
+}
+
+uint32_t packPair(int low, int high)
+{
+  return (uint32_t)(uint16_t)(int16_t)low | ((uint32_t)(uint16_t)(int16_t)high << 16);
+}
+
+// a control registered: its entry not drawn yet
+void ctlShownInit(size_t index)
+{
+  volatile uint32_t *fields = ctlShownEntry(index);
+  if (!fields)
+    return;
+  fields[0] = controls()[index].Hash;
+  fields[1] = 0xFFFFFFFFu;
+  size_t count = controls().size();
+  CtlTable[SimCtlShownOffset / 4 + 1] = (uint32_t)(count < SimCtlMaxControls ? count : SimCtlMaxControls);
+}
+
 std::string ctlText(volatile uint32_t *fields)
 {
   std::string text;
@@ -968,11 +993,41 @@ void simCtlRegister(const char *name, void *control, SimCtlRedrawFn redraw)
   rec.Control = control;
   rec.Redraw = redraw;
   controls().push_back(rec);
+  ctlShownInit(controls().size() - 1);
 }
 
 void simCtlAttach(void *area)
 {
   CtlTable = (volatile uint32_t *)area;
+  CtlTable[SimCtlShownOffset / 4] = SimScreenClears;
+  for (size_t index = 0; index < controls().size(); index++)
+    ctlShownInit(index);
+}
+
+void simCtlScreenCleared()
+{
+  SimScreenClears++;
+  if (CtlTable)
+    CtlTable[SimCtlShownOffset / 4] = SimScreenClears;
+}
+
+void simCtlShown(const void *control, int left, int top, int boxLeft, int boxTop,
+                 int boxRight, int boxBottom)
+{
+  if (!CtlTable)
+    return;
+  for (size_t index = 0; index < controls().size(); index++)
+    if (controls()[index].Control == control)
+    {
+      volatile uint32_t *fields = ctlShownEntry(index);
+      if (!fields)
+        return;
+      fields[2] = packPair(left, top);
+      fields[3] = packPair(boxLeft, boxTop);
+      fields[4] = packPair(boxRight, boxBottom);
+      fields[1] = SimScreenClears;
+      return;
+    }
 }
 
 bool simCtlNumber(const void *control, int prop, long &value)

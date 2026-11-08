@@ -3164,6 +3164,7 @@ type
     procedure ArdFontPreviewOff;
     procedure ArdSendOverride(const ANewText: string);
     procedure ArdSendLabelOverride(const ANewText: string);
+    procedure ArdSimCtlMoved(Sender: TObject; AHash: Cardinal; ALeft, ATop: Integer);
     procedure WMArdPreviewClosed(var Msg: TMessage); message WM_USER + 331;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
@@ -29248,6 +29249,7 @@ begin
   FArdSim.OnDbgInfo := ArdDbgInfo;
   FArdSim.OnDbgNeedBreaks := ArdDbgNeedBreaks;
   FArdSim.OnScreenWhere := ArdSimScreenWhere;
+  FArdSim.OnCtlMoved := ArdSimCtlMoved;
   FArdSimWin.OnPlaced := ArdSimPlaced;
   FArdSimWin.OnHidden := ArdSimHidden;
   FArdSimKeepWidth := -1;
@@ -33864,6 +33866,16 @@ begin
   if (Node = nil) or (Sketch = nil) then
     Exit;
 
+  // Рамка в эмуляторе - вокруг выбранной надписи TLabel
+  if FArdSim <> nil then
+  begin
+    if (Node.Line >= 0) and (Node.Line < Sketch.Calls.Count) and
+       TArdCall(Sketch.Calls[Node.Line]).IsLabel then
+      FArdSim.SelectedControl := TArdCall(Sketch.Calls[Node.Line]).Name
+    else
+      FArdSim.SelectedControl := '';
+  end;
+
   // Вызов вывода: аргументы под именами параметров
   if (Node.Line >= 0) and (Node.Line < Sketch.Calls.Count) then
   begin
@@ -34427,6 +34439,102 @@ begin
             ANewText + ' - надпись перерисована')
   else
     LogComp('Эмулятор: таблица правок TLabel заполнена - пересоберите');
+end;
+
+// Надпись TLabel перетащили мышью в окне эмулятора: на экране она уже на
+// новом месте (таблица правок), здесь - Left и Top в её объявление в файле
+// форм. Свойство, заданное в самом выводе (lblX.Top(y).Draw()), в файл не
+// пишется: в объявлении его значение не действует.
+procedure TForm1.ArdSimCtlMoved(Sender: TObject; AHash: Cardinal; ALeft, ATop: Integer);
+var
+  Sketch: TArdSketch;
+  Decl: TArdLabel;
+  Call: TArdCall;
+  LabelIdx, StepIdx, PropIdx, NewValue: Integer;
+  Order: array[0..1] of Integer;
+  Written, Skipped: string;
+begin
+  Sketch := TArdSketch(FArdSketch);
+  if Sketch = nil then
+    Exit;
+  Decl := nil;
+  for LabelIdx := 0 to Sketch.Labels.Count - 1 do
+    if ArdSimNameHash(Sketch.Labels[LabelIdx]) = AHash then
+    begin
+      Decl := TArdLabel(Sketch.Labels.Objects[LabelIdx]);
+      Break;
+    end;
+  if Decl = nil then
+  begin
+    LogComp('Эмулятор: перетащенной надписи нет в разобранном скетче - ' +
+            'в файл не записано');
+    Exit;
+  end;
+  if FObjEditing then
+    ObjCancelEdit;
+  // Вывод, выбранный в инспекторе (щелчок по надписи выбирает его)
+  Call := nil;
+  if (FObjCurNode <> nil) and (TDfmNode(FObjCurNode).Line >= 0) and
+     (TDfmNode(FObjCurNode).Line < Sketch.Calls.Count) then
+  begin
+    Call := TArdCall(Sketch.Calls[TDfmNode(FObjCurNode).Line]);
+    if not Call.IsLabel or (Call.LabelDecl <> Decl) then
+      Call := nil;
+  end;
+  // Top правее Left в той же строке: сначала он, колонка Left не сдвинется
+  Order[0] := 0;
+  Order[1] := 1;
+  if (Decl.ValLine[1] > Decl.ValLine[0]) or
+     ((Decl.ValLine[1] = Decl.ValLine[0]) and (Decl.ValCol[1] > Decl.ValCol[0])) then
+  begin
+    Order[0] := 1;
+    Order[1] := 0;
+  end;
+  Written := '';
+  Skipped := '';
+  for StepIdx := 0 to 1 do
+  begin
+    PropIdx := Order[StepIdx];
+    if PropIdx = 0 then
+      NewValue := ALeft
+    else
+      NewValue := ATop;
+    if (Call <> nil) and (Call.ArgFile[PropIdx] = 0) then
+    begin
+      Skipped := Skipped + ' ' + ArdLabelProps[PropIdx] + '(' +
+                 Call.Args[PropIdx] + ') задан в выводе, строка ' +
+                 IntToStr(Call.Line + 1) + ';';
+      Continue;
+    end;
+    if Trim(Decl.Values[PropIdx]) = IntToStr(NewValue) then
+      Continue;
+    if Decl.ValLine[PropIdx] < 0 then
+    begin
+      Skipped := Skipped + ' ' + ArdLabelProps[PropIdx] +
+                 ' записан на нескольких строках;';
+      Continue;
+    end;
+    FArdEditFile := Sketch.IncludeFiles[Decl.FileIdx - 1];
+    FArdEditLine := Decl.ValLine[PropIdx];
+    FArdEditCol := Decl.ValCol[PropIdx];
+    FArdEditSrc := Decl.Values[PropIdx];
+    if not ArdApplyFileEdit(IntToStr(NewValue)) then
+      Break;
+    Written := ArdLabelProps[PropIdx] + ' = ' + IntToStr(NewValue) + ' ' + Written;
+  end;
+  FArdEditFile := '';
+  if Written <> '' then
+    LogComp('Эмулятор: ' + Decl.Name + ' перенесена: ' + Trim(Written) + '   (' +
+            ExtractFileName(Sketch.IncludeFiles[Decl.FileIdx - 1]) + ', строка ' +
+            IntToStr(Decl.Line + 1) + ')');
+  if Skipped <> '' then
+    LogComp('Эмулятор: ' + Decl.Name + ', в файл не записано:' + Skipped +
+            ' новое место видно до перезапуска эмулятора');
+  // Разобрать заново: значения в инспекторе - из файла
+  FArdTextKey := '';
+  FArdEdKey := '';
+  if FObjCurNode <> nil then
+    ObjScheduleRelines(FObjCurNode, '');
 end;
 
 // Правка значения TLabel в файле форм (FArdEditFile) прямо на диске: строка

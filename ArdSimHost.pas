@@ -62,6 +62,10 @@ const
 
 type
   TArdSimTextEvent = procedure(Sender: TObject; const AText: string) of object;
+  // Надпись TLabel перетащили мышью: AHash - FNV-1a имени (ArdSimNameHash),
+  // ALeft, ATop - новые Left, Top
+  TArdSimCtlMovedEvent = procedure(Sender: TObject; AHash: Cardinal;
+    ALeft, ATop: Integer) of object;
   TArdSimSaveEvent = function(Sender: TObject): Boolean of object;
   // Строки точек останова: (номер файла shl 20) or строка с 1
   TArdDbgCodes = array of Cardinal;
@@ -94,6 +98,9 @@ type
     procedure KeyDown(var Key: Word; Shift: TShiftState); override;
     procedure KeyPress(var Key: Char); override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
+      PosX, PosY: Integer); override;
+    procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
       PosX, PosY: Integer); override;
   public
     constructor Create(AOwner: TComponent); override;
@@ -194,6 +201,25 @@ type
     // шрифты (TArdPreviewItem), каждое до перерисовки своего места скетчем
     FPreview: TObject;
     FKept: TList;
+    // Выбранная надпись TLabel (рамка на экране) и её перетаскивание
+    FSelCtlHash: Cardinal;        // 0 - нет
+    FDragging: Boolean;
+    FDragMoved: Boolean;
+    FDragFromX, FDragFromY: Integer;
+    FDragLeft, FDragTop: Integer;          // Left, Top в начале
+    FDragNewLeft, FDragNewTop: Integer;
+    FOnCtlMoved: TArdSimCtlMovedEvent;
+    function CtlShownEntry(AHash: Cardinal): PCardinal;
+    function CtlShownBox(AEntry: PCardinal): TRect;
+    function CtlHashAt(AX, AY: Integer): Cardinal;
+    procedure DrawCtlMarker;
+    function SetCtlOverrideHash(AHash: Cardinal; AProp, AKind, ANumber: Integer;
+                                const AText: string): Boolean;
+    function CtlMouseDown(AX, AY: Integer): Boolean;
+    procedure CtlMouseMove(AX, AY: Integer);
+    procedure CtlMouseUp;
+    function CtlOverPoint(AX, AY: Integer): Boolean;
+    procedure SetSelectedControl(const AName: string);
     procedure LoadFontCache;
     procedure DrawPreview;
     procedure ClearAllPreviews;
@@ -317,6 +343,10 @@ type
     // AText. Эмулятор сразу перерисовывает надпись
     function SetCtlOverride(const AName: string; AProp, AKind, ANumber: Integer;
                             const AText: string): Boolean;
+    // Надпись TLabel, выбранная в инспекторе: рамка вокруг неё на экране,
+    // её можно тащить мышью. '' - нет
+    property SelectedControl: string write SetSelectedControl;
+    property OnCtlMoved: TArdSimCtlMovedEvent read FOnCtlMoved write FOnCtlMoved;
     // Аргумент AArgIdx вызова AName (метод UTFT или функция скетча) в
     // строке ALine (с 1) файла AFileIdx, AOccurrence-го с таким именем в
     // строке: число ANumber или шрифт AFont (имя массива, AFont <> '').
@@ -398,6 +428,8 @@ type
 
 // Папка ArdSim рядом с unIDE: <exe>\ArdSim, <exe>\..\ArdSim; нет - ''
 function ArdSimFindDir: string;
+// FNV-1a имени: так эмулятор узнаёт объекты TLabel
+function ArdSimNameHash(const AName: string): Cardinal;
 
 implementation
 
@@ -472,7 +504,15 @@ const
   CtlEntryBytes = 128;
   CtlMaxEntries = 128;
   CtlTextChars = CtlEntryBytes - 16;
-  CtlTableBytes = 16 + CtlEntryBytes * CtlMaxEntries;
+  // Что надписи показывают сейчас (пишет эмулятор): от CtlShownOffset
+  // таблицы - число очисток экрана сейчас, число объектов; с +16 записи
+  // по 32 байта в порядке регистрации: hash имени, число очисток при
+  // последнем выводе ($FFFFFFFF - не выводилась), int16 Left, Top как
+  // нарисованы, int16 рамка занятых точек: левый, верхний, правый, нижний
+  CtlShownOffset = 16 + CtlEntryBytes * CtlMaxEntries;
+  CtlShownBytes = 32;
+  CtlMaxControls = 1024;
+  CtlTableBytes = CtlShownOffset + 16 + CtlShownBytes * CtlMaxControls;
   SharedBytes = CtlOffset + CtlTableBytes;
   SerialMaxChars = 60000;
 
@@ -747,9 +787,11 @@ begin
   if Button <> mbLeft then
     Exit;
   HitPoint := Point(PosX, PosY);
-  // экран: где в скетче нарисована надпись под мышью
+  // экран: где в скетче нарисована надпись под мышью; надпись TLabel -
+  // сразу рамка, её можно тащить
   if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) then
   begin
+    FOwnerPanel.CtlMouseDown(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
     FOwnerPanel.ScreenWhere(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
     Exit;
   end;
@@ -759,6 +801,28 @@ begin
       PressKey(KeyIdx);
       Exit;
     end;
+end;
+
+procedure TArdSimDevice.MouseMove(Shift: TShiftState; PosX, PosY: Integer);
+begin
+  inherited;
+  if FOwnerPanel = nil then
+    Exit;
+  if FOwnerPanel.FDragging then
+    FOwnerPanel.CtlMouseMove(PosX - FScreenRect.Left, PosY - FScreenRect.Top)
+  else if PtInRect(FScreenRect, Point(PosX, PosY)) and
+          FOwnerPanel.CtlOverPoint(PosX - FScreenRect.Left, PosY - FScreenRect.Top) then
+    Cursor := crSizeAll
+  else
+    Cursor := crDefault;
+end;
+
+procedure TArdSimDevice.MouseUp(Button: TMouseButton; Shift: TShiftState;
+  PosX, PosY: Integer);
+begin
+  inherited;
+  if (Button = mbLeft) and (FOwnerPanel <> nil) and FOwnerPanel.FDragging then
+    FOwnerPanel.CtlMouseUp;
 end;
 
 // Клавиши ПК -> клавиатура прибора (как в окне ArdSim, sim_window.cpp)
@@ -2411,6 +2475,8 @@ begin
     end;
     if (FPreview <> nil) or ((FKept <> nil) and (FKept.Count > 0)) then
       DrawPreview;
+    if FSelCtlHash <> 0 then
+      DrawCtlMarker;
   end;
   if FHasPicture then
   begin
@@ -2683,6 +2749,16 @@ begin
   end;
 end;
 
+type
+  // Запись таблицы показанного по 16 бит (CtlShownBytes)
+  TSmallIntArrayH = array[0..15] of SmallInt;
+  PSmallIntArrayH = ^TSmallIntArrayH;
+
+function ArdSimNameHash(const AName: string): Cardinal;
+begin
+  Result := ArgNameHash(AName);
+end;
+
 function TArdSimPanel.CtlOverrideAvailable: Boolean;
 begin
   {$IFDEF MSWINDOWS}
@@ -2693,6 +2769,12 @@ begin
 end;
 
 function TArdSimPanel.SetCtlOverride(const AName: string; AProp, AKind,
+  ANumber: Integer; const AText: string): Boolean;
+begin
+  Result := SetCtlOverrideHash(ArgNameHash(AName), AProp, AKind, ANumber, AText);
+end;
+
+function TArdSimPanel.SetCtlOverrideHash(AHash: Cardinal; AProp, AKind,
   ANumber: Integer; const AText: string): Boolean;
 {$IFDEF MSWINDOWS}
 var
@@ -2713,7 +2795,7 @@ begin
   if not CtlOverrideAvailable or (AKind < 1) or (AKind > 3) then
     Exit;
   Table := PCardinal(PAnsiChar(FView) + CtlOffset);
-  Hash := ArgNameHash(AName);
+  Hash := AHash;
   Count := Table^;
   if Count > CtlMaxEntries then
     Count := CtlMaxEntries;
@@ -2746,6 +2828,242 @@ begin
   Inc(PCardinal(PAnsiChar(Table) + 4)^);
   Result := True;
   {$ENDIF}
+end;
+
+// ---- выбранная надпись TLabel: рамка и перетаскивание мышью
+
+// Запись надписи AHash в таблице показанного, если она на экране сейчас
+// (после неё экран не очищался); nil - нет
+function TArdSimPanel.CtlShownEntry(AHash: Cardinal): PCardinal;
+{$IFDEF MSWINDOWS}
+var
+  Shown: PCardinal;
+  Count, EntryIdx: Integer;
+  Entry: PCardinal;
+{$ENDIF}
+begin
+  Result := nil;
+  {$IFDEF MSWINDOWS}
+  if (AHash = 0) or not CtlOverrideAvailable then
+    Exit;
+  Shown := PCardinal(PAnsiChar(FView) + CtlOffset + CtlShownOffset);
+  Count := Integer(PCardinal(PAnsiChar(Shown) + 4)^);
+  if Count > CtlMaxControls then
+    Count := CtlMaxControls;
+  for EntryIdx := 0 to Count - 1 do
+  begin
+    Entry := PCardinal(PAnsiChar(Shown) + 16 + EntryIdx * CtlShownBytes);
+    if Entry^ = AHash then
+    begin
+      if PCardinal(PAnsiChar(Entry) + 4)^ = Shown^ then
+        Result := Entry;
+      Exit;
+    end;
+  end;
+  {$ENDIF}
+end;
+
+// Рамка занятых надписью точек: Right, Bottom - за последней точкой
+function TArdSimPanel.CtlShownBox(AEntry: PCardinal): TRect;
+var
+  Words: PSmallIntArrayH;
+begin
+  Words := PSmallIntArrayH(AEntry);
+  Result := Rect(Words^[6], Words^[7], Words^[8] + 1, Words^[9] + 1);
+end;
+
+// Надпись TLabel, нарисованная в точке AX, AY экрана: из нескольких -
+// с меньшей рамкой (подпись внутри панели). 0 - нет
+function TArdSimPanel.CtlHashAt(AX, AY: Integer): Cardinal;
+{$IFDEF MSWINDOWS}
+var
+  Shown, Entry: PCardinal;
+  Count, EntryIdx, Area, BestArea: Integer;
+  Box: TRect;
+{$ENDIF}
+begin
+  Result := 0;
+  {$IFDEF MSWINDOWS}
+  if not CtlOverrideAvailable then
+    Exit;
+  Shown := PCardinal(PAnsiChar(FView) + CtlOffset + CtlShownOffset);
+  Count := Integer(PCardinal(PAnsiChar(Shown) + 4)^);
+  if Count > CtlMaxControls then
+    Count := CtlMaxControls;
+  BestArea := MaxInt;
+  for EntryIdx := 0 to Count - 1 do
+  begin
+    Entry := PCardinal(PAnsiChar(Shown) + 16 + EntryIdx * CtlShownBytes);
+    if PCardinal(PAnsiChar(Entry) + 4)^ <> Shown^ then
+      Continue;
+    Box := CtlShownBox(Entry);
+    if PtInRect(Box, Point(AX, AY)) then
+    begin
+      Area := (Box.Right - Box.Left) * (Box.Bottom - Box.Top);
+      if Area < BestArea then
+      begin
+        BestArea := Area;
+        Result := Entry^;
+      end;
+    end;
+  end;
+  {$ENDIF}
+end;
+
+function TArdSimPanel.CtlOverPoint(AX, AY: Integer): Boolean;
+var
+  Entry: PCardinal;
+begin
+  Result := False;
+  if FSelCtlHash = 0 then
+    Exit;
+  Entry := CtlShownEntry(FSelCtlHash);
+  Result := (Entry <> nil) and PtInRect(CtlShownBox(Entry), Point(AX, AY));
+end;
+
+procedure TArdSimPanel.SetSelectedControl(const AName: string);
+var
+  Hash: Cardinal;
+begin
+  if AName = '' then
+    Hash := 0
+  else
+    Hash := ArgNameHash(AName);
+  if FDragging or (Hash = FSelCtlHash) then
+    Exit;
+  FSelCtlHash := Hash;
+  FDevice.InvalidateScreen;
+end;
+
+// Пунктир жёлтый/чёрный на точку снаружи рамки надписи и квадратики по
+// углам. В FPixels: до следующей перерисовки экрана
+procedure TArdSimPanel.DrawCtlMarker;
+var
+  Entry: PCardinal;
+  Box: TRect;
+  PosX, PosY, Step, CornerX, CornerY: Integer;
+
+  procedure PutPixel(APosX, APosY: Integer);
+  begin
+    if (APosX >= 0) and (APosX < ArdSimScreenW) and (APosY >= 0) and
+       (APosY < ArdSimScreenH) then
+    begin
+      if ((Step div 3) mod 2) = 0 then
+        FPixels[APosY * ArdSimScreenW + APosX] := $FFFF00
+      else
+        FPixels[APosY * ArdSimScreenW + APosX] := $000000;
+      Inc(Step);
+    end;
+  end;
+
+  procedure PutCorner(ACenterX, ACenterY: Integer);
+  var
+    DeltaX, DeltaY: Integer;
+  begin
+    for DeltaY := -2 to 2 do
+      for DeltaX := -2 to 2 do
+        if (ACenterX + DeltaX >= 0) and (ACenterX + DeltaX < ArdSimScreenW) and
+           (ACenterY + DeltaY >= 0) and (ACenterY + DeltaY < ArdSimScreenH) then
+        begin
+          if (Abs(DeltaX) = 2) or (Abs(DeltaY) = 2) then
+            FPixels[(ACenterY + DeltaY) * ArdSimScreenW + ACenterX + DeltaX] := $000000
+          else
+            FPixels[(ACenterY + DeltaY) * ArdSimScreenW + ACenterX + DeltaX] := $FFFF00;
+        end;
+  end;
+
+begin
+  if Length(FPixels) < ArdSimScreenW * ArdSimScreenH then
+    Exit;
+  Entry := CtlShownEntry(FSelCtlHash);
+  if Entry = nil then
+    Exit;
+  Box := CtlShownBox(Entry);
+  // снаружи занятых точек
+  Box := Rect(Box.Left - 1, Box.Top - 1, Box.Right, Box.Bottom);
+  Step := 0;
+  for PosX := Box.Left to Box.Right do
+    PutPixel(PosX, Box.Top);
+  for PosY := Box.Top + 1 to Box.Bottom do
+    PutPixel(Box.Right, PosY);
+  for PosX := Box.Right - 1 downto Box.Left do
+    PutPixel(PosX, Box.Bottom);
+  for PosY := Box.Bottom - 1 downto Box.Top + 1 do
+    PutPixel(Box.Left, PosY);
+  for CornerY := 0 to 1 do
+    for CornerX := 0 to 1 do
+      PutCorner(Box.Left + CornerX * (Box.Right - Box.Left),
+                Box.Top + CornerY * (Box.Bottom - Box.Top));
+end;
+
+// Нажатие на экране: надпись TLabel под мышью - выбрана (рамка сразу, не
+// дожидаясь инспектора) и тащится, пока кнопка нажата
+function TArdSimPanel.CtlMouseDown(AX, AY: Integer): Boolean;
+var
+  Hash: Cardinal;
+  Entry: PCardinal;
+  Words: PSmallIntArrayH;
+begin
+  Result := False;
+  FDragging := False;
+  Hash := CtlHashAt(AX, AY);
+  if Hash = 0 then
+    Exit;
+  Entry := CtlShownEntry(Hash);
+  if Entry = nil then
+    Exit;
+  Words := PSmallIntArrayH(Entry);
+  FSelCtlHash := Hash;
+  FDragging := True;
+  FDragMoved := False;
+  FDragFromX := AX;
+  FDragFromY := AY;
+  FDragLeft := Words^[4];
+  FDragTop := Words^[5];
+  FDragNewLeft := FDragLeft;
+  FDragNewTop := FDragTop;
+  FDevice.InvalidateScreen;
+  Result := True;
+end;
+
+// Новые Left, Top - сразу в эмулятор: он перерисовывает надпись
+procedure TArdSimPanel.CtlMouseMove(AX, AY: Integer);
+var
+  NewLeft, NewTop: Integer;
+begin
+  if not FDragging then
+    Exit;
+  NewLeft := FDragLeft + AX - FDragFromX;
+  NewTop := FDragTop + AY - FDragFromY;
+  if NewLeft < 0 then
+    NewLeft := 0;
+  if NewTop < 0 then
+    NewTop := 0;
+  if NewLeft > ArdSimScreenW - 1 then
+    NewLeft := ArdSimScreenW - 1;
+  if NewTop > ArdSimScreenH - 1 then
+    NewTop := ArdSimScreenH - 1;
+  // дрожание руки при щелчке - не перенос
+  if not FDragMoved and (Abs(AX - FDragFromX) < 3) and (Abs(AY - FDragFromY) < 3) then
+    Exit;
+  if (NewLeft = FDragNewLeft) and (NewTop = FDragNewTop) then
+    Exit;
+  FDragMoved := True;
+  if NewLeft <> FDragNewLeft then
+    SetCtlOverrideHash(FSelCtlHash, 0, 1, NewLeft, '');
+  if NewTop <> FDragNewTop then
+    SetCtlOverrideHash(FSelCtlHash, 1, 1, NewTop, '');
+  FDragNewLeft := NewLeft;
+  FDragNewTop := NewTop;
+end;
+
+procedure TArdSimPanel.CtlMouseUp;
+begin
+  if not FDragging then
+    Exit;
+  FDragging := False;
+  if FDragMoved and Assigned(FOnCtlMoved) then
+    FOnCtlMoved(Self, FSelCtlHash, FDragNewLeft, FDragNewTop);
 end;
 
 function TArdSimPanel.SetArgOverride(AFileIdx, ALine: Integer;

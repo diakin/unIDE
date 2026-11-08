@@ -267,6 +267,10 @@ void simCtlRegister(const char *name, void *control, SimCtlRedrawFn redraw);
 bool simCtlNumber(const void *control, int prop, long &value);
 bool simCtlText(const void *control, int prop, String &value);
 bool simCtlFont(const void *control, int prop, uint8_t *&font);
+// the control has been drawn: left, top as drawn and the box of pixels it
+// took (for the marker and the dragging in unIDE)
+void simCtlShown(const void *control, int left, int top, int boxLeft, int boxTop,
+                 int boxRight, int boxBottom);
 // +1 at every clrScr / fillScr: a control drawn before is no longer on
 // the screen
 extern uint32_t SimScreenClears;
