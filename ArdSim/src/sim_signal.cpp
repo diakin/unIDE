@@ -383,6 +383,17 @@ int simSignalAdvance(uint64_t now)
   return edges;
 }
 
+uint64_t simSignalNextEdge()
+{
+  if (!ActiveReady || !Active.TachoOn || Active.Rpm <= 0 || LastMicros == 0)
+    return UINT64_MAX;
+  double pulse = Active.PulseDeg / 360.0;
+  double toFall = std::floor(Revs) + 1 - Revs;
+  double toRise = std::floor(Revs - pulse) + 1 - (Revs - pulse);
+  double turns = toFall < toRise ? toFall : toRise;
+  return LastMicros + (uint64_t)(turns * 60e6 / Active.Rpm);
+}
+
 int simTachoPin()
 {
   return ActiveReady ? Active.TachoPin : 3;

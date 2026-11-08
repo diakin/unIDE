@@ -22,6 +22,10 @@ extern volatile int SimDebugWanted;
 extern volatile int SimTopLine;
 void simStepSlow(int code);
 void simPoll();
+// Body of an empty wait loop whose condition only an interrupt can change
+// (ardprep): simPoll, then Sleep while no timer tick, tacho edge or key
+// release is close
+void simSpinWait();
 // Statements since the last simPoll() from simStep()
 extern int SimStepsUnpolled;
 const int SimStepsPerPoll = 64;

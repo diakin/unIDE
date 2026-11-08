@@ -396,7 +396,7 @@ private:
   size_t skipParens(size_t index);
   size_t parseBlock(size_t index, bool inSwitch);
   size_t parseSub(size_t index, const std::string &prefix = std::string());
-  size_t parseLoopBody(size_t index, size_t loopToken, const std::string &prefix);
+  size_t parseLoopBody(size_t index, size_t loopToken, size_t condOpen, const std::string &prefix);
   std::string paramRegistration(size_t openParen, size_t closeParen);
   size_t parseStatement(size_t index, bool allowLocals);
   size_t parseSimple(size_t index, bool allowLocals);
@@ -535,12 +535,27 @@ size_t Instrumenter::parseBlock(size_t index, bool inSwitch)
 }
 
 // Body of a loop: an empty one ("while (x);", "do {} while (x);") gets
-// a SIM_STEP with the line of the loop, so pause stops in it
+// a SIM_STEP with the line of the loop, so pause stops in it.
+// condOpen - "(" of the loop condition. When the condition has no calls
+// (btnName == "---", flMetka == 0), only an interrupt can end the loop:
+// simSpinWait() then lets the PC core rest until the next timer tick,
+// tacho edge or key (a wait for a key took a whole core before)
 // prefix - Watch registration of the for variable, at the start of the body
-size_t Instrumenter::parseLoopBody(size_t index, size_t loopToken, const std::string &prefix)
+size_t Instrumenter::parseLoopBody(size_t index, size_t loopToken, size_t condOpen,
+                                   const std::string &prefix)
 {
   std::string loopStep = "SIM_STEP(" + std::to_string(FileIndex) + "," +
                          std::to_string(lineAt(Tokens[loopToken].Start)) + ");";
+  if (condOpen < Limit && isPunct(condOpen, "("))
+  {
+    size_t close = matching(condOpen);
+    bool plain = close > condOpen + 1 && close < Limit;
+    for (size_t pos = condOpen + 1; plain && pos < close; pos++)
+      if (isPunct(pos, "(") || isPunct(pos, "["))
+        plain = false;
+    if (plain)
+      loopStep += " simSpinWait();";
+  }
   if (isPunct(index, "{") && isPunct(index + 1, "}"))
   {
     insert(Tokens[index].End, prefix + " " + loopStep + " ");
@@ -668,7 +683,8 @@ size_t Instrumenter::parseStatement(size_t index, bool allowLocals)
       }
     }
     size_t pos = skipParens(index + 1);
-    return parseLoopBody(pos, index, prefix);
+    // for (;;) is no wait on a condition
+    return parseLoopBody(pos, index, isWord(index, "while") ? index + 1 : Limit, prefix);
   }
   if (isWord(index, "switch"))
   {
@@ -681,7 +697,13 @@ size_t Instrumenter::parseStatement(size_t index, bool allowLocals)
   if (isWord(index, "do"))
   {
     step(index);
-    size_t pos = parseLoopBody(index + 1, index, std::string());
+    // condition of an empty body: do {} while (x); / do ; while (x);
+    size_t condOpen = Limit;
+    if (isPunct(index + 1, "{") && isPunct(index + 2, "}") && isWord(index + 3, "while"))
+      condOpen = index + 4;
+    else if (isPunct(index + 1, ";") && isWord(index + 2, "while"))
+      condOpen = index + 3;
+    size_t pos = parseLoopBody(index + 1, index, condOpen, std::string());
     if (!isWord(pos, "while"))
     {
       Failed = true;

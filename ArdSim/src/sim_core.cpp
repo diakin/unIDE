@@ -431,6 +431,36 @@ void simPoll()
   InIsr = false;
 }
 
+// A wait like  do {} while (btnName == "---");  ends only through an
+// interrupt. Spinning took a whole core of the PC; here the sketch thread
+// sleeps 1 ms at a time (timeBeginPeriod(1) in the start code) while the
+// next timer tick, tacho edge and key release are more than 1.5 ms away,
+// so interrupts still come on time. A new key from the host waits at
+// most about 1-2 ms.
+void simSpinWait()
+{
+  simPoll();
+  if (InIsr || !IrqEnabled)
+    return;
+  uint64_t now = simMicros64();
+  // tacho edges matter only while the sketch listens to the tacho pin
+  int tachoPin = simTachoPin();
+  uint64_t next = UINT64_MAX;
+  if (tachoPin >= 0 && tachoPin < SIM_PIN_COUNT && PinIsr[tachoPin])
+    next = simSignalNextEdge();
+  for (int index = 0; index < SIM_TIMER_COUNT; index++)
+  {
+    const SimTimer &timer = Timers[index];
+    if (timer.Running && timer.Isr && timer.Next < next)
+      next = timer.Next;
+  }
+  if (PressRow >= 0 && PressUntil < next)
+    next = PressUntil;
+  if (PostReady || next <= now + 1500)
+    return;
+  Sleep(1);
+}
+
 // ---------------------------------------------------------------- Serial
 static CRITICAL_SECTION SerialLock;
 static std::string SerialBuffer;

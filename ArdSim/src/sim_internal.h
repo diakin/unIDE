@@ -160,6 +160,9 @@ bool simSignalLoad(const char *path, SimSignalConfig &config);
 bool simSignalSave(const char *path, const SimSignalConfig &config);
 void simSignalSet(const SimSignalConfig &config);       // window thread
 int simSignalAdvance(uint64_t now);                     // sketch thread
+// Time of the next tacho edge after the last simSignalAdvance, micros;
+// UINT64_MAX when the tacho is off
+uint64_t simSignalNextEdge();                           // sketch thread
 double simSignalVolts(int channel, uint64_t now);
 double simSignalVref();
 int simTachoPin();
