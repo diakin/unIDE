@@ -2114,6 +2114,9 @@ type
     FArdPrevFore, FArdPrevBack: Integer;
     FArdPrevTransparent: Boolean;
     FArdPreviewOk: Boolean;
+    // Шрифт выбран из списка: превью остаётся на экране эмулятора, пока
+    // скетч не перерисует это место (TArdSimPanel.DrawPreview)
+    FArdPreviewKeep: Boolean;
     FArdPreviewLine: Integer;
     FArdPreviewName: string;
     // Снимок программы RapidQ (RapidQProbeRun)
@@ -3146,6 +3149,7 @@ type
     procedure ArdSyncFromCaret;
     procedure ArdFontPreview(const AFontName: string);
     procedure ArdFontPreviewOff;
+    procedure WMArdPreviewClosed(var Msg: TMessage); message WM_USER + 331;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
     function  RapidQIncDir: string;
@@ -34116,6 +34120,7 @@ begin
   // этого вызова, ObjComboDrawItem)
   FArdPreviewOk := False;
   FArdPreviewName := '';
+  FArdPreviewKeep := False;
   if IsFont and (FArdSim <> nil) and FArdSim.Running then
   begin
     if RowData >= ArdRowColor then
@@ -40117,7 +40122,8 @@ end;
 procedure TForm1.ObjCancelEdit;
 begin
   FArdPreviewOk := False;
-  ArdFontPreviewOff;
+  if not FArdPreviewKeep then
+    ArdFontPreviewOff;
   if not FObjEditing then
     Exit;
   FObjEditing := False;
@@ -41468,13 +41474,32 @@ end;
 procedure TForm1.ObjComboWndProc(var Message: TMessage);
 begin
   FObjComboOldProc(Message);
+  // Список шрифтов закрыт: выбран шрифт (CBN_SELENDOK) - он остаётся на
+  // экране эмулятора, иначе превью убирается. Порядок CBN_CLOSEUP и
+  // CBN_SELENDOK не важен: решение - в WMArdPreviewClosed, после обоих
+  if (Message.Msg = CN_COMMAND) and
+     (TWMCommand(Message).NotifyCode = CBN_SELENDOK) and FArdPreviewOk and
+     FObjEditing and (FObjActive = FObjCombo) and not FObjComboColors then
+  begin
+    FArdPreviewName := '';
+    if SendMessage(FObjCombo.Handle, CB_GETCURSEL, 0, 0) >= 0 then
+      ArdFontPreview(FObjCombo.Items[SendMessage(FObjCombo.Handle,
+                                                 CB_GETCURSEL, 0, 0)]);
+    FArdPreviewKeep := True;
+  end;
   if (Message.Msg = CN_COMMAND) and
      (TWMCommand(Message).NotifyCode = CBN_CLOSEUP) then
-    ArdFontPreviewOff;
+    PostMessage(Handle, WM_USER + 331, 0, 0);
   if (Message.Msg = CN_COMMAND) and
      (TWMCommand(Message).NotifyCode = CBN_SELENDOK) and
      FObjEditing and (FObjActive = FObjCombo) then
     PostMessage(Handle, WM_USER + 317, 0, 0);
+end;
+
+procedure TForm1.WMArdPreviewClosed(var Msg: TMessage);
+begin
+  if not FArdPreviewKeep then
+    ArdFontPreviewOff;
 end;
 
 procedure TForm1.WMObjCommit(var Msg: TMessage);

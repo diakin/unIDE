@@ -197,6 +197,11 @@ type
     FPreviewClear: TRect;
     FPreviewFore, FPreviewBack: Cardinal;   // $RRGGBB
     FPreviewTransparent: Boolean;
+    // Сумма точек эмулятора под превью при первом показе; другая - скетч
+    // перерисовал это место, превью уходит
+    FPreviewArea: TRect;
+    FPreviewSum: Cardinal;
+    FPreviewSumSet: Boolean;
     procedure LoadFontCache;
     procedure DrawPreview;
     procedure BuildSignals;
@@ -1379,6 +1384,9 @@ end;
 
 procedure TArdSimPanel.StartSim;
 begin
+  // Превью шрифта - к прежнему запуску
+  FPreviewOn := False;
+  FPreviewFont := nil;
   {$IFDEF MSWINDOWS}
   FSimExe := ExeOfSketch;
   if not FileExists(FSimExe) then
@@ -2524,6 +2532,22 @@ begin
   FPreviewFore := ColorToRgbWord(AFore);
   FPreviewBack := ColorToRgbWord(ABack);
   FPreviewTransparent := ATransparent;
+  // Место превью: прежняя надпись и новая
+  FPreviewArea := AClear;
+  if AFont <> nil then
+  begin
+    if FPreviewArea.Right <= FPreviewArea.Left then
+      FPreviewArea := Rect(AX, AY, AX, AY);
+    if AX < FPreviewArea.Left then
+      FPreviewArea.Left := AX;
+    if AY < FPreviewArea.Top then
+      FPreviewArea.Top := AY;
+    if AX + Length(AText) * AFont.SizeX > FPreviewArea.Right then
+      FPreviewArea.Right := AX + Length(AText) * AFont.SizeX;
+    if AY + AFont.SizeY > FPreviewArea.Bottom then
+      FPreviewArea.Bottom := AY + AFont.SizeY;
+  end;
+  FPreviewSumSet := False;
   FDevice.InvalidateScreen;
 end;
 
@@ -2546,6 +2570,7 @@ end;
 // ArdSim\src\sim_utft.cpp (символ вне шрифта - пустая клетка)
 procedure TArdSimPanel.DrawPreview;
 var
+  AreaSum: Cardinal;
   CharIdx, Code, Offset, RowIdx, PartIdx, BitIdx, PosX, PosY: Integer;
   BytesPerRow, CellX: Integer;
   Bits: Byte;
@@ -2562,6 +2587,26 @@ begin
   Font := FPreviewFont;
   if (Font = nil) or (Length(FPixels) < ArdSimScreenW * ArdSimScreenH) then
     Exit;
+  // Скетч перерисовал место надписи (другое окно, clrScr, новая надпись) -
+  // превью больше не к месту. FPixels здесь - ещё картинка эмулятора
+  AreaSum := 0;
+  for PosY := FPreviewArea.Top to FPreviewArea.Bottom - 1 do
+    for PosX := FPreviewArea.Left to FPreviewArea.Right - 1 do
+      if (PosX >= 0) and (PosX < ArdSimScreenW) and (PosY >= 0) and
+         (PosY < ArdSimScreenH) then
+        AreaSum := ((AreaSum shl 5) or (AreaSum shr 27)) xor
+                   FPixels[PosY * ArdSimScreenW + PosX];
+  if not FPreviewSumSet then
+  begin
+    FPreviewSum := AreaSum;
+    FPreviewSumSet := True;
+  end
+  else if AreaSum <> FPreviewSum then
+  begin
+    FPreviewOn := False;
+    FPreviewFont := nil;
+    Exit;
+  end;
   for PosY := FPreviewClear.Top to FPreviewClear.Bottom - 1 do
     for PosX := FPreviewClear.Left to FPreviewClear.Right - 1 do
       PutPixel(PosX, PosY, FPreviewBack);
