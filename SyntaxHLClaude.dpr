@@ -62,6 +62,7 @@ uses
   DlgConflictMerge in 'DlgConflictMerge.pas',
   DlgFontViewer in 'DlgFontViewer.pas',
   DlgTtfToUtft in 'DlgTtfToUtft.pas',
+  DlgUtftEdit in 'DlgUtftEdit.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
   DelphiOpts in 'DelphiOpts.pas',

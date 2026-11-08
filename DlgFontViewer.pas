@@ -25,6 +25,9 @@ unit DlgFontViewer;
 //  .c в unIDE (OnOpenFile). Под мышью - код символа в строке состояния.
 //
 //  Файл - Создать шрифт из TTF... - окно DlgTtfToUtft (OnMakeFont).
+//  Правка - Редактировать символы... (Ctrl+E) - окно DlgUtftEdit: правка
+//  выбранного шрифта по точкам, замена символа копией другого, запись в
+//  новый .c-файл; записанный файл открывается в списке.
 //
 //  Окно строится в коде, .dfm нет. Немодальное, одно (ShowFontViewer),
 //  освобождается при закрытии.
@@ -107,6 +110,7 @@ type
     FOnOpenFile: TFontOpenFileEvent;
     FOnMakeFont: TNotifyEvent;
     FMiMakeFont: TMenuItem;
+    FClickCode: Integer;      // символ под последним щелчком
 
     FMainMenu: TMainMenu;
     FMenuBar: TUiMenuBar;
@@ -145,6 +149,8 @@ type
     procedure MenuMakeFontClick(Sender: TObject);
     procedure MenuCopyNameClick(Sender: TObject);
     procedure MenuCopyExternClick(Sender: TObject);
+    procedure MenuEditFontClick(Sender: TObject);
+    procedure FontSaved(const AFileName: string);
     procedure MenuAllCharsClick(Sender: TObject);
     procedure MenuSampleTextClick(Sender: TObject);
     procedure MenuCellsClick(Sender: TObject);
@@ -193,6 +199,9 @@ function UtftMakeSample(AFont: TUtftFont; AShowCells: Boolean): TBitmap;
 function UtftParseFile(const AFileName: string; AList: TList): Boolean;
 
 implementation
+
+uses
+  DlgUtftEdit;   // EditUtftFont
 
 const
   FvSection = 'FontViewer';
@@ -824,6 +833,7 @@ begin
   FFonts := TList.Create;
   FFiles := TStringList.Create;
   FSelected := -1;
+  FClickCode := -1;
   Build;
   UiThemeAddClient(Self);
 end;
@@ -960,6 +970,9 @@ begin
     MenuCopyNameClick);
   AddItem(EditMenu, 'Копировать &extern для скетча',
     ShortCut(Ord('C'), [ssCtrl, ssShift]), MenuCopyExternClick);
+  AddItem(EditMenu, '-', 0, nil);
+  AddItem(EditMenu, '&Редактировать символы...', ShortCut(Ord('E'), [ssCtrl]),
+    MenuEditFontClick);
 
   ViewMenu := TMenuItem.Create(Self);
   ViewMenu.Caption := '&Вид';
@@ -1306,6 +1319,9 @@ var
   Index: Integer;
 begin
   Index := FontAt(PosY);
+  FClickCode := -1;
+  if Index >= 0 then
+    FClickCode := CodeAt(TUtftFont(FFonts[Index]), PosX, PosY);
   if Index <> FSelected then
   begin
     FSelected := Index;
@@ -1470,6 +1486,58 @@ procedure TDlgFontViewer.MenuCopyExternClick(Sender: TObject);
 begin
   if (FSelected >= 0) and (FSelected < FFonts.Count) then
     Clipboard.AsText := 'extern uint8_t ' + TUtftFont(FFonts[FSelected]).Name + '[];';
+end;
+
+procedure TDlgFontViewer.MenuEditFontClick(Sender: TObject);
+var
+  FontItem: TUtftFont;
+begin
+  if (FSelected < 0) or (FSelected >= FFonts.Count) then
+  begin
+    MessageDlg('Выберите шрифт щелчком в списке', mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  FontItem := TUtftFont(FFonts[FSelected]);
+  if not FontItem.IsFont then
+  begin
+    MessageDlg(FontItem.Name + ' - не шрифт: ' + FontItem.Problem,
+      mtInformation, [mbOK], 0);
+    Exit;
+  end;
+  EditUtftFont(Self, FontItem, FClickCode, FontSaved);
+end;
+
+// Редактор записал шрифт: показать файл в списке и выбрать его
+procedure TDlgFontViewer.FontSaved(const AFileName: string);
+var
+  Files: TStringList;
+  Index: Integer;
+begin
+  if (FFolder <> '') and SameText(ExtractFileDir(ExpandFileName(AFileName)),
+     ExpandFileName(FFolder)) then
+    OpenFolder(FFolder)
+  else
+  begin
+    Files := TStringList.Create;
+    try
+      if FFolder = '' then
+        Files.Assign(FFiles);
+      if Files.IndexOf(AFileName) < 0 then
+        Files.Add(AFileName);
+      OpenFiles(Files);
+    finally
+      Files.Free;
+    end;
+  end;
+  for Index := 0 to FFonts.Count - 1 do
+    if SameText(TUtftFont(FFonts[Index]).FileName, AFileName) then
+    begin
+      FSelected := Index;
+      EnsureVisible(Index);
+      Break;
+    end;
+  FView.Invalidate;
+  UpdateStatus;
 end;
 
 procedure TDlgFontViewer.MenuAllCharsClick(Sender: TObject);
