@@ -2106,6 +2106,16 @@ type
     FArdColsOn: Boolean;
     FArdColCap: array[0..2] of string;
     FArdColWidth: array[0..2] of Integer;
+    // Превью шрифта на экране эмулятора, пока мышь идёт по списку шрифтов
+    // (ArdFontPreview): надпись вызова (TArdTextPreview: место, текст,
+    // прежний шрифт, цвета), его строка, последний показанный шрифт
+    FArdPrevX, FArdPrevY: Integer;
+    FArdPrevText, FArdPrevOldFont: string;
+    FArdPrevFore, FArdPrevBack: Integer;
+    FArdPrevTransparent: Boolean;
+    FArdPreviewOk: Boolean;
+    FArdPreviewLine: Integer;
+    FArdPreviewName: string;
     // Снимок программы RapidQ (RapidQProbeRun)
     FRqProbeActive: Boolean;   // CompileRapidQ собирает копию со снимком
     FRqProbeBas: string;       // её .bas
@@ -3134,6 +3144,8 @@ type
     procedure ArdApplyEdit;
     procedure ArdColumns(AOn: Boolean);
     procedure ArdSyncFromCaret;
+    procedure ArdFontPreview(const AFontName: string);
+    procedure ArdFontPreviewOff;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
     function  RapidQIncDir: string;
@@ -34013,6 +34025,7 @@ var
   ParamName, ParamType, OldText, LitText: string;
   IsColor, IsFont: Boolean;
   CellRect: TRect;
+  Preview: TArdTextPreview;
 begin
   Node := TDfmNode(FObjCurNode);
   Sketch := TArdSketch(FArdSketch);
@@ -34098,6 +34111,26 @@ begin
   CellRect := AItem.DisplayRect(drBounds);
   CellRect.Left := CellRect.Left + FObjProps.Columns[0].Width;
   CellRect.Right := CellRect.Left + FObjProps.Columns[1].Width;
+
+  // Эмулятор идёт: шрифт под мышью в списке - на его экране (надпись
+  // этого вызова, ObjComboDrawItem)
+  FArdPreviewOk := False;
+  FArdPreviewName := '';
+  if IsFont and (FArdSim <> nil) and FArdSim.Running then
+  begin
+    if RowData >= ArdRowColor then
+      FArdPreviewOk := Sketch.TextPreview(Call, -1, Preview)
+    else
+      FArdPreviewOk := Sketch.TextPreview(Call, RowData, Preview);
+    FArdPreviewLine := Call.Line;
+    FArdPrevX := Preview.PosX;
+    FArdPrevY := Preview.PosY;
+    FArdPrevText := Preview.Text;
+    FArdPrevOldFont := Preview.OldFont;
+    FArdPrevFore := Preview.Fore;
+    FArdPrevBack := Preview.Back;
+    FArdPrevTransparent := Preview.Transparent;
+  end;
 
   if IsFont then
   begin
@@ -40083,6 +40116,8 @@ end;
 
 procedure TForm1.ObjCancelEdit;
 begin
+  FArdPreviewOk := False;
+  ArdFontPreviewOff;
   if not FObjEditing then
     Exit;
   FObjEditing := False;
@@ -41434,6 +41469,9 @@ procedure TForm1.ObjComboWndProc(var Message: TMessage);
 begin
   FObjComboOldProc(Message);
   if (Message.Msg = CN_COMMAND) and
+     (TWMCommand(Message).NotifyCode = CBN_CLOSEUP) then
+    ArdFontPreviewOff;
+  if (Message.Msg = CN_COMMAND) and
      (TWMCommand(Message).NotifyCode = CBN_SELENDOK) and
      FObjEditing and (FObjActive = FObjCombo) then
     PostMessage(Handle, WM_USER + 317, 0, 0);
@@ -41609,6 +41647,56 @@ begin
   Cv.Brush.Style := bsClear;
   Cv.TextOut(TextLeft, Rect.Top + (Rect.Bottom - Rect.Top -
              Cv.TextHeight(ItemText)) div 2, ItemText);
+  // Пункт под мышью открытого списка шрифтов - на экран эмулятора. У
+  // открытого списка выделение (CB_GETCURSEL) идёт за мышью; odSelected
+  // здесь не годится - в Unit1 это имя другого перечисления в сборке LCL
+  if FArdPreviewOk and FObjEditing and (FObjActive = FObjCombo) and
+     not FObjComboColors and FObjCombo.DroppedDown and
+     (SendMessage(FObjCombo.Handle, CB_GETCURSEL, 0, 0) = Index) then
+    ArdFontPreview(ItemText);
+end;
+
+// Надпись вызова (FArdPreview) шрифтом AFontName поверх экрана эмулятора:
+// прежняя надпись стирается цветом фона на её размер в прежнем шрифте.
+// Шрифта нет среди файлов сборки эмулятора - превью убирается
+procedure TForm1.ArdFontPreview(const AFontName: string);
+var
+  Sketch: TArdSketch;
+  NewFont, OldFont: TUtftFont;
+  ClearRect: TRect;
+begin
+  if (AFontName = FArdPreviewName) or (FArdSim = nil) or
+     not FArdSim.Running then
+    Exit;
+  FArdPreviewName := AFontName;
+  Sketch := TArdSketch(FArdSketch);
+  if Sketch = nil then
+    Exit;
+  NewFont := FArdSim.FindFont(Sketch.FontArrayName(AFontName,
+                                                   FArdPreviewLine));
+  if NewFont = nil then
+  begin
+    FArdSim.ClearTextPreview;
+    Exit;
+  end;
+  ClearRect := Rect(0, 0, 0, 0);
+  OldFont := FArdSim.FindFont(FArdPrevOldFont);
+  if OldFont <> nil then
+    ClearRect := Rect(FArdPrevX, FArdPrevY,
+                      FArdPrevX + Length(FArdPrevText) * OldFont.SizeX,
+                      FArdPrevY + OldFont.SizeY);
+  FArdSim.SetTextPreview(FArdPrevX, FArdPrevY,
+                         AnsiString(FArdPrevText), NewFont, ClearRect,
+                         FArdPrevFore, FArdPrevBack,
+                         FArdPrevTransparent);
+end;
+
+// Список закрыт или правка кончилась: экран эмулятора - как есть
+procedure TForm1.ArdFontPreviewOff;
+begin
+  FArdPreviewName := '';
+  if (FArdSim <> nil) and FArdSim.PreviewShown then
+    FArdSim.ClearTextPreview;
 end;
 
 // Двойной щелчок по полю цвета - диалог цвета; свой цвет записывается

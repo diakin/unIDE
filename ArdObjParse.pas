@@ -93,11 +93,27 @@ type
     IsInt: Boolean;
   end;
 
+  // Где и как вызов выводит надпись (TArdSketch.TextPreview): для превью
+  // другого шрифта на экране эмулятора
+  TArdTextPreview = record
+    PosX, PosY: Integer;   // точка экрана, как в UTFT::print
+    Text: string;          // текст надписи
+    OldFont: string;       // шрифт в вызове сейчас (массив, без #define)
+    Fore, Back: Integer;   // TColor ($00BBGGRR)
+    Transparent: Boolean;  // setBackColor(VGA_TRANSPARENT)
+  end;
+
   TArdSketch = class
   private
     FText: string;
     FTokens: TList;
     FParent: TArdSketch;   // у разбора значения #define - основной скетч
+    // Параметры функции FBindFunc - значениями аргументов одного вызова
+    // (TextPreview): ResolveName берёт их первыми
+    FBindFunc: TArdFunc;
+    FBindNames: TStringList;
+    FBindValues: array of TArdValue;
+    FBindKnown: array of Boolean;
     function TokText(AIdx: Integer): string;
     function TokLine(AIdx: Integer): Integer;
     function FuncOfTok(AIdx: Integer): TArdFunc;
@@ -144,6 +160,16 @@ type
     // присваивания первой переменной аргумента, -1 - переменных нет
     procedure ArgInfo(ACall: TArdCall; AArgIdx: Integer;
                       var AValueText: string; var ALine: Integer);
+    // Шрифт-синоним (#define arial_normal Retro8x16) - имя массива. Как у
+    // препроцессора: в счёт только #define выше строки ALine
+    function FontArrayName(const AName: string; ALine: Integer): string;
+    // Надпись вызова для превью шрифта. AFontArg - номер аргумента-шрифта
+    // у функции скетча (Label(..., Font, ...)): надпись - print в её теле
+    // после setFont(Font), с параметрами = аргументам этого вызова; -1 -
+    // сам вызов print и его setFont. False - место или текст не
+    // вычисляются
+    function TextPreview(ACall: TArdCall; AFontArg: Integer;
+                         var AInfo: TArdTextPreview): Boolean;
   end;
 
 // Параметр функции скетча - цвет / шрифт / строка (по имени и типу)
@@ -1504,6 +1530,21 @@ begin
   if ADepth > 12 then
     Exit;
 
+  // 0. Параметр функции, вычисляемой для одного вызова (TextPreview)
+  if (FBindFunc <> nil) and (FuncOfTok(ANameTok) = FBindFunc) then
+  begin
+    ParamIdx := FBindNames.IndexOf(AName);
+    if ParamIdx >= 0 then
+    begin
+      if FBindKnown[ParamIdx] then
+      begin
+        AValue := FBindValues[ParamIdx];
+        Result := True;
+      end;
+      Exit;
+    end;
+  end;
+
   // 1. Запись выше в своей функции
   Func := FuncOfTok(ANameTok);
   if Func <> nil then
@@ -1829,6 +1870,149 @@ end;
 function TArdSketch.ColorOf(const AExpr: string; var AColor: Integer): Boolean;
 begin
   Result := EvalColor(AExpr, 0, AColor);
+end;
+
+function TArdSketch.FontArrayName(const AName: string; ALine: Integer): string;
+var
+  Depth, DefIdx, Found: Integer;
+begin
+  Result := Trim(AName);
+  for Depth := 1 to 8 do
+  begin
+    // Последний #define этого имени выше строки
+    Found := -1;
+    for DefIdx := 0 to Defines.Count - 1 do
+      if (Defines.Names[DefIdx] = Result) and
+         (Integer(Defines.Objects[DefIdx]) < ALine) then
+        Found := DefIdx;
+    if Found < 0 then
+      Exit;
+    Result := Trim(Defines.ValueFromIndex[Found]);
+  end;
+end;
+
+function TArdSketch.TextPreview(ACall: TArdCall; AFontArg: Integer;
+                                var AInfo: TArdTextPreview): Boolean;
+var
+  PrintCall: TArdCall;
+  Target: TArdFunc;
+  CallIdx, ParamIdx: Integer;
+  ParamName, ArgText, Literal: string;
+  Value: TArdValue;
+  ColorValue: Integer;
+
+  // Текст аргумента print/setColor: параметр функции - текст аргумента
+  // вызова на его месте
+  function Bound(const AText: string): string;
+  var
+    BindIdx: Integer;
+  begin
+    Result := Trim(AText);
+    if FBindNames = nil then
+      Exit;
+    BindIdx := FBindNames.IndexOf(Result);
+    if (BindIdx >= 0) and (BindIdx < ACall.Args.Count) then
+      Result := Trim(ACall.Args[BindIdx]);
+  end;
+
+  function EvalArg(ACallOf: TArdCall; AArgIdx: Integer;
+                   var AResult: Integer): Boolean;
+  var
+    ArgValue: TArdValue;
+  begin
+    Result := (AArgIdx < ACallOf.Args.Count) and
+              EvalTokens(ACallOf.ArgFirstTok[AArgIdx],
+                         ACallOf.ArgLastTok[AArgIdx], 0, ArgValue);
+    if Result then
+      AResult := Round(ArgValue.Num);
+  end;
+
+begin
+  Result := False;
+  AInfo.PosX := 0;
+  AInfo.PosY := 0;
+  AInfo.Text := '';
+  AInfo.OldFont := '';
+  AInfo.Fore := $FFFFFF;
+  AInfo.Back := 0;
+  AInfo.Transparent := False;
+  PrintCall := nil;
+  if AFontArg < 0 then
+  begin
+    if (ACall.Kind = ackText) and (ACall.Name = 'print') then
+      PrintCall := ACall;
+  end
+  else
+  begin
+    // Функция скетча: print в её теле со шрифтом из этого параметра
+    Target := ACall.Target;
+    if (ACall.Kind <> ackUser) or (Target = nil) or
+       (AFontArg >= Target.ParamNames.Count) or
+       (AFontArg >= ACall.Args.Count) then
+      Exit;
+    ParamName := Target.ParamNames[AFontArg];
+    for CallIdx := 0 to Target.Calls.Count - 1 do
+      if (TArdCall(Target.Calls[CallIdx]).Kind = ackText) and
+         (TArdCall(Target.Calls[CallIdx]).Name = 'print') and
+         (TArdCall(Target.Calls[CallIdx]).FontCall <> nil) and
+         (Trim(TArdCall(Target.Calls[CallIdx]).FontCall.ArgsText) = ParamName) then
+      begin
+        PrintCall := TArdCall(Target.Calls[CallIdx]);
+        Break;
+      end;
+    if PrintCall = nil then
+      Exit;
+    // Параметры - значениями аргументов этого вызова
+    FBindNames := TStringList.Create;
+    SetLength(FBindValues, Target.ParamNames.Count);
+    SetLength(FBindKnown, Target.ParamNames.Count);
+    for ParamIdx := 0 to Target.ParamNames.Count - 1 do
+    begin
+      FBindNames.Add(Target.ParamNames[ParamIdx]);
+      FBindKnown[ParamIdx] := (ParamIdx < ACall.Args.Count) and
+        EvalTokens(ACall.ArgFirstTok[ParamIdx], ACall.ArgLastTok[ParamIdx], 0,
+                   Value);
+      FBindValues[ParamIdx] := Value;
+    end;
+    FBindFunc := Target;
+  end;
+  try
+    if (PrintCall = nil) or (PrintCall.Args.Count < 3) then
+      Exit;
+    if not EvalArg(PrintCall, 1, AInfo.PosX) or
+       not EvalArg(PrintCall, 2, AInfo.PosY) then
+      Exit;
+    // RIGHT / CENTER (9999 / 9998) - по ширине нового шрифта, в Unit1 нет
+    // ширины: такие надписи не показываем
+    if (AInfo.PosX >= 9998) then
+      Exit;
+    ArgText := Bound(PrintCall.Args[0]);
+    if not ArdUnquote(ArgText, Literal) then
+      Exit;
+    AInfo.Text := Literal;
+    if AFontArg >= 0 then
+      AInfo.OldFont := FontArrayName(ACall.Args[AFontArg], ACall.Line)
+    else if PrintCall.FontCall <> nil then
+      AInfo.OldFont := FontArrayName(PrintCall.FontCall.ArgsText,
+                                     PrintCall.FontCall.Line);
+    if (PrintCall.ColorCall <> nil) and
+       ColorOf(Bound(PrintCall.ColorCall.ArgsText), ColorValue) then
+      AInfo.Fore := ColorValue;
+    if PrintCall.BackCall <> nil then
+    begin
+      ArgText := Bound(PrintCall.BackCall.ArgsText);
+      if ArgText = 'VGA_TRANSPARENT' then
+        AInfo.Transparent := True
+      else if ColorOf(ArgText, ColorValue) then
+        AInfo.Back := ColorValue;
+    end;
+    Result := True;
+  finally
+    FBindFunc := nil;
+    FreeAndNil(FBindNames);
+    SetLength(FBindValues, 0);
+    SetLength(FBindKnown, 0);
+  end;
 end;
 
 procedure TArdSketch.ColorNames(AList: TStrings);

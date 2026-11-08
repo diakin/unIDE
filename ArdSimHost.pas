@@ -40,7 +40,8 @@ uses
   Windows, Messages, SysUtils, Classes, Controls,
   Graphics, StdCtrls, ExtCtrls, Forms, IniFiles, UiStdCtrls, UiButton,
   UiEditCtrls, ProcRun,
-  ArdSimFonts;   // шрифты UTFT из libraries для build_sim.cmd
+  ArdSimFonts,   // шрифты UTFT из libraries для build_sim.cmd
+  DlgFontViewer; // TUtftFont, UtftParseFile - шрифты для превью надписи
 
 const
   ArdSimScreenW = 480;
@@ -185,6 +186,19 @@ type
     FSigLoading: Boolean;
     FSigIniAge: Integer;
     FSigIniFile: string;
+    // Превью надписи другим шрифтом поверх экрана (SetTextPreview):
+    // шрифты UTFT скетча (FindFont), что стереть и что нарисовать
+    FFontCache: TList;           // TUtftFont всех найденных файлов
+    FFontCacheSketch: string;    // для какого скетча собран
+    FPreviewOn: Boolean;
+    FPreviewX, FPreviewY: Integer;
+    FPreviewText: AnsiString;
+    FPreviewFont: TUtftFont;
+    FPreviewClear: TRect;
+    FPreviewFore, FPreviewBack: Cardinal;   // $RRGGBB
+    FPreviewTransparent: Boolean;
+    procedure LoadFontCache;
+    procedure DrawPreview;
     procedure BuildSignals;
     procedure SigHeadClick(Sender: TObject);
     procedure SigApplyClick(Sender: TObject);
@@ -276,6 +290,20 @@ type
     // Клик по экрану прибора (точка экрана 480x320): спросить эмулятор,
     // какая надпись там нарисована и какими строками. Ответ - OnScreenWhere
     procedure ScreenWhere(AX, AY: Integer);
+
+    // ---- превью шрифта (инспектор Objects: список шрифтов)
+    // Шрифт UTFT по имени массива: .c из ardsim_build\ardsim_fonts.txt,
+    // папки скетча, %ARDSIM_FONTS%, замены ArdSim\fonts - в том же порядке,
+    // что берёт build_sim.cmd. nil - не найден
+    function FindFont(const AName: string): TUtftFont;
+    // Поверх экрана эмулятора: стереть AClear цветом ABack, нарисовать
+    // AText шрифтом AFont с (AX, AY), как UTFT::print. Цвета - TColor.
+    // Картинка эмулятора не меняется: это только показ
+    procedure SetTextPreview(AX, AY: Integer; const AText: AnsiString;
+      AFont: TUtftFont; const AClear: TRect; AFore, ABack: TColor;
+      ATransparent: Boolean);
+    procedure ClearTextPreview;
+    function PreviewShown: Boolean;
     // Ответ: строки (файл shl 20 or строка с 1) - оператор, который
     // нарисовал надпись, затем вызовы, которые к нему привели (наружу);
     // пусто - в этой точке надписи нет
@@ -979,6 +1007,8 @@ begin
 end;
 
 destructor TArdSimPanel.Destroy;
+var
+  ResIdx: Integer;
 begin
   FTimer.Enabled := False;
   StopAll;
@@ -986,6 +1016,12 @@ begin
   FDbgInfo.Free;
   FDbgFiles.Free;
   FFontRoots.Free;
+  if FFontCache <> nil then
+  begin
+    for ResIdx := 0 to FFontCache.Count - 1 do
+      TObject(FFontCache[ResIdx]).Free;
+    FFontCache.Free;
+  end;
 end;
 
 procedure TArdSimPanel.Resize;
@@ -2330,6 +2366,8 @@ begin
       Blue := (Blue shl 3) or (Blue shr 2);
       FPixels[PixelIdx] := (Red shl 16) or (Green shl 8) or Blue;
     end;
+    if FPreviewOn then
+      DrawPreview;
   end;
   if FHasPicture then
   begin
@@ -2360,6 +2398,195 @@ begin
     ACanvas.Font.Style := [];
     ACanvas.TextOut(DrawX + 6, DrawY + 6, 'Build - собрать и запустить');
     ACanvas.Brush.Style := bsSolid;
+  end;
+end;
+
+// Все шрифты файлов, которые берёт build_sim.cmd, в его порядке: список
+// unIDE (libraries), .c папки скетча, %ARDSIM_FONTS%, замены ArdSim\fonts.
+// Первый шрифт с именем - тот, что в сборке (повтор линкер бы не принял)
+procedure TArdSimPanel.LoadFontCache;
+var
+  Files, Lines: TStringList;
+  ListName, SimDir, EnvDir: string;
+  ResIdx: Integer;
+
+  procedure AddFolder(const AFolder: string);
+  var
+    Found: TSearchRec;
+    Names: TStringList;
+    NameIdx: Integer;
+  begin
+    if (AFolder = '') or not DirectoryExists(AFolder) then
+      Exit;
+    Names := TStringList.Create;
+    try
+      if FindFirst(IncludeTrailingPathDelimiter(AFolder) + '*.c', faAnyFile,
+                   Found) = 0 then
+      begin
+        repeat
+          if (Found.Attr and faDirectory) = 0 then
+            Names.Add(IncludeTrailingPathDelimiter(AFolder) + Found.Name);
+        until FindNext(Found) <> 0;
+        FindClose(Found);
+      end;
+      Names.Sort;
+      for NameIdx := 0 to Names.Count - 1 do
+        Files.Add(Names[NameIdx]);
+    finally
+      Names.Free;
+    end;
+  end;
+
+begin
+  if FFontCache = nil then
+    FFontCache := TList.Create;
+  for ResIdx := 0 to FFontCache.Count - 1 do
+    TObject(FFontCache[ResIdx]).Free;
+  FFontCache.Clear;
+  FFontCacheSketch := FSketchFile;
+  Files := TStringList.Create;
+  Lines := TStringList.Create;
+  try
+    if FSketchFile <> '' then
+    begin
+      ListName := IncludeTrailingPathDelimiter(ExtractFilePath(FSketchFile) +
+                  'ardsim_build') + ArdSimFontListName;
+      if FileExists(ListName) then
+      try
+        Lines.LoadFromFile(ListName);
+        for ResIdx := 0 to Lines.Count - 1 do
+          if Trim(Lines[ResIdx]) <> '' then
+            Files.Add(Trim(Lines[ResIdx]));
+      except
+        // список не прочитался - остальные папки
+      end;
+      AddFolder(ExtractFilePath(FSketchFile));
+    end;
+    EnvDir := SysUtils.GetEnvironmentVariable('ARDSIM_FONTS');
+    AddFolder(EnvDir);
+    SimDir := FArdSimDir;
+    if SimDir = '' then
+      SimDir := ArdSimFindDir;
+    if SimDir <> '' then
+      AddFolder(IncludeTrailingPathDelimiter(SimDir) + 'fonts');
+    for ResIdx := 0 to Files.Count - 1 do
+      if FileExists(Files[ResIdx]) then
+      try
+        UtftParseFile(Files[ResIdx], FFontCache);
+      except
+        // не шрифт или не читается - пропуск
+      end;
+  finally
+    Files.Free;
+    Lines.Free;
+  end;
+end;
+
+function TArdSimPanel.FindFont(const AName: string): TUtftFont;
+var
+  FontIdx: Integer;
+  Item: TUtftFont;
+begin
+  Result := nil;
+  if (FFontCache = nil) or (FFontCacheSketch <> FSketchFile) then
+    LoadFontCache;
+  for FontIdx := 0 to FFontCache.Count - 1 do
+  begin
+    Item := TUtftFont(FFontCache[FontIdx]);
+    if Item.IsFont and (Item.Name = AName) then
+    begin
+      Result := Item;
+      Exit;
+    end;
+  end;
+end;
+
+function ColorToRgbWord(AColor: TColor): Cardinal;
+var
+  Value: Cardinal;
+begin
+  Value := Cardinal(ColorToRGB(AColor));
+  // TColor $00BBGGRR -> $RRGGBB, как FPixels
+  Result := ((Value and $FF) shl 16) or (Value and $FF00) or
+            ((Value shr 16) and $FF);
+end;
+
+procedure TArdSimPanel.SetTextPreview(AX, AY: Integer; const AText: AnsiString;
+  AFont: TUtftFont; const AClear: TRect; AFore, ABack: TColor;
+  ATransparent: Boolean);
+begin
+  FPreviewOn := AFont <> nil;
+  FPreviewX := AX;
+  FPreviewY := AY;
+  FPreviewText := AText;
+  FPreviewFont := AFont;
+  FPreviewClear := AClear;
+  FPreviewFore := ColorToRgbWord(AFore);
+  FPreviewBack := ColorToRgbWord(ABack);
+  FPreviewTransparent := ATransparent;
+  FDevice.InvalidateScreen;
+end;
+
+procedure TArdSimPanel.ClearTextPreview;
+begin
+  if not FPreviewOn then
+    Exit;
+  FPreviewOn := False;
+  FPreviewFont := nil;
+  FDevice.InvalidateScreen;
+end;
+
+function TArdSimPanel.PreviewShown: Boolean;
+begin
+  Result := FPreviewOn;
+end;
+
+// Превью в FPixels (копия экрана для показа): прежняя надпись стирается
+// цветом фона, новая рисуется по точкам, как UTFT::printChar в
+// ArdSim\src\sim_utft.cpp (символ вне шрифта - пустая клетка)
+procedure TArdSimPanel.DrawPreview;
+var
+  CharIdx, Code, Offset, RowIdx, PartIdx, BitIdx, PosX, PosY: Integer;
+  BytesPerRow, CellX: Integer;
+  Bits: Byte;
+  Font: TUtftFont;
+
+  procedure PutPixel(APosX, APosY: Integer; AColor: Cardinal);
+  begin
+    if (APosX >= 0) and (APosX < ArdSimScreenW) and (APosY >= 0) and
+       (APosY < ArdSimScreenH) then
+      FPixels[APosY * ArdSimScreenW + APosX] := AColor;
+  end;
+
+begin
+  Font := FPreviewFont;
+  if (Font = nil) or (Length(FPixels) < ArdSimScreenW * ArdSimScreenH) then
+    Exit;
+  for PosY := FPreviewClear.Top to FPreviewClear.Bottom - 1 do
+    for PosX := FPreviewClear.Left to FPreviewClear.Right - 1 do
+      PutPixel(PosX, PosY, FPreviewBack);
+  BytesPerRow := Font.SizeX div 8;
+  for CharIdx := 1 to Length(FPreviewText) do
+  begin
+    Code := Ord(FPreviewText[CharIdx]);
+    CellX := FPreviewX + (CharIdx - 1) * Font.SizeX;
+    Offset := Font.GlyphOffset(Code);
+    for RowIdx := 0 to Font.SizeY - 1 do
+      for PartIdx := 0 to BytesPerRow - 1 do
+      begin
+        if (Offset >= 0) and
+           (Offset + RowIdx * BytesPerRow + PartIdx < Length(Font.Data)) then
+          Bits := Font.Data[Offset + RowIdx * BytesPerRow + PartIdx]
+        else
+          Bits := 0;
+        for BitIdx := 0 to 7 do
+          if (Bits and ($80 shr BitIdx)) <> 0 then
+            PutPixel(CellX + PartIdx * 8 + BitIdx, FPreviewY + RowIdx,
+                     FPreviewFore)
+          else if not FPreviewTransparent then
+            PutPixel(CellX + PartIdx * 8 + BitIdx, FPreviewY + RowIdx,
+                     FPreviewBack);
+      end;
   end;
 end;
 
