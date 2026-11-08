@@ -190,20 +190,13 @@ type
     // шрифты UTFT скетча (FindFont), что стереть и что нарисовать
     FFontCache: TList;           // TUtftFont всех найденных файлов
     FFontCacheSketch: string;    // для какого скетча собран
-    FPreviewOn: Boolean;
-    FPreviewX, FPreviewY: Integer;
-    FPreviewText: AnsiString;
-    FPreviewFont: TUtftFont;
-    FPreviewClear: TRect;
-    FPreviewFore, FPreviewBack: Cardinal;   // $RRGGBB
-    FPreviewTransparent: Boolean;
-    // Сумма точек эмулятора под превью при первом показе; другая - скетч
-    // перерисовал это место, превью уходит
-    FPreviewArea: TRect;
-    FPreviewSum: Cardinal;
-    FPreviewSumSet: Boolean;
+    // Превью: FPreview - пункт списка под мышью, FKept - выбранные
+    // шрифты (TArdPreviewItem), каждое до перерисовки своего места скетчем
+    FPreview: TObject;
+    FKept: TList;
     procedure LoadFontCache;
     procedure DrawPreview;
+    procedure ClearAllPreviews;
     procedure BuildSignals;
     procedure SigHeadClick(Sender: TObject);
     procedure SigApplyClick(Sender: TObject);
@@ -309,6 +302,9 @@ type
       ATransparent: Boolean);
     procedure ClearTextPreview;
     function PreviewShown: Boolean;
+    // Превью под мышью остаётся на экране (шрифт выбран): до перерисовки
+    // этого места скетчем; на том же месте прежнее оставленное заменяется
+    procedure KeepTextPreview;
 
     // ---- подмена аргументов на лету (SIM_ARG в эмуляторе)
     // Эмулятор собран с SIM_ARG и читает таблицу
@@ -1041,6 +1037,8 @@ begin
   FDbgInfo.Free;
   FDbgFiles.Free;
   FFontRoots.Free;
+  ClearAllPreviews;
+  FKept.Free;
   if FFontCache <> nil then
   begin
     for ResIdx := 0 to FFontCache.Count - 1 do
@@ -1405,8 +1403,7 @@ end;
 procedure TArdSimPanel.StartSim;
 begin
   // Превью шрифта - к прежнему запуску
-  FPreviewOn := False;
-  FPreviewFont := nil;
+  ClearAllPreviews;
   {$IFDEF MSWINDOWS}
   FSimExe := ExeOfSketch;
   if not FileExists(FSimExe) then
@@ -2394,7 +2391,7 @@ begin
       Blue := (Blue shl 3) or (Blue shr 2);
       FPixels[PixelIdx] := (Red shl 16) or (Green shl 8) or Blue;
     end;
-    if FPreviewOn then
+    if (FPreview <> nil) or ((FKept <> nil) and (FKept.Count > 0)) then
       DrawPreview;
   end;
   if FHasPicture then
@@ -2466,6 +2463,8 @@ var
   end;
 
 begin
+  // Превью держат шрифты кэша
+  ClearAllPreviews;
   if FFontCache = nil then
     FFontCache := TList.Create;
   for ResIdx := 0 to FFontCache.Count - 1 do
@@ -2539,50 +2538,108 @@ begin
             ((Value shr 16) and $FF);
 end;
 
+type
+  // Одна надпись поверх экрана: где, что, каким шрифтом и цветами; сумма
+  // точек эмулятора под ней при первом показе
+  TArdPreviewItem = class
+  public
+    PosX, PosY: Integer;
+    Text: AnsiString;
+    Font: TUtftFont;
+    Clear, Area: TRect;
+    Fore, Back: Cardinal;   // $RRGGBB
+    Transparent: Boolean;
+    Sum: Cardinal;
+    SumSet: Boolean;
+  end;
+
 procedure TArdSimPanel.SetTextPreview(AX, AY: Integer; const AText: AnsiString;
   AFont: TUtftFont; const AClear: TRect; AFore, ABack: TColor;
   ATransparent: Boolean);
+var
+  Item: TArdPreviewItem;
 begin
-  FPreviewOn := AFont <> nil;
-  FPreviewX := AX;
-  FPreviewY := AY;
-  FPreviewText := AText;
-  FPreviewFont := AFont;
-  FPreviewClear := AClear;
-  FPreviewFore := ColorToRgbWord(AFore);
-  FPreviewBack := ColorToRgbWord(ABack);
-  FPreviewTransparent := ATransparent;
-  // Место превью: прежняя надпись и новая
-  FPreviewArea := AClear;
-  if AFont <> nil then
+  FreeAndNil(FPreview);
+  if AFont = nil then
   begin
-    if FPreviewArea.Right <= FPreviewArea.Left then
-      FPreviewArea := Rect(AX, AY, AX, AY);
-    if AX < FPreviewArea.Left then
-      FPreviewArea.Left := AX;
-    if AY < FPreviewArea.Top then
-      FPreviewArea.Top := AY;
-    if AX + Length(AText) * AFont.SizeX > FPreviewArea.Right then
-      FPreviewArea.Right := AX + Length(AText) * AFont.SizeX;
-    if AY + AFont.SizeY > FPreviewArea.Bottom then
-      FPreviewArea.Bottom := AY + AFont.SizeY;
+    FDevice.InvalidateScreen;
+    Exit;
   end;
-  FPreviewSumSet := False;
+  Item := TArdPreviewItem.Create;
+  Item.PosX := AX;
+  Item.PosY := AY;
+  Item.Text := AText;
+  Item.Font := AFont;
+  Item.Clear := AClear;
+  Item.Fore := ColorToRgbWord(AFore);
+  Item.Back := ColorToRgbWord(ABack);
+  Item.Transparent := ATransparent;
+  // Место превью: прежняя надпись и новая
+  Item.Area := AClear;
+  if Item.Area.Right <= Item.Area.Left then
+    Item.Area := Rect(AX, AY, AX, AY);
+  if AX < Item.Area.Left then
+    Item.Area.Left := AX;
+  if AY < Item.Area.Top then
+    Item.Area.Top := AY;
+  if AX + Length(AText) * AFont.SizeX > Item.Area.Right then
+    Item.Area.Right := AX + Length(AText) * AFont.SizeX;
+  if AY + AFont.SizeY > Item.Area.Bottom then
+    Item.Area.Bottom := AY + AFont.SizeY;
+  Item.SumSet := False;
+  FPreview := Item;
   FDevice.InvalidateScreen;
 end;
 
 procedure TArdSimPanel.ClearTextPreview;
 begin
-  if not FPreviewOn then
+  if FPreview = nil then
     Exit;
-  FPreviewOn := False;
-  FPreviewFont := nil;
+  FreeAndNil(FPreview);
   FDevice.InvalidateScreen;
+end;
+
+procedure TArdSimPanel.KeepTextPreview;
+var
+  Item, Old: TArdPreviewItem;
+  KeptIdx: Integer;
+begin
+  if FPreview = nil then
+    Exit;
+  Item := TArdPreviewItem(FPreview);
+  FPreview := nil;
+  if FKept = nil then
+    FKept := TList.Create;
+  // Та же надпись выбрана ещё раз - прежнее превью не нужно
+  for KeptIdx := FKept.Count - 1 downto 0 do
+  begin
+    Old := TArdPreviewItem(FKept[KeptIdx]);
+    if (Old.PosX = Item.PosX) and (Old.PosY = Item.PosY) then
+    begin
+      Old.Free;
+      FKept.Delete(KeptIdx);
+    end;
+  end;
+  FKept.Add(Item);
+  FDevice.InvalidateScreen;
+end;
+
+procedure TArdSimPanel.ClearAllPreviews;
+var
+  KeptIdx: Integer;
+begin
+  FreeAndNil(FPreview);
+  if FKept <> nil then
+  begin
+    for KeptIdx := 0 to FKept.Count - 1 do
+      TObject(FKept[KeptIdx]).Free;
+    FKept.Clear;
+  end;
 end;
 
 function TArdSimPanel.PreviewShown: Boolean;
 begin
-  Result := FPreviewOn;
+  Result := FPreview <> nil;
 end;
 
 function TArdSimPanel.ArgOverrideAvailable: Boolean;
@@ -2678,11 +2735,8 @@ end;
 // ArdSim\src\sim_utft.cpp (символ вне шрифта - пустая клетка)
 procedure TArdSimPanel.DrawPreview;
 var
-  AreaSum: Cardinal;
-  CharIdx, Code, Offset, RowIdx, PartIdx, BitIdx, PosX, PosY: Integer;
-  BytesPerRow, CellX: Integer;
-  Bits: Byte;
-  Font: TUtftFont;
+  KeptIdx: Integer;
+  Item: TArdPreviewItem;
 
   procedure PutPixel(APosX, APosY: Integer; AColor: Cardinal);
   begin
@@ -2691,56 +2745,83 @@ var
       FPixels[APosY * ArdSimScreenW + APosX] := AColor;
   end;
 
-begin
-  Font := FPreviewFont;
-  if (Font = nil) or (Length(FPixels) < ArdSimScreenW * ArdSimScreenH) then
-    Exit;
   // Скетч перерисовал место надписи (другое окно, clrScr, новая надпись) -
   // превью больше не к месту. FPixels здесь - ещё картинка эмулятора
-  AreaSum := 0;
-  for PosY := FPreviewArea.Top to FPreviewArea.Bottom - 1 do
-    for PosX := FPreviewArea.Left to FPreviewArea.Right - 1 do
-      if (PosX >= 0) and (PosX < ArdSimScreenW) and (PosY >= 0) and
-         (PosY < ArdSimScreenH) then
-        AreaSum := ((AreaSum shl 5) or (AreaSum shr 27)) xor
-                   FPixels[PosY * ArdSimScreenW + PosX];
-  if not FPreviewSumSet then
+  function StillValid(AItem: TArdPreviewItem): Boolean;
+  var
+    AreaSum: Cardinal;
+    PosX, PosY: Integer;
   begin
-    FPreviewSum := AreaSum;
-    FPreviewSumSet := True;
-  end
-  else if AreaSum <> FPreviewSum then
+    AreaSum := 0;
+    for PosY := AItem.Area.Top to AItem.Area.Bottom - 1 do
+      for PosX := AItem.Area.Left to AItem.Area.Right - 1 do
+        if (PosX >= 0) and (PosX < ArdSimScreenW) and (PosY >= 0) and
+           (PosY < ArdSimScreenH) then
+          AreaSum := ((AreaSum shl 5) or (AreaSum shr 27)) xor
+                     FPixels[PosY * ArdSimScreenW + PosX];
+    if not AItem.SumSet then
+    begin
+      AItem.Sum := AreaSum;
+      AItem.SumSet := True;
+    end;
+    Result := AreaSum = AItem.Sum;
+  end;
+
+  procedure DrawItem(AItem: TArdPreviewItem);
+  var
+    CharIdx, Code, Offset, RowIdx, PartIdx, BitIdx, PosX, PosY: Integer;
+    BytesPerRow, CellX: Integer;
+    Bits: Byte;
+    Font: TUtftFont;
   begin
-    FPreviewOn := False;
-    FPreviewFont := nil;
+    Font := AItem.Font;
+    for PosY := AItem.Clear.Top to AItem.Clear.Bottom - 1 do
+      for PosX := AItem.Clear.Left to AItem.Clear.Right - 1 do
+        PutPixel(PosX, PosY, AItem.Back);
+    BytesPerRow := Font.SizeX div 8;
+    for CharIdx := 1 to Length(AItem.Text) do
+    begin
+      Code := Ord(AItem.Text[CharIdx]);
+      CellX := AItem.PosX + (CharIdx - 1) * Font.SizeX;
+      Offset := Font.GlyphOffset(Code);
+      for RowIdx := 0 to Font.SizeY - 1 do
+        for PartIdx := 0 to BytesPerRow - 1 do
+        begin
+          if (Offset >= 0) and
+             (Offset + RowIdx * BytesPerRow + PartIdx < Length(Font.Data)) then
+            Bits := Font.Data[Offset + RowIdx * BytesPerRow + PartIdx]
+          else
+            Bits := 0;
+          for BitIdx := 0 to 7 do
+            if (Bits and ($80 shr BitIdx)) <> 0 then
+              PutPixel(CellX + PartIdx * 8 + BitIdx, AItem.PosY + RowIdx,
+                       AItem.Fore)
+            else if not AItem.Transparent then
+              PutPixel(CellX + PartIdx * 8 + BitIdx, AItem.PosY + RowIdx,
+                       AItem.Back);
+        end;
+    end;
+  end;
+
+begin
+  if Length(FPixels) < ArdSimScreenW * ArdSimScreenH then
     Exit;
-  end;
-  for PosY := FPreviewClear.Top to FPreviewClear.Bottom - 1 do
-    for PosX := FPreviewClear.Left to FPreviewClear.Right - 1 do
-      PutPixel(PosX, PosY, FPreviewBack);
-  BytesPerRow := Font.SizeX div 8;
-  for CharIdx := 1 to Length(FPreviewText) do
-  begin
-    Code := Ord(FPreviewText[CharIdx]);
-    CellX := FPreviewX + (CharIdx - 1) * Font.SizeX;
-    Offset := Font.GlyphOffset(Code);
-    for RowIdx := 0 to Font.SizeY - 1 do
-      for PartIdx := 0 to BytesPerRow - 1 do
+  // Сначала все проверки по картинке эмулятора, потом рисование
+  if FKept <> nil then
+    for KeptIdx := FKept.Count - 1 downto 0 do
+      if not StillValid(TArdPreviewItem(FKept[KeptIdx])) then
       begin
-        if (Offset >= 0) and
-           (Offset + RowIdx * BytesPerRow + PartIdx < Length(Font.Data)) then
-          Bits := Font.Data[Offset + RowIdx * BytesPerRow + PartIdx]
-        else
-          Bits := 0;
-        for BitIdx := 0 to 7 do
-          if (Bits and ($80 shr BitIdx)) <> 0 then
-            PutPixel(CellX + PartIdx * 8 + BitIdx, FPreviewY + RowIdx,
-                     FPreviewFore)
-          else if not FPreviewTransparent then
-            PutPixel(CellX + PartIdx * 8 + BitIdx, FPreviewY + RowIdx,
-                     FPreviewBack);
+        TObject(FKept[KeptIdx]).Free;
+        FKept.Delete(KeptIdx);
       end;
-  end;
+  if (FPreview <> nil) and not StillValid(TArdPreviewItem(FPreview)) then
+    FreeAndNil(FPreview);
+  if FKept <> nil then
+    for KeptIdx := 0 to FKept.Count - 1 do
+      DrawItem(TArdPreviewItem(FKept[KeptIdx]));
+  Item := TArdPreviewItem(FPreview);
+  if Item <> nil then
+    DrawItem(Item);
 end;
 
 // ---------------------------------------------------------------------------

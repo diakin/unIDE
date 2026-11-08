@@ -2114,9 +2114,6 @@ type
     FArdPrevFore, FArdPrevBack: Integer;
     FArdPrevTransparent: Boolean;
     FArdPreviewOk: Boolean;
-    // Шрифт выбран из списка: превью остаётся на экране эмулятора, пока
-    // скетч не перерисует это место (TArdSimPanel.DrawPreview)
-    FArdPreviewKeep: Boolean;
     // Правка аргумента - в работающий эмулятор (ArdSendOverride): какой
     // вызов (имя, строка с 0, какой по счёту с этим именем в строке),
     // аргумент (-1 - все аргументы set...), шрифт ли
@@ -34146,7 +34143,6 @@ begin
   // этого вызова, ObjComboDrawItem)
   FArdPreviewOk := False;
   FArdPreviewName := '';
-  FArdPreviewKeep := False;
   if IsFont and (FArdSim <> nil) and FArdSim.Running then
   begin
     if RowData >= ArdRowColor then
@@ -40248,8 +40244,7 @@ end;
 procedure TForm1.ObjCancelEdit;
 begin
   FArdPreviewOk := False;
-  if not FArdPreviewKeep then
-    ArdFontPreviewOff;
+  ArdFontPreviewOff;
   if not FObjEditing then
     Exit;
   FObjEditing := False;
@@ -41600,9 +41595,9 @@ end;
 procedure TForm1.ObjComboWndProc(var Message: TMessage);
 begin
   FObjComboOldProc(Message);
-  // Список шрифтов закрыт: выбран шрифт (CBN_SELENDOK) - он остаётся на
-  // экране эмулятора, иначе превью убирается. Порядок CBN_CLOSEUP и
-  // CBN_SELENDOK не важен: решение - в WMArdPreviewClosed, после обоих
+  // Список шрифтов закрыт: выбранный шрифт (CBN_SELENDOK) переходит в
+  // оставленные превью (KeepTextPreview), превью под мышью убирается
+  // (WMArdPreviewClosed - после обоих уведомлений, порядок не важен)
   if (Message.Msg = CN_COMMAND) and
      (TWMCommand(Message).NotifyCode = CBN_SELENDOK) and FArdPreviewOk and
      FObjEditing and (FObjActive = FObjCombo) and not FObjComboColors then
@@ -41611,7 +41606,10 @@ begin
     if SendMessage(FObjCombo.Handle, CB_GETCURSEL, 0, 0) >= 0 then
       ArdFontPreview(FObjCombo.Items[SendMessage(FObjCombo.Handle,
                                                  CB_GETCURSEL, 0, 0)]);
-    FArdPreviewKeep := True;
+    // Выбранный остаётся на экране у этой надписи, и когда правят другие
+    if (FArdSim <> nil) and FArdSim.PreviewShown then
+      FArdSim.KeepTextPreview;
+    FArdPreviewName := '';
   end;
   if (Message.Msg = CN_COMMAND) and
      (TWMCommand(Message).NotifyCode = CBN_CLOSEUP) then
@@ -41624,8 +41622,7 @@ end;
 
 procedure TForm1.WMArdPreviewClosed(var Msg: TMessage);
 begin
-  if not FArdPreviewKeep then
-    ArdFontPreviewOff;
+  ArdFontPreviewOff;
 end;
 
 procedure TForm1.WMObjCommit(var Msg: TMessage);
