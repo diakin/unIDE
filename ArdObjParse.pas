@@ -1692,11 +1692,8 @@ begin
                                  (ColorValue and $FF00) or
                                  ((ColorValue shr 16) and $FF), 6)
   else if Parts <> '' then
-    AValueText := '?';
-  // Переменная одна и её значение - уже значение аргумента: пояснение
-  // всё равно нужно (откуда взялось)
-  if Parts <> '' then
-    AValueText := AValueText + '   (' + Parts + ')';
+    // Значение не вычислено: пояснение, на чём остановилось
+    AValueText := '?   (' + Parts + ')';
 end;
 
 function Rgb565ToColor(AValue: Integer): Integer;

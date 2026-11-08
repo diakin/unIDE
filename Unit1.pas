@@ -33217,12 +33217,20 @@ begin
     Result := Result + '(' + ArdShortArg(Call.ArgsText) + ')';
 end;
 
+// Вызов - строка списка Objects: метод вывода UTFT или функция скетча с
+// аргументами (Label(...)); Win0() без аргументов - нет
+function ArdCallListed(ACall: TArdCall): Boolean;
+begin
+  Result := (ACall.Kind in [ackText, ackGraph, ackImage, ackScreen]) or
+            ((ACall.Kind = ackUser) and (ACall.Args.Count > 0));
+end;
+
 procedure TForm1.ArdRefreshInspector;
 var
   SrcText, Key: string;
   Sketch: TArdSketch;
   Roots: TList;
-  Root, FuncNode, CallNode: TDfmNode;
+  CallNode: TDfmNode;
   FuncIdx, CallIdx, FuncTotal, OutTotal: Integer;
   Func: TArdFunc;
   Call: TArdCall;
@@ -33266,60 +33274,38 @@ begin
   FArdSketch := Sketch;
   Sketch.Parse(SrcText);
 
+  // Плоский список: все вызовы вывода по порядку текста, без узлов
+  // функций. Вызов функции скетча без аргументов (Win0()) - не в списке:
+  // его вывод виден в самой функции.
   Roots := TList.Create;
   try
-    Root := TDfmNode.Create;
-    FDfmNodes.Add(Root);
-    Root.Name := ExtractFileName(FCurrentFileName);
-    Root.ClassNm := Root.Name;
-    Roots.Add(Root);
     FuncTotal := 0;
     OutTotal := 0;
-    for FuncIdx := 0 to Sketch.Funcs.Count - 1 do
+    Func := nil;
+    for CallIdx := 0 to Sketch.Calls.Count - 1 do
     begin
-      Func := TArdFunc(Sketch.Funcs[FuncIdx]);
-      if not Func.Draws then
+      Call := TArdCall(Sketch.Calls[CallIdx]);
+      if not ArdCallListed(Call) then
         Continue;
-      Inc(FuncTotal);
-      FuncNode := TDfmNode.Create;
-      FDfmNodes.Add(FuncNode);
-      FuncNode.Name := 'f:' + Func.Name + ':' + IntToStr(Func.Line + 1);
-      FuncNode.ClassNm := Func.Name + '()';
-      FuncNode.CreateLine := Func.Line;
-      FuncNode.Line := -1;
-      FuncNode.EndLine := FuncIdx;
-      FuncNode.Parent := Root;
-      Root.Children.Add(FuncNode);
-      for CallIdx := 0 to Func.Calls.Count - 1 do
+      Inc(OutTotal);
+      if Call.Func <> Func then
       begin
-        Call := TArdCall(Func.Calls[CallIdx]);
-        if not (Call.Kind in [ackText, ackGraph, ackImage, ackScreen,
-                              ackUser]) then
-          Continue;
-        Inc(OutTotal);
-        CallNode := TDfmNode.Create;
-        FDfmNodes.Add(CallNode);
-        CallNode.Name := 'c:' + Call.Name + ':' + IntToStr(Call.Line + 1) +
-                         ':' + IntToStr(Call.Col);
-        CallNode.ClassNm := ArdCallCaption(Call);
-        CallNode.Note := 'стр. ' + IntToStr(Call.Line + 1);
-        CallNode.CreateLine := Call.Line;
-        CallNode.Line := Sketch.Calls.IndexOf(Call);
-        CallNode.EndLine := -1;
-        CallNode.Parent := FuncNode;
-        FuncNode.Children.Add(CallNode);
+        Func := Call.Func;
+        Inc(FuncTotal);
       end;
-      FuncNode.Note := 'стр. ' + IntToStr(Func.Line + 1) + ', вывод: ' +
-                       IntToStr(FuncNode.Children.Count);
+      CallNode := TDfmNode.Create;
+      FDfmNodes.Add(CallNode);
+      CallNode.Name := 'c:' + Call.Name + ':' + IntToStr(Call.Line + 1) +
+                       ':' + IntToStr(Call.Col);
+      CallNode.ClassNm := ArdCallCaption(Call);
+      CallNode.Note := 'стр. ' + IntToStr(Call.Line + 1) + '   ' +
+                       Call.Func.Name + '()';
+      CallNode.CreateLine := Call.Line;
+      CallNode.Line := CallIdx;
+      CallNode.EndLine := -1;
+      Roots.Add(CallNode);
     end;
-    Root.Note := 'функций с выводом на экран: ' + IntToStr(FuncTotal);
-    Root.Line := -1;
-    Root.EndLine := -1;
     RenderObjTree(Roots);
-    // Список функций виден сразу, и когда до того было другое дерево
-    if (FObjTree.Items.GetFirstNode <> nil) and
-       not FObjTree.Items.GetFirstNode.Expanded then
-      FObjTree.Items.GetFirstNode.Expanded := True;
     if FArdKeepName <> '' then
     begin
       ObjSelectAnyName(FArdKeepName);
@@ -33328,9 +33314,9 @@ begin
     for FuncIdx := 0 to Roots.Count - 1 do
       FObjRoots.Add(Roots[FuncIdx]);
     FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
-      ': функций с выводом на экран - ' + IntToStr(FuncTotal) +
-      ', вызовов вывода - ' + IntToStr(OutTotal) +
-      '. Щелчок в дереве - к строке; значение правится в таблице';
+      ': вызовов вывода - ' + IntToStr(OutTotal) + ' в ' +
+      IntToStr(FuncTotal) + ' функциях. Щелчок в списке - к строке; ' +
+      'аргумент правится в таблице';
     FObjSource.Cursor := crDefault;
   finally
     Roots.Free;
@@ -33348,7 +33334,7 @@ var
   ArgIdx, FuncTotal, ValueLine, ColorValue: Integer;
   ValueText: string;
 
-  // Колонки (ArdColumns): Параметр | Аргумент | Значение | Строка.
+  // Колонки (ArdColumns): Свойство | Переменная | Значение | Строка кода.
   // AArgUi, AValueUi - текст интерфейса; текст исходника - через EdUiText.
   procedure AddUiRow(const ACaption, AArgUi, AValueUi: string;
                      ALine, AData: Integer);
@@ -33462,8 +33448,8 @@ begin
   AddRow('Функций с выводом', IntToStr(FuncTotal), -1, -1);
 end;
 
-// Колонки таблицы свойств у скетча: Параметр | Аргумент | Значение |
-// Строка (строка, где переменной аргумента присвоено значение). У файлов
+// Колонки таблицы свойств у скетча: Свойство | Переменная | Значение |
+// Строка кода (строка, где переменной аргумента присвоено значение). У файлов
 // Delphi и RapidQ - прежние три колонки с прежними подписями и ширинами.
 procedure TForm1.ArdColumns(AOn: Boolean);
 var
@@ -33481,8 +33467,8 @@ begin
         FArdColCap[ColIdx] := FObjProps.Columns[ColIdx].Caption;
         FArdColWidth[ColIdx] := FObjProps.Columns[ColIdx].Width;
       end;
-      FObjProps.Columns[0].Caption := 'Параметр';
-      FObjProps.Columns[1].Caption := 'Аргумент';
+      FObjProps.Columns[0].Caption := 'Свойство';
+      FObjProps.Columns[1].Caption := 'Переменная';
       FObjProps.Columns[2].Caption := 'Значение';
       // Значение с пояснением длинное - первые две колонки уже
       FObjProps.Columns[0].Width := 90;
@@ -33490,8 +33476,8 @@ begin
       FObjProps.Columns[2].Width := 260;
       with FObjProps.Columns.Add do
       begin
-        Caption := 'Строка';
-        Width := 50;
+        Caption := 'Строка кода';
+        Width := 70;
       end;
     end
     else
@@ -33546,7 +33532,7 @@ begin
   for CallIdx := 0 to Sketch.Calls.Count - 1 do
   begin
     Call := TArdCall(Sketch.Calls[CallIdx]);
-    if not (Call.Kind in [ackText, ackGraph, ackImage, ackScreen, ackUser]) then
+    if not ArdCallListed(Call) then
       Continue;
     if (Call.Line > LineIdx) or ((Call.Line = LineIdx) and (Call.Col > Col)) then
       Continue;
