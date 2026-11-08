@@ -442,6 +442,12 @@ begin
   AddText('   #Ins#                    выделить файл под курсором');
   AddText('   #Shift+стрелки#          выделение');
   AddText('   #Shift+PgUp, Shift+PgDn, Shift+Home, Shift+End# - то же');
+  AddText('   #Gray +, Gray -#         выделить / снять по маске (*.pas;*.dfm)');
+  AddText('   #Ctrl+Gray +, Ctrl+Gray -# файлы с расширением файла под курсором');
+  AddText('   #Shift+Gray +, Shift+Gray -# все файлы / снять всё');
+  AddText('   #Gray *, Ctrl+Gray *#    обратить выделение файлов / и папок');
+  AddText(' Gray - серые клавиши цифровой клавиатуры. Папки по маске не');
+  AddText(' выделяются. Пока в командной строке есть текст, + - * идут в неё.');
   AddText('');
   AddText(' #Папки#');
   AddText('   #Enter, Ctrl+PgDn#       войти в папку');

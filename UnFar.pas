@@ -164,6 +164,11 @@ unit UnFar;
 //      Case sensitive, Whole words, Reverse search, Regular expressions;
 //      выделение - в поле поиска; [ All ] - список всех вхождений),
 //      Ctrl+F7 - замена с вопросом Replace / All / Skip / Cancel.
+//    - b.72: выделение группы серыми +, -, * цифровой клавиатуры, как в
+//      FAR: Gray+ / Gray- - окно маски (выделить / снять), Ctrl+Gray+ /
+//      Ctrl+Gray- - файлы с расширением файла под курсором, Shift+Gray+ /
+//      Shift+Gray- - все файлы / снять всё, Gray* - обратить (Ctrl+Gray* -
+//      и папки). Командная строка не пуста - символ идёт в неё.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -200,7 +205,7 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.71';
+  FarBuild = 'b.72';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -246,7 +251,8 @@ type
     fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto, fdEditError,
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
     fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr,
-    fdOverwrite, fdOverRename, fdEditReplace, fdEditReplAsk);
+    fdOverwrite, fdOverRename, fdEditReplace, fdEditReplAsk,
+    fdSelectMask, fdDeselectMask);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -767,6 +773,7 @@ type
     // Поиск файлов (Alt+F7): окно Find file - что искать (запоминается),
     // окно найденного - поверх панелей
     FFindMask: WideString;
+    FSelMask: WideString;         // Gray+ / Gray-: последняя маска выделения
     FFindText: WideString;
     FFindMaskHist: TFarNames;     // прежние маски и тексты (списки полей)
     FFindTextHist: TFarNames;
@@ -896,6 +903,13 @@ type
     procedure MoveCursor(ADelta: Integer; ASelect: Boolean);
     procedure MovePage(ADirection: Integer; ASelect: Boolean);
     procedure ToggleSelection;
+    function SelectKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
+    procedure StartSelectMask(ASelect: Boolean);
+    procedure SelectByMask(const AMaskText: WideString; ASelect: Boolean);
+    procedure SelectByExt(ASelect: Boolean);
+    procedure SelectAllFiles(ASelect: Boolean);
+    procedure InvertSelection(AWithDirs: Boolean);
+    procedure SelectionChanged;
     procedure EnterItem;
     procedure GoUp;
     procedure GoRoot;
@@ -3626,6 +3640,7 @@ begin
   FSzTimer.OnTimer := SzTick;
   FSzTimer.Enabled := False;
   FFindMask := '*.*';
+  FSelMask := '*.*';
   FFindFolders := True;
   FFindDone := True;
   FDlgDrop := -1;
@@ -5245,6 +5260,10 @@ begin
     Exit;
   end;
 
+  // Серые +, -, * цифровой клавиатуры - выделение группы
+  if SelectKey(AKey, AShift, ACtrl, AAlt) then
+    Exit;
+
   if Plain then
     case AKey of
       VK_UP:
@@ -5407,6 +5426,140 @@ begin
     Panel.Resort;
     EnsureVisible(Panel);
   end;
+end;
+
+// Серые +, -, * (цифровая клавиатура), как в FAR:
+//   Gray+ / Gray-            окно маски: выделить / снять выделение
+//   Ctrl+Gray+ / Ctrl+Gray-  файлы с расширением файла под курсором
+//   Shift+Gray+ / Shift+Gray- все файлы / снять всё
+//   Gray* / Ctrl+Gray*       обратить выделение файлов / и папок
+// Командная строка не пуста - False: символ уйдёт в неё (WM_CHAR)
+function TFarView.SelectKey(AKey: Word; AShift, ACtrl,
+  AAlt: Boolean): Boolean;
+begin
+  Result := False;
+  if AAlt or (FCmdText <> '') then
+    Exit;
+  if (AKey <> VK_ADD) and (AKey <> VK_SUBTRACT) and
+     (AKey <> VK_MULTIPLY) then
+    Exit;
+  if ActivePanel.Count = 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Result := True;
+  if AKey = VK_MULTIPLY then
+  begin
+    if not AShift then
+      InvertSelection(ACtrl)
+    else
+      Result := False;
+  end
+  else if ACtrl and not AShift then
+    SelectByExt(AKey = VK_ADD)
+  else if AShift and not ACtrl then
+    SelectAllFiles(AKey = VK_ADD)
+  else if not AShift and not ACtrl then
+    StartSelectMask(AKey = VK_ADD)
+  else
+    Result := False;
+end;
+
+procedure TFarView.StartSelectMask(ASelect: Boolean);
+begin
+  if FSelMask = '' then
+    FSelMask := '*.*';
+  if ASelect then
+    DlgOpen(fdSelectMask, 'Select', ['Select files by mask:'], False, False,
+      True, FSelMask, ['OK', 'Cancel'])
+  else
+    DlgOpen(fdDeselectMask, 'Deselect', ['Deselect files by mask:'], False,
+      False, True, FSelMask, ['OK', 'Cancel']);
+end;
+
+// Маски через ';' или ',' ('*.pas;*.dfm'). Папки не трогаются (так в FAR
+// по умолчанию), '..' - тоже
+procedure TFarView.SelectByMask(const AMaskText: WideString;
+  ASelect: Boolean);
+var
+  Panel: TFarPanel;
+  Masks: TFarFindMasks;
+  ItemIndex: Integer;
+begin
+  FSelMask := FarTrimW(AMaskText);
+  if FSelMask = '' then
+    FSelMask := '*.*';
+  FarSplitMasks(FSelMask, Masks);
+  Panel := ActivePanel;
+  for ItemIndex := 0 to Panel.Count - 1 do
+    if not Panel.FItems[ItemIndex].IsUp and
+       not Panel.FItems[ItemIndex].IsDir and
+       FarMasksMatch(Panel.FItems[ItemIndex].Name, Masks) then
+      Panel.SetSelected(ItemIndex, ASelect);
+  SelectionChanged;
+end;
+
+// Расширение файла под курсором; у файла без расширения - все файлы без
+// расширения
+procedure TFarView.SelectByExt(ASelect: Boolean);
+var
+  Panel: TFarPanel;
+  CursorExt: WideString;
+  ItemIndex: Integer;
+begin
+  Panel := ActivePanel;
+  if (Panel.Cursor < 0) or (Panel.Cursor >= Panel.Count) or
+     Panel.FItems[Panel.Cursor].IsUp then
+    Exit;
+  CursorExt := WideLowerCase(FarNameExt(Panel.FItems[Panel.Cursor].Name));
+  for ItemIndex := 0 to Panel.Count - 1 do
+    if not Panel.FItems[ItemIndex].IsUp and
+       not Panel.FItems[ItemIndex].IsDir and
+       (WideLowerCase(FarNameExt(Panel.FItems[ItemIndex].Name)) =
+        CursorExt) then
+      Panel.SetSelected(ItemIndex, ASelect);
+  SelectionChanged;
+end;
+
+// Shift+Gray+: все файлы (папки - нет); Shift+Gray-: снять всё
+procedure TFarView.SelectAllFiles(ASelect: Boolean);
+var
+  Panel: TFarPanel;
+  ItemIndex: Integer;
+begin
+  Panel := ActivePanel;
+  for ItemIndex := 0 to Panel.Count - 1 do
+    if not Panel.FItems[ItemIndex].IsUp then
+      if not ASelect then
+        Panel.SetSelected(ItemIndex, False)
+      else if not Panel.FItems[ItemIndex].IsDir then
+        Panel.SetSelected(ItemIndex, True);
+  SelectionChanged;
+end;
+
+procedure TFarView.InvertSelection(AWithDirs: Boolean);
+var
+  Panel: TFarPanel;
+  ItemIndex: Integer;
+begin
+  Panel := ActivePanel;
+  for ItemIndex := 0 to Panel.Count - 1 do
+    if not Panel.FItems[ItemIndex].IsUp and
+       (AWithDirs or not Panel.FItems[ItemIndex].IsDir) then
+      Panel.SetSelected(ItemIndex, not Panel.FItems[ItemIndex].Selected);
+  SelectionChanged;
+end;
+
+procedure TFarView.SelectionChanged;
+var
+  Panel: TFarPanel;
+begin
+  Panel := ActivePanel;
+  if Panel.FSelFirst then
+    Panel.Resort;
+  EnsureVisible(Panel);
+  Invalidate;
 end;
 
 procedure TFarView.ChangeDir(APanel: TFarPanel; const APath,
@@ -5956,6 +6109,10 @@ begin
       DoCopyMove(True, EditText);
     fdMkDir:
       DoMkDir(EditText);
+    fdSelectMask:
+      SelectByMask(EditText, True);
+    fdDeselectMask:
+      SelectByMask(EditText, False);
     fdDelete:
       DoDelete;
     fdEditNew:
@@ -18050,7 +18207,7 @@ begin
       fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew, fdOverwrite,
       fdOverRename:
         Result := FarHelpFiles;
-      fdHistClear:
+      fdHistClear, fdSelectMask, fdDeselectMask:
         Result := FarHelpPanels;
       fdAttr:
         Result := FarHelpFiles;
