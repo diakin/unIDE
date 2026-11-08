@@ -11265,6 +11265,19 @@ begin
   Result := (Idx < Length(Arr)) and (Arr[Idx].StartPos <= CharIndex);
 end;
 
+// Символ внутри диапазона, начатого раньше позиции ALineIndex (начала
+// строки): строка продолжает литерал предыдущей строки. Литерал, открытый
+// первым символом строки ("b"};), сюда не попадает
+function InRangeFromBefore(const Arr: TCommentRangeArray; CharIndex,
+  ALineIndex: Integer): Boolean;
+var
+  Idx: Integer;
+begin
+  Idx := RangesLowerBound(Arr, CharIndex);
+  Result := (Idx < Length(Arr)) and (Arr[Idx].StartPos <= CharIndex) and
+            (Arr[Idx].StartPos < ALineIndex);
+end;
+
 // ---------------------------------------------------------------------------
 //  Карта после правки - от места правки до схождения (шаг 4)
 //
@@ -29792,8 +29805,12 @@ begin
   if LineScan.Empty then
     Exit;
 
+  // Литерал - только перенесённый с прошлой строки: строка, начатая
+  // строкой в кавычках ("b"}; в списке инициализации), - обычная строка
+  // кода, её } закрывает блок. Иначе блок оставался открытым, и весь
+  // остаток файла сдвигался вправо
   LineScan.Inside := InRanges(CommentRanges, LineScan.FirstPos - 1) or
-              InRanges(StringRanges, LineScan.FirstPos - 1);
+              InRangeFromBefore(StringRanges, LineScan.FirstPos - 1, ALineStart - 1);
   if LineScan.Inside then
     Exit; // строка внутри блочного комментария или литерала - разбирать нечего
 
