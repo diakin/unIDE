@@ -1165,6 +1165,7 @@ type
     // Клик по надписи на экране эмулятора - строка .ino, где она нарисована
     procedure ArdSimScreenWhere(Sender: TObject);
     function ArdWhereGuess(const ACodes: TArdDbgCodes; const AText: string): Integer;
+    function ArdWhereByParams(ACode: Cardinal): Boolean;
     function ArdWhereLineText(ACode: Cardinal): string;
     procedure RightPanelPlaceButtons;
     procedure PaletteTabRows(Sender: TObject);
@@ -29523,10 +29524,96 @@ begin
   end;
 end;
 
+// Разбор C/C++ панели объявления (DeclPanelUpdateC) - ниже по файлу
+procedure CDeclSplit(const AText: string; ASrc, ACl: TStrings); forward;
+procedure CDeclTokens(const AClean: string; ATokens: TStrings); forward;
+procedure CDeclDepths(ACl: TStrings; var ADepths: array of Integer); forward;
+function CDeclFind(ACl: TStrings; AFromLine: Integer; const AWord: string;
+                   var ADeclLine, ADeclCol: Integer): Boolean; forward;
+
+// Строка стека рисует то, что пришло параметрами её функции: все имена в
+// скобках вызова, объявленные внутри функций, - её параметры (например
+// myGLCD.print(Caption, Left + 3, Top + 4) в теле Label). Тогда сама
+// надпись задана строкой вызова выше. Имена #define и глобальные не в счёт
+function TForm1.ArdWhereByParams(ACode: Cardinal): Boolean;
+var
+  SrcFile: string;
+  Src, Cl, Tokens: TStringList;
+  Depths: array of Integer;
+  LineIdx, TokIdx, ParenDepth, DeclLine, DeclCol, ScanCol, DeclParen,
+  ParamCount: Integer;
+  TokText, DeclClean: string;
+  IsParam: Boolean;
+begin
+  Result := False;
+  SrcFile := FArdSim.DbgFileName(ACode shr 20);
+  LineIdx := Integer(ACode and $FFFFF) - 1;
+  if (SrcFile = '') or (LineIdx < 0) or not FileExists(SrcFile) then
+    Exit;
+  Src := TStringList.Create;
+  Cl := TStringList.Create;
+  Tokens := TStringList.Create;
+  try
+    try
+      Src.LoadFromFile(SrcFile);
+    except
+      Exit;
+    end;
+    CDeclSplit(Src.Text, Src, Cl);
+    if LineIdx >= Cl.Count then
+      Exit;
+    SetLength(Depths, Cl.Count);
+    CDeclDepths(Cl, Depths);
+    CDeclTokens(Cl[LineIdx], Tokens);
+    ParenDepth := 0;
+    ParamCount := 0;
+    for TokIdx := 0 to Tokens.Count - 1 do
+    begin
+      TokText := Tokens[TokIdx];
+      if TokText = '(' then
+        Inc(ParenDepth)
+      else if TokText = ')' then
+        Dec(ParenDepth);
+      if (ParenDepth <= 0) or
+         not (TokText[1] in ['A'..'Z', 'a'..'z', '_']) then
+        Continue;
+      // Имя функции и поле (obj.x) - не переменная этой функции
+      if (TokIdx + 1 < Tokens.Count) and (Tokens[TokIdx + 1] = '(') then
+        Continue;
+      if (TokIdx > 0) and ((Tokens[TokIdx - 1] = '.') or
+                           (Tokens[TokIdx - 1] = '->')) then
+        Continue;
+      if not CDeclFind(Cl, LineIdx, TokText, DeclLine, DeclCol) then
+        Continue;
+      // Параметр: в скобках строки заголовка выше (не for)
+      DeclClean := Cl[DeclLine];
+      DeclParen := 0;
+      for ScanCol := 1 to DeclCol - 1 do
+        if DeclClean[ScanCol] = '(' then
+          Inc(DeclParen)
+        else if DeclClean[ScanCol] = ')' then
+          Dec(DeclParen);
+      IsParam := (DeclParen > 0) and (DeclLine < LineIdx) and
+                 (Depths[DeclLine] = 0) and
+                 (Copy(TrimLeft(DeclClean), 1, 3) <> 'for');
+      if IsParam then
+        Inc(ParamCount)
+      else if (Depths[DeclLine] > 0) or (DeclParen > 0) then
+        Exit;   // своя переменная функции - надпись собрана здесь
+    end;
+    Result := ParamCount > 0;
+  finally
+    Tokens.Free;
+    Cl.Free;
+    Src.Free;
+  end;
+end;
+
 // С какой строки стека начать: первая (от рисующего оператора наружу), в
 // которой есть строковая константа из этой надписи. Label("V1s=" + ...)
 // рисует через myGLCD.print(Caption, ...) - нужна строка вызова Label.
-// Нет такой - сам рисующий оператор
+// Нет такой (надпись собрана в переменной) - выше по стеку, пока строка
+// рисует только параметры своей функции (ArdWhereByParams)
 function TForm1.ArdWhereGuess(const ACodes: TArdDbgCodes; const AText: string): Integer;
 var
   CodeIdx, CharIdx, QuoteStart: Integer;
@@ -29562,6 +29649,8 @@ begin
       Inc(CharIdx);
     end;
   end;
+  while (Result < High(ACodes)) and ArdWhereByParams(ACodes[Result]) do
+    Inc(Result);
 end;
 
 procedure TForm1.ArdSimScreenWhere(Sender: TObject);
