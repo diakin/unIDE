@@ -211,8 +211,14 @@ type
 function CompareReadFile(const AFileName: string; var AEncoding: string;
   var ABinary: Boolean): string;
 
-// Цвета отличий панели - по её фону (тёмный / светлый)
+// Цвета отличий панели - по её фону (тёмный / светлый). Значения берутся
+// из editor.ini, раздел [FileCompareWindow], ключи Dark.* и Light.*
+// (#RRGGBB); ключа нет - цвет по умолчанию, и он дописывается в ini
 procedure CompareViewColors(AView: TCompareView);
+
+// Файл с цветами для CompareViewColors (editor.ini). Задаётся из
+// SetPlacementIni окна сравнения и окна конфликтов
+procedure CompareSetColorsIni(const AIniFile: string);
 
 // Табуляции - пробелами до позиции, кратной ATabSize
 function CompareExpandTabs(const ALine: string; ATabSize: Integer): string;
@@ -320,44 +326,132 @@ begin
   Result := ExpandTabsTo(ALine, ATabSize);
 end;
 
-procedure CompareViewColors(AView: TCompareView);
+// Цвета сравнения: имя ключа в ini и значения по умолчанию ($00BBGGRR)
+type
+  TCmpColorKey = (cckDiffBg, cckInlineBg, cckFillerBg, cckCurDiffBg,
+    cckCurInlineBg, cckCurFillerBg, cckGutterDiffBg, cckTakenBg,
+    cckTakenInlineBg, cckCurTakenBg, cckDroppedBg, cckCurDroppedBg,
+    cckDroppedFg);
+
+const
+  CmpColorNames: array[TCmpColorKey] of string = ('DiffBg', 'InlineBg',
+    'FillerBg', 'CurDiffBg', 'CurInlineBg', 'CurFillerBg', 'GutterDiffBg',
+    'TakenBg', 'TakenInlineBg', 'CurTakenBg', 'DroppedBg', 'CurDroppedBg',
+    'DroppedFg');
+  // тёмный фон
+  CmpDarkColors: array[TCmpColorKey] of TColor = ($00284050, $00306A88,
+    $00262626, $00584A20, $00207A90, $00585858, $00303A44, $00284A28,
+    $00307A30, $00386838, $00303030, $00484848, $00808080);
+  // светлый фон, как в WinMerge: отличие - жёлтое, текущее - голубое, нет
+  // строки - серое, выбранная сторона - зелёная
+  CmpLightColors: array[TCmpColorKey] of TColor = ($00C8F0FF, $0060DCFF,
+    $00E4E4E4, $00FFF0B4, $0000F0FF, $00C8C8C8, $00D0E4EC, $00D4F4D4,
+    $0090E090, $00B0ECB0, $00F0F0F0, $00DCDCDC, $00A0A0A0);
+
+var
+  CmpColorsIni: string = '';
+
+procedure CompareSetColorsIni(const AIniFile: string);
 begin
-  if IsDarkColor(AView.BackColor) then
+  CmpColorsIni := AIniFile;
+end;
+
+// TColor ($00BBGGRR) -> '#RRGGBB'
+function CmpColorToText(AColor: TColor): string;
+var
+  ColorRgb: Longint;
+begin
+  ColorRgb := ColorToRGB(AColor);
+  Result := '#' + IntToHex(GetRValue(ColorRgb), 2) +
+    IntToHex(GetGValue(ColorRgb), 2) + IntToHex(GetBValue(ColorRgb), 2);
+end;
+
+// '#RRGGBB' или '$00BBGGRR' -> TColor; не разобрано - ADefault
+function CmpTextToColor(const AText: string; ADefault: TColor): TColor;
+var
+  ColorRgb: Integer;
+begin
+  Result := ADefault;
+  if (Length(AText) = 7) and (AText[1] = '#') then
   begin
-    AView.DiffBg := $00284050;
-    AView.InlineBg := $00306A88;
-    AView.FillerBg := $00262626;
-    AView.CurDiffBg := $00584A20;
-    AView.CurInlineBg := $00207A90;
-    AView.CurFillerBg := $00585858;
-    AView.GutterDiffBg := $00303A44;
-    AView.TakenBg := $00284A28;
-    AView.TakenInlineBg := $00307A30;
-    AView.CurTakenBg := $00386838;
-    AView.DroppedBg := $00303030;
-    AView.CurDroppedBg := $00484848;
-    AView.DroppedFg := $00808080;
+    ColorRgb := StrToIntDef('$' + Copy(AText, 2, 6), -1);
+    if ColorRgb >= 0 then
+      Result := TColor(RGB((ColorRgb shr 16) and $FF, (ColorRgb shr 8) and $FF,
+        ColorRgb and $FF));
   end
-  else
+  else if (Length(AText) > 1) and (AText[1] = '$') then
   begin
-    // Как в WinMerge: отличие - жёлтым, текущее - голубым, нет строк -
-    // серым, изменённые слова - ярче
-    AView.DiffBg := $00C8F0FF;
-    AView.InlineBg := $0060DCFF;
-    AView.FillerBg := $00E4E4E4;
-    AView.CurDiffBg := $00FFF0B4;
-    AView.CurInlineBg := $0000F0FF;
-    AView.CurFillerBg := $00C8C8C8;
-    AView.GutterDiffBg := $00D0E4EC;
-    AView.TakenBg := $00D4F4D4;
-    AView.TakenInlineBg := $0090E090;
-    AView.CurTakenBg := $00B0ECB0;
-    AView.DroppedBg := $00F0F0F0;
-    AView.CurDroppedBg := $00DCDCDC;
-    AView.DroppedFg := $00A0A0A0;
+    ColorRgb := StrToIntDef(AText, -1);
+    if ColorRgb >= 0 then
+      Result := TColor(ColorRgb);
   end;
+end;
+
+procedure CompareViewColors(AView: TCompareView);
+var
+  Colors: array[TCmpColorKey] of TColor;
+  ColorKey: TCmpColorKey;
+  IsDark, SetDark: Boolean;
+  SetIdx: Integer;
+  KeyName, Value: string;
+  DefColor: TColor;
+  Ini: TBufIniFile;
+begin
+  IsDark := IsDarkColor(AView.BackColor);
+  for ColorKey := Low(TCmpColorKey) to High(TCmpColorKey) do
+    if IsDark then
+      Colors[ColorKey] := CmpDarkColors[ColorKey]
+    else
+      Colors[ColorKey] := CmpLightColors[ColorKey];
+  // ini читается при каждом вызове: правка editor.ini видна при следующем
+  // открытии окна или смене темы. Нет ключа (обоих наборов) - дописывается
+  // значение по умолчанию, чтобы его было видно в файле
+  if (CmpColorsIni <> '') and FileExists(CmpColorsIni) then
+  begin
+    Ini := TBufIniFile.Create(CmpColorsIni);
+    try
+      for SetIdx := 0 to 1 do
+      begin
+        SetDark := SetIdx = 0;
+        for ColorKey := Low(TCmpColorKey) to High(TCmpColorKey) do
+        begin
+          if SetDark then
+          begin
+            KeyName := 'Dark.' + CmpColorNames[ColorKey];
+            DefColor := CmpDarkColors[ColorKey];
+          end
+          else
+          begin
+            KeyName := 'Light.' + CmpColorNames[ColorKey];
+            DefColor := CmpLightColors[ColorKey];
+          end;
+          Value := Trim(Ini.ReadString(CmpSection, KeyName, ''));
+          if Value = '' then
+            Ini.WriteString(CmpSection, KeyName, CmpColorToText(DefColor))
+          else if SetDark = IsDark then
+            Colors[ColorKey] := CmpTextToColor(Value, DefColor);
+        end;
+      end;
+    finally
+      Ini.Free; // пишет файл, только если ключи дописаны
+    end;
+  end;
+  AView.DiffBg := Colors[cckDiffBg];
+  AView.InlineBg := Colors[cckInlineBg];
+  AView.FillerBg := Colors[cckFillerBg];
+  AView.CurDiffBg := Colors[cckCurDiffBg];
+  AView.CurInlineBg := Colors[cckCurInlineBg];
+  AView.CurFillerBg := Colors[cckCurFillerBg];
+  AView.GutterDiffBg := Colors[cckGutterDiffBg];
+  AView.TakenBg := Colors[cckTakenBg];
+  AView.TakenInlineBg := Colors[cckTakenInlineBg];
+  AView.CurTakenBg := Colors[cckCurTakenBg];
+  AView.DroppedBg := Colors[cckDroppedBg];
+  AView.CurDroppedBg := Colors[cckCurDroppedBg];
+  AView.DroppedFg := Colors[cckDroppedFg];
   AView.SelColor := UiThemeColor('Menu.HotBG');
   AView.SelTextColor := UiThemeColor('Menu.HotText');
+  AView.Invalidate;
 end;
 
 // ---------------------------------------------------------------------------
@@ -1585,7 +1679,9 @@ end;
 procedure TDlgFileCompare.SetPlacementIni(const AIniFile: string);
 begin
   FIniFile := AIniFile;
+  CompareSetColorsIni(AIniFile);
   LoadPlacement;
+  UpdateColors;
 end;
 
 procedure TDlgFileCompare.LoadPlacement;

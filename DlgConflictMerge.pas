@@ -1627,7 +1627,11 @@ end;
 procedure TDlgConflictMerge.SetPlacementIni(const AIniFile: string);
 begin
   FIniFile := AIniFile;
+  CompareSetColorsIni(AIniFile);
   LoadPlacement;
+  CompareViewColors(FView[0]);
+  CompareViewColors(FView[1]);
+  CompareViewColors(FResView);
 end;
 
 procedure TDlgConflictMerge.LoadPlacement;
