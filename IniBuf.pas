@@ -17,6 +17,8 @@ unit IniBuf;
 //  раздел - в конец файла. Значение читается как у GetPrivateProfileString:
 //  пробелы по краям убираются, кавычки "..." или '...' вокруг - тоже.
 //
+//  Занятый файл (EFCreateError) - до 20 попыток через 50 мс.
+//
 //  После записи вызывается IniBufOnWritten (если задан) - редактор так
 //  узнаёт, что файл записал он сам, а не другая программа.
 // ---------------------------------------------------------------------------
@@ -289,11 +291,34 @@ begin
   FModified := True;
 end;
 
+// Файл может быть на мгновение занят другой программой (антивирус,
+// индексатор, другая копия unIDE читает тот же editor.ini): тогда
+// несколько попыток с паузой, и только потом ошибка
 procedure TBufIniFile.UpdateFile;
+const
+  SaveAttempts = 20;
+  SavePauseMs = 50;
+var
+  Attempt: Integer;
 begin
   if not FModified then
     Exit;
-  FLines.SaveToFile(FileName);
+  Attempt := 1;
+  while True do
+  begin
+    try
+      FLines.SaveToFile(FileName);
+      Break;
+    except
+      on EFCreateError do
+      begin
+        if Attempt >= SaveAttempts then
+          raise;
+        Inc(Attempt);
+        Sleep(SavePauseMs);
+      end;
+    end;
+  end;
   FModified := False;
   if Assigned(IniBufOnWritten) then
     IniBufOnWritten(FileName);
