@@ -2149,9 +2149,12 @@ type
     FCompDfmKey: string;
     FCompDfmNames: TStringList;
     FRightPanelWidth: Integer;
-    // Ширина правой панели до того, как её растянули под окно эмулятора;
-    // -1 - не растягивали
+    // Ширина правой панели до того, как её сузили, чтобы она поместилась
+    // левее окна эмулятора; -1 - не сужали
     FArdSimKeepWidth: Integer;
+    // Пустая полоса у правого края формы под окном эмулятора (ArdSimPlaced):
+    // правая панель стоит левее неё и не закрыта эмулятором
+    FArdSimGap: TPanel;
     // последний клик по надписи эмулятора: повтор - на вызов выше
     FArdWhereText: string;
     FArdWhereTick: Cardinal;
@@ -28975,37 +28978,70 @@ begin
 end;
 
 // Окно эмулятора показано или передвинуто: если оно над правой частью
-// главного окна, правая панель растягивается до его левого края, и
-// редактор кончается там, где начинается эмулятор. Окно ушло с главного -
-// прежняя ширина панели. FRightPanelWidth (сохраняется в editor.ini) не
-// меняется
+// главного окна, у правого края формы встаёт пустая полоса шириной до
+// левого края эмулятора (FArdSimGap), а правая панель (SubList, Objects)
+// стоит левее неё, своей ширины, и эмулятором не закрыта (просьба Андрея
+// 08.11). Не помещается - панель сужается, редактору остаётся не меньше
+// RightPanelMinLeft. Окно ушло с главного - полоса убирается, панели -
+// прежняя ширина. FRightPanelWidth (сохраняется в editor.ini) не меняется
 procedure TForm1.ArdSimPlaced(Sender: TObject);
 var
-  EmuLeft, NewWidth: Integer;
+  EmuLeft, GapWidth, Avail: Integer;
 begin
   if (FArdSimWin = nil) or (FRightPanel = nil) then
     Exit;
   EmuLeft := ScreenToClient(Point(FArdSimWin.Left, FArdSimWin.Top)).X;
-  NewWidth := ClientWidth - EmuLeft;
-  if (EmuLeft <= 0) or (NewWidth <= 0) or
+  GapWidth := ClientWidth - EmuLeft;
+  if (EmuLeft <= 0) or (GapWidth <= 0) or
      (FArdSimWin.Left > ClientToScreen(Point(ClientWidth, 0)).X) then
   begin
     ArdSimHidden(Sender);
     Exit;
   end;
-  if NewWidth > ClientWidth - RightPanelMinLeft then
-    NewWidth := ClientWidth - RightPanelMinLeft;
-  if NewWidth < RightPanelMinWidth then
-    NewWidth := RightPanelMinWidth;
-  if FArdSimKeepWidth < 0 then
-    FArdSimKeepWidth := FRightPanel.Width;
-  FRightPanel.Width := NewWidth;
+  if GapWidth > ClientWidth - RightPanelMinLeft - RightPanelMinWidth then
+    GapWidth := ClientWidth - RightPanelMinLeft - RightPanelMinWidth;
+  if GapWidth < 0 then
+    GapWidth := 0;
+  if FArdSimGap = nil then
+  begin
+    FArdSimGap := TPanel.Create(Self);
+    FArdSimGap.BevelOuter := bvNone;
+    FArdSimGap.Caption := '';
+    FArdSimGap.Visible := False;
+    FArdSimGap.Parent := Self;
+  end;
+  // Порядок соседей с Align = alRight - по Left: полоса правее панели
+  FArdSimGap.Visible := False;
+  FArdSimGap.Align := alNone;
+  FArdSimGap.SetBounds(ClientWidth + 10, FRightPanel.Top, GapWidth,
+                       FRightPanel.Height);
+  FArdSimGap.Align := alRight;
+  FArdSimGap.Visible := GapWidth > 0;
+  // Панель левее полосы; редактору - не меньше RightPanelMinLeft
+  Avail := ClientWidth - GapWidth - RightPanelMinLeft;
+  if FArdSimKeepWidth >= 0 then
+    FRightPanel.Width := FArdSimKeepWidth;
+  if not FRightCollapsed and (FRightPanel.Width > Avail) then
+  begin
+    if FArdSimKeepWidth < 0 then
+      FArdSimKeepWidth := FRightPanel.Width;
+    if Avail < RightPanelMinWidth then
+      Avail := RightPanelMinWidth;
+    FRightPanel.Width := Avail;
+  end
+  else
+    FArdSimKeepWidth := -1;
   FormResizeEvent(Self);
 end;
 
-// Окно эмулятора закрыто: правой панели - прежняя ширина
+// Окно эмулятора закрыто: полосы нет, правой панели - прежняя ширина
 procedure TForm1.ArdSimHidden(Sender: TObject);
 begin
+  if (FArdSimGap <> nil) and FArdSimGap.Visible then
+  begin
+    FArdSimGap.Visible := False;
+    FormResizeEvent(Self);
+  end;
   if (FArdSimKeepWidth < 0) or (FRightPanel = nil) then
     Exit;
   FRightPanel.Width := FArdSimKeepWidth;
@@ -29590,6 +29626,8 @@ begin
   try
     FRightPanel.Width := ANewWidth;
     FRightPanelWidth := ANewWidth;
+    // Ширину задали руками: при закрытии эмулятора прежнюю не возвращать
+    FArdSimKeepWidth := -1;
     // Видимая область редактора стала другой - полосы прокрутки заново
     FormResizeEvent(Self);
   finally
@@ -29624,6 +29662,9 @@ begin
   GetCursorPos(Pnt);
   NewW := FSplitStartW + (FSplitStartX - Pnt.X);
   MaxW := ClientWidth - RightPanelMinLeft;
+  // Полоса под окном эмулятора справа от панели (ArdSimPlaced)
+  if (FArdSimGap <> nil) and FArdSimGap.Visible then
+    Dec(MaxW, FArdSimGap.Width);
   if MaxW < RightPanelMinWidth then
     MaxW := RightPanelMinWidth;
   if NewW > MaxW then
