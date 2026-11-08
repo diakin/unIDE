@@ -150,6 +150,7 @@ struct SimSignalConfig
   double LcdPixelNs;
   SimChannel Channel[SIM_ANALOG_CHANNELS];
   SimRotor Rotor;
+  bool SdFail;           // [SD] Fail=1: no card, SD.begin and card.init fail
 };
 // Rotor -> H1 of the sensor channels (no-op when the rotor is off)
 void simRotorApply(SimSignalConfig &config);
@@ -166,5 +167,6 @@ uint64_t simSignalNextEdge();                           // sketch thread
 double simSignalVolts(int channel, uint64_t now);
 double simSignalVref();
 int simTachoPin();
+bool simSdFail();                                       // sketch thread
 int simTachoLevel();
 #endif

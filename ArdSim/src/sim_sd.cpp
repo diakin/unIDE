@@ -42,6 +42,8 @@ static bool nameIs83(const std::string &part)
 static bool hostPath(const char *path, std::string &result)
 {
   result = sdRoot();
+  if (simSdFail())
+    return false;   // no card: open, exists, mkdir, remove fail
   std::string text = path ? path : "";
   std::replace(text.begin(), text.end(), '\\', '/');
   size_t pos = 0;
@@ -128,6 +130,8 @@ bool SDClass::begin(uint8_t csPin)
 {
   (void)csPin;
   simPoll();
+  if (simSdFail())
+    return false;
   CreateDirectoryA(sdRoot().c_str(), nullptr);
   return isDirectory(sdRoot());
 }

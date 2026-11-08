@@ -170,6 +170,7 @@ type
     FSigHead: TUiButton;
     FSigPanel: TUiPanel;
     FSigTacho: TUiCheckBox;
+    FSigSdFail: TUiCheckBox;   // [SD] Fail: скетч работает как без SD карты
     FSigRpm: TUiEdit;
     FSigFreq: TUiLabel;
     FSigRotor: TUiCheckBox;
@@ -1652,7 +1653,12 @@ begin
   FSigTacho := AddCheck('Тахометр', 0, 2, 96);
   AddLabel('обороты, об/мин', 100, 2, 100);
   FSigRpm := AddEdit(204, 2, 70, 'Обороты ротора (RPM в [Tacho])');
-  FSigFreq := AddLabel('', 282, 2, 200);
+  FSigFreq := AddLabel('', 282, 2, 90);
+  FSigSdFail := AddCheck('Нет SD карты', 380, 2, 140);
+  FSigSdFail.Hint := 'Сбой SD карты: SD.begin и card.init возвращают false ' +
+    '([SD] Fail=1 в ardsim.ini). SD.begin вызывается в setup(), поэтому после ' +
+    '"Применить" перезапустите скетч (Run)';
+  FSigSdFail.ShowHint := True;
   FSigRotor := AddCheck('Модель ротора: 1-я гармоника A0 и A1 считается ' +
     'от дисбаланса и грузов', 0, 28, 520);
   for RowIdx := 0 to 1 do
@@ -1761,6 +1767,7 @@ begin
   try
     FSigTacho.Checked := Ini.ReadString('Tacho', 'Enabled', '1') <> '0';
     FSigRpm.Text := Ini.ReadString('Tacho', 'RPM', '1500');
+    FSigSdFail.Checked := Ini.ReadString('SD', 'Fail', '0') <> '0';
     FSigRotor.Checked := Ini.ReadString('Rotor', 'Enabled', '0') <> '0';
     for RowIdx := 0 to 1 do
     begin
@@ -1797,6 +1804,10 @@ begin
     else
       Ini.WriteString('Tacho', 'Enabled', '0');
     Ini.WriteString('Tacho', 'RPM', IniFloatText(IniFloat(FSigRpm.Text, 1500)));
+    if FSigSdFail.Checked then
+      Ini.WriteString('SD', 'Fail', '1')
+    else
+      Ini.WriteString('SD', 'Fail', '0');
     if FSigRotor.Checked then
       Ini.WriteString('Rotor', 'Enabled', '1')
     else

@@ -26,6 +26,8 @@ static const int IdTachoOn = 950, IdRpm = 951, IdApply = 952, IdEditIni = 953, I
 static const int IdAmpBase = 960, IdPhaseBase = 970;   // + channel 0/1
 static const int PanelChannels = 2;                    // A0, A1 on the panel; the rest in the ini
 static const int IdRotorOn = 955, IdRotorInfo = 956, IdWeightsBase = 980;   // + plane
+static const int IdSdFail = 957;
+static HWND SdFailBox;
 static HWND TachoBox, RpmEdit, SignalInfo, RotorBox, RotorInfo;
 static HWND WeightsEdit[SIM_PLANES];
 static HWND AmpEdit[PanelChannels], PhaseEdit[PanelChannels];
@@ -156,6 +158,7 @@ static void showSignalInfo(const char *note)
 static void configToPanel()
 {
   SendMessageA(TachoBox, BM_SETCHECK, SignalConfig.TachoOn ? BST_CHECKED : BST_UNCHECKED, 0);
+  SendMessageA(SdFailBox, BM_SETCHECK, SignalConfig.SdFail ? BST_CHECKED : BST_UNCHECKED, 0);
   setEditNumber(RpmEdit, SignalConfig.Rpm);
   bool rotorOn = SignalConfig.Rotor.Enabled;
   SendMessageA(RotorBox, BM_SETCHECK, rotorOn ? BST_CHECKED : BST_UNCHECKED, 0);
@@ -201,6 +204,7 @@ static void loadSignalIni(bool first)
 static void applyPanel()
 {
   SignalConfig.TachoOn = SendMessageA(TachoBox, BM_GETCHECK, 0, 0) == BST_CHECKED;
+  SignalConfig.SdFail = SendMessageA(SdFailBox, BM_GETCHECK, 0, 0) == BST_CHECKED;
   SignalConfig.Rpm = editNumber(RpmEdit, SignalConfig.Rpm);
   if (SignalConfig.Rpm < 0)
     SignalConfig.Rpm = 0;
@@ -252,6 +256,7 @@ static void createSignalPanel(HWND window, int top)
   TachoBox = panelControl(window, "BUTTON", "Tacho", BS_AUTOCHECKBOX, left, top, 60, 20, IdTachoOn);
   panelControl(window, "STATIC", "RPM", 0, left + 70, top + 3, 30, 16, -1);
   RpmEdit = panelControl(window, "EDIT", "", ES_AUTOHSCROLL, left + 100, top, 70, 20, IdRpm);
+  SdFailBox = panelControl(window, "BUTTON", "No SD card", BS_AUTOCHECKBOX, left + 180, top, 84, 20, IdSdFail);
   top += 26;
   panelControl(window, "STATIC", "Amp, V", 0, left + 40, top, 70, 16, -1);
   panelControl(window, "STATIC", "Phase, deg", 0, left + 120, top, 80, 16, -1);
@@ -362,7 +367,7 @@ static LRESULT CALLBACK windowProc(HWND window, UINT message, WPARAM wParam, LPA
       PostMessageA((HWND)lParam, EM_SETSEL, 0, -1);
       return 0;
     }
-    if (id == IdApply || ((id == IdTachoOn || id == IdRotorOn) && HIWORD(wParam) == BN_CLICKED))
+    if (id == IdApply || ((id == IdTachoOn || id == IdRotorOn || id == IdSdFail) && HIWORD(wParam) == BN_CLICKED))
     {
       applyPanel();
       return 0;

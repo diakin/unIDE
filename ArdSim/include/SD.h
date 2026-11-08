@@ -52,10 +52,12 @@ public:
   SimFileState *State;
 };
 
+bool simSdFail();   // ardsim.ini [SD] Fail=1: the card does not answer
+
 class Sd2Card
 {
 public:
-  bool init(uint8_t speed = SPI_HALF_SPEED, uint8_t csPin = 4) { (void)speed; (void)csPin; Inited = true; return true; }
+  bool init(uint8_t speed = SPI_HALF_SPEED, uint8_t csPin = 4) { (void)speed; (void)csPin; Inited = !simSdFail(); return Inited; }
   uint8_t type() const { return Inited ? SD_CARD_TYPE_SDHC : 0; }
   bool Inited = false;
 };

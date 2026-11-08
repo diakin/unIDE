@@ -198,6 +198,7 @@ bool simSignalLoad(const char *path, SimSignalConfig &config)
   config.PulseDeg = iniNumber(path, "Tacho", "PulseDeg", defaults.PulseDeg);
   config.TachoAnalog = (int)iniNumber(path, "Tacho", "Analog", defaults.TachoAnalog);
   config.Vref = iniNumber(path, "ADC", "Vref", defaults.Vref);
+  config.SdFail = iniNumber(path, "SD", "Fail", 0) != 0;
   config.LcdPixelNs = iniNumber(path, "LCD", "PixelNs", defaults.LcdPixelNs);
   for (int channel = 0; channel < SIM_ANALOG_CHANNELS; channel++)
   {
@@ -281,6 +282,7 @@ bool simSignalSave(const char *path, const SimSignalConfig &config)
   iniWrite(path, "Tacho", "PulseDeg", "%g", config.PulseDeg);
   iniWrite(path, "Tacho", "Analog", "%d", config.TachoAnalog);
   iniWrite(path, "ADC", "Vref", "%g", config.Vref);
+  iniWrite(path, "SD", "Fail", "%d", config.SdFail ? 1 : 0);
   iniWrite(path, "LCD", "PixelNs", "%g", config.LcdPixelNs);
   const SimRotor &rotor = config.Rotor;
   iniWrite(path, "Rotor", "Enabled", "%d", rotor.Enabled ? 1 : 0);
@@ -392,6 +394,13 @@ uint64_t simSignalNextEdge()
   double toRise = std::floor(Revs - pulse) + 1 - (Revs - pulse);
   double turns = toFall < toRise ? toFall : toRise;
   return LastMicros + (uint64_t)(turns * 60e6 / Active.Rpm);
+}
+
+// takes a changed ini first: SD.begin in setup() may run before the first tick
+bool simSdFail()
+{
+  takePending();
+  return ActiveReady && Active.SdFail;
 }
 
 int simTachoPin()
