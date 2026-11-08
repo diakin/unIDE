@@ -50,7 +50,7 @@ echo ArdSim: g++ = %GXX%
 if not exist "%OBJDIR%\fonts" mkdir "%OBJDIR%\fonts"
 
 rem ---- ardprep (once; the number changes with ardprep.cpp - then built again)
-set ARDPREP=%SIMDIR%\tools\ardprep5.exe
+set ARDPREP=%SIMDIR%\tools\ardprep6.exe
 if not exist "%ARDPREP%" (
   echo ArdSim: building ardprep
   "%GXX%" -std=gnu++17 -O1 -static -o "%ARDPREP%" "%SIMDIR%\tools\ardprep.cpp"

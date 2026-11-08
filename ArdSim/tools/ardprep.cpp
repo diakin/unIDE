@@ -1569,6 +1569,10 @@ static std::string controlRegistrations(const std::vector<std::string> &texts,
       }
     }
   }
+  // a control header that does not define SimCtlReg (an older one): no
+  // registrations, the sketch still builds
+  if (!result.empty())
+    result = "#ifdef SIM_CTL_REG_DEFINED\n" + result + "#endif\n";
   return result;
 }
 
