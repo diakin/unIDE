@@ -31353,6 +31353,12 @@ var
   Open, WordStart, WordEnd: Integer;
   SubCount: Integer;   // занято в FSubs
   Nm, LineStr, FirstWord: string;
+  // Строчные комментарии (//) в карте CommentRanges не лежат - там только
+  // блочные. Поэтому проход сам пропускает их до конца строки, а LastCode -
+  // последний знак кода перед текущим (не пробел и не комментарий): по нему
+  // '{' находит свою ')' и через "void F() // текст" на прошлой строке.
+  InLineCmt: Boolean;
+  LastCode, CmtLen: Integer;
 
   // Слово оператора: перед '(' или первым в строке оно значит, что это не
   // объявление, а if (...) {, while (...) { и т.п.
@@ -31402,6 +31408,9 @@ begin
   LineNo := 0;
   Depth := 0;
   Open := -1;
+  InLineCmt := False;
+  LastCode := 0;
+  CmtLen := Length(FScheme.FLineCommentMarker);
 
   Idx := 1;
   while Idx <= Len do
@@ -31411,22 +31420,32 @@ begin
       if (Idx < Len) and (AText[Idx + 1] = #10) then
         Inc(Idx);
       Inc(LineNo);
+      InLineCmt := False;
     end
     else if AText[Idx] = #10 then
-      Inc(LineNo)
-    else if not Skip(Idx) then
+    begin
+      Inc(LineNo);
+      InLineCmt := False;
+    end
+    else if InLineCmt or (AText[Idx] = ' ') or (AText[Idx] = #9) or
+            InRanges(CommentRanges, Idx - 1) then
+      // комментарий и пробелы - не код
+    else if (CmtLen > 0) and (AText[Idx] = FScheme.FLineCommentMarker[1]) and
+            (Copy(AText, Idx, CmtLen) = FScheme.FLineCommentMarker) and
+            not Skip(Idx) and FScheme.LineCommentPosOk(AText, Idx) then
+      InLineCmt := True
+    else if Skip(Idx) then
+      LastCode := Idx   // строковый литерал - код
+    else
     begin
       if AText[Idx] = '{' then
       begin
         if (Depth = 0) and (Open < 0) then
         begin
-          // Назад до ')' через пробелы, переводы строк и комментарии: между
-          // ')' и '{' бывают строки // с описанием параметров (Label в BS10)
-          Idx2 := Idx - 1;
-          while (Idx2 >= 1) and ((AText[Idx2] = ' ') or (AText[Idx2] = #9) or
-                              (AText[Idx2] = #13) or (AText[Idx2] = #10) or
-                              InRanges(CommentRanges, Idx2 - 1)) do
-            Dec(Idx2);
+          // Последний знак кода перед '{': между ')' и '{' бывают
+          // комментарии - в строке заголовка (void Win1F1() // ...) и
+          // строками ниже (описание параметров Label в BS10)
+          Idx2 := LastCode;
 
           if (Idx2 >= 1) and (AText[Idx2] = ')') and not Skip(Idx2) then
           begin
@@ -31513,6 +31532,7 @@ begin
           Open := -1;
         end;
       end;
+      LastCode := Idx;
     end;
     Inc(Idx);
   end;
