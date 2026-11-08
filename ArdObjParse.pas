@@ -61,6 +61,11 @@ type
     // на нескольких строках
     ArgsLine, ArgsCol, ArgsLen: Integer;
     ArgsText: string;
+    // Слова аргументов (первое и последнее) и закрывающей скобки - для
+    // вычисления значений (TArdSketch.ArgInfo)
+    ArgFirstTok, ArgLastTok: array of Integer;
+    NameTok, CloseTok: Integer;
+    CloseLine, CloseCol: Integer;  // где ')' вызова
     // Текст и графика: последний setColor / setBackColor / setFont выше в
     // той же функции, nil - в функции не задан
     ColorCall, BackCall, FontCall: TArdCall;
@@ -76,17 +81,34 @@ type
     ParamNames, ParamTypes: TStringList;
     Calls: TList;                // TArdCall тела по порядку, и set...
     Draws: Boolean;              // выводит на экран (прямо или через другие)
-    // Номера слов { и } тела - только на время разбора
+    // Номера слов { и } тела
     BodyTok, EndTok: Integer;
     constructor Create;
     destructor Destroy; override;
     function OutCount: Integer;  // вызовов вывода (без set...)
   end;
 
+  TArdValue = record
+    Num: Double;
+    IsInt: Boolean;
+  end;
+
   TArdSketch = class
   private
     FText: string;
     FTokens: TList;
+    FParent: TArdSketch;   // у разбора значения #define - основной скетч
+    function TokText(AIdx: Integer): string;
+    function TokLine(AIdx: Integer): Integer;
+    function FuncOfTok(AIdx: Integer): TArdFunc;
+    function ExprEnd(AFrom: Integer): Integer;
+    function InForHeader(AIdx: Integer): Boolean;
+    function WriteKind(AIdx: Integer): Integer;
+    function EvalTokens(AFrom, ATo: Integer; ADepth: Integer;
+                        var AValue: TArdValue): Boolean;
+    function ResolveName(const AName: string; ANameTok, ADepth: Integer;
+                         var AValue: TArdValue; var ALine: Integer;
+                         var ADetail: string): Boolean;
     procedure Tokenize;
     procedure ScanTopLevel;
     procedure ScanBodies;
@@ -117,6 +139,11 @@ type
     // Цвет диалога - текстом для скетча: RGB24TOLCD(0xRRGGBB), если такой
     // макрос в скетче есть, иначе 0xNNNN (RGB565)
     function ColorToText(AColor: Integer): string;
+    // Значение аргумента по тексту: "240   (GrafTop=40 параметр ...
+    // стр.1245; GrafH=200 ...)", "?" - не вычисляется; ALine - строка
+    // присваивания первой переменной аргумента, -1 - переменных нет
+    procedure ArgInfo(ACall: TArdCall; AArgIdx: Integer;
+                      var AValueText: string; var ALine: Integer);
   end;
 
 // Параметр функции скетча - цвет / шрифт / строка (по имени и типу)
@@ -459,10 +486,11 @@ var
   // Строка препроцессора от # до конца (с продолжением через \)
   procedure Preprocessor;
   var
-    NameStart, NameEnd: Integer;
+    NameStart, NameEnd, DirLine: Integer;
     Directive, Body, MacroName, MacroValue: string;
     CommentAt: Integer;
   begin
+    DirLine := CurLine;
     Body := '';
     while Pos1 <= TextLen do
     begin
@@ -516,7 +544,7 @@ var
       Exit;
     end;
     MacroValue := Trim(Copy(Body, NameEnd, MaxInt));
-    Defines.Add(MacroName + '=' + MacroValue);
+    Defines.AddObject(MacroName + '=' + MacroValue, TObject(DirLine));
   end;
 
 var
@@ -870,6 +898,10 @@ var
     SetLength(Call.ArgLine, ArgNo + 1);
     SetLength(Call.ArgCol, ArgNo + 1);
     SetLength(Call.ArgLen, ArgNo + 1);
+    SetLength(Call.ArgFirstTok, ArgNo + 1);
+    SetLength(Call.ArgLastTok, ArgNo + 1);
+    Call.ArgFirstTok[ArgNo] := AFrom;
+    Call.ArgLastTok[ArgNo] := ATo;
     if FirstTok.Line = LastTok.EndLine then
       Call.ArgLine[ArgNo] := FirstTok.Line
     else
@@ -890,6 +922,10 @@ begin
   Tok := TArdTok(FTokens[ANameTok]);
   Call.Line := Tok.Line;
   Call.Col := Tok.Col;
+  Call.NameTok := ANameTok;
+  Call.CloseTok := CloseIdx;
+  Call.CloseLine := TArdTok(FTokens[CloseIdx]).Line;
+  Call.CloseCol := TArdTok(FTokens[CloseIdx]).Col;
   if AObj = '' then
     Call.Kind := ackUser
   else
@@ -1068,11 +1104,599 @@ begin
        (Fonts.IndexOf(Defines.Names[Idx]) < 0) then
       Fonts.Add(Defines.Names[Idx]);
   end;
-  // Слова больше не нужны - память под них прочь
-  for Idx := 0 to FTokens.Count - 1 do
-    TArdTok(FTokens[Idx]).Free;
-  FTokens.Clear;
+  // Слова остаются: по ним вычисляются значения аргументов (ArgInfo)
   FText := '';
+end;
+
+// ---------------------------------------------------------------------------
+//  Значения аргументов по тексту (без запуска)
+//
+//  Переменная ищется так:
+//    1. в своей функции - последняя запись выше вызова: "Имя = выражение"
+//       (и объявление "int Имя = ..."); "+=", "++", переменная цикла for,
+//       объявление без значения - строка есть, значения нет;
+//    2. параметр функции - значение, если во всех вызовах этой функции
+//       оно вычисляется одинаково;
+//    3. глобальная переменная с начальным значением ("начальное": в
+//       других функциях её могут менять);
+//    4. #define, VGA_..., LEFT/RIGHT/CENTER, true/false.
+//  Ветки if и циклы не различаются: берётся ближайшая запись выше по
+//  тексту.
+// ---------------------------------------------------------------------------
+
+function ArdValueText(const AValue: TArdValue): string;
+var
+  Idx: Integer;
+begin
+  if AValue.IsInt then
+    Result := IntToStr(Trunc(AValue.Num))
+  else
+  begin
+    Result := FloatToStrF(AValue.Num, ffGeneral, 7, 0);
+    for Idx := 1 to Length(Result) do
+      if Result[Idx] = ',' then
+        Result[Idx] := '.';
+  end;
+end;
+
+function IsTypeWord(const AWord: string): Boolean;
+begin
+  Result := (AWord = 'int') or (AWord = 'long') or (AWord = 'short') or
+            (AWord = 'byte') or (AWord = 'word') or (AWord = 'char') or
+            (AWord = 'unsigned') or (AWord = 'signed') or
+            (AWord = 'float') or (AWord = 'double') or (AWord = 'bool') or
+            (AWord = 'boolean') or (AWord = 'uint8_t') or
+            (AWord = 'int8_t') or (AWord = 'uint16_t') or
+            (AWord = 'int16_t') or (AWord = 'uint32_t') or
+            (AWord = 'int32_t') or (AWord = 'size_t');
+end;
+
+function ParseNumber(const AText: string; var AValue: TArdValue): Boolean;
+var
+  Txt: string;
+  IntVal: Integer;
+  Code: Integer;
+begin
+  Txt := AText;
+  // 1.5f, 10UL
+  while (Length(Txt) > 1) and (UpCase(Txt[Length(Txt)]) in ['U', 'L', 'F']) and
+        not ((Length(Txt) > 2) and (UpCase(Txt[2]) = 'X') and
+             (UpCase(Txt[Length(Txt)]) = 'F')) do
+    SetLength(Txt, Length(Txt) - 1);
+  if (Length(Txt) > 2) and (Txt[1] = '0') and (UpCase(Txt[2]) = 'X') then
+  begin
+    Result := TryStrToInt('$' + Copy(Txt, 3, MaxInt), IntVal);
+    AValue.Num := IntVal;
+    AValue.IsInt := True;
+    Exit;
+  end;
+  if (Pos('.', Txt) > 0) or (Pos('e', LowerCase(Txt)) > 0) then
+  begin
+    Val(Txt, AValue.Num, Code);
+    AValue.IsInt := False;
+    Result := Code = 0;
+    Exit;
+  end;
+  Result := TryStrToInt(Txt, IntVal);
+  AValue.Num := IntVal;
+  AValue.IsInt := True;
+end;
+
+function TArdSketch.TokText(AIdx: Integer): string;
+begin
+  if (AIdx >= 0) and (AIdx < FTokens.Count) then
+    Result := TArdTok(FTokens[AIdx]).Text
+  else
+    Result := '';
+end;
+
+function TArdSketch.TokLine(AIdx: Integer): Integer;
+begin
+  if (AIdx >= 0) and (AIdx < FTokens.Count) then
+    Result := TArdTok(FTokens[AIdx]).Line
+  else
+    Result := -1;
+end;
+
+function TArdSketch.FuncOfTok(AIdx: Integer): TArdFunc;
+var
+  FuncIdx: Integer;
+begin
+  for FuncIdx := 0 to Funcs.Count - 1 do
+  begin
+    Result := TArdFunc(Funcs[FuncIdx]);
+    if (AIdx > Result.BodyTok) and (AIdx < Result.EndTok) then
+      Exit;
+  end;
+  Result := nil;
+end;
+
+// Конец выражения справа от '=' в AFrom: ';' или ',' или ')' нулевого
+// уровня. Возвращает номер последнего слова выражения.
+function TArdSketch.ExprEnd(AFrom: Integer): Integer;
+var
+  Idx, Depth: Integer;
+  Txt: string;
+begin
+  Depth := 0;
+  Idx := AFrom;
+  while Idx < FTokens.Count do
+  begin
+    Txt := TokText(Idx);
+    if TArdTok(FTokens[Idx]).Kind = atkPunct then
+    begin
+      if (Txt = '(') or (Txt = '[') or (Txt = '{') then
+        Inc(Depth)
+      else if (Txt = ')') or (Txt = ']') or (Txt = '}') then
+      begin
+        if Depth = 0 then
+          Break;
+        Dec(Depth);
+      end
+      else if ((Txt = ';') or (Txt = ',')) and (Depth = 0) then
+        Break;
+    end;
+    Inc(Idx);
+  end;
+  Result := Idx - 1;
+end;
+
+// Слово AIdx - внутри заголовка for ( ... )?
+function TArdSketch.InForHeader(AIdx: Integer): Boolean;
+var
+  Idx, Depth: Integer;
+  Txt: string;
+begin
+  Result := False;
+  Depth := 0;
+  Idx := AIdx - 1;
+  while Idx >= 0 do
+  begin
+    Txt := TokText(Idx);
+    if TArdTok(FTokens[Idx]).Kind = atkPunct then
+    begin
+      if (Txt = ')') or (Txt = ']') then
+        Inc(Depth)
+      else if (Txt = '(') or (Txt = '[') then
+      begin
+        if Depth = 0 then
+        begin
+          Result := TokText(Idx - 1) = 'for';
+          Exit;
+        end;
+        Dec(Depth);
+      end
+      else if (Txt = '{') or (Txt = '}') then
+        Exit;
+    end;
+    Dec(Idx);
+  end;
+end;
+
+// Запись в переменную в слове AIdx (там её имя)? AKind: 1 - "= выражение",
+// 2 - другая запись (+=, ++, объявление без значения), 0 - не запись.
+function TArdSketch.WriteKind(AIdx: Integer): Integer;
+var
+  NextTxt, Next2Txt, PrevTxt: string;
+begin
+  Result := 0;
+  PrevTxt := TokText(AIdx - 1);
+  if (PrevTxt = '.') or (PrevTxt = '->') or (PrevTxt = '::') then
+    Exit;
+  NextTxt := TokText(AIdx + 1);
+  Next2Txt := TokText(AIdx + 2);
+  if (NextTxt = '=') and (Next2Txt <> '=') then
+    Result := 1
+  else if ((NextTxt = '+') or (NextTxt = '-') or (NextTxt = '*') or
+           (NextTxt = '/') or (NextTxt = '%') or (NextTxt = '&') or
+           (NextTxt = '|') or (NextTxt = '^')) and (Next2Txt = '=') then
+    Result := 2
+  else if ((NextTxt = '+') and (Next2Txt = '+')) or
+          ((NextTxt = '-') and (Next2Txt = '-')) or
+          ((PrevTxt = '+') and (TokText(AIdx - 2) = '+')) or
+          ((PrevTxt = '-') and (TokText(AIdx - 2) = '-')) then
+    Result := 2
+  // int x;  int x, y;  - объявление без значения
+  else if ((NextTxt = ';') or (NextTxt = ',')) and IsTypeWord(PrevTxt) then
+    Result := 2;
+end;
+
+// Выражение в словах AFrom..ATo
+function TArdSketch.EvalTokens(AFrom, ATo: Integer; ADepth: Integer;
+                               var AValue: TArdValue): Boolean;
+var
+  Pos1: Integer;
+  Failed: Boolean;
+
+  function Cur: string;
+  begin
+    if Pos1 <= ATo then
+      Result := TokText(Pos1)
+    else
+      Result := '';
+  end;
+
+  function Expr: TArdValue; forward;
+
+  function Primary: TArdValue;
+  var
+    Tok: TArdTok;
+    Line: Integer;
+    Detail: string;
+  begin
+    Result.Num := 0;
+    Result.IsInt := True;
+    if Pos1 > ATo then
+    begin
+      Failed := True;
+      Exit;
+    end;
+    Tok := TArdTok(FTokens[Pos1]);
+    if Tok.Kind = atkNumber then
+    begin
+      if not ParseNumber(Tok.Text, Result) then
+        Failed := True;
+      Inc(Pos1);
+    end
+    else if Tok.Kind = atkIdent then
+    begin
+      // Вызов функции (String(x), round(x)) - не вычисляем
+      if TokText(Pos1 + 1) = '(' then
+        Failed := True
+      else if not ResolveName(Tok.Text, Pos1, ADepth + 1, Result, Line,
+                              Detail) then
+        Failed := True;
+      Inc(Pos1);
+    end
+    else
+    begin
+      Failed := True;
+      Inc(Pos1);
+    end;
+  end;
+
+  function Unary: TArdValue;
+  var
+    Save: Integer;
+    CastWord: string;
+  begin
+    if Cur = '-' then
+    begin
+      Inc(Pos1);
+      Result := Unary;
+      Result.Num := -Result.Num;
+    end
+    else if Cur = '+' then
+    begin
+      Inc(Pos1);
+      Result := Unary;
+    end
+    else if Cur = '(' then
+    begin
+      // (int) x - приведение типа
+      Save := Pos1;
+      Inc(Pos1);
+      CastWord := '';
+      while (Pos1 <= ATo) and IsTypeWord(Cur) do
+      begin
+        CastWord := Cur;
+        Inc(Pos1);
+      end;
+      if (CastWord <> '') and (Cur = ')') then
+      begin
+        Inc(Pos1);
+        Result := Unary;
+        if (CastWord <> 'float') and (CastWord <> 'double') then
+        begin
+          Result.Num := Trunc(Result.Num);
+          Result.IsInt := True;
+        end
+        else
+          Result.IsInt := False;
+        Exit;
+      end;
+      Pos1 := Save + 1;
+      Result := Expr;
+      if Cur = ')' then
+        Inc(Pos1)
+      else
+        Failed := True;
+    end
+    else
+      Result := Primary;
+  end;
+
+  function Term: TArdValue;
+  var
+    Op: string;
+    Right: TArdValue;
+  begin
+    Result := Unary;
+    while not Failed and ((Cur = '*') or (Cur = '/') or (Cur = '%')) do
+    begin
+      Op := Cur;
+      Inc(Pos1);
+      Right := Unary;
+      if Failed then
+        Exit;
+      if Op = '*' then
+        Result.Num := Result.Num * Right.Num
+      else
+      begin
+        if Right.Num = 0 then
+        begin
+          Failed := True;
+          Exit;
+        end;
+        if Op = '%' then
+          Result.Num := Trunc(Result.Num) mod Trunc(Right.Num)
+        else if Result.IsInt and Right.IsInt then
+          Result.Num := Trunc(Result.Num / Right.Num)
+        else
+          Result.Num := Result.Num / Right.Num;
+      end;
+      Result.IsInt := Result.IsInt and Right.IsInt;
+    end;
+  end;
+
+  function Expr: TArdValue;
+  var
+    Op: string;
+    Right: TArdValue;
+  begin
+    Result := Term;
+    while not Failed and ((Cur = '+') or (Cur = '-')) do
+    begin
+      Op := Cur;
+      Inc(Pos1);
+      Right := Term;
+      if Failed then
+        Exit;
+      if Op = '+' then
+        Result.Num := Result.Num + Right.Num
+      else
+        Result.Num := Result.Num - Right.Num;
+      Result.IsInt := Result.IsInt and Right.IsInt;
+    end;
+  end;
+
+begin
+  Result := False;
+  if (ADepth > 12) or (AFrom > ATo) or (AFrom < 0) then
+    Exit;
+  Pos1 := AFrom;
+  Failed := False;
+  AValue := Expr;
+  Result := not Failed and (Pos1 = ATo + 1);
+end;
+
+// Значение имени ANameTok (слово, где оно стоит в выражении). ALine -
+// строка, где ему присвоено значение (-1 - не нашлось), ADetail -
+// пояснение (параметр, начальное, переменная цикла...).
+function TArdSketch.ResolveName(const AName: string; ANameTok, ADepth: Integer;
+                                var AValue: TArdValue; var ALine: Integer;
+                                var ADetail: string): Boolean;
+var
+  Func, Caller: TArdFunc;
+  Idx, Kind, ParamIdx, CallIdx, CallCount, DefIdx: Integer;
+  Call: TArdCall;
+  ArgValue: TArdValue;
+  Same: Boolean;
+  Temp: TArdSketch;
+  DefValue: string;
+
+  function Named(const AWord: string; ANum: Integer): Boolean;
+  begin
+    Result := AName = AWord;
+    if Result then
+    begin
+      AValue.Num := ANum;
+      AValue.IsInt := True;
+    end;
+  end;
+
+begin
+  Result := False;
+  ALine := -1;
+  ADetail := '';
+  AValue.Num := 0;
+  AValue.IsInt := True;
+  if ADepth > 12 then
+    Exit;
+
+  // 1. Запись выше в своей функции
+  Func := FuncOfTok(ANameTok);
+  if Func <> nil then
+  begin
+    Idx := ANameTok - 1;
+    while Idx > Func.BodyTok do
+    begin
+      if TokText(Idx) = AName then
+      begin
+        Kind := WriteKind(Idx);
+        if Kind > 0 then
+        begin
+          ALine := TokLine(Idx);
+          if Kind = 2 then
+          begin
+            ADetail := 'меняется в коде';
+            Exit;
+          end;
+          if InForHeader(Idx) then
+          begin
+            ADetail := 'переменная цикла';
+            Exit;
+          end;
+          Result := EvalTokens(Idx + 2, ExprEnd(Idx + 2), ADepth + 1, AValue);
+          Exit;
+        end;
+      end;
+      Dec(Idx);
+    end;
+
+    // 2. Параметр: одно значение во всех вызовах
+    ParamIdx := Func.ParamNames.IndexOf(AName);
+    if ParamIdx >= 0 then
+    begin
+      ALine := Func.Line;
+      CallCount := 0;
+      Same := True;
+      for CallIdx := 0 to Calls.Count - 1 do
+      begin
+        Call := TArdCall(Calls[CallIdx]);
+        if (Call.Target <> Func) or (ParamIdx >= Call.Args.Count) then
+          Continue;
+        Inc(CallCount);
+        Caller := Call.Func;
+        if (Caller = Func) or
+           not EvalTokens(Call.ArgFirstTok[ParamIdx], Call.ArgLastTok[ParamIdx],
+                          ADepth + 1, ArgValue) then
+        begin
+          Same := False;
+          Break;
+        end;
+        if CallCount = 1 then
+          AValue := ArgValue
+        else if ArgValue.Num <> AValue.Num then
+        begin
+          Same := False;
+          Break;
+        end;
+      end;
+      Result := Same and (CallCount > 0);
+      if Result then
+        ADetail := 'параметр ' + Func.Name + ', вызовов ' + IntToStr(CallCount)
+      else
+        ADetail := 'параметр ' + Func.Name;
+      Exit;
+    end;
+  end;
+
+  // #define - раньше глобальных: препроцессор заменяет имя везде
+  DefIdx := Defines.IndexOfName(AName);
+  if DefIdx >= 0 then
+  begin
+    ALine := Integer(Defines.Objects[DefIdx]);
+    ADetail := '#define';
+    DefValue := Defines.ValueFromIndex[DefIdx];
+    Temp := TArdSketch.Create;
+    try
+      Temp.FText := DefValue;
+      Temp.Tokenize;
+      Temp.FParent := Self;
+      Result := Temp.EvalTokens(0, Temp.FTokens.Count - 1, ADepth + 1, AValue);
+    finally
+      Temp.Free;
+    end;
+    // Не число (шрифт-синоним, RGB24TOLCD(...)) - показать, чему равно
+    if not Result then
+      ADetail := '#define ' + DefValue;
+    Exit;
+  end;
+  // 3. Глобальная переменная с начальным значением
+  for Idx := 0 to FTokens.Count - 1 do
+    if (TokText(Idx) = AName) and (TArdTok(FTokens[Idx]).Kind = atkIdent) and
+       (FuncOfTok(Idx) = nil) and (WriteKind(Idx) = 1) then
+    begin
+      ALine := TokLine(Idx);
+      ADetail := 'начальное';
+      Result := EvalTokens(Idx + 2, ExprEnd(Idx + 2), ADepth + 1, AValue);
+      Exit;
+    end;
+
+  // Глобальная без значения: extern uint8_t BigFont[]; int Count; -
+  // строка объявления
+  for Idx := 1 to FTokens.Count - 1 do
+    if (TokText(Idx) = AName) and (TArdTok(FTokens[Idx]).Kind = atkIdent) and
+       (TArdTok(FTokens[Idx - 1]).Kind = atkIdent) and
+       ((TokText(Idx + 1) = ';') or (TokText(Idx + 1) = '[') or
+        (TokText(Idx + 1) = ',')) and (FuncOfTok(Idx) = nil) then
+    begin
+      ALine := TokLine(Idx);
+      ADetail := 'объявление';
+      Break;
+    end;
+  if ALine >= 0 then
+    Exit;
+
+  // 4. Константы UTFT и Arduino
+  if FParent <> nil then
+  begin
+    Result := FParent.ResolveName(AName, -1, ADepth + 1, AValue, ALine, ADetail);
+    Exit;
+  end;
+  for Idx := 0 to High(VgaNames) do
+    if Named(VgaNames[Idx], VgaValues[Idx]) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  Result := Named('LEFT', 0) or Named('RIGHT', 9999) or Named('CENTER', 9998) or
+            Named('true', 1) or Named('false', 0) or Named('HIGH', 1) or
+            Named('LOW', 0);
+end;
+
+procedure TArdSketch.ArgInfo(ACall: TArdCall; AArgIdx: Integer;
+                             var AValueText: string; var ALine: Integer);
+var
+  Value, VarValue: TArdValue;
+  Idx, VarLine: Integer;
+  Detail, Parts: string;
+  Seen: TStringList;
+  Tok: TArdTok;
+  Known: Boolean;
+  ColorValue: Integer;
+begin
+  AValueText := '';
+  ALine := -1;
+  if (AArgIdx < 0) or (AArgIdx >= ACall.Args.Count) then
+    Exit;
+  Known := EvalTokens(ACall.ArgFirstTok[AArgIdx], ACall.ArgLastTok[AArgIdx], 0,
+                      Value);
+  // Переменные аргумента: имя=значение и строка присваивания
+  Parts := '';
+  Seen := TStringList.Create;
+  try
+    for Idx := ACall.ArgFirstTok[AArgIdx] to ACall.ArgLastTok[AArgIdx] do
+    begin
+      Tok := TArdTok(FTokens[Idx]);
+      if (Tok.Kind <> atkIdent) or (TokText(Idx + 1) = '(') or
+         (TokText(Idx - 1) = '.') or (Seen.IndexOf(Tok.Text) >= 0) then
+        Continue;
+      Seen.Add(Tok.Text);
+      if ResolveName(Tok.Text, Idx, 0, VarValue, VarLine, Detail) then
+        Detail := Tok.Text + '=' + ArdValueText(VarValue) +
+                  ' ' + Detail
+      else if Detail <> '' then
+        Detail := Tok.Text + ' ' + Detail
+      else
+        Detail := Tok.Text;
+      if VarLine >= 0 then
+      begin
+        Detail := TrimRight(Detail) + ' стр.' + IntToStr(VarLine + 1);
+        if ALine < 0 then
+          ALine := VarLine;
+      end;
+      if Parts <> '' then
+        Parts := Parts + '; ';
+      Parts := Parts + TrimRight(Detail);
+    end;
+  finally
+    Seen.Free;
+  end;
+  if Known then
+    AValueText := ArdValueText(Value)
+  else if ColorOf(ACall.Args[AArgIdx], ColorValue) then
+    // clw = RGB24TOLCD(0xF1F1F1): цвет как RGB
+    AValueText := '#' + IntToHex(((ColorValue and $FF) shl 16) or
+                                 (ColorValue and $FF00) or
+                                 ((ColorValue shr 16) and $FF), 6)
+  else if Parts <> '' then
+    AValueText := '?';
+  // Переменная одна и её значение - уже значение аргумента: пояснение
+  // всё равно нужно (откуда взялось)
+  if Parts <> '' then
+    AValueText := AValueText + '   (' + Parts + ')';
 end;
 
 function Rgb565ToColor(AValue: Integer): Integer;

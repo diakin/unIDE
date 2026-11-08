@@ -2081,6 +2081,15 @@ type
     // Узел записанной правки: выделить его снова, когда дерево
     // перестроится по новому тексту (подпись могла измениться)
     FArdKeepName: string;
+    // Текст, по которому разобран скетч, по счётчику правок редактора
+    // (EditorTextKey) - без чтения текста; FArdCaretKey - тот же ключ при
+    // прошлом движении каретки (ArdSyncFromCaret)
+    FArdEdKey, FArdCaretKey: string;
+    // Таблица свойств в четыре колонки (ArdColumns); прежние подписи и
+    // ширины трёх колонок - вернуть у других файлов
+    FArdColsOn: Boolean;
+    FArdColCap: array[0..2] of string;
+    FArdColWidth: array[0..2] of Integer;
     // Снимок программы RapidQ (RapidQProbeRun)
     FRqProbeActive: Boolean;   // CompileRapidQ собирает копию со снимком
     FRqProbeBas: string;       // её .bas
@@ -3085,6 +3094,8 @@ type
     procedure ArdFillObjTables(AObj: TObject);
     procedure ArdBeginEdit(AItem: TListItem);
     procedure ArdApplyEdit;
+    procedure ArdColumns(AOn: Boolean);
+    procedure ArdSyncFromCaret;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
     function  RapidQIncDir: string;
@@ -32327,6 +32338,8 @@ begin
   end;
   FObjArduino := False;
   FArdTextKey := '';
+  FArdEdKey := '';
+  ArdColumns(False);
 
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
   // Форма Delphi (.dfm) или Lazarus (.lfm) - один и тот же текстовый вид
@@ -33186,6 +33199,13 @@ var
   Func: TArdFunc;
   Call: TArdCall;
 begin
+  ArdColumns(True);
+  // Счётчик правок тот же - текст не читаем
+  if FObjArduino and (FArdSketch <> nil) and (FObjRoots <> nil) and
+     (FObjRoots.Count > 0) and
+     (FArdEdKey = FCurrentFileName + '|' + EditorTextKey) then
+    Exit;
+  FArdEdKey := FCurrentFileName + '|' + EditorTextKey;
   SrcText := GetEditorTextCR;
   Key := FCurrentFileName + '|' + IntToStr(Length(SrcText)) + '|' +
          IntToHex(Crc32Of(SrcText), 8);
@@ -33297,14 +33317,18 @@ var
   Func: TArdFunc;
   Item: TListItem;
   Names: TStringList;
-  ArgIdx, FuncTotal: Integer;
+  ArgIdx, FuncTotal, ValueLine, ColorValue: Integer;
+  ValueText: string;
 
-  // AUiText - текст интерфейса; значение из исходника - через EdUiText
-  procedure AddUiRow(const ACaption, AUiText: string; ALine, AData: Integer);
+  // Колонки (ArdColumns): Параметр | Аргумент | Значение | Строка.
+  // AArgUi, AValueUi - текст интерфейса; текст исходника - через EdUiText.
+  procedure AddUiRow(const ACaption, AArgUi, AValueUi: string;
+                     ALine, AData: Integer);
   begin
     Item := FObjProps.Items.Add;
     Item.Caption := ACaption;
-    Item.SubItems.Add(AUiText);
+    Item.SubItems.Add(AArgUi);
+    Item.SubItems.Add(AValueUi);
     if ALine >= 0 then
       Item.SubItems.Add(IntToStr(ALine + 1))
     else
@@ -33314,15 +33338,27 @@ var
 
   procedure AddRow(const ACaption, AValue: string; ALine, AData: Integer);
   begin
-    AddUiRow(ACaption, EdUiText(AValue), ALine, AData);
+    AddUiRow(ACaption, EdUiText(AValue), '', ALine, AData);
   end;
 
   procedure AddSetter(const ACaption: string; ASetter: TArdCall; AData: Integer);
   begin
     if ASetter = nil then
-      AddUiRow(ACaption, ArdNotSet, -1, -1)
+      AddUiRow(ACaption, ArdNotSet, '', -1, -1)
     else
-      AddRow(ACaption, Trim(ASetter.ArgsText), ASetter.Line, AData);
+    begin
+      // Цвет - как RGB (clw = RGB24TOLCD(0xF1F1F1) -> #F1F1F1)
+      ValueText := '';
+      if (AData <> ArdRowFont) and Sketch.ColorOf(ASetter.ArgsText, ColorValue) then
+        ValueText := '#' + IntToHex(((ColorValue and $FF) shl 16) or
+                                    (ColorValue and $FF00) or
+                                    ((ColorValue shr 16) and $FF), 6)
+      // Переменная или параметр - значение по тексту, как у аргументов
+      else if ASetter.Args.Count = 1 then
+        Sketch.ArgInfo(ASetter, 0, ValueText, ValueLine);
+      AddUiRow(ACaption, EdUiText(Trim(ASetter.ArgsText)), ValueText,
+               ASetter.Line, AData);
+    end;
   end;
 
 begin
@@ -33352,11 +33388,15 @@ begin
       end
       else
         ArdMethodParams(Call.Name, Call.Args.Count, Names);
+      // Значение по тексту и строка, где переменной присвоено значение
       for ArgIdx := 0 to Call.Args.Count - 1 do
-        if Call.ArgLine[ArgIdx] >= 0 then
-          AddRow(Names[ArgIdx], Call.Args[ArgIdx], Call.ArgLine[ArgIdx], ArgIdx)
-        else
-          AddRow(Names[ArgIdx], Call.Args[ArgIdx], Call.Line, ArgIdx);
+      begin
+        Sketch.ArgInfo(Call, ArgIdx, ValueText, ValueLine);
+        // Пояснение собрано из имён (латиница) и слов интерфейса - без
+        // EdUiText
+        AddUiRow(Names[ArgIdx], EdUiText(Call.Args[ArgIdx]),
+                 ValueText, ValueLine, ArgIdx);
+      end;
     finally
       Names.Free;
     end;
@@ -33381,7 +33421,8 @@ begin
     AddRow('Возвращает', Func.RetType, Func.Line, -1);
     for ArgIdx := 0 to Func.ParamNames.Count - 1 do
       AddRow(Func.ParamNames[ArgIdx], Func.ParamTypes[ArgIdx], -1, -1);
-    AddUiRow('Вывод на экран', IntToStr(Node.Children.Count) + ' вызовов', -1, -1);
+    AddUiRow('Вывод на экран', IntToStr(Node.Children.Count) + ' вызовов',
+             '', -1, -1);
     Exit;
   end;
 
@@ -33391,6 +33432,111 @@ begin
   AddRow('Объект экрана (UTFT)', Sketch.ScreenObjs.CommaText, -1, -1);
   AddRow('Шрифты (extern)', Sketch.Fonts.CommaText, -1, -1);
   AddRow('Функций с выводом', IntToStr(FuncTotal), -1, -1);
+end;
+
+// Колонки таблицы свойств у скетча: Параметр | Аргумент | Значение |
+// Строка (строка, где переменной аргумента присвоено значение). У файлов
+// Delphi и RapidQ - прежние три колонки с прежними подписями и ширинами.
+procedure TForm1.ArdColumns(AOn: Boolean);
+var
+  ColIdx: Integer;
+begin
+  if (FObjProps = nil) or (AOn = FArdColsOn) or
+     (FObjProps.Columns.Count < 3) then
+    Exit;
+  FObjProps.Columns.BeginUpdate;
+  try
+    if AOn then
+    begin
+      for ColIdx := 0 to 2 do
+      begin
+        FArdColCap[ColIdx] := FObjProps.Columns[ColIdx].Caption;
+        FArdColWidth[ColIdx] := FObjProps.Columns[ColIdx].Width;
+      end;
+      FObjProps.Columns[0].Caption := 'Параметр';
+      FObjProps.Columns[1].Caption := 'Аргумент';
+      FObjProps.Columns[2].Caption := 'Значение';
+      // Значение с пояснением длинное - первые две колонки уже
+      FObjProps.Columns[0].Width := 90;
+      FObjProps.Columns[1].Width := 120;
+      FObjProps.Columns[2].Width := 260;
+      with FObjProps.Columns.Add do
+      begin
+        Caption := 'Строка';
+        Width := 50;
+      end;
+    end
+    else
+    begin
+      while FObjProps.Columns.Count > 3 do
+        FObjProps.Columns.Delete(FObjProps.Columns.Count - 1);
+      for ColIdx := 0 to 2 do
+      begin
+        FObjProps.Columns[ColIdx].Caption := FArdColCap[ColIdx];
+        FObjProps.Columns[ColIdx].Width := FArdColWidth[ColIdx];
+      end;
+    end;
+  finally
+    FObjProps.Columns.EndUpdate;
+  end;
+  FArdColsOn := AOn;
+end;
+
+// Каретка в тексте скетча: вызов вывода под ней (Label(...),
+// myGLCD.drawLine(...)) - выделить в дереве Objects, его аргументы - в
+// таблицу. Пока текст набирают, разбор не повторяется на каждую букву:
+// первое движение каретки после правки только запоминает текст, следующее
+// (щелчок, стрелки) - разбирает заново и выделяет.
+procedure TForm1.ArdSyncFromCaret;
+var
+  Key, NodeName: string;
+  Sketch: TArdSketch;
+  Call, Best: TArdCall;
+  CharPos, LineIdx, Col, CallIdx: Integer;
+begin
+  if (FRightPages = nil) or (FRightPages.ActivePage <> FTabObjects) then
+    Exit;
+  Key := FCurrentFileName + '|' + EditorTextKey;
+  if Key <> FArdCaretKey then
+  begin
+    FArdCaretKey := Key;
+    if Key <> FArdEdKey then
+      Exit;
+  end;
+  if Key <> FArdEdKey then
+    RefreshObjectInspector(False);
+  Sketch := TArdSketch(FArdSketch);
+  if (Sketch = nil) or not FObjArduino then
+    Exit;
+  CharPos := RichEdit1.SelStart;
+  LineIdx := EdApi.LineFromChar(CharPos);
+  if LineIdx < 0 then
+    Exit;
+  Col := CharPos - EdApi.LineIndex(LineIdx) + 1;
+  // Вызов, внутри которого каретка; из вложенных - последний начатый
+  Best := nil;
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+  begin
+    Call := TArdCall(Sketch.Calls[CallIdx]);
+    if not (Call.Kind in [ackText, ackGraph, ackImage, ackScreen, ackUser]) then
+      Continue;
+    if (Call.Line > LineIdx) or ((Call.Line = LineIdx) and (Call.Col > Col)) then
+      Continue;
+    if (Call.CloseLine < LineIdx) or
+       ((Call.CloseLine = LineIdx) and (Call.CloseCol < Col)) then
+      Continue;
+    if (Best = nil) or (Call.Line > Best.Line) or
+       ((Call.Line = Best.Line) and (Call.Col > Best.Col)) then
+      Best := Call;
+  end;
+  if Best = nil then
+    Exit;
+  NodeName := 'c:' + Best.Name + ':' + IntToStr(Best.Line + 1) + ':' +
+              IntToStr(Best.Col);
+  if (FObjTree.Selected <> nil) and (FObjTree.Selected.Data <> nil) and
+     (TDfmNode(FObjTree.Selected.Data).Name = NodeName) then
+    Exit;
+  ObjSelectAnyName(NodeName);
 end;
 
 // Начало правки строки AItem таблицы вызова скетча
@@ -33543,6 +33689,7 @@ var
     ShowMessage('Текст изменился после разбора - инспектор обновлён, ' +
     'повторите правку.');
     FArdTextKey := '';
+    FArdEdKey := '';
     ObjScheduleRelines(Obj, FObjEditName);
   end;
 
@@ -33623,6 +33770,8 @@ begin
   FObjRapidQ := True;
   FObjArduino := False;
   FArdTextKey := '';
+  FArdEdKey := '';
+  ArdColumns(False);
   FObjDfmKey := '';
   FObjTreeKey := '';
   FObjTreeDfm := '';
@@ -39033,6 +39182,17 @@ end;
 // разбирал заголовок снимка - перерисовка таблицы шла 120-430 мс.
 function TForm1.ObjPropsItemColor(Item: TListItem): TColor;
 begin
+  // Скетч: строка с номером строки присваивания - цветом кода
+  if FObjArduino then
+  begin
+    if Integer(Item.Data) < 0 then
+      Result := UiColor('ObjProps.DefaultText')
+    else if (Item.SubItems.Count >= 3) and (Item.SubItems[2] <> '') then
+      Result := UiColor('ObjProps.CodeText')
+    else
+      Result := UiColor('ObjProps.DfmText');
+    Exit;
+  end;
   if (Item.SubItems.Count >= 2) and (Item.SubItems[1] <> '') then
     Result := UiColor('ObjProps.CodeText')
   else if Integer(Item.Data) < 0 then
@@ -42147,6 +42307,12 @@ begin
   if (FObjTree = nil) or (FObjTree.Items.Count = 0) or FObjRebuilding or
      FDsgSelecting then
     Exit;
+  // Скетч Arduino - вызов вывода под кареткой
+  if FObjArduino then
+  begin
+    ArdSyncFromCaret;
+    Exit;
+  end;
   Id := IdentAtCaret;
   if (Id = '') or (CompareText(Id, FObjLastIdent) = 0) then
     Exit;
@@ -54368,6 +54534,17 @@ begin
      (CompareText(NodeItem.Caption, 'Parent') = 0) then
   begin
     ObjGotoParent;
+    Exit;
+  end;
+  // Скетч: номер строки - в четвёртой колонке (ArdColumns)
+  if FObjArduino then
+  begin
+    if (HitInfo.SubItem = 3) and (NodeItem.SubItems.Count >= 3) then
+    begin
+      LineNo := StrToIntDef(NodeItem.SubItems[2], 0);
+      if LineNo > 0 then
+        GotoLine(LineNo - 1);
+    end;
     Exit;
   end;
   if HitInfo.SubItem <> ColCodeLine then
