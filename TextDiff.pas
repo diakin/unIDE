@@ -38,6 +38,16 @@ type
     // словами (буквы, цифры, '_') - есть / нет; внутри строк в кавычках
     // ('...' и "...") - как есть; остальные не учитываются
     IgnoreSpaceSmart: Boolean;
+    // Комментарии не учитываются: вырезаются из строк (на их месте -
+    // пробелы, номера символов те же); строки, где кроме комментария и
+    // пробелов ничего нет, и пустые строки - не отличие. Синтаксис -
+    // поля ниже (DiffCommentSyntax по имени файла)
+    IgnoreComments: Boolean;
+    CommentLine: string;           // до конца строки: '//', '''', ';', '#'
+    BlockOpen1, BlockClose1: string;   // '/*' '*/', '{' '}'
+    BlockOpen2, BlockClose2: string;   // '(*' '*)'
+    StringQuotes: string;          // кавычки строк: внутри них - не комментарий
+    StringEscape: Boolean;         // '\' в строке экранирует символ (C)
   end;
 
   TDiffKind = (dkEqual, dkChange, dkLeftOnly, dkRightOnly);
@@ -87,6 +97,17 @@ procedure DiffInline(const ALeftStr, ARightStr: string;
 // Ключ строки для сравнения с учётом параметров
 function DiffLineKey(const ALine: string; const AOptions: TDiffOptions): string;
 
+// Синтаксис комментариев (поля CommentLine .. StringEscape) по расширению
+// файла: Pascal, C / C++ / Arduino, Basic (RapidQ), ini, скрипты
+procedure DiffCommentSyntax(const AFileName: string;
+  var AOptions: TDiffOptions);
+
+// Строки ALines без комментариев - в AOut: символы комментария заменены
+// пробелами (длина и номера символов те же). Многострочные комментарии
+// - через строки
+procedure DiffStripComments(ALines, AOut: TStrings;
+  const AOptions: TDiffOptions);
+
 implementation
 
 type
@@ -124,6 +145,175 @@ begin
   Result.IgnoreSpaceChange := False;
   Result.IgnoreAllSpace := False;
   Result.IgnoreSpaceSmart := False;
+  Result.IgnoreComments := False;
+  Result.CommentLine := '';
+  Result.BlockOpen1 := '';
+  Result.BlockClose1 := '';
+  Result.BlockOpen2 := '';
+  Result.BlockClose2 := '';
+  Result.StringQuotes := '';
+  Result.StringEscape := False;
+end;
+
+procedure DiffCommentSyntax(const AFileName: string;
+  var AOptions: TDiffOptions);
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(AFileName));
+  AOptions.CommentLine := '';
+  AOptions.BlockOpen1 := '';
+  AOptions.BlockClose1 := '';
+  AOptions.BlockOpen2 := '';
+  AOptions.BlockClose2 := '';
+  AOptions.StringQuotes := '';
+  AOptions.StringEscape := False;
+  if (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.pp') or (Ext = '.lpr') or
+     (Ext = '.dpk') or (Ext = '.inc') or (Ext = '.dfm') or (Ext = '.lfm') then
+  begin
+    AOptions.CommentLine := '//';
+    AOptions.BlockOpen1 := '{';
+    AOptions.BlockClose1 := '}';
+    AOptions.BlockOpen2 := '(*';
+    AOptions.BlockClose2 := '*)';
+    AOptions.StringQuotes := '''';
+  end
+  else if (Ext = '.bas') or (Ext = '.rqb') or (Ext = '.frm') or
+          (Ext = '.vbs') or (Ext = '.bi') then
+  begin
+    AOptions.CommentLine := '''';
+    AOptions.StringQuotes := '"';
+  end
+  else if (Ext = '.ini') or (Ext = '.cfg') or (Ext = '.clr') or
+          (Ext = '.asm') or (Ext = '.s') then
+    AOptions.CommentLine := ';'
+  else if (Ext = '.py') or (Ext = '.sh') or (Ext = '.mk') or
+          (Ext = '.cmake') or (Ext = '.yml') or (Ext = '.yaml') then
+  begin
+    AOptions.CommentLine := '#';
+    AOptions.StringQuotes := '"''';
+    AOptions.StringEscape := True;
+  end
+  else
+  begin
+    // C, C++, Arduino (.ino), Java, JavaScript, C# и прочие - по умолчанию
+    AOptions.CommentLine := '//';
+    AOptions.BlockOpen1 := '/*';
+    AOptions.BlockClose1 := '*/';
+    AOptions.StringQuotes := '"''';
+    AOptions.StringEscape := True;
+  end;
+end;
+
+// Текст AToken в строке AStr с позиции APos
+function TokenAt(const AStr: string; APos: Integer; const AToken: string): Boolean;
+var
+  TokIdx: Integer;
+begin
+  Result := False;
+  if (AToken = '') or (APos + Length(AToken) - 1 > Length(AStr)) then
+    Exit;
+  for TokIdx := 1 to Length(AToken) do
+    if AStr[APos + TokIdx - 1] <> AToken[TokIdx] then
+      Exit;
+  Result := True;
+end;
+
+// Строка без комментариев. ABlock - открытый многострочный комментарий
+// (0 - нет, 1 - BlockOpen1, 2 - BlockOpen2), переходит на следующую строку
+function StripLineComments(const ALine: string; const AOptions: TDiffOptions;
+  var ABlock: Integer): string;
+var
+  CharIdx, BlankIdx, OpenLen: Integer;
+  Quote: Char;
+  CloseTok: string;
+begin
+  Result := ALine;
+  Quote := #0;
+  CharIdx := 1;
+  while CharIdx <= Length(Result) do
+  begin
+    if ABlock > 0 then
+    begin
+      if ABlock = 1 then
+        CloseTok := AOptions.BlockClose1
+      else
+        CloseTok := AOptions.BlockClose2;
+      if TokenAt(ALine, CharIdx, CloseTok) then
+      begin
+        for BlankIdx := CharIdx to CharIdx + Length(CloseTok) - 1 do
+          Result[BlankIdx] := ' ';
+        Inc(CharIdx, Length(CloseTok));
+        ABlock := 0;
+      end
+      else
+      begin
+        Result[CharIdx] := ' ';
+        Inc(CharIdx);
+      end;
+      Continue;
+    end;
+    if Quote <> #0 then
+    begin
+      if AOptions.StringEscape and (ALine[CharIdx] = '\') then
+        Inc(CharIdx)
+      else if ALine[CharIdx] = Quote then
+        Quote := #0;
+      Inc(CharIdx);
+      Continue;
+    end;
+    if (AOptions.StringQuotes <> '') and
+       (Pos(ALine[CharIdx], AOptions.StringQuotes) > 0) and
+       not TokenAt(ALine, CharIdx, AOptions.CommentLine) then
+    begin
+      Quote := ALine[CharIdx];
+      Inc(CharIdx);
+      Continue;
+    end;
+    if TokenAt(ALine, CharIdx, AOptions.CommentLine) then
+    begin
+      for BlankIdx := CharIdx to Length(Result) do
+        Result[BlankIdx] := ' ';
+      Break;
+    end;
+    OpenLen := 0;
+    // Директивы Pascal {$...} и (*$...*) - не комментарий
+    if TokenAt(ALine, CharIdx, AOptions.BlockOpen1) and
+       not ((CharIdx + Length(AOptions.BlockOpen1) <= Length(ALine)) and
+            (ALine[CharIdx + Length(AOptions.BlockOpen1)] = '$') and
+            (AOptions.BlockOpen1 = '{')) then
+    begin
+      ABlock := 1;
+      OpenLen := Length(AOptions.BlockOpen1);
+    end
+    else if TokenAt(ALine, CharIdx, AOptions.BlockOpen2) and
+       not ((CharIdx + Length(AOptions.BlockOpen2) <= Length(ALine)) and
+            (ALine[CharIdx + Length(AOptions.BlockOpen2)] = '$')) then
+    begin
+      ABlock := 2;
+      OpenLen := Length(AOptions.BlockOpen2);
+    end;
+    if OpenLen > 0 then
+    begin
+      for BlankIdx := CharIdx to CharIdx + OpenLen - 1 do
+        Result[BlankIdx] := ' ';
+      Inc(CharIdx, OpenLen);
+      Continue;
+    end;
+    Inc(CharIdx);
+  end;
+end;
+
+procedure DiffStripComments(ALines, AOut: TStrings;
+  const AOptions: TDiffOptions);
+var
+  LineIdx, Block: Integer;
+begin
+  AOut.Clear;
+  AOut.Capacity := ALines.Count;
+  Block := 0;
+  for LineIdx := 0 to ALines.Count - 1 do
+    AOut.Add(StripLineComments(ALines[LineIdx], AOptions, Block));
 end;
 
 function IsSpaceChar(ACh: Char): Boolean;
@@ -218,6 +408,8 @@ begin
   end
   else
     Result := ALine;
+  if AOptions.IgnoreComments then
+    Result := TrimRight(Result);
   if AOptions.IgnoreCase then
     Result := AnsiLowerCase(Result);
 end;
@@ -601,45 +793,178 @@ begin
   SetLength(Result, Count);
 end;
 
+// Без комментариев: пустые после вырезания строки в сравнении не
+// участвуют. AKeys - ключи всех строк; в ACompIds - ключи остальных, в
+// AFull - их номера среди всех строк
+procedure CompactKeys(AKeys: TStrings; var ACompKeys: TStringList;
+  var AFull: TIntArray);
+var
+  LineIdx, Count: Integer;
+begin
+  ACompKeys := TStringList.Create;
+  SetLength(AFull, AKeys.Count);
+  Count := 0;
+  for LineIdx := 0 to AKeys.Count - 1 do
+    if Trim(AKeys[LineIdx]) <> '' then
+    begin
+      ACompKeys.Add(AKeys[LineIdx]);
+      AFull[Count] := LineIdx;
+      Inc(Count);
+    end;
+  SetLength(AFull, Count);
+end;
+
+// Участки по сжатым строкам - на все строки. Пустые строки между
+// элементами относятся к общему участку (с разным числом строк слева и
+// справа - DiffAlign дополнит заполнителями), а у отличия - только его
+// строки
+function ExpandBlocks(const ACompBlocks: TDiffBlocks;
+  const ALeftFull, ARightFull: TIntArray;
+  ALeftCount, ARightCount: Integer): TDiffBlocks;
+var
+  BlockIdx, Count, LeftPos, RightPos, LeftEnd, RightEnd, PairIdx: Integer;
+
+  // Номер (среди всех строк) сжатого элемента ACompIdx; за последним -
+  // число всех строк
+  function FullOf(const AFull: TIntArray; ACompIdx, ATotal: Integer): Integer;
+  begin
+    if ACompIdx < Length(AFull) then
+      Result := AFull[ACompIdx]
+    else
+      Result := ATotal;
+  end;
+
+  procedure Add(AKind: TDiffKind; ALeftEnd, ARightEnd: Integer);
+  begin
+    if (ALeftEnd = LeftPos) and (ARightEnd = RightPos) then
+      Exit;
+    // Общие участки поровну строк подряд - одним участком
+    if (AKind = dkEqual) and (Count > 0) and
+       (Result[Count - 1].Kind = dkEqual) and
+       (Result[Count - 1].LeftCount = Result[Count - 1].RightCount) and
+       (ALeftEnd - LeftPos = ARightEnd - RightPos) then
+    begin
+      Inc(Result[Count - 1].LeftCount, ALeftEnd - LeftPos);
+      Inc(Result[Count - 1].RightCount, ARightEnd - RightPos);
+    end
+    else
+      AddBlock(Result, Count, AKind, LeftPos, ALeftEnd - LeftPos,
+        RightPos, ARightEnd - RightPos);
+    LeftPos := ALeftEnd;
+    RightPos := ARightEnd;
+  end;
+
+begin
+  Result := nil;
+  Count := 0;
+  LeftPos := 0;
+  RightPos := 0;
+  for BlockIdx := 0 to High(ACompBlocks) do
+    with ACompBlocks[BlockIdx] do
+      if Kind = dkEqual then
+      begin
+        // Каждая общая строка - против своей пары: пустые перед ней -
+        // отдельным общим участком (разное число строк), потом пара
+        for PairIdx := 0 to LeftCount - 1 do
+        begin
+          Add(dkEqual, ALeftFull[LeftStart + PairIdx],
+            ARightFull[RightStart + PairIdx]);
+          Add(dkEqual, ALeftFull[LeftStart + PairIdx] + 1,
+            ARightFull[RightStart + PairIdx] + 1);
+        end;
+      end
+      else
+      begin
+        // Пустые перед отличием - к общему участку
+        Add(dkEqual, FullOf(ALeftFull, LeftStart, ALeftCount),
+          FullOf(ARightFull, RightStart, ARightCount));
+        if LeftCount > 0 then
+          LeftEnd := ALeftFull[LeftStart + LeftCount - 1] + 1
+        else
+          LeftEnd := LeftPos;
+        if RightCount > 0 then
+          RightEnd := ARightFull[RightStart + RightCount - 1] + 1
+        else
+          RightEnd := RightPos;
+        Add(Kind, LeftEnd, RightEnd);
+      end;
+  // Пустые строки в конце
+  Add(dkEqual, ALeftCount, ARightCount);
+  SetLength(Result, Count);
+end;
+
 function DiffLines(ALeft, ARight: TStrings;
   const AOptions: TDiffOptions): TDiffBlocks;
 var
-  LeftKeys, RightKeys: TStringList;
-  LeftIds, RightIds: TIntArray;
+  LeftKeys, RightKeys, LeftComp, RightComp: TStringList;
+  LeftIds, RightIds, LeftFull, RightFull: TIntArray;
   Engine: TDiffEngine;
   LineIdx: Integer;
   PlainKeys: Boolean;
+  LeftSrc, RightSrc: TStrings;
+  LeftStrip, RightStrip: TStringList;
 begin
   PlainKeys := not AOptions.IgnoreCase and not AOptions.IgnoreSpaceChange and
-    not AOptions.IgnoreAllSpace and not AOptions.IgnoreSpaceSmart;
+    not AOptions.IgnoreAllSpace and not AOptions.IgnoreSpaceSmart and
+    not AOptions.IgnoreComments;
   LeftKeys := nil;
   RightKeys := nil;
+  LeftComp := nil;
+  RightComp := nil;
+  LeftStrip := nil;
+  RightStrip := nil;
+  LeftSrc := ALeft;
+  RightSrc := ARight;
   try
+    if AOptions.IgnoreComments then
+    begin
+      LeftStrip := TStringList.Create;
+      RightStrip := TStringList.Create;
+      DiffStripComments(ALeft, LeftStrip, AOptions);
+      DiffStripComments(ARight, RightStrip, AOptions);
+      LeftSrc := LeftStrip;
+      RightSrc := RightStrip;
+    end;
     if PlainKeys then
       KeysToIds(ALeft, ARight, LeftIds, RightIds)
     else
     begin
       LeftKeys := TStringList.Create;
       RightKeys := TStringList.Create;
-      LeftKeys.Capacity := ALeft.Count;
-      for LineIdx := 0 to ALeft.Count - 1 do
-        LeftKeys.Add(DiffLineKey(ALeft[LineIdx], AOptions));
-      RightKeys.Capacity := ARight.Count;
-      for LineIdx := 0 to ARight.Count - 1 do
-        RightKeys.Add(DiffLineKey(ARight[LineIdx], AOptions));
-      KeysToIds(LeftKeys, RightKeys, LeftIds, RightIds);
+      LeftKeys.Capacity := LeftSrc.Count;
+      for LineIdx := 0 to LeftSrc.Count - 1 do
+        LeftKeys.Add(DiffLineKey(LeftSrc[LineIdx], AOptions));
+      RightKeys.Capacity := RightSrc.Count;
+      for LineIdx := 0 to RightSrc.Count - 1 do
+        RightKeys.Add(DiffLineKey(RightSrc[LineIdx], AOptions));
+      if AOptions.IgnoreComments then
+      begin
+        // Строки из одного комментария и пустые - не сравниваются
+        CompactKeys(LeftKeys, LeftComp, LeftFull);
+        CompactKeys(RightKeys, RightComp, RightFull);
+        KeysToIds(LeftComp, RightComp, LeftIds, RightIds);
+      end
+      else
+        KeysToIds(LeftKeys, RightKeys, LeftIds, RightIds);
     end;
+
+    Engine := TDiffEngine.Create(LeftIds, RightIds);
+    try
+      Engine.Run;
+      Result := ChangedToBlocks(Engine.LeftChanged, Engine.RightChanged);
+    finally
+      Engine.Free;
+    end;
+    if AOptions.IgnoreComments then
+      Result := ExpandBlocks(Result, LeftFull, RightFull, ALeft.Count,
+        ARight.Count);
   finally
+    RightComp.Free;
+    LeftComp.Free;
     RightKeys.Free;
     LeftKeys.Free;
-  end;
-
-  Engine := TDiffEngine.Create(LeftIds, RightIds);
-  try
-    Engine.Run;
-    Result := ChangedToBlocks(Engine.LeftChanged, Engine.RightChanged);
-  finally
-    Engine.Free;
+    RightStrip.Free;
+    LeftStrip.Free;
   end;
 end;
 
@@ -746,6 +1071,9 @@ begin
     if TokClass = ccSpace then
     begin
       if AOptions.IgnoreAllSpace then
+        Token := ''
+      else if AOptions.IgnoreComments and (CharIdx > Length(AStr)) then
+        // в конце строки (на месте вырезанного комментария)
         Token := ''
       else if AOptions.IgnoreSpaceSmart and (Quote <> #0) then
         // в кавычках - как есть

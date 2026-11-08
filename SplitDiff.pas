@@ -229,7 +229,7 @@ end;
 
 procedure TSplitDiff.Recalc;
 var
-  LeftLines, RightLines: TStringList;
+  LeftLines, RightLines, LeftCmp, RightCmp: TStringList;
   RowIdx, DiffIdx, LeftLine, RightLine: Integer;
   LeftRanges, RightRanges: TDiffRanges;
 begin
@@ -244,9 +244,20 @@ begin
   end;
   LeftLines := TStringList.Create;
   RightLines := TStringList.Create;
+  LeftCmp := nil;
+  RightCmp := nil;
   try
     BufferToLines(FLeft.Buffer, LeftLines);
     BufferToLines(FRight.Buffer, RightLines);
+    // Без комментариев: места внутри строки - по строкам без них (символы
+    // комментария - пробелы, номера символов те же)
+    if FOptions.IgnoreComments then
+    begin
+      LeftCmp := TStringList.Create;
+      RightCmp := TStringList.Create;
+      DiffStripComments(LeftLines, LeftCmp, FOptions);
+      DiffStripComments(RightLines, RightCmp, FOptions);
+    end;
     FBlocks := DiffLines(LeftLines, RightLines, FOptions);
     FRows := DiffAlign(FBlocks);
     FCount := DiffCount(FBlocks);
@@ -287,13 +298,19 @@ begin
          (Length(LeftLines[LeftLine]) <= InlineMaxLen) and
          (Length(RightLines[RightLine]) <= InlineMaxLen) then
       begin
-        DiffInline(LeftLines[LeftLine], RightLines[RightLine], FOptions,
-          LeftRanges, RightRanges);
+        if LeftCmp <> nil then
+          DiffInline(LeftCmp[LeftLine], RightCmp[RightLine], FOptions,
+            LeftRanges, RightRanges)
+        else
+          DiffInline(LeftLines[LeftLine], RightLines[RightLine], FOptions,
+            LeftRanges, RightRanges);
         FLeftInline[LeftLine] := LeftRanges;
         FRightInline[RightLine] := RightRanges;
       end;
     end;
   finally
+    RightCmp.Free;
+    LeftCmp.Free;
     RightLines.Free;
     LeftLines.Free;
   end;

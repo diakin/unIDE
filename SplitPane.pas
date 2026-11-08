@@ -68,6 +68,8 @@ type
     FNextBtn: TUiButton;
     // Галка «без пробелов»: не различать отступы и пробелы
     FSpaceBtn: TUiButton;
+    // Галка «без комментариев»
+    FCommentBtn: TUiButton;
     FTitleText: string;
     FTitleMark: string;
     FOnTitleClick: TNotifyEvent;
@@ -78,6 +80,7 @@ type
     FOnDiffPrev: TNotifyEvent;
     FOnDiffNext: TNotifyEvent;
     FOnDiffSpace: TNotifyEvent;
+    FOnDiffComment: TNotifyEvent;
     procedure DiffBtnClick(Sender: TObject);
     procedure TitleClick(Sender: TObject);
     procedure FmtBtnClick(Sender: TObject);
@@ -102,6 +105,8 @@ type
     // Галка «без пробелов» (видна при включённом сравнении): AOn - отступы
     // и пробелы не различаются
     procedure SetDiffSpace(AOn: Boolean);
+    // Галка «без комментариев»: AOn - комментарии не учитываются
+    procedure SetDiffComment(AOn: Boolean);
     // Пометка после имени файла (свой редактор); '' - без неё
     procedure SetTitleMark(const AMark: string);
     property Panel: TPanel read FPanel;
@@ -113,6 +118,8 @@ type
     property OnDiffPrev: TNotifyEvent read FOnDiffPrev write FOnDiffPrev;
     property OnDiffNext: TNotifyEvent read FOnDiffNext write FOnDiffNext;
     property OnDiffSpace: TNotifyEvent read FOnDiffSpace write FOnDiffSpace;
+    property OnDiffComment: TNotifyEvent read FOnDiffComment
+      write FOnDiffComment;
   end;
 
   // Первая видимая строка текста второй панели сменилась
@@ -350,6 +357,20 @@ begin
     FSpaceBtn.ShowHint := True;
     FSpaceBtn.Visible := False;
     FSpaceBtn.OnClick := DiffBtnClick;
+
+    FCommentBtn := TUiButton.Create(FPanel);
+    FCommentBtn.Parent := FPanel;
+    FCommentBtn.Left := 50;
+    FCommentBtn.Align := alRight;
+    FCommentBtn.Width := 150;
+    FCommentBtn.Caption := '[ ] Без комментариев';
+    FCommentBtn.TabStop := False;
+    FCommentBtn.Hint := 'Не учитывать комментарии: // { } (* *) /* */ '' ; # ' +
+      '- по типу файла. Строки, где кроме комментария ничего нет, и ' +
+      'пустые строки - не отличие';
+    FCommentBtn.ShowHint := True;
+    FCommentBtn.Visible := False;
+    FCommentBtn.OnClick := DiffBtnClick;
   end;
 
   FFmtBtn := TUiButton.Create(FPanel);
@@ -485,12 +506,14 @@ begin
     FNextBtn.Left := FDiffBtn.Left - FNextBtn.Width;
     FPrevBtn.Left := FNextBtn.Left - FPrevBtn.Width;
     FSpaceBtn.Left := FPrevBtn.Left - FSpaceBtn.Width;
+    FCommentBtn.Left := FSpaceBtn.Left - FCommentBtn.Width;
   end;
   if FNextBtn.Visible <> (AVisible and AOn) then
   begin
     FNextBtn.Visible := AVisible and AOn;
     FPrevBtn.Visible := AVisible and AOn;
     FSpaceBtn.Visible := AVisible and AOn;
+    FCommentBtn.Visible := AVisible and AOn;
   end;
 end;
 
@@ -508,12 +531,28 @@ begin
     FSpaceBtn.Caption := NewCaption;
 end;
 
+procedure TPaneHeader.SetDiffComment(AOn: Boolean);
+var
+  NewCaption: string;
+begin
+  if FCommentBtn = nil then
+    Exit;
+  if AOn then
+    NewCaption := '[x] Без комментариев'
+  else
+    NewCaption := '[ ] Без комментариев';
+  if FCommentBtn.Caption <> NewCaption then
+    FCommentBtn.Caption := NewCaption;
+end;
+
 procedure TPaneHeader.DiffBtnClick(Sender: TObject);
 begin
   if (Sender = FDiffBtn) and Assigned(FOnDiffClick) then
     FOnDiffClick(Self)
   else if (Sender = FSpaceBtn) and Assigned(FOnDiffSpace) then
     FOnDiffSpace(Self)
+  else if (Sender = FCommentBtn) and Assigned(FOnDiffComment) then
+    FOnDiffComment(Self)
   else if (Sender = FPrevBtn) and Assigned(FOnDiffPrev) then
     FOnDiffPrev(Self)
   else if (Sender = FNextBtn) and Assigned(FOnDiffNext) then

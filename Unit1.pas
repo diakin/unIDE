@@ -3704,6 +3704,7 @@ type
     procedure CmpApplyColors;
     function  CmpOptions: TDiffOptions;
     procedure CmpSpaceClick(Sender: TObject);
+    procedure CmpCommentClick(Sender: TObject);
     procedure CmpViewShow;
     procedure CmpViewHide(AToEditor: Boolean);
     procedure CmpViewChange(Sender: TObject);
@@ -4296,6 +4297,8 @@ type
     // Галка «без пробелов» в заголовке второй панели (editor.ini,
     // [Editor] DiffIgnoreSpace): отступы и пробелы не различаются
     FCmpIgnoreSpace: Boolean;
+    // Галка «без комментариев» ([Editor] DiffIgnoreComments)
+    FCmpIgnoreComments: Boolean;
     // Отметки строк и направляющие второй панели (та же вкладка) - по
     // данным редактора; с этими данными панель нарисована в последний раз
     FSplitDecoMapVer: Cardinal;
@@ -8346,6 +8349,7 @@ begin
     FMaxFile32MB        := Ini.ReadInteger('Editor', 'MaxFile32MB', FMaxFile32MB);
     FShowSpaces         := Ini.ReadBool('Editor', 'ShowSpaces', FShowSpaces);
     FCmpIgnoreSpace     := Ini.ReadBool('Editor', 'DiffIgnoreSpace', True);
+    FCmpIgnoreComments  := Ini.ReadBool('Editor', 'DiffIgnoreComments', False);
     FIndentKind         := Ini.ReadInteger('Editor', 'IndentKind', FIndentKind);
     if (FIndentKind < IndentSpaces) or (FIndentKind > IndentNone) then
       FIndentKind := IndentSpaces;
@@ -8511,6 +8515,7 @@ begin
       SaveFormBounds(Ini);
       Ini.WriteBool('Editor', 'HotTabHighlight', FUseHotTab);
       Ini.WriteBool('Editor', 'DiffIgnoreSpace', FCmpIgnoreSpace);
+      Ini.WriteBool('Editor', 'DiffIgnoreComments', FCmpIgnoreComments);
       Ini.WriteBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
       Ini.WriteInteger('Editor', 'TabChars', FTabChars);
       Ini.WriteInteger('Editor', 'MaxFile32MB', FMaxFile32MB);
@@ -27515,6 +27520,7 @@ begin
   FTabChars := 4;
   FShowSpaces := False;
   FCmpIgnoreSpace := True;
+  FCmpIgnoreComments := False;
   FPairA1 := -1;
   FPairA2 := -1;
   FPairB1 := -1;
@@ -92130,6 +92136,7 @@ begin
   FSplit.Header.OnDiffPrev := CmpPrevClick;
   FSplit.Header.OnDiffNext := CmpNextClick;
   FSplit.Header.OnDiffSpace := CmpSpaceClick;
+  FSplit.Header.OnDiffComment := CmpCommentClick;
   FCmpCur := -1;
   FCmpEdWin := -1;
   FCmpPaneWin := -1;
@@ -93104,6 +93111,7 @@ begin
     Info := IntToStr(FCmpCount);
   FSplit.Header.SetDiff(SplitOwnEdText, FCmpOn, Info);
   FSplit.Header.SetDiffSpace(FCmpIgnoreSpace);
+  FSplit.Header.SetDiffComment(FCmpIgnoreComments);
 end;
 
 procedure TForm1.CmpRepaint;
@@ -93397,6 +93405,20 @@ function TForm1.CmpOptions: TDiffOptions;
 begin
   Result := DiffDefaultOptions;
   Result.IgnoreSpaceSmart := FCmpIgnoreSpace;
+  // Комментарии - по синтаксису файла вкладки редактора
+  Result.IgnoreComments := FCmpIgnoreComments;
+  if FCmpIgnoreComments and SplitWinValid(FWindowsIndex) then
+    DiffCommentSyntax(FWindows[FWindowsIndex].FileName, Result);
+end;
+
+// Галка «без комментариев» в заголовке второй панели
+procedure TForm1.CmpCommentClick(Sender: TObject);
+begin
+  FCmpIgnoreComments := not FCmpIgnoreComments;
+  if FSplit <> nil then
+    FSplit.Header.SetDiffComment(FCmpIgnoreComments);
+  if FCmpOn then
+    CmpRecalc;
 end;
 
 // Галка «без пробелов» в заголовке второй панели
