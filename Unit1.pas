@@ -20050,8 +20050,12 @@ begin
     It.Hint := EdUiText(FWindows[FWindowsIndex].Bookmarks[I].Text); // полная строка
     It.Tag := I;
     It.OnClick := BookmarkItemClick;
-    // Строки закладки в файле нет (BmValidateWindow)
-    It.Enabled := not FWindows[FWindowsIndex].Bookmarks[I].Missing;
+    // Строки закладки в файле нет (BmValidateWindow): пункт доступен, у
+    // него жёлтый значок с вопросом (BmMenuMarks), переход - по номеру
+    // строки (JumpToBookmark)
+    if FWindows[FWindowsIndex].Bookmarks[I].Missing then
+      It.Hint := 'Текст закладки в файле не найден, переход по номеру ' +
+                 'строки: ' + It.Hint;
     mBookmarks.Add(It);
   end;
   BmMenuMarks;
@@ -20060,14 +20064,18 @@ end;
 // Квадратики с номерами закладок у пунктов списка - такие же, как на
 // полосе меток. Закладка на строке с кареткой - текущая: квадратик
 // красный, пункт - по умолчанию (Default): строка меню UiMenus выделяет
-// его при открытии, меню Windows показывает жирным.
+// его при открытии, меню Windows показывает жирным. Закладка, текста
+// которой в файле нет (Missing), - жёлтый квадратик с вопросом: переход
+// по ней идёт по номеру строки.
 procedure TForm1.BmMenuMarks;
 const
   MarkBmpSize = 16;
+  MissingBG = TColor($0000E6FF);     // жёлтый
+  MissingText = TColor($00000000);
 var
   ItemIdx, BmIdx, CaretLine: Integer;
   MenuItem: TMenuItem;
-  IsCurrent: Boolean;
+  IsCurrent, IsMissing: Boolean;
   NumText: string;
   MarkRect: TRect;
   MarkCanvas: TCanvas;
@@ -20086,9 +20094,9 @@ begin
     if not Assigned(MenuItem.OnClick) or (BmIdx < 0) or
        (BmIdx > High(FWindows[FWindowsIndex].Bookmarks)) then
       Continue;
+    IsMissing := FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing;
     IsCurrent := (FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo =
-                  CaretLine + 1) and
-                 not FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing;
+                  CaretLine + 1) and not IsMissing;
 
     // Рамка в 1 пиксель цвета фуксии вокруг квадратика - прозрачный цвет:
     // меню рисует значок прозрачным по левому нижнему пикселю
@@ -20101,7 +20109,9 @@ begin
     MarkRect := Rect(1, 1, MarkBmpSize - 1, MarkBmpSize - 1);
     MarkCanvas.Pen.Style := psSolid;
     MarkCanvas.Pen.Color := UiColor('Gutter.BmBorder');
-    if IsCurrent then
+    if IsMissing then
+      MarkCanvas.Brush.Color := MissingBG
+    else if IsCurrent then
       MarkCanvas.Brush.Color := UiColor('Gutter.BmCurBG')
     else
       MarkCanvas.Brush.Color := UiColor('Gutter.BmBG');
@@ -20111,11 +20121,16 @@ begin
     MarkCanvas.Font.Name := 'Tahoma';
     MarkCanvas.Font.Height := -10;
     MarkCanvas.Font.Style := [fsBold];
-    if IsCurrent then
+    if IsMissing then
+      MarkCanvas.Font.Color := MissingText
+    else if IsCurrent then
       MarkCanvas.Font.Color := UiColor('Gutter.BmCurText')
     else
       MarkCanvas.Font.Color := UiColor('Gutter.BmText');
-    NumText := IntToStr((BmIdx + 1) mod 100);
+    if IsMissing then
+      NumText := '?'
+    else
+      NumText := IntToStr((BmIdx + 1) mod 100);
     DrawTextA(MarkCanvas.Handle, PChar(NumText), Length(NumText), MarkRect,
               DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOCLIP);
 
@@ -20133,8 +20148,9 @@ end;
 //   - иначе по всему тексту ищутся строки, равные тексту закладки; из них
 //     берётся ближайшая к прежнему номеру (выше или ниже - смотря что
 //     удаляли или вставляли), номер и позиция исправляются;
-//   - такой строки нет - закладка помечается Missing: пункт меню серый,
-//     метки на полосе нет. Номер остаётся прежним.
+//   - такой строки нет - закладка помечается Missing: у пункта меню жёлтый
+//     значок с вопросом, переход - по номеру строки, метки на полосе нет.
+//     Номер остаётся прежним.
 // Вызывается при загрузке проекта для каждого окна и при показе окна.
 
 // Строка ALine без пробелов и табуляций по краям равна AText. Без Trim:
@@ -20327,6 +20343,9 @@ begin
   begin
     TMenuItem(Sender).Caption := BookmarkCaption(FWindowsIndex, Idx);
     TMenuItem(Sender).Hint := EdUiText(FWindows[FWindowsIndex].Bookmarks[Idx].Text);
+    if FWindows[FWindowsIndex].Bookmarks[Idx].Missing then
+      TMenuItem(Sender).Hint := 'Текст закладки в файле не найден, переход ' +
+        'по номеру строки: ' + TMenuItem(Sender).Hint;
   end;
 end;
 
@@ -20523,8 +20542,8 @@ begin
     RebuildBookmarksMenu;
 end;
 
-// Delete Missing: закладки, строк которых в файле больше нет (серые в
-// списке), - из списка
+// Delete Missing: закладки, строк которых в файле больше нет (жёлтый
+// значок с вопросом в списке), - из списка
 procedure TForm1.BmDelMissingClick(Sender: TObject);
 var
   BmIdx, MissingCount: Integer;
@@ -20661,7 +20680,7 @@ end;
 procedure TForm1.JumpToBookmark(WinIdx, BmIdx: Integer; Remember: Boolean);
 var
   Txt: string;
-  CharPos2, StartFrom, NewPos: Integer;
+  CharPos2, StartFrom, NewPos, LineNum, LineTotal: Integer;
 begin
   if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) then
     Exit;
@@ -20678,7 +20697,21 @@ begin
   NewPos := FWindows[WinIdx].Bookmarks[BmIdx].CharPos;
   Txt := FWindows[WinIdx].Bookmarks[BmIdx].Text;
 
-  if Txt <> '' then
+  if FWindows[WinIdx].Bookmarks[BmIdx].Missing then
+  begin
+    // Текста закладки в файле нет (BmValidateWindow) - переход по номеру
+    // строки, а не по случайному вхождению части текста
+    LineNum := FWindows[WinIdx].Bookmarks[BmIdx].LineNo;
+    LineTotal := EdApi.LineCount;
+    if LineNum > LineTotal then
+      LineNum := LineTotal;
+    if LineNum < 1 then
+      LineNum := 1;
+    NewPos := EdApi.LineIndex(LineNum - 1);
+    if NewPos < 0 then
+      NewPos := 0;
+  end
+  else if Txt <> '' then
   begin
     // Ищем средствами самого контрола.
     //
