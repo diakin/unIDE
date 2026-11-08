@@ -1,20 +1,18 @@
 unit WebBrowserLcl;
 
 // ---------------------------------------------------------------------------
-//  WebBrowserLcl - заглушка TWebBrowser (SHDocVw) для сборки Lazarus.
+//  WebBrowserLcl - замена TWebBrowser (SHDocVw) для сборки Lazarus.
 //
 //  В LCL нет готового контейнера ActiveX для Internet Explorer. Чтобы
 //  FmtView собирался без изменений, здесь описан класс с теми же
-//  свойствами и методами, которые использует TWebPreview. Конструктор
-//  выдаёт исключение: TWebPreview.EnsureBrowser ловит его и пишет
-//  причину в FLastError, просмотр через IE в этой сборке недоступен.
-//  Просмотр .html / .mht через WebView2 (Wv2View) работает отдельно.
+//  свойствами и методами, которые использует TWebPreview.
 //
 //  Только для FPC: в Delphi 7 используется настоящий SHDocVw.
 //
-//  Linux: не заглушка - страница показывается TIpHtmlPanel (пакет
-//  TurboPower IPro из поставки Lazarus): HTML 4 и простой CSS, картинки с
-//  диска. Navigate - путь файла (или file://). Щелчок по ссылке: метка на
+//  Windows и Linux: страница показывается TIpHtmlPanel (пакет TurboPower
+//  IPro из поставки Lazarus, он уже в зависимостях проекта): HTML 4 и
+//  простой CSS, картинки с диска. Скрипты, .mht и CSS3 не поддерживаются;
+//  полный вид - отдельное окно WebView2 (Wv2View). Navigate - путь файла (или file://). Щелчок по ссылке: метка на
 //  той же странице ('#имя') - прокрутка к ней; остальное - в
 //  OnBeforeNavigate2 (полный адрес), не отменили - страница открывается
 //  здесь же. Document и ControlInterface - nil (нет OLE): прокрутка,
@@ -29,8 +27,7 @@ unit WebBrowserLcl;
 interface
 
 uses
-  SysUtils, Classes, Controls
-  {$IFDEF UNIX}, Graphics, IpHtml, IpFileBroker{$ENDIF};
+  SysUtils, Classes, Controls, Graphics, IpHtml, IpFileBroker;
 
 type
   TWebBrowserBeforeNavigate2 = procedure(Sender: TObject;
@@ -40,7 +37,6 @@ type
   TWebBrowserDocumentComplete = procedure(Sender: TObject;
     const ADisp: IDispatch; var AUrl: OleVariant) of object;
 
-{$IFDEF UNIX}
   // Поставщик файлов: страницу открывает только Navigate (FAllowNav), щелчок
   // по ссылке идёт в OnHotClick (решает TWebPreview)
   TWebFileProvider = class(TIpFileDataProvider)
@@ -51,18 +47,15 @@ type
     procedure GetImage(Sender: TIpHtmlNode; const AUrl: string;
       var APicture: TPicture); override;
   end;
-{$ENDIF}
 
   TWebBrowser = class(TWinControl)
   private
-{$IFDEF UNIX}
     FPanel: TIpHtmlPanel;
     FProvider: TWebFileProvider;
     FPageUrl: string;
     procedure PanelHotClick(Sender: TObject);
     procedure OpenUrl(const AUrl: string);
   private
-{$ENDIF}
     FSilent: Boolean;
     FRegisterAsDropTarget: Boolean;
     FOnBeforeNavigate2: TWebBrowserBeforeNavigate2;
@@ -86,13 +79,13 @@ type
 
 implementation
 
-{$IFDEF UNIX}
 function TWebFileProvider.CanHandle(const AUrl: string): Boolean;
 begin
   Result := AllowNav and inherited CanHandle(AUrl);
 end;
 
-// file:///папка/a%20b.png -> /папка/a b.png
+// file:///папка/a%20b.png -> /папка/a b.png;
+// Windows: file:///C:/папка/a%20b.png -> C:\папка\a b.png
 function WebUrlToFile(const AUrl: string): string;
 var
   Body: string;
@@ -119,6 +112,12 @@ begin
       Inc(CharIdx);
     end;
   end;
+{$IFDEF MSWINDOWS}
+  // /C:/папка -> C:/папка
+  if (Length(Result) >= 3) and (Result[1] = '/') and (Result[3] = ':') then
+    Delete(Result, 1, 1);
+  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+{$ENDIF}
 end;
 
 procedure TWebFileProvider.GetImage(Sender: TIpHtmlNode; const AUrl: string;
@@ -133,6 +132,13 @@ begin
   APicture := TPicture.Create;
   try
     APicture.LoadFromFile(FileName);
+    // IPro рисует картинку с Transparent := True; цвет прозрачности LCL
+    // берёт из левого нижнего пикселя, и картинка без альфа-канала теряла
+    // все точки этого цвета (белый фон снимка экрана). clNone - без маски
+    if (APicture.Graphic is TRasterImage) and
+       not TRasterImage(APicture.Graphic).Masked and
+       (TRasterImage(APicture.Graphic).RawImage.Description.AlphaPrec = 0) then
+      TRasterImage(APicture.Graphic).TransparentColor := clNone;
   except
     FreeAndNil(APicture);
   end;
@@ -150,13 +156,28 @@ begin
   FPanel.AllowTextSelect := True;
 end;
 
-// Адрес страницы: путь -> file://путь
+// Адрес страницы: путь -> file://путь (Windows: C:\папка -> file:///C:/папка,
+// \\сервер\папка -> file://сервер/папка)
 function WebFileUrl(const APath: string): string;
+{$IFDEF MSWINDOWS}
+var
+  FullPath: string;
+{$ENDIF}
 begin
   if Pos('://', APath) > 0 then
     Result := APath
   else
+  begin
+{$IFDEF MSWINDOWS}
+    FullPath := StringReplace(ExpandFileName(APath), '\', '/', [rfReplaceAll]);
+    if Copy(FullPath, 1, 2) = '//' then
+      Result := 'file:' + FullPath
+    else
+      Result := 'file:///' + FullPath;
+{$ELSE}
     Result := 'file://' + ExpandFileName(APath);
+{$ENDIF}
+  end;
 end;
 
 procedure TWebBrowser.OpenUrl(const AUrl: string);
@@ -268,30 +289,5 @@ begin
     17: FPanel.SelectAll;
   end;
 end;
-{$ELSE}
-
-constructor TWebBrowser.Create(AOwner: TComponent);
-begin
-  raise Exception.Create('в сборке Lazarus встроенного Internet Explorer нет');
-end;
-
-function TWebBrowser.GetDocument: IDispatch;
-begin
-  Result := nil;
-end;
-
-function TWebBrowser.GetControlInterface: IDispatch;
-begin
-  Result := nil;
-end;
-
-procedure TWebBrowser.Navigate(const AUrl: WideString; var AFlags: OleVariant);
-begin
-end;
-
-procedure TWebBrowser.ExecWB(ACmdId, ACmdExecOpt: Integer);
-begin
-end;
-{$ENDIF}
 
 end.
