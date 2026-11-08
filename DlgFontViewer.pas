@@ -24,6 +24,10 @@ unit DlgFontViewer;
 //  extern uint8_t Имя[]; для скетча; Enter или двойной щелчок - открыть
 //  .c в unIDE (OnOpenFile). Под мышью - код символа в строке состояния.
 //
+//  Вид - Сортировка: по имени или по размеру (высота, потом ширина).
+//  Вид - Скрыть: группы по имени массива (7-сегментные, Italic, Bold),
+//  неполные (до 16 символов: цифры, значки) и не шрифты.
+//
 //  Файл - Создать шрифт из TTF... - окно DlgTtfToUtft (OnMakeFont).
 //  Правка - Редактировать символы... (Ctrl+E) - окно DlgUtftEdit: правка
 //  выбранного шрифта по точкам, замена символа копией другого, запись в
@@ -95,6 +99,10 @@ type
   TDlgFontViewer = class(TForm)
   private
     FFonts: TList;            // TUtftFont: сначала шрифты, потом остальное
+    FShown: TList;            // показанные из FFonts (без скрытых групп);
+                              // FSelected - индекс в FShown
+    FSortBySize: Boolean;
+    FHideMask: Integer;       // скрытые группы: бит 1 shl FvGroup*
     FFileCount: Integer;
     FSourceText: string;      // что открыто: папка или файлы - для заголовка
     FFolder: string;          // открытая папка ('' - открыты файлы)
@@ -116,6 +124,8 @@ type
     FMenuBar: TUiMenuBar;
     FMiAllChars, FMiSampleText, FMiCells: TMenuItem;
     FMiOpenInEditor: TMenuItem;
+    FMiSortName, FMiSortSize: TMenuItem;
+    FMiHide: array of TMenuItem;
     FStatusPanel: TUiPanel;
     FStatusLabel: TUiLabel;
     FHoverLabel: TUiLabel;
@@ -128,6 +138,9 @@ type
     procedure ClearFonts;
     procedure LoadFile(const AFileName: string);
     procedure SortFonts;
+    procedure ApplyFilter;
+    procedure MenuSortClick(Sender: TObject);
+    procedure MenuHideClick(Sender: TObject);
     procedure Relayout;
     procedure UpdateScroll;
     procedure UpdateColors;
@@ -212,8 +225,45 @@ const
   FvCellColor = $00242424;     // клетка через одну (Вид - Клетки символов)
   FvMissingColor = $00000050;  // символа нет в шрифте (свой текст)
 
+  // Группы для Вид - Скрыть
+  FvGroupSeg = 0;
+  FvGroupItalic = 1;
+  FvGroupBold = 2;
+  FvGroupPartial = 3;
+  FvGroupNotFont = 4;
+  FvGroupCount = 5;
+  FvGroupNames: array[0..FvGroupCount - 1] of string = (
+    '&7-сегментные (Seg, Seven в имени)', '&Italic (Ital, Oblique в имени)',
+    '&Bold (в имени)', '&Неполные: цифры, значки (до 16 символов)',
+    'Н&е шрифты');
+  FvPartialMax = 16;
+
 var
   FontViewerWindow: TDlgFontViewer = nil;
+
+// Шрифт из группы AGroup (Вид - Скрыть)
+function FontInGroup(AFont: TUtftFont; AGroup: Integer): Boolean;
+var
+  LowName: string;
+begin
+  LowName := LowerCase(AFont.Name);
+  case AGroup of
+    FvGroupSeg:
+      Result := AFont.IsFont and ((Pos('seg', LowName) > 0) or
+        (Pos('seven', LowName) > 0));
+    FvGroupItalic:
+      Result := AFont.IsFont and ((Pos('ital', LowName) > 0) or
+        (Pos('oblique', LowName) > 0));
+    FvGroupBold:
+      Result := AFont.IsFont and (Pos('bold', LowName) > 0);
+    FvGroupPartial:
+      Result := AFont.IsFont and (AFont.CharCount <= FvPartialMax);
+    FvGroupNotFont:
+      Result := not AFont.IsFont;
+  else
+    Result := False;
+  end;
+end;
 
 // Высота строки текста шрифтом AFont
 function FontTextHeight(AFont: TFont): Integer;
@@ -643,6 +693,35 @@ begin
     Result := 4 + (ACode - FirstChar) * (SizeX div 8) * SizeY;
 end;
 
+// По размеру: сначала шрифты, потом остальное; внутри - по высоте
+// символа, ширине, имени
+function CompareFontsBySize(Item1, Item2: Pointer): Integer;
+var
+  Font1, Font2: TUtftFont;
+begin
+  Font1 := TUtftFont(Item1);
+  Font2 := TUtftFont(Item2);
+  if Font1.IsFont <> Font2.IsFont then
+  begin
+    if Font1.IsFont then
+      Result := -1
+    else
+      Result := 1;
+    Exit;
+  end;
+  Result := 0;
+  if Font1.IsFont then
+  begin
+    Result := Font1.SizeY - Font2.SizeY;
+    if Result = 0 then
+      Result := Font1.SizeX - Font2.SizeX;
+  end;
+  if Result = 0 then
+    Result := CompareText(Font1.Name, Font2.Name);
+  if Result = 0 then
+    Result := CompareText(Font1.FileName, Font2.FileName);
+end;
+
 function CompareFonts(Item1, Item2: Pointer): Integer;
 var
   Font1, Font2: TUtftFont;
@@ -831,6 +910,7 @@ constructor TDlgFontViewer.CreateDlg(AOwner: TComponent);
 begin
   inherited CreateNew(AOwner);
   FFonts := TList.Create;
+  FShown := TList.Create;
   FFiles := TStringList.Create;
   FSelected := -1;
   FClickCode := -1;
@@ -845,6 +925,7 @@ begin
     SavePlacement;
   ClearFonts;
   FFonts.Free;
+  FShown.Free;
   FFiles.Free;
   if FontViewerWindow = Self then
     FontViewerWindow := nil;
@@ -942,7 +1023,8 @@ procedure TDlgFontViewer.BuildMenu;
   end;
 
 var
-  FileMenu, EditMenu, ViewMenu: TMenuItem;
+  FileMenu, EditMenu, ViewMenu, SortMenu, HideMenu: TMenuItem;
+  Group: Integer;
 begin
   FMainMenu := TMainMenu.Create(Self);
   {$IFNDEF FPC}FMainMenu.AutoHotkeys := maManual;{$ENDIF}
@@ -988,6 +1070,25 @@ begin
   AddItem(ViewMenu, '-', 0, nil);
   FMiCells := AddItem(ViewMenu, '&Клетки символов', ShortCut(Ord('G'), [ssCtrl]),
     MenuCellsClick);
+  AddItem(ViewMenu, '-', 0, nil);
+  SortMenu := AddItem(ViewMenu, '&Сортировка', 0, nil);
+  FMiSortName := AddItem(SortMenu, 'По &имени', 0, MenuSortClick);
+  FMiSortName.RadioItem := True;
+  FMiSortName.GroupIndex := 2;
+  FMiSortName.Tag := 0;
+  FMiSortName.Checked := True;
+  FMiSortSize := AddItem(SortMenu, 'По &размеру (высота, ширина)', 0,
+    MenuSortClick);
+  FMiSortSize.RadioItem := True;
+  FMiSortSize.GroupIndex := 2;
+  FMiSortSize.Tag := 1;
+  HideMenu := AddItem(ViewMenu, 'С&крыть', 0, nil);
+  SetLength(FMiHide, FvGroupCount);
+  for Group := 0 to FvGroupCount - 1 do
+  begin
+    FMiHide[Group] := AddItem(HideMenu, FvGroupNames[Group], 0, MenuHideClick);
+    FMiHide[Group].Tag := Group;
+  end;
 
   // Меню Windows в теме Light, своя строка - в Dark и Custom
   Menu := FMainMenu;
@@ -1003,6 +1104,7 @@ begin
   for Index := 0 to FFonts.Count - 1 do
     TUtftFont(FFonts[Index]).Free;
   FFonts.Clear;
+  FShown.Clear;
   FSelected := -1;
   FFileCount := 0;
 end;
@@ -1015,7 +1117,68 @@ end;
 
 procedure TDlgFontViewer.SortFonts;
 begin
-  FFonts.Sort(CompareFonts);
+  if FSortBySize then
+    FFonts.Sort(CompareFontsBySize)
+  else
+    FFonts.Sort(CompareFonts);
+  ApplyFilter;
+end;
+
+// FShown - шрифты FFonts без скрытых групп; выбранный остаётся выбранным,
+// если он виден
+procedure TDlgFontViewer.ApplyFilter;
+var
+  Index, Group: Integer;
+  FontItem, SelectedItem: TUtftFont;
+  Hidden: Boolean;
+begin
+  SelectedItem := nil;
+  if (FSelected >= 0) and (FSelected < FShown.Count) then
+    SelectedItem := TUtftFont(FShown[FSelected]);
+  FShown.Clear;
+  FSelected := -1;
+  for Index := 0 to FFonts.Count - 1 do
+  begin
+    FontItem := TUtftFont(FFonts[Index]);
+    Hidden := False;
+    for Group := 0 to FvGroupCount - 1 do
+      if ((FHideMask and (1 shl Group)) <> 0) and FontInGroup(FontItem, Group) then
+      begin
+        Hidden := True;
+        Break;
+      end;
+    if Hidden then
+      Continue;
+    if FontItem = SelectedItem then
+      FSelected := FShown.Count;
+    FShown.Add(FontItem);
+  end;
+end;
+
+procedure TDlgFontViewer.MenuSortClick(Sender: TObject);
+begin
+  FSortBySize := TComponent(Sender).Tag = 1;
+  FMiSortName.Checked := not FSortBySize;
+  FMiSortSize.Checked := FSortBySize;
+  SortFonts;
+  Relayout;
+  if FSelected >= 0 then
+    EnsureVisible(FSelected);
+  UpdateStatus;
+end;
+
+procedure TDlgFontViewer.MenuHideClick(Sender: TObject);
+var
+  Group: Integer;
+begin
+  Group := TComponent(Sender).Tag;
+  FHideMask := FHideMask xor (1 shl Group);
+  FMiHide[Group].Checked := (FHideMask and (1 shl Group)) <> 0;
+  ApplyFilter;
+  Relayout;
+  if FSelected >= 0 then
+    EnsureVisible(FSelected);
+  UpdateStatus;
 end;
 
 procedure TDlgFontViewer.OpenFolder(const AFolder: string);
@@ -1091,9 +1254,9 @@ begin
   LineHeight := FView.Canvas.TextHeight('Wg') + 2;
   FHeadFontHeight := LineHeight;
   PosY := FvItemGap div 2;
-  for Index := 0 to FFonts.Count - 1 do
+  for Index := 0 to FShown.Count - 1 do
   begin
-    FontItem := TUtftFont(FFonts[Index]);
+    FontItem := TUtftFont(FShown[Index]);
     FreeAndNil(FontItem.Bitmap);
     FontItem.Top := PosY;
     if FontItem.IsFont then
@@ -1169,9 +1332,9 @@ procedure TDlgFontViewer.EnsureVisible(AIndex: Integer);
 var
   FontItem: TUtftFont;
 begin
-  if (AIndex < 0) or (AIndex >= FFonts.Count) then
+  if (AIndex < 0) or (AIndex >= FShown.Count) then
     Exit;
-  FontItem := TUtftFont(FFonts[AIndex]);
+  FontItem := TUtftFont(FShown[AIndex]);
   if FontItem.Top < FTopPos then
     ScrollTo(FontItem.Top - FvItemGap div 2)
   else if FontItem.Top + FontItem.Height > FTopPos + FView.ClientHeight then
@@ -1203,19 +1366,21 @@ begin
   ACanvas.Font := FView.Font;
   LineHeight := FHeadFontHeight;
 
-  if FFonts.Count = 0 then
+  if FShown.Count = 0 then
   begin
     ACanvas.Font.Color := DimColor;
-    if FSourceText = '' then
+    if FFonts.Count > 0 then
+      ACanvas.TextOut(FvGap, FvGap, 'Все шрифты скрыты: Вид - Скрыть')
+    else if FSourceText = '' then
       ACanvas.TextOut(FvGap, FvGap, 'Файл - Открыть файл... или Открыть папку...')
     else
       ACanvas.TextOut(FvGap, FvGap, 'Массивов в .c-файлах не найдено');
     Exit;
   end;
 
-  for Index := 0 to FFonts.Count - 1 do
+  for Index := 0 to FShown.Count - 1 do
   begin
-    FontItem := TUtftFont(FFonts[Index]);
+    FontItem := TUtftFont(FShown[Index]);
     PosY := FontItem.Top - FTopPos;
     if PosY + FontItem.Height < AClip.Top then
       Continue;
@@ -1282,9 +1447,9 @@ var
 begin
   Result := -1;
   ContentY := PosY + FTopPos;
-  for Index := 0 to FFonts.Count - 1 do
+  for Index := 0 to FShown.Count - 1 do
   begin
-    FontItem := TUtftFont(FFonts[Index]);
+    FontItem := TUtftFont(FShown[Index]);
     if (ContentY >= FontItem.Top - FvItemGap div 2) and
        (ContentY < FontItem.Top + FontItem.Height + FvItemGap div 2) then
     begin
@@ -1321,7 +1486,7 @@ begin
   Index := FontAt(PosY);
   FClickCode := -1;
   if Index >= 0 then
-    FClickCode := CodeAt(TUtftFont(FFonts[Index]), PosX, PosY);
+    FClickCode := CodeAt(TUtftFont(FShown[Index]), PosX, PosY);
   if Index <> FSelected then
   begin
     FSelected := Index;
@@ -1340,7 +1505,7 @@ begin
   Index := FontAt(PosY);
   if Index >= 0 then
   begin
-    FontItem := TUtftFont(FFonts[Index]);
+    FontItem := TUtftFont(FShown[Index]);
     Code := CodeAt(FontItem, PosX, PosY);
     if Code >= 0 then
     begin
@@ -1384,9 +1549,11 @@ begin
     Text := Format('Файлов .c: %d, шрифтов: %d', [FFileCount, FontCount]);
     if FFonts.Count > FontCount then
       Text := Text + Format(', не шрифты: %d', [FFonts.Count - FontCount]);
+    if FShown.Count < FFonts.Count then
+      Text := Text + Format(', скрыто: %d', [FFonts.Count - FShown.Count]);
   end;
-  if (FSelected >= 0) and (FSelected < FFonts.Count) then
-    Text := Text + '; выбран ' + TUtftFont(FFonts[FSelected]).Name;
+  if (FSelected >= 0) and (FSelected < FShown.Count) then
+    Text := Text + '; выбран ' + TUtftFont(FShown[FSelected]).Name;
   FStatusLabel.Caption := Text;
   FMiOpenInEditor.Enabled := Assigned(FOnOpenFile) and (FSelected >= 0);
   FMiMakeFont.Enabled := Assigned(FOnMakeFont);
@@ -1459,10 +1626,10 @@ end;
 
 procedure TDlgFontViewer.MenuOpenInEditorClick(Sender: TObject);
 begin
-  if (FSelected < 0) or (FSelected >= FFonts.Count) or
+  if (FSelected < 0) or (FSelected >= FShown.Count) or
      not Assigned(FOnOpenFile) then
     Exit;
-  FOnOpenFile(TUtftFont(FFonts[FSelected]).FileName);
+  FOnOpenFile(TUtftFont(FShown[FSelected]).FileName);
 end;
 
 procedure TDlgFontViewer.MenuCloseClick(Sender: TObject);
@@ -1478,26 +1645,26 @@ end;
 
 procedure TDlgFontViewer.MenuCopyNameClick(Sender: TObject);
 begin
-  if (FSelected >= 0) and (FSelected < FFonts.Count) then
-    Clipboard.AsText := TUtftFont(FFonts[FSelected]).Name;
+  if (FSelected >= 0) and (FSelected < FShown.Count) then
+    Clipboard.AsText := TUtftFont(FShown[FSelected]).Name;
 end;
 
 procedure TDlgFontViewer.MenuCopyExternClick(Sender: TObject);
 begin
-  if (FSelected >= 0) and (FSelected < FFonts.Count) then
-    Clipboard.AsText := 'extern uint8_t ' + TUtftFont(FFonts[FSelected]).Name + '[];';
+  if (FSelected >= 0) and (FSelected < FShown.Count) then
+    Clipboard.AsText := 'extern uint8_t ' + TUtftFont(FShown[FSelected]).Name + '[];';
 end;
 
 procedure TDlgFontViewer.MenuEditFontClick(Sender: TObject);
 var
   FontItem: TUtftFont;
 begin
-  if (FSelected < 0) or (FSelected >= FFonts.Count) then
+  if (FSelected < 0) or (FSelected >= FShown.Count) then
   begin
     MessageDlg('Выберите шрифт щелчком в списке', mtInformation, [mbOK], 0);
     Exit;
   end;
-  FontItem := TUtftFont(FFonts[FSelected]);
+  FontItem := TUtftFont(FShown[FSelected]);
   if not FontItem.IsFont then
   begin
     MessageDlg(FontItem.Name + ' - не шрифт: ' + FontItem.Problem,
@@ -1529,8 +1696,8 @@ begin
       Files.Free;
     end;
   end;
-  for Index := 0 to FFonts.Count - 1 do
-    if SameText(TUtftFont(FFonts[Index]).FileName, AFileName) then
+  for Index := 0 to FShown.Count - 1 do
+    if SameText(TUtftFont(FShown[Index]).FileName, AFileName) then
     begin
       FSelected := Index;
       EnsureVisible(Index);
@@ -1593,7 +1760,7 @@ begin
     VK_DOWN:
       if ssCtrl in Shift then
         ScrollTo(FTopPos + FScrollBar.SmallChange)
-      else if FSelected < FFonts.Count - 1 then
+      else if FSelected < FShown.Count - 1 then
       begin
         FSelected := FSelected + 1;
         EnsureVisible(FSelected);
@@ -1644,7 +1811,7 @@ end;
 procedure TDlgFontViewer.LoadPlacement;
 var
   Ini: TBufIniFile;
-  WinLeft, WinTop, WinHeight: Integer;
+  WinLeft, WinTop, WinHeight, Group: Integer;
   Folder: string;
   Work: TRect;
 begin
@@ -1674,11 +1841,17 @@ begin
       Folder := Ini.ReadString(FvSection, 'Folder', '');
       FSampleText := Ini.ReadString(FvSection, 'SampleText', '');
       FShowCells := Ini.ReadBool(FvSection, 'Cells', False);
+      FSortBySize := Ini.ReadBool(FvSection, 'SortBySize', False);
+      FHideMask := Ini.ReadInteger(FvSection, 'Hide', 0);
     finally
       Ini.Free;
     end;
   end;
   FMiCells.Checked := FShowCells;
+  FMiSortName.Checked := not FSortBySize;
+  FMiSortSize.Checked := FSortBySize;
+  for Group := 0 to FvGroupCount - 1 do
+    FMiHide[Group].Checked := (FHideMask and (1 shl Group)) <> 0;
   FMiSampleText.Checked := FSampleText <> '';
   FMiAllChars.Checked := FSampleText = '';
   if (Folder = '') or not DirectoryExists(Folder) then
@@ -1716,6 +1889,8 @@ begin
     Ini.WriteString(FvSection, 'Folder', Folder);
     Ini.WriteString(FvSection, 'SampleText', FSampleText);
     Ini.WriteBool(FvSection, 'Cells', FShowCells);
+    Ini.WriteBool(FvSection, 'SortBySize', FSortBySize);
+    Ini.WriteInteger(FvSection, 'Hide', FHideMask);
   finally
     Ini.Free;
   end;
