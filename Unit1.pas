@@ -4024,6 +4024,7 @@ type
     procedure btnCompileClick(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
     procedure AppIdle(Sender: TObject; var Done: Boolean);
+    procedure AppException(Sender: TObject; E: Exception);
     procedure UpdateToolbarState;
     function  IdeBasicMode: Boolean;
     function  ShownDesigner: TFormDesigner;
@@ -27868,6 +27869,7 @@ begin
 
   // Вид кнопок - по состоянию, когда программе нечего делать
   Application.OnIdle := AppIdle;
+  Application.OnException := AppException;
 
   // Выбранная тема - до чтения цветов IDE и схем подсветки
   FFormLightColor := Color;
@@ -67405,6 +67407,55 @@ end;
 // Когда программе нечего делать: вид кнопок под текущее состояние, как в
 // Delphi. Enabled у TSpeedButton перерисовывает кнопку только при смене
 // значения, так что частые вызовы не мигают.
+// Необработанное исключение: класс, текст, адрес и (в сборке FPC) стек
+// вызовов - в Error log и в unide_crash.log рядом с exe, потом обычное
+// окно с сообщением. По стеку видно, где ошибка (Access violation)
+procedure TForm1.AppException(Sender: TObject; E: Exception);
+var
+  Report: TStringList;
+  LogName: string;
+  {$IFDEF FPC}
+  FrameIdx: Integer;
+  Frames: PCodePointer;
+  {$ENDIF}
+begin
+  Report := TStringList.Create;
+  try
+    Report.Add(FormatDateTime('yyyy-mm-dd hh:nn:ss', Now) + '  ' +
+               E.ClassName + ': ' + E.Message);
+    {$IFDEF FPC}
+    Report.Add('  ' + BackTraceStrFunc(ExceptAddr));
+    Frames := ExceptFrames;
+    for FrameIdx := 0 to ExceptFrameCount - 1 do
+      Report.Add('  ' + BackTraceStrFunc(Frames[FrameIdx]));
+    {$ELSE}
+    Report.Add('  адрес ' + IntToHex(Cardinal(ExceptAddr), 8));
+    {$ENDIF}
+    try
+      LogErr(Report.Text);
+    except
+      // журнал недоступен - только файл
+    end;
+    LogName := ExtractFilePath(ParamStr(0)) + 'unide_crash.log';
+    try
+      with TStringList.Create do
+      try
+        if FileExists(LogName) then
+          LoadFromFile(LogName);
+        AddStrings(Report);
+        SaveToFile(LogName);
+      finally
+        Free;
+      end;
+    except
+      // папка exe только для чтения
+    end;
+  finally
+    Report.Free;
+  end;
+  Application.ShowException(E);
+end;
+
 procedure TForm1.AppIdle(Sender: TObject; var Done: Boolean);
 var
   StartTick, Spent: Cardinal;
