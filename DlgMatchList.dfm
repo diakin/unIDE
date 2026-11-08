@@ -13,11 +13,22 @@ object DlgMatchList: TDlgMatchList
   OldCreateOrder = False
   PixelsPerInch = 96
   TextHeight = 13
-  object grdMatches: TStringGrid
+  object tabHistory: TUiTabControl
     Left = 0
     Top = 0
     Width = 413
-    Height = 374
+    Height = 22
+    Hint = 'Последние поиски (до 5). Щелчок - список этого поиска'
+    Align = alTop
+    ShowHint = True
+    TabOrder = 2
+    Visible = False
+  end
+  object grdMatches: TStringGrid
+    Left = 0
+    Top = 22
+    Width = 413
+    Height = 352
     Align = alClient
     ColCount = 3
     DefaultDrawing = False

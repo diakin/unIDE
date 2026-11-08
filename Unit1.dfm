@@ -1363,6 +1363,10 @@ object Form1: TForm1
       Caption = 'Search {}'
       OnClick = SearchSelectedClick
     end
+    object pmuMatchList: TMenuItem
+      Caption = 'Список вхождений {}'
+      OnClick = MatchListWordClick
+    end
     object pmuSepSearch: TMenuItem
       Caption = '-'
     end

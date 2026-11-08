@@ -2,6 +2,8 @@ unit DlgMatchList;
 
 // Match list: результаты поиска по файлу - строка, текст, число
 // вхождений; внизу галка "Disable comments". Поверх главного окна.
+// Сверху - вкладки последних поисков (tabHistory, до 5; видны, когда
+// поисков больше одного), их ведёт Unit1 (MatchTab*).
 //
 // Окно описано в DlgMatchList.dfm и правится в конструкторе форм.
 // Окно создаётся один раз (TForm1.EnsureMatchForm, Unit1), дальше только
@@ -16,11 +18,13 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
-  StdCtrls, ExtCtrls, Grids,
-  UiStdCtrls;   // TUiCheckBox
+  StdCtrls, ExtCtrls, Grids, ComCtrls,
+  UiStdCtrls,   // TUiCheckBox
+  UiComCtrls;   // TUiTabControl
 
 type
   TDlgMatchList = class(TForm)
+    tabHistory: TUiTabControl;
     grdMatches: TStringGrid;
     pnlBottom: TPanel;
     chkDisableRem: TUiCheckBox;

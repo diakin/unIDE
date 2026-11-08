@@ -260,6 +260,16 @@ type
 
   TMatchRowArray = array of TMatchRow;
 
+  // Вкладка Match list - один из последних поисков. У открытой вкладки
+  // строки живут в FMatchRows (Rows здесь пуст), у остальных - здесь
+  TMatchSaved = record
+    Rows: TMatchRowArray;
+    Pattern: string;  // образец (FMatchPattern)
+    Key: string;      // FMatchKey
+    Caption: string;  // заголовок окна Match list
+    Cur: Integer;     // FMatchCur
+  end;
+
   // Копия до замены All по вкладкам, проекту, диску (Undo): текст окна
   // или байты файла на диске
   TReplBackup = record
@@ -610,6 +620,7 @@ type
     pmuFmtFormat: TMenuItem;
     pmuSepFmt: TMenuItem;
     pmuSearch: TMenuItem;
+    pmuMatchList: TMenuItem;
     FFmtPopup: TUiPopupMenu;
     fmpText: TMenuItem;
     fmpFormat: TMenuItem;
@@ -1057,6 +1068,7 @@ type
     procedure FmtIeEdgeClick(Sender: TObject);
     procedure Wv2ViewClick(Sender: TObject);
     procedure SearchSelectedClick(Sender: TObject);
+    procedure MatchListWordClick(Sender: TObject);
     procedure DebugLineClick(Sender: TObject);
     procedure EditClickEvent(Sender: TObject);
     procedure PastePlainText;
@@ -1824,6 +1836,9 @@ type
     FWatchArrGrown: Integer;  // на сколько расширили окно под панель
     // Выражение для пункта Add watch меню редактора (PopupMenuPopup)
     FPopupWatchExpr: string;
+    // Пункт "Список вхождений": выделение в одной строке или имя, по
+    // которому щёлкнули правой кнопкой (PopupMenuPopup)
+    FPopupMatchWord: string;
     // Строка, где открыто меню редактора: для пункта условия точки
     FPopupCondLine: Integer;
     // Полоса меток: строка, по которой щёлкнули. Одиночный щелчок сразу
@@ -2277,6 +2292,9 @@ type
     FDeclBlockEnd: Boolean;   // в панели - конец блока (нижняя метка)
     // Подпись панели для "не найдено", когда она своя (RapidQ); '' - общая
     FDeclNoneText: string;
+    // C/C++: дописка к объявлению на панели - последнее присваивание
+    // выше щелчка ("значение" по тексту); '' - нет
+    FDeclExtra: string;
     // RapidQ: разобранные файлы с диска и список файлов поиска
     // (RqDeclFileList) - для какой вкладки и главного .bas, когда собран
     FRqDeclCache: TRqDeclCache;
@@ -2556,6 +2574,11 @@ type
     // устарел. Совпал - Find-> идёт по нему, не ищет заново
     FMatchKey: string;
     FMatchCur: Integer;    // строка списка, к которой перешли последней
+    // Вкладки последних поисков (MatchTab*): слева - новый, до MatchTabMax
+    FMatchTabs: TUiTabControl;
+    FMatchSaved: array of TMatchSaved;
+    FMatchTabIdx: Integer; // открытая вкладка; -1 - вкладок нет
+    FMatchTabsBusy: Boolean; // ярлычки перестраиваются - OnChange не слушаем
     // Копии до последней замены All по вкладкам, проекту, диску - для Undo
     FReplBackups: TReplBackupArray;
     FNewTabAdded: Boolean; // EnsureTab только что завела новую вкладку
@@ -2820,6 +2843,12 @@ type
     procedure PlaceMatchForm;
     procedure MatchFormResize(Sender: TObject);
     procedure ResetMatchRows;
+    procedure MatchTabStore;
+    procedure MatchTabLoad(AIndex: Integer);
+    procedure MatchTabDelete(AIndex: Integer);
+    procedure MatchTabForNew(const APattern: string);
+    procedure MatchTabsRefresh;
+    procedure MatchTabsChange(Sender: TObject);
     function  AddMatchGroup(const AFile: string; AWinIdx: Integer): Integer;
     procedure AddMatchHit(const AFile: string; AWinIdx, ALineNo,
                           AMatchPos: Integer; const ALine: string);
@@ -3997,6 +4026,7 @@ type
     procedure DeclPanelUpdate;
     function  DeclRqMode: Boolean;
     procedure DeclPanelUpdateRq;
+    procedure DeclPanelUpdateC;
     procedure RqDeclFileList(AFiles: TStrings);
     function  RqDeclLoadLines(const AFile: string; ALines: TStrings): Boolean;
     function  GuideMarkAt(AX, AY: Integer): Integer;
@@ -4598,6 +4628,7 @@ type
     procedure CiTimerTick(Sender: TObject);
     procedure SymHintSetup;
     procedure SymHintHide;
+    procedure HintWndColors(AWnd: THintWindow);
     procedure SaveFormBounds(Ini: TCustomIniFile);
     procedure IniOwnWritten(const AFile: string);
     procedure RestoreFormBounds(Ini: TIniFile);
@@ -23433,6 +23464,8 @@ begin
         Exit;
       end;
       EnsureMatchForm;
+      // Образец - до ResetMatchRows: по нему выбирается вкладка списка
+      FMatchPattern := Pattern;
       ResetMatchRows;
       FillMatchGrid;
       FifShowWindow(SearchScope = ScopeProject);
@@ -24098,6 +24131,7 @@ var
   ClickChar: Integer;
   PopupSel: string;
   PopupMark: TBreakMark;
+  MatchLineIdx: Integer;
 begin
   if pmuSearch = nil then
     Exit;
@@ -24137,6 +24171,37 @@ begin
 
   pmuSearch.Caption := 'Search {' + EdUiText(Str) + '}';
   pmuSearch.Enabled := Str <> '';
+
+  // Список вхождений: выделение в одной строке - дословно; без него - имя
+  // там, где щёлкнули правой кнопкой (меню с клавиатуры - у каретки)
+  if pmuMatchList <> nil then
+  begin
+    FPopupMatchWord := '';
+    if (RichEdit1.SelLength > 0) and (RichEdit1.SelLength <= 200) then
+    begin
+      PopupSel := SelTextHead(200);
+      if (Pos(#13, PopupSel) = 0) and (Pos(#10, PopupSel) = 0) then
+        FPopupMatchWord := PopupSel;
+    end;
+    if (FPopupMatchWord = '') and (RichEdit1.SelLength = 0) then
+    begin
+      ClickPt := RichEdit1.ScreenToClient(FPopupMenu.PopupAt);
+      ClickChar := -1;
+      if ((ClickPt.X <> 0) or (ClickPt.Y <> 0)) and
+         PtInRect(RichEdit1.ClientRect, ClickPt) and
+         (WindowFromPoint(FPopupMenu.PopupAt) = RichEdit1.Handle) then
+        ClickChar := DbgCharAtClient(ClickPt);
+      if ClickChar >= 0 then
+        FPopupMatchWord := CiWordAt(ClickChar, MatchLineIdx)
+      else
+        FPopupMatchWord := IdentAtCaret;
+    end;
+    LineStr := FPopupMatchWord;
+    if Length(LineStr) > MaxLen then
+      LineStr := Copy(LineStr, 1, MaxLen) + '...';
+    pmuMatchList.Caption := 'Список вхождений {' + EdUiText(LineStr) + '}';
+    pmuMatchList.Enabled := FPopupMatchWord <> '';
+  end;
 
   // Регистр: выделение, а без него - слово под кареткой
   if Str = '' then
@@ -24236,6 +24301,17 @@ begin
     cmbFind.SetFocus;
 end;
 
+// Список вхождений из меню редактора: образец - в поле Find, Match list по
+// текущему файлу сразу, без выбора области на панели Search and replace.
+// Галки Case и режим Whole word панели действуют, как у Find->
+procedure TForm1.MatchListWordClick(Sender: TObject);
+begin
+  if FPopupMatchWord = '' then
+    Exit;
+  AddHistory(cmbFind, FPopupMatchWord);
+  BuildMatchList;
+end;
+
 // ---------------------------------------------------------------------------
 //  Окно результатов поиска
 //
@@ -24284,6 +24360,12 @@ begin
 
   // Фильтр комментариев относится к списку, поэтому и живёт на его окне
   chkDisableRem.OnClick := ChkDisableRemClick;
+
+  // Вкладки последних поисков
+  FMatchTabs := Dlg.tabHistory;
+  FMatchTabs.OnChange := MatchTabsChange;
+  FMatchTabIdx := -1;
+  SetLength(FMatchSaved, 0);
 
   // Цвета IDE (Light / Dark)
   UiApplyForm(FMatchForm);
@@ -24335,9 +24417,180 @@ begin
   FMatchGrid.ColWidths[1] := WidthPx;
 end;
 
+// Новый поиск: прежний список уходит на свою вкладку (MatchTabForNew),
+// открытая вкладка - под новый образец FMatchPattern
 procedure TForm1.ResetMatchRows;
 begin
+  MatchTabForNew(FMatchPattern);
   SetLength(FMatchRows, 0);
+end;
+
+// ---------------------------------------------------------------------------
+//  Вкладки Match list: до MatchTabMax последних поисков, новый - слева.
+//  Открытая вкладка работает как прежде - через FMatchRows и остальные
+//  FMatch*; при переходе на другую вкладку они сохраняются в её запись
+//  FMatchSaved (MatchTabStore), а из записи выбранной - достаются
+//  (MatchTabLoad). Поиск с тем же образцом, что у вкладки, пишет в неё,
+//  а не заводит новую.
+// ---------------------------------------------------------------------------
+
+const
+  MatchTabMax = 5;
+
+// Список открытой вкладки - в её запись
+procedure TForm1.MatchTabStore;
+begin
+  if (FMatchTabIdx < 0) or (FMatchTabIdx > High(FMatchSaved)) then
+    Exit;
+  FMatchSaved[FMatchTabIdx].Rows := FMatchRows;
+  FMatchRows := nil;
+  // Pattern не трогаем: он у записи с её заведения, а FMatchPattern в
+  // начале нового поиска уже новый
+  FMatchSaved[FMatchTabIdx].Key := FMatchKey;
+  FMatchSaved[FMatchTabIdx].Cur := FMatchCur;
+  if FMatchForm <> nil then
+    FMatchSaved[FMatchTabIdx].Caption := FMatchForm.Caption;
+end;
+
+// Вкладку AIndex - в FMatchRows и остальные FMatch*; она становится открытой
+procedure TForm1.MatchTabLoad(AIndex: Integer);
+begin
+  if (AIndex < 0) or (AIndex > High(FMatchSaved)) then
+    Exit;
+  FMatchTabIdx := AIndex;
+  FMatchRows := FMatchSaved[AIndex].Rows;
+  FMatchSaved[AIndex].Rows := nil;
+  FMatchPattern := FMatchSaved[AIndex].Pattern;
+  FMatchKey := FMatchSaved[AIndex].Key;
+  FMatchCur := FMatchSaved[AIndex].Cur;
+  if FMatchForm <> nil then
+    FMatchForm.Caption := FMatchSaved[AIndex].Caption;
+end;
+
+procedure TForm1.MatchTabDelete(AIndex: Integer);
+var
+  SlotIdx: Integer;
+begin
+  if (AIndex < 0) or (AIndex > High(FMatchSaved)) then
+    Exit;
+  for SlotIdx := AIndex to High(FMatchSaved) - 1 do
+    FMatchSaved[SlotIdx] := FMatchSaved[SlotIdx + 1];
+  FMatchSaved[High(FMatchSaved)].Rows := nil;
+  SetLength(FMatchSaved, Length(FMatchSaved) - 1);
+  if FMatchTabIdx > AIndex then
+    Dec(FMatchTabIdx)
+  else if FMatchTabIdx = AIndex then
+    FMatchTabIdx := -1;
+end;
+
+// Начало нового поиска с образцом APattern. Открытая вкладка пустая или
+// с тем же образцом - поиск пишет в неё (она переезжает влево). Иначе
+// её список сохраняется, вкладка с тем же образцом (если есть) убирается
+// и слева заводится новая; лишние справа - убираются
+procedure TForm1.MatchTabForNew(const APattern: string);
+var
+  SlotIdx: Integer;
+  Saved: TMatchSaved;
+begin
+  if FMatchTabs = nil then
+    Exit;
+  if (FMatchTabIdx >= 0) and (FMatchTabIdx <= High(FMatchSaved)) and
+     ((Length(FMatchRows) = 0) or
+      (FMatchSaved[FMatchTabIdx].Pattern = APattern)) then
+  begin
+    // Открытая вкладка - под новый поиск, на первое место
+    Saved := FMatchSaved[FMatchTabIdx];
+    for SlotIdx := FMatchTabIdx downto 1 do
+      FMatchSaved[SlotIdx] := FMatchSaved[SlotIdx - 1];
+    FMatchSaved[0] := Saved;
+    FMatchTabIdx := 0;
+    // Вкладка с тем же образцом среди остальных - лишняя
+    for SlotIdx := High(FMatchSaved) downto 1 do
+      if FMatchSaved[SlotIdx].Pattern = APattern then
+        MatchTabDelete(SlotIdx);
+  end
+  else
+  begin
+    MatchTabStore;
+    for SlotIdx := High(FMatchSaved) downto 0 do
+      if FMatchSaved[SlotIdx].Pattern = APattern then
+        MatchTabDelete(SlotIdx);
+    SetLength(FMatchSaved, Length(FMatchSaved) + 1);
+    for SlotIdx := High(FMatchSaved) downto 1 do
+      FMatchSaved[SlotIdx] := FMatchSaved[SlotIdx - 1];
+    FMatchSaved[0].Rows := nil;
+    FMatchSaved[0].Key := '';
+    FMatchSaved[0].Cur := -1;
+    FMatchSaved[0].Caption := '';
+    FMatchTabIdx := 0;
+    while Length(FMatchSaved) > MatchTabMax do
+      MatchTabDelete(High(FMatchSaved));
+  end;
+  FMatchSaved[0].Pattern := APattern;
+  MatchTabsRefresh;
+end;
+
+// Ярлычки - по записям: образец (длинный - укороченный). Вкладка одна -
+// ярлычки не видны
+procedure TForm1.MatchTabsRefresh;
+var
+  SlotIdx: Integer;
+  TabText: string;
+begin
+  if FMatchTabs = nil then
+    Exit;
+  FMatchTabsBusy := True;
+  try
+    FMatchTabs.Tabs.BeginUpdate;
+    try
+      FMatchTabs.Tabs.Clear;
+      for SlotIdx := 0 to High(FMatchSaved) do
+      begin
+        TabText := EdUiText(FMatchSaved[SlotIdx].Pattern);
+        TabText := StringReplace(TabText, #9, ' ', [rfReplaceAll]);
+        if Length(TabText) > 24 then
+          TabText := Copy(TabText, 1, 24) + '...';
+        if TabText = '' then
+          TabText := '(пусто)';
+        FMatchTabs.Tabs.Add(TabText);
+      end;
+    finally
+      FMatchTabs.Tabs.EndUpdate;
+    end;
+    if (FMatchTabIdx >= 0) and (FMatchTabIdx < FMatchTabs.Tabs.Count) then
+      FMatchTabs.TabIndex := FMatchTabIdx;
+    if FMatchTabs.Visible <> (Length(FMatchSaved) > 1) then
+      FMatchTabs.Visible := Length(FMatchSaved) > 1;
+  finally
+    FMatchTabsBusy := False;
+  end;
+end;
+
+// Щелчок по ярлычку: список той вкладки. Во время Find In Files - нет:
+// найденное идёт в список открытой вкладки
+procedure TForm1.MatchTabsChange(Sender: TObject);
+var
+  NewIdx: Integer;
+begin
+  if (FMatchTabs = nil) or FMatchTabsBusy then
+    Exit;
+  NewIdx := FMatchTabs.TabIndex;
+  if (NewIdx = FMatchTabIdx) or (NewIdx < 0) or
+     (NewIdx > High(FMatchSaved)) then
+    Exit;
+  if FFifRunning then
+  begin
+    FMatchTabs.TabIndex := FMatchTabIdx;
+    StatusBar1.Panels[0].Text := 'Match list: идёт Find In Files - ' +
+                                 'вкладки после его конца';
+    Exit;
+  end;
+  MatchTabStore;
+  MatchTabLoad(NewIdx);
+  FillMatchGrid;
+  if (FMatchCur >= 0) and (FMatchCur <= High(FMatchRows)) and
+     (FMatchGrid <> nil) and (FMatchCur + 1 < FMatchGrid.RowCount) then
+    FMatchGrid.Row := FMatchCur + 1;
 end;
 
 // Добавляет заголовок файла и возвращает его индекс: вызывающий потом
@@ -55273,6 +55526,8 @@ begin
     2:
     begin
       Str := IntToStr(FDeclLine + 1) + ':   ' + FDeclText;
+      if FDeclExtra <> '' then
+        Str := Str + '        |   ' + FDeclExtra;
       FDeclPanel.Color := UiColor('Decl.FoundBG');
       if FDeclIsBlock and FDeclBlockEnd then
         FDeclPanel.Hint := 'Конец блока. Щелчок - перейти к строке ' +
@@ -55383,6 +55638,7 @@ begin
     Inc(FirstPos);
   FDeclFile := FCurrentFileName;
   FDeclOtherFile := '';
+  FDeclExtra := '';
   FDeclWord := '';
   FDeclLine := HeadLine;
   FDeclCol := FirstPos;
@@ -55393,6 +55649,678 @@ begin
   FDeclIsBlock := True;
   FDeclBlockEnd := not FGuideMarks[AMarkIdx].AtTop;
   FDeclMode := 2;
+  DeclPanelShow;
+end;
+
+// ---------------------------------------------------------------------------
+//  Панель объявления для C/C++ (скетч .ino, .c, .cpp, .h): строка, где
+//  объявлено имя под кареткой, и последнее присваивание ему выше щелчка -
+//  "значение" по тексту, без компиляции. Разбор простой, по строкам:
+//  объявление - имя после типа (int ltop = 20;  String s;  void f(int k)
+//  int a = 1, b;  #define NAME ...), с учётом вложенности фигурных скобок:
+//  локальное имя другой функции выше не подходит.
+// ---------------------------------------------------------------------------
+
+// Расширение - исходник C/C++
+function CDeclIsCExt(const AExt: string): Boolean;
+begin
+  Result := (AExt = '.ino') or (AExt = '.pde') or (AExt = '.c') or
+            (AExt = '.cpp') or (AExt = '.cc') or (AExt = '.cxx') or
+            (AExt = '.h') or (AExt = '.hpp') or (AExt = '.hh');
+end;
+
+// Слова, после которых имя - не объявление (return x; case X:), и
+// ключевые слова, которые сами не имена
+function CDeclIsKeyword(const AWord: string): Boolean;
+const
+  KeyWords: array[0..43] of string = (
+    'return', 'case', 'goto', 'else', 'new', 'delete', 'throw', 'sizeof',
+    'if', 'while', 'for', 'switch', 'do', 'break', 'continue', 'default',
+    'operator', 'using', 'namespace', 'template', 'typename', 'public',
+    'private', 'protected', 'true', 'false', 'nullptr', 'NULL', 'this',
+    'int', 'void', 'char', 'float', 'double', 'long', 'short', 'unsigned',
+    'signed', 'bool', 'const', 'static', 'volatile', 'struct', 'class');
+var
+  WordIdx: Integer;
+begin
+  Result := False;
+  for WordIdx := Low(KeyWords) to High(KeyWords) do
+    if AWord = KeyWords[WordIdx] then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+// Слово, после которого имя не может быть объявлено (return x, case X)
+function CDeclIsStopWord(const AWord: string): Boolean;
+begin
+  Result := (AWord = 'return') or (AWord = 'case') or (AWord = 'goto') or
+            (AWord = 'else') or (AWord = 'new') or (AWord = 'delete') or
+            (AWord = 'throw') or (AWord = 'sizeof') or (AWord = 'if') or
+            (AWord = 'while') or (AWord = 'for') or (AWord = 'switch') or
+            (AWord = 'do') or (AWord = 'operator') or (AWord = 'using') or
+            (AWord = 'namespace') or (AWord = 'true') or (AWord = 'false');
+end;
+
+// Строка без комментариев и литералов: их знаки - пробелами, длина та же.
+// AInBlock - строка начинается внутри /* */; на выходе - конец строки
+// внутри /* */
+function CDeclCleanLine(const ALine: string; var AInBlock: Boolean): string;
+var
+  CharIdx, LineLen: Integer;
+  Quote: Char;
+begin
+  Result := ALine;
+  LineLen := Length(Result);
+  CharIdx := 1;
+  while CharIdx <= LineLen do
+  begin
+    if AInBlock then
+    begin
+      if (Result[CharIdx] = '*') and (CharIdx < LineLen) and
+         (Result[CharIdx + 1] = '/') then
+      begin
+        Result[CharIdx] := ' ';
+        Result[CharIdx + 1] := ' ';
+        Inc(CharIdx, 2);
+        AInBlock := False;
+        Continue;
+      end;
+      Result[CharIdx] := ' ';
+      Inc(CharIdx);
+      Continue;
+    end;
+    if (Result[CharIdx] = '/') and (CharIdx < LineLen) and
+       (Result[CharIdx + 1] = '/') then
+    begin
+      while CharIdx <= LineLen do
+      begin
+        Result[CharIdx] := ' ';
+        Inc(CharIdx);
+      end;
+      Break;
+    end;
+    if (Result[CharIdx] = '/') and (CharIdx < LineLen) and
+       (Result[CharIdx + 1] = '*') then
+    begin
+      Result[CharIdx] := ' ';
+      Result[CharIdx + 1] := ' ';
+      Inc(CharIdx, 2);
+      AInBlock := True;
+      Continue;
+    end;
+    if (Result[CharIdx] = '"') or (Result[CharIdx] = '''') then
+    begin
+      Quote := Result[CharIdx];
+      Result[CharIdx] := ' ';
+      Inc(CharIdx);
+      while CharIdx <= LineLen do
+      begin
+        if Result[CharIdx] = '\' then
+        begin
+          Result[CharIdx] := ' ';
+          if CharIdx < LineLen then
+            Result[CharIdx + 1] := ' ';
+          Inc(CharIdx, 2);
+          Continue;
+        end;
+        if Result[CharIdx] = Quote then
+        begin
+          Result[CharIdx] := ' ';
+          Inc(CharIdx);
+          Break;
+        end;
+        Result[CharIdx] := ' ';
+        Inc(CharIdx);
+      end;
+      Continue;
+    end;
+    Inc(CharIdx);
+  end;
+end;
+
+// Лексемы очищенной строки: имена, числа, двухзнаковые операторы
+// (== != <= >= += -= ... ++ -- -> :: && ||), остальное - по знаку.
+// Objects - позиция лексемы в строке (с 1)
+procedure CDeclTokens(const AClean: string; ATokens: TStrings);
+const
+  TwoCharOps: array[0..18] of string = ('==', '!=', '<=', '>=', '+=', '-=',
+    '*=', '/=', '%=', '&=', '|=', '^=', '++', '--', '->', '::', '&&', '||',
+    '<<');
+var
+  CharIdx, StartIdx, LineLen, OpIdx: Integer;
+  Pair: string;
+  Found: Boolean;
+begin
+  ATokens.Clear;
+  LineLen := Length(AClean);
+  CharIdx := 1;
+  while CharIdx <= LineLen do
+  begin
+    if AClean[CharIdx] in [' ', #9] then
+    begin
+      Inc(CharIdx);
+      Continue;
+    end;
+    StartIdx := CharIdx;
+    if AClean[CharIdx] in ['A'..'Z', 'a'..'z', '_', '0'..'9'] then
+    begin
+      while (CharIdx <= LineLen) and
+            (AClean[CharIdx] in ['A'..'Z', 'a'..'z', '_', '0'..'9']) do
+        Inc(CharIdx);
+      ATokens.AddObject(Copy(AClean, StartIdx, CharIdx - StartIdx),
+                        TObject(StartIdx));
+      Continue;
+    end;
+    Found := False;
+    if CharIdx < LineLen then
+    begin
+      Pair := Copy(AClean, CharIdx, 2);
+      for OpIdx := Low(TwoCharOps) to High(TwoCharOps) do
+        if Pair = TwoCharOps[OpIdx] then
+        begin
+          Found := True;
+          Break;
+        end;
+    end;
+    if Found then
+    begin
+      ATokens.AddObject(Pair, TObject(StartIdx));
+      Inc(CharIdx, 2);
+    end
+    else
+    begin
+      ATokens.AddObject(AClean[CharIdx], TObject(StartIdx));
+      Inc(CharIdx);
+    end;
+  end;
+end;
+
+function CDeclIsIdent(const AToken: string): Boolean;
+begin
+  Result := (AToken <> '') and (AToken[1] in ['A'..'Z', 'a'..'z', '_']);
+end;
+
+// Лексема ATokens[AIdx] (имя) здесь объявляется
+function CDeclAt(ATokens: TStrings; AIdx: Integer): Boolean;
+var
+  NextTok, PrevTok: string;
+  PrevIdx, Depth, StartIdx: Integer;
+begin
+  // #define NAME ...
+  if (AIdx = 2) and (ATokens[0] = '#') and (ATokens[1] = 'define') then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Result := False;
+  if AIdx + 1 < ATokens.Count then
+    NextTok := ATokens[AIdx + 1]
+  else
+    NextTok := '';
+  if not ((NextTok = '') or (NextTok = '=') or (NextTok = ';') or
+          (NextTok = ',') or (NextTok = '[') or (NextTok = '(') or
+          (NextTok = ')') or (NextTok = ':') or (NextTok = '{')) then
+    Exit;
+  PrevIdx := AIdx - 1;
+  while (PrevIdx >= 0) and
+        ((ATokens[PrevIdx] = '*') or (ATokens[PrevIdx] = '&')) do
+    Dec(PrevIdx);
+  if PrevIdx < 0 then
+    Exit;
+  PrevTok := ATokens[PrevIdx];
+
+  // int a = 1, NAME = 2;  - начало оператора: тип и имя
+  if PrevTok = ',' then
+  begin
+    Depth := 0;
+    StartIdx := PrevIdx - 1;
+    while StartIdx >= 0 do
+    begin
+      if (ATokens[StartIdx] = ')') or (ATokens[StartIdx] = ']') then
+        Inc(Depth)
+      else if (ATokens[StartIdx] = '(') or (ATokens[StartIdx] = '[') then
+      begin
+        if Depth = 0 then
+          Exit;    // внутри скобок: параметры вызова
+        Dec(Depth);
+      end
+      else if (Depth = 0) and ((ATokens[StartIdx] = ';') or
+              (ATokens[StartIdx] = '{') or (ATokens[StartIdx] = '}')) then
+        Break;
+      Dec(StartIdx);
+    end;
+    Inc(StartIdx);
+    while (StartIdx < PrevIdx) and
+          ((ATokens[StartIdx] = 'static') or (ATokens[StartIdx] = 'const') or
+           (ATokens[StartIdx] = 'volatile') or (ATokens[StartIdx] = 'unsigned')) do
+      Inc(StartIdx);
+    Result := (StartIdx + 1 < PrevIdx) and CDeclIsIdent(ATokens[StartIdx]) and
+              not CDeclIsStopWord(ATokens[StartIdx]) and
+              CDeclIsIdent(ATokens[StartIdx + 1]) and
+              not CDeclIsStopWord(ATokens[StartIdx + 1]);
+    Exit;
+  end;
+
+  // Шаблон: std::vector<int> NAME - тип до парной '<'
+  if PrevTok = '>' then
+  begin
+    Depth := 0;
+    while PrevIdx >= 0 do
+    begin
+      if ATokens[PrevIdx] = '>' then
+        Inc(Depth)
+      else if ATokens[PrevIdx] = '<' then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+          Break;
+      end;
+      Dec(PrevIdx);
+    end;
+    Dec(PrevIdx);
+    if PrevIdx < 0 then
+      Exit;
+    PrevTok := ATokens[PrevIdx];
+  end;
+
+  // Тип перед именем: слова (unsigned long, const char), ::, * и &; перед
+  // типом - начало строки или ; { } ( , :
+  if not CDeclIsIdent(PrevTok) or CDeclIsStopWord(PrevTok) then
+    Exit;
+  Dec(PrevIdx);
+  while (PrevIdx >= 0) and
+        ((CDeclIsIdent(ATokens[PrevIdx]) and
+          not CDeclIsStopWord(ATokens[PrevIdx])) or
+         (ATokens[PrevIdx] = '::') or (ATokens[PrevIdx] = '*') or
+         (ATokens[PrevIdx] = '&')) do
+    Dec(PrevIdx);
+  if PrevIdx < 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  PrevTok := ATokens[PrevIdx];
+  Result := (PrevTok = ';') or (PrevTok = '{') or (PrevTok = '}') or
+            (PrevTok = '(') or (PrevTok = ',') or (PrevTok = ':');
+end;
+
+// Глубина фигурных скобок в начале каждой строки (ACl - очищенные строки)
+procedure CDeclDepths(ACl: TStrings; var ADepths: array of Integer);
+var
+  LineIdx, CharIdx, Depth: Integer;
+  LineText: string;
+begin
+  Depth := 0;
+  for LineIdx := 0 to ACl.Count - 1 do
+  begin
+    ADepths[LineIdx] := Depth;
+    LineText := ACl[LineIdx];
+    for CharIdx := 1 to Length(LineText) do
+      if LineText[CharIdx] = '{' then
+        Inc(Depth)
+      else if (LineText[CharIdx] = '}') and (Depth > 0) then
+        Dec(Depth);
+  end;
+end;
+
+// Объявление AWord в строке ALineText (очищенной); позиция имени (с 1)
+// или 0. ADepthAdd - насколько блок имени глубже начала строки: { перед
+// ним в той же строке; параметр функции или переменная for (имя в
+// скобках, за ними - { в этой строке или в начале следующей ANextLine)
+// видны только в теле - ещё +1
+function CDeclInLine(const ALineText, ANextLine, AWord: string;
+                     ATokens: TStrings; var ADepthAdd: Integer): Integer;
+var
+  TokIdx, ScanIdx, ParenDepth, CloseIdx: Integer;
+  BodyFollows: Boolean;
+begin
+  Result := 0;
+  ADepthAdd := 0;
+  if Pos(AWord, ALineText) = 0 then
+    Exit;
+  CDeclTokens(ALineText, ATokens);
+  for TokIdx := 0 to ATokens.Count - 1 do
+    if (ATokens[TokIdx] = AWord) and CDeclAt(ATokens, TokIdx) then
+    begin
+      Result := Integer(ATokens.Objects[TokIdx]);
+      ParenDepth := 0;
+      for ScanIdx := 0 to TokIdx - 1 do
+        if ATokens[ScanIdx] = '{' then
+          Inc(ADepthAdd)
+        else if (ATokens[ScanIdx] = '}') and (ADepthAdd > 0) then
+          Dec(ADepthAdd)
+        else if ATokens[ScanIdx] = '(' then
+          Inc(ParenDepth)
+        else if (ATokens[ScanIdx] = ')') and (ParenDepth > 0) then
+          Dec(ParenDepth);
+      if ParenDepth > 0 then
+      begin
+        // Конец скобок, в которых имя, и что за ними
+        CloseIdx := TokIdx + 1;
+        while (CloseIdx < ATokens.Count) and (ParenDepth > 0) do
+        begin
+          if ATokens[CloseIdx] = '(' then
+            Inc(ParenDepth)
+          else if ATokens[CloseIdx] = ')' then
+            Dec(ParenDepth);
+          Inc(CloseIdx);
+        end;
+        BodyFollows := False;
+        for ScanIdx := CloseIdx to ATokens.Count - 1 do
+          if ATokens[ScanIdx] = '{' then
+          begin
+            BodyFollows := True;
+            Break;
+          end;
+        if not BodyFollows and (CloseIdx >= ATokens.Count) and
+           (Copy(TrimLeft(ANextLine), 1, 1) = '{') then
+          BodyFollows := True;
+        if BodyFollows then
+          Inc(ADepthAdd);
+      end;
+      Exit;
+    end;
+end;
+
+// Объявление AWord, видное из строки AFromLine: сначала выше (в своём
+// блоке или во внешних), потом ниже - только на верхнем уровне (глобальное
+// имя или функция, объявленные дальше по файлу). AFromLine = -1 - только
+// верхний уровень по всему файлу (другой файл скетча). True - нашлось:
+// строка ADeclLine (с 0) и позиция имени ADeclCol (с 1)
+function CDeclFind(ACl: TStrings; AFromLine: Integer; const AWord: string;
+                   var ADeclLine, ADeclCol: Integer): Boolean;
+var
+  Depths: array of Integer;
+  Tokens: TStringList;
+  LineIdx, MinDepth, NameCol, DepthAdd: Integer;
+  NextLine: string;
+begin
+  Result := False;
+  if ACl.Count = 0 then
+    Exit;
+  SetLength(Depths, ACl.Count);
+  CDeclDepths(ACl, Depths);
+  Tokens := TStringList.Create;
+  try
+    if AFromLine >= ACl.Count then
+      AFromLine := ACl.Count - 1;
+    // MinDepth - самая малая глубина между объявлением и щелчком: начало
+    // строки щелчка и концы строк между ними (конец строки - начало
+    // следующей). Блок, закрытый на этом пути, отсюда не виден
+    if AFromLine >= 0 then
+      MinDepth := Depths[AFromLine]
+    else
+      MinDepth := 0;
+    for LineIdx := AFromLine downto 0 do
+    begin
+      if LineIdx < AFromLine - 1 then
+        if Depths[LineIdx + 2] < MinDepth then
+          MinDepth := Depths[LineIdx + 2];
+      if Depths[LineIdx] <= MinDepth then
+      begin
+        if LineIdx + 1 < ACl.Count then
+          NextLine := ACl[LineIdx + 1]
+        else
+          NextLine := '';
+        NameCol := CDeclInLine(ACl[LineIdx], NextLine, AWord, Tokens,
+                               DepthAdd);
+        // Имя во вложенном блоке строки (или параметр чужой функции) -
+        // отсюда не видно; в строке щелчка - берём
+        if (NameCol > 0) and (LineIdx < AFromLine) and
+           (Depths[LineIdx] + DepthAdd > MinDepth) then
+          NameCol := 0;
+        if NameCol > 0 then
+        begin
+          ADeclLine := LineIdx;
+          ADeclCol := NameCol;
+          Result := True;
+          Exit;
+        end;
+      end;
+    end;
+    for LineIdx := AFromLine + 1 to ACl.Count - 1 do
+      if Depths[LineIdx] = 0 then
+      begin
+        if LineIdx + 1 < ACl.Count then
+          NextLine := ACl[LineIdx + 1]
+        else
+          NextLine := '';
+        NameCol := CDeclInLine(ACl[LineIdx], NextLine, AWord, Tokens,
+                               DepthAdd);
+        if DepthAdd > 0 then
+          NameCol := 0;
+        if NameCol > 0 then
+        begin
+          ADeclLine := LineIdx;
+          ADeclCol := NameCol;
+          Result := True;
+          Exit;
+        end;
+      end;
+  finally
+    Tokens.Free;
+  end;
+end;
+
+// Последнее присваивание AWord выше строки AFromLine, до строки AStopLine
+// (её не смотрим): NAME = ..., NAME += ..., NAME++. Номер строки или -1
+function CDeclLastAssign(ACl: TStrings; AFromLine, AStopLine: Integer;
+                         const AWord: string): Integer;
+var
+  Tokens: TStringList;
+  LineIdx, TokIdx: Integer;
+  PrevTok, NextTok: string;
+begin
+  Result := -1;
+  Tokens := TStringList.Create;
+  try
+    if AFromLine >= ACl.Count then
+      AFromLine := ACl.Count - 1;
+    for LineIdx := AFromLine downto AStopLine + 1 do
+    begin
+      if Pos(AWord, ACl[LineIdx]) = 0 then
+        Continue;
+      CDeclTokens(ACl[LineIdx], Tokens);
+      for TokIdx := Tokens.Count - 1 downto 0 do
+      begin
+        if Tokens[TokIdx] <> AWord then
+          Continue;
+        if TokIdx > 0 then
+          PrevTok := Tokens[TokIdx - 1]
+        else
+          PrevTok := '';
+        // Поле другой переменной (obj.NAME, p->NAME) - не она
+        if (PrevTok = '.') or (PrevTok = '->') or (PrevTok = '::') then
+          Continue;
+        if TokIdx + 1 < Tokens.Count then
+          NextTok := Tokens[TokIdx + 1]
+        else
+          NextTok := '';
+        if (NextTok = '=') or (NextTok = '+=') or (NextTok = '-=') or
+           (NextTok = '*=') or (NextTok = '/=') or (NextTok = '%=') or
+           (NextTok = '&=') or (NextTok = '|=') or (NextTok = '^=') or
+           (NextTok = '++') or (NextTok = '--') or (PrevTok = '++') or
+           (PrevTok = '--') then
+        begin
+          Result := LineIdx;
+          Exit;
+        end;
+      end;
+    end;
+  finally
+    Tokens.Free;
+  end;
+end;
+
+// Строки AText и они же очищенные (CDeclCleanLine)
+procedure CDeclSplit(const AText: string; ASrc, ACl: TStrings);
+var
+  LineIdx: Integer;
+  InBlock: Boolean;
+begin
+  ASrc.Text := AText;
+  ACl.Clear;
+  ACl.Capacity := ASrc.Count;
+  InBlock := False;
+  for LineIdx := 0 to ASrc.Count - 1 do
+    ACl.Add(CDeclCleanLine(ASrc[LineIdx], InBlock));
+end;
+
+// Щелчок в исходнике C/C++: объявление имени под кареткой - в текущем
+// файле, иначе в файлах C/C++ той же папки (скетч Arduino склеивает свои
+// .ino, рядом - .h, .cpp). В FDeclExtra - последнее присваивание выше
+// щелчка (в том же файле, между объявлением и щелчком)
+procedure TForm1.DeclPanelUpdateC;
+var
+  Src, Cl, OtherSrc, OtherCl, DirFiles: TStringList;
+  Sel: TCharRange;
+  LineIdx, LineStart, CharPos, WordStart, WordEnd, DeclLineIdx, DeclCol,
+  AssignLine, FileIdx, WinIdx, BufIdx: Integer;
+  LineText, DirPath, OtherName: string;
+  SearchRec: TSearchRec;
+begin
+  EdApi.GetSel(Sel);
+  LineIdx := EdApi.ExLineFromChar(Sel.cpMin);
+  LineStart := EdApi.LineIndex(LineIdx);
+  if IsLargeText then
+  begin
+    LargeSkip('панель объявления');
+    DeclPanelShow;
+    Exit;
+  end;
+  Src := TStringList.Create;
+  Cl := TStringList.Create;
+  try
+    if FEdEmu <> nil then
+    begin
+      Src.Capacity := FEdEmu.Buffer.Count;
+      for BufIdx := 0 to FEdEmu.Buffer.Count - 1 do
+        Src.Add(EdAnsiText(FEdEmu.Buffer.Lines[BufIdx]));
+      CDeclSplit(Src.Text, Src, Cl);
+    end
+    else
+      CDeclSplit(GetEditorText, Src, Cl);
+    if (LineIdx < 0) or (LineIdx >= Src.Count) then
+    begin
+      DeclPanelShow;
+      Exit;
+    end;
+
+    // Имя под кареткой; каретка сразу за именем - тоже оно
+    LineText := Src[LineIdx];
+    CharPos := Sel.cpMin - LineStart + 1;
+    if (CharPos > Length(LineText)) or (CharPos < 1) or
+       not DeclIdChar(LineText[CharPos]) then
+      Dec(CharPos);
+    if (CharPos < 1) or (CharPos > Length(LineText)) or
+       not DeclIdChar(LineText[CharPos]) or (Cl[LineIdx][CharPos] = ' ') then
+    begin
+      DeclPanelShow;
+      Exit;
+    end;
+    WordStart := CharPos;
+    while (WordStart > 1) and DeclIdChar(LineText[WordStart - 1]) do
+      Dec(WordStart);
+    WordEnd := CharPos;
+    while (WordEnd < Length(LineText)) and DeclIdChar(LineText[WordEnd + 1]) do
+      Inc(WordEnd);
+    FDeclWord := Copy(LineText, WordStart, WordEnd - WordStart + 1);
+    if not (FDeclWord[1] in ['A'..'Z', 'a'..'z', '_']) or
+       CDeclIsKeyword(FDeclWord) then
+    begin
+      DeclPanelShow;
+      Exit;
+    end;
+    FDeclFromPos := Sel.cpMin;
+    FDeclFromLine := LineIdx;
+
+    if CDeclFind(Cl, LineIdx, FDeclWord, DeclLineIdx, DeclCol) then
+    begin
+      FDeclLine := DeclLineIdx;
+      FDeclCol := DeclCol;
+      FDeclText := Trim(StringReplace(Src[DeclLineIdx], #9, ' ',
+                                      [rfReplaceAll]));
+      FDeclMode := 2;
+      // Значение: последнее присваивание между объявлением и щелчком
+      if DeclLineIdx < LineIdx then
+      begin
+        AssignLine := CDeclLastAssign(Cl, LineIdx - 1, DeclLineIdx,
+                                      FDeclWord);
+        if AssignLine >= 0 then
+          FDeclExtra := 'выше присвоено, ' + IntToStr(AssignLine + 1) +
+            ':   ' + Trim(StringReplace(Src[AssignLine], #9, ' ',
+                                        [rfReplaceAll]));
+      end;
+      DeclPanelShow;
+      Exit;
+    end;
+
+    // Файлы C/C++ той же папки: открытые - из окна, остальные - с диска
+    DirPath := ExtractFilePath(FCurrentFileName);
+    if DirPath <> '' then
+    begin
+      DirFiles := TStringList.Create;
+      OtherSrc := TStringList.Create;
+      OtherCl := TStringList.Create;
+      try
+        if FindFirst(DirPath + '*.*', faAnyFile and not faDirectory,
+                     SearchRec) = 0 then
+        try
+          repeat
+            if CDeclIsCExt(LowerCase(ExtractFileExt(SearchRec.Name))) and
+               (SearchRec.Size < 4 * 1024 * 1024) then
+              DirFiles.Add(DirPath + SearchRec.Name);
+          until (FindNext(SearchRec) <> 0) or (DirFiles.Count >= 50);
+        finally
+          FindClose(SearchRec);
+        end;
+        DirFiles.Sort;
+        for FileIdx := 0 to DirFiles.Count - 1 do
+        begin
+          OtherName := DirFiles[FileIdx];
+          if CompareText(OtherName, FCurrentFileName) = 0 then
+            Continue;
+          WinIdx := WindowOfFile(OtherName);
+          try
+            if WinIdx >= 0 then
+              CDeclSplit(WinText(WinIdx), OtherSrc, OtherCl)
+            else
+            begin
+              OtherSrc.LoadFromFile(OtherName);
+              CDeclSplit(OtherSrc.Text, OtherSrc, OtherCl);
+            end;
+          except
+            Continue;
+          end;
+          if CDeclFind(OtherCl, -1, FDeclWord, DeclLineIdx, DeclCol) then
+          begin
+            FDeclOtherFile := OtherName;
+            FDeclLine := DeclLineIdx;
+            FDeclCol := DeclCol;
+            FDeclText := Trim(StringReplace(OtherSrc[DeclLineIdx], #9, ' ',
+                                            [rfReplaceAll]));
+            FDeclMode := 2;
+            DeclPanelShow;
+            Exit;
+          end;
+        end;
+      finally
+        OtherCl.Free;
+        OtherSrc.Free;
+        DirFiles.Free;
+      end;
+    end;
+
+    FDeclLine := -1;
+    FDeclMode := 1;
+    FDeclNoneText := FDeclWord + ': объявление не найдено ни в этом файле, ' +
+                     'ни в файлах C/C++ его папки';
+  finally
+    Cl.Free;
+    Src.Free;
+  end;
   DeclPanelShow;
 end;
 
@@ -55412,6 +56340,7 @@ begin
   FDeclFile := FCurrentFileName;
   FDeclOtherFile := '';
   FDeclNoneText := '';
+  FDeclExtra := '';
 
   // Исходник RapidQ - свой разбор: DIM, SUB, TYPE, $INCLUDE-файлы
   if DeclRqMode then
@@ -55421,6 +56350,12 @@ begin
   end;
 
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  // Скетч Arduino и исходники C/C++ - свой разбор (DeclPanelUpdateC)
+  if CDeclIsCExt(Ext) then
+  begin
+    DeclPanelUpdateC;
+    Exit;
+  end;
   if (Ext <> '.pas') and (Ext <> '.pp') and (Ext <> '.dpr') and
      (Ext <> '.lpr') and (Ext <> '.inc') and (Ext <> '.dpk') then
   begin
@@ -72437,6 +73372,7 @@ begin
   HintText := Expr + ' = ' + ValueText;
   if FDbgHintWnd = nil then
     FDbgHintWnd := HintWindowClass.Create(Self);
+  HintWndColors(FDbgHintWnd);
   HintRect := FDbgHintWnd.CalcHintRect(700, HintText, nil);
   OffsetRect(HintRect, CursorPt.X + 12, CursorPt.Y + 18);
   FDbgHintWnd.ActivateHint(HintRect, HintText);
@@ -83696,6 +84632,7 @@ begin
   end;
   if FCiParamWnd = nil then
     FCiParamWnd := HintWindowClass.Create(Self);
+  HintWndColors(FCiParamWnd);
   ScreenPt := CiCaretScreen(LineTop);
   HintRect := FCiParamWnd.CalcHintRect(700, HintText, nil);
   OffsetRect(HintRect, ScreenPt.X, ScreenPt.Y + 2);
@@ -84014,10 +84951,26 @@ begin
                 IntToStr(DeclLine + 1) + ')';
   if FSymHintWnd = nil then
     FSymHintWnd := HintWindowClass.Create(Self);
+  HintWndColors(FSymHintWnd);
   HintRect := FSymHintWnd.CalcHintRect(700, HintText, nil);
   OffsetRect(HintRect, CursorPt.X + 12, CursorPt.Y + 18);
   FSymHintWnd.ActivateHint(HintRect, HintText);
   FSymHintWord := WordText;
+end;
+
+// Цвета своих окон подсказки (параметры, объявление под мышью, значение
+// при отладке) - как у подсказок VCL: фон Hint.BG, текст Hint.Text (UiApply
+// ставит их в Application.HintColor и Screen.HintFont). Окно подсказки
+// само берёт фон clInfoBk (светлый), а цвет текста - из Screen.HintFont:
+// в тёмной теме это светлый текст на светлом фоне
+procedure TForm1.HintWndColors(AWnd: THintWindow);
+begin
+  if AWnd = nil then
+    Exit;
+  if AWnd.Color <> Application.HintColor then
+    AWnd.Color := Application.HintColor;
+  AWnd.Font.Color := Screen.HintFont.Color;
+  AWnd.Canvas.Font.Color := Screen.HintFont.Color;
 end;
 
 procedure TForm1.DbgWatchRefresh;

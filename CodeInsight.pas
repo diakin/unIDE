@@ -1454,11 +1454,21 @@ var
   Symbol: TCiSymbol;
   IsSel: Boolean;
   KindText: string;
+  ClientBox: TRect;
 begin
   Canvas.Font.Name := 'Tahoma';
   Canvas.Font.Height := -12;
   Canvas.Brush.Color := BackColor;
-  Canvas.FillRect(ClientRect);
+  {$IFDEF FPC}
+  // Место и размер окну ставит SetWindowPos (ShowAt), мимо LCL: у окна без
+  // родителя её ClientRect и ClientWidth остаются пустыми. Фон тогда не
+  // заливался и строки не рисовались - список был пустым белым окном.
+  // Размер - у Windows (так же у меню, TUiMenuWindow.Paint)
+  Windows.GetClientRect(Handle, ClientBox);
+  {$ELSE}
+  ClientBox := ClientRect;
+  {$ENDIF}
+  Canvas.FillRect(ClientBox);
   if FAll = nil then
     Exit;
   for RowIdx := 0 to FRows - 1 do
@@ -1467,7 +1477,7 @@ begin
     if ItemIdx >= FShownCount then
       Break;
     Symbol := FAll[FShown[ItemIdx]];
-    RowRect := Rect(0, RowIdx * FRowHeight, ClientWidth,
+    RowRect := Rect(0, RowIdx * FRowHeight, ClientBox.Right,
                     (RowIdx + 1) * FRowHeight);
     IsSel := ItemIdx = FSel;
     if IsSel then
