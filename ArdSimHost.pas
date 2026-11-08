@@ -177,6 +177,7 @@ type
     FSigPhase: array[0..1] of TUiEdit;
     FSigWeights: array[0..1] of TUiEdit;
     FSigApply: TUiButton;
+    FSigIni: TUiButton;   // открыть ardsim.ini (кнопка ini верхней строки скрыта в окне эмулятора)
     FSigNote: TUiLabel;
     FSigShown: Boolean;
     FSigDirty: Boolean;
@@ -1678,7 +1679,15 @@ begin
   FSigApply.TabStop := False;
   FSigApply.SetBounds(0, 160, 100, 22);
   FSigApply.OnClick := SigApplyClick;
-  FSigNote := AddLabel('', 108, 160, 300);
+  FSigIni := TUiButton.Create(Self);
+  FSigIni.Parent := FSigPanel;
+  FSigIni.Caption := 'ardsim.ini';
+  FSigIni.Hint := FBtnIni.Hint;
+  FSigIni.ShowHint := True;
+  FSigIni.TabStop := False;
+  FSigIni.SetBounds(106, 160, 90, 22);
+  FSigIni.OnClick := BtnIniClick;
+  FSigNote := AddLabel('', 204, 160, 300);
   SigUpdateState;
 end;
 
@@ -1725,7 +1734,7 @@ begin
   else if FSigIniFile = '' then
     FSigNote.Caption := 'ardsim.ini появится после первого запуска'
   else
-    FSigNote.Caption := 'остальное - в ardsim.ini (кнопка ini)';
+    FSigNote.Caption := 'остальное - в ardsim.ini';
 end;
 
 // Поля - из ardsim.ini (если его не правили на панели)
