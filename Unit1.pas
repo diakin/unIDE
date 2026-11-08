@@ -22354,7 +22354,12 @@ begin
       HeightPx := 120;
     Dlg.ClientHeight := HeightPx;
 
-    // Кнопки: ширины - по тексту, правые прижаты к правому краю якорями
+    // Кнопки: ширины - по тексту, правые - у правого края. Якорь akRight
+    // снимаем: LCL растягивает панель кнопок позже, уже после Left ниже,
+    // и якорь сдвигал кнопки ещё на прирост ширины окна - за край
+    // (кнопки "Закрыть отмеченные" и "Отмена" было не видно)
+    BtnOk.Anchors := [akTop, akLeft];
+    BtnCancel.Anchors := [akTop, akLeft];
     BtnAll.Width := WAll;
     BtnCancel.Width := WCancel;
     BtnCancel.Left := Dlg.ClientWidth - BtnCancel.Width - 14;
