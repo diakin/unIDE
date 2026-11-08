@@ -257,7 +257,7 @@ begin
     if IsDarkColor(APageBg) then
     begin
       DimFg := $00909090;
-      NumberFg := $00808080;
+      NumberFg := $00D8D8D8;   // номера строк - ярче (было $808080)
       HunkFg := $00FFB48C;
       AddBg := $00243D1A;
       AddGutterBg := $002F551F;
@@ -268,7 +268,7 @@ begin
     else
     begin
       DimFg := $00808080;
-      NumberFg := $0081776E;
+      NumberFg := $00403830;   // номера строк - темнее (было $81776E)
       HunkFg := $006A6057;
       AddBg := $00ECFFE6;
       AddGutterBg := $00D8FFCC;

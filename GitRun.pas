@@ -136,21 +136,97 @@ function GitWideToMulti(ACodePage: UINT; AFlags: DWORD; AWide: PWideChar;
 
 const
   GitCpUtf8 = 65001;
+  GitCpAnsi = 0;       // CP_ACP
 
-function GitFromUtf8(const AText: string): WideString;
+// Байты ABytes - верный UTF-8 (ASCII - тоже)
+function GitIsUtf8(const ABytes: string): Boolean;
+var
+  Index, Len, Follow, FollowIdx: Integer;
+  Lead: Byte;
+begin
+  Result := False;
+  Len := Length(ABytes);
+  Index := 1;
+  while Index <= Len do
+  begin
+    Lead := Byte(ABytes[Index]);
+    if Lead < $80 then
+      Follow := 0
+    else if (Lead >= $C2) and (Lead <= $DF) then
+      Follow := 1
+    else if (Lead >= $E0) and (Lead <= $EF) then
+      Follow := 2
+    else if (Lead >= $F0) and (Lead <= $F4) then
+      Follow := 3
+    else
+      Exit;
+    if Index + Follow > Len then
+      Exit;
+    for FollowIdx := 1 to Follow do
+      if (Byte(ABytes[Index + FollowIdx]) and $C0) <> $80 then
+        Exit;
+    Inc(Index, Follow + 1);
+  end;
+  Result := True;
+end;
+
+// Байты в кодовой странице ACodePage - в WideString
+function GitBytesToWide(ACodePage: UINT; const ABytes: string): WideString;
 var
   WideLen: Integer;
 begin
   Result := '';
-  if AText = '' then
+  if ABytes = '' then
     Exit;
-  WideLen := GitMultiToWide(GitCpUtf8, 0, PAnsiChar(AText), Length(AText),
+  WideLen := GitMultiToWide(ACodePage, 0, PAnsiChar(ABytes), Length(ABytes),
     nil, 0);
   if WideLen <= 0 then
     Exit;
   SetLength(Result, WideLen);
-  GitMultiToWide(GitCpUtf8, 0, PAnsiChar(AText), Length(AText),
+  GitMultiToWide(ACodePage, 0, PAnsiChar(ABytes), Length(ABytes),
     PWideChar(Result), WideLen);
+end;
+
+// Вывод git - UTF-8. Но git diff отдаёт строки файлов как они есть в
+// репозитории: исходник в Windows-1251 (.ino, .pas без
+// working-tree-encoding) - не UTF-8, и такие строки выходили квадратиками.
+// Поэтому: весь вывод - верный UTF-8 - как UTF-8; иначе по строкам: строка
+// - верный UTF-8 - UTF-8, нет - ANSI (CP_ACP, у Windows с русским языком -
+// 1251)
+function GitFromUtf8(const AText: string): WideString;
+var
+  LineStart, Index, Len, OutLen, WideLen: Integer;
+  LineRaw: string;
+  CodePage: UINT;
+begin
+  Result := '';
+  if AText = '' then
+    Exit;
+  if GitIsUtf8(AText) then
+  begin
+    Result := GitBytesToWide(GitCpUtf8, AText);
+    Exit;
+  end;
+  // Знаков не больше, чем байт: место сразу на весь текст
+  Len := Length(AText);
+  SetLength(Result, Len);
+  OutLen := 0;
+  LineStart := 1;
+  for Index := 1 to Len do
+    if (AText[Index] = #10) or (Index = Len) then
+    begin
+      LineRaw := Copy(AText, LineStart, Index - LineStart + 1);
+      if GitIsUtf8(LineRaw) then
+        CodePage := GitCpUtf8
+      else
+        CodePage := GitCpAnsi;
+      WideLen := GitMultiToWide(CodePage, 0, PAnsiChar(LineRaw),
+        Length(LineRaw), @Result[OutLen + 1], Len - OutLen);
+      if WideLen > 0 then
+        Inc(OutLen, WideLen);
+      LineStart := Index + 1;
+    end;
+  SetLength(Result, OutLen);
 end;
 
 function GitToUtf8(const AText: WideString): string;
