@@ -17,7 +17,10 @@ unit DlgTtfToUtft;
 //  Параметры: шрифт, жирный, курсив, сглаживание (вкл. - сглаженный текст
 //  и порог яркости; выкл. - GDI рисует сразу без сглаживания, мелкие
 //  размеры обычно чище), клетка, размер шрифта в точках (высота em), сдвиг
-//  X, Y, промежуток между символами и строками (UTFT рисует клетки
+//  X, Y, масштаб X, Y (сжать / растянуть символ: рисуется в 4 раза
+//  крупнее и уменьшается - точка чёрная, если чёрного в её месте не
+//  меньше порога; кнопки X-, X+, Y-, Y+ и «Вписать»), промежуток между
+//  символами и строками (UTFT рисует клетки
 //  вплотную, промежуток - пустые точки внутри клетки), символ по центру
 //  клетки, диапазон кодов, имя массива.
 //  «Размер под клетку» - наибольший размер шрифта, при котором все символы
@@ -58,6 +61,7 @@ type
     PixelSize: Integer;       // высота em, точки
     OffsetX, OffsetY: Integer;
     GapX, GapY: Integer;      // пустых точек между символами, между строками
+    ScaleX, ScaleY: Integer;  // %, сжатие (<100) или растяжение символа
     Threshold: Integer;       // %, при сглаживании
     FirstChar, LastChar: Integer;
   end;
@@ -104,6 +108,9 @@ type
     FChkBold, FChkItalic, FChkSmooth, FChkCenter: TUiCheckBox;
     FEdCellW, FEdCellH, FEdSize, FEdOffX, FEdOffY, FEdThreshold: TUiEdit;
     FEdGapX, FEdGapY: TUiEdit;
+    FEdScaleX, FEdScaleY: TUiEdit;
+    FBtnScale: array[0..3] of TUiButton;   // X-, X+, Y-, Y+
+    FBtnScaleFit: TUiButton;
     FEdFirst, FEdLast: TUiEdit;
     FCmbRange: TUiComboBox;
     FEdName: TUiEdit;
@@ -134,6 +141,8 @@ type
     procedure BtnTtfClick(Sender: TObject);
     procedure BtnFitClick(Sender: TObject);
     procedure BtnFitCellClick(Sender: TObject);
+    procedure BtnScaleClick(Sender: TObject);
+    procedure BtnScaleFitClick(Sender: TObject);
     procedure BtnSaveClick(Sender: TObject);
     procedure BtnCloseClick(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -360,15 +369,141 @@ end;
 // Символ ACode (CP1251) в картинку AWidth x AHeight: начало клетки - в
 // (APadX, APadY), плюс сдвиг и выравнивание. Своя картинка на символ: он
 // не залезает в соседние клетки
+// Картинка для RenderChar
+function NewCharBitmap(const AParams: TTtfParams; AWidth,
+  AHeight: Integer): TBitmap; forward;
+
+// Символ с масштабом: рисуется в Hi раз крупнее без сглаживания в
+// картинку размером только с сам символ (с полями), потом каждая точка
+// результата - доля тёмных точек в своём прямоугольнике крупной картинки
+// (по X и Y - свой масштаб); тёмная, если доля не меньше порога. Вне
+// крупной картинки - белое
+procedure RenderScaledChar(const AParams: TTtfParams; AUni, AWidth, AHeight,
+  APadX, APadY, AThreshold: Integer; var AMap: TDarkMap);
+var
+  HiParams: TTtfParams;
+  HiBmp: TBitmap;
+  HiMap: TDarkMap;
+  Hi, Margin, HiW, HiH, AdvHi, PosX, PosY, SrcX, SrcY: Integer;
+  SrcX0, SrcX1, SrcY0, SrcY1, ClipX0, ClipX1, ClipY0, ClipY1: Integer;
+  DarkCount, AllCount: Integer;
+  ScaleX, ScaleY, OriginX, OriginY, StepX, StepY: Double;
+  ColX0, ColX1: array of Integer;
+
+  function HiCoord(AValue: Double): Integer;
+  begin
+    // Floor без Math
+    Result := Trunc(AValue);
+    if AValue < Result then
+      Dec(Result);
+  end;
+
+begin
+  Hi := 4;
+  if AParams.PixelSize * Hi > 1200 then
+    Hi := 2;
+  ScaleX := AParams.ScaleX / 100;
+  ScaleY := AParams.ScaleY / 100;
+  StepX := Hi / ScaleX;
+  StepY := Hi / ScaleY;
+  HiParams := AParams;
+  HiParams.PixelSize := AParams.PixelSize * Hi;
+  HiParams.Smooth := False;
+  HiBmp := NewCharBitmap(HiParams, 1, 1);
+  try
+    AdvHi := CharWidthOn(HiBmp.Canvas, AUni);
+    Margin := HiParams.PixelSize div 2 + 4;
+    HiW := AdvHi + 2 * Margin;
+    HiH := HiBmp.Canvas.TextHeight('Wg') + 2 * Margin;
+    HiBmp.Width := HiW;
+    HiBmp.Height := HiH;
+    HiBmp.Canvas.Brush.Style := bsSolid;
+    HiBmp.Canvas.Brush.Color := clWhite;
+    HiBmp.Canvas.FillRect(Rect(0, 0, HiW, HiH));
+    CharOutOn(HiBmp.Canvas, Margin, Margin, AUni);
+    ReadDark(HiBmp, 50, HiMap);
+  finally
+    HiBmp.Free;
+  end;
+  // Начало символа - в точках результата, как без масштаба
+  OriginX := APadX + AParams.OffsetX;
+  if AParams.Center then
+    OriginX := OriginX + (AParams.CellW - AdvHi * ScaleX / Hi) / 2;
+  OriginY := APadY + AParams.OffsetY;
+  // Границы столбцов в крупной картинке
+  SetLength(ColX0, AWidth);
+  SetLength(ColX1, AWidth);
+  for PosX := 0 to AWidth - 1 do
+  begin
+    ColX0[PosX] := HiCoord((PosX - OriginX) * StepX) + Margin;
+    ColX1[PosX] := HiCoord((PosX + 1 - OriginX) * StepX) + Margin;
+    if ColX1[PosX] <= ColX0[PosX] then
+      ColX1[PosX] := ColX0[PosX] + 1;
+  end;
+  AMap.Width := AWidth;
+  AMap.Height := AHeight;
+  SetLength(AMap.Dark, AWidth * AHeight);
+  for PosY := 0 to AHeight - 1 do
+  begin
+    SrcY0 := HiCoord((PosY - OriginY) * StepY) + Margin;
+    SrcY1 := HiCoord((PosY + 1 - OriginY) * StepY) + Margin;
+    if SrcY1 <= SrcY0 then
+      SrcY1 := SrcY0 + 1;
+    ClipY0 := SrcY0;
+    if ClipY0 < 0 then
+      ClipY0 := 0;
+    ClipY1 := SrcY1;
+    if ClipY1 > HiMap.Height then
+      ClipY1 := HiMap.Height;
+    for PosX := 0 to AWidth - 1 do
+    begin
+      AMap.Dark[PosY * AWidth + PosX] := 0;
+      if ClipY1 <= ClipY0 then
+        Continue;
+      SrcX0 := ColX0[PosX];
+      SrcX1 := ColX1[PosX];
+      ClipX0 := SrcX0;
+      if ClipX0 < 0 then
+        ClipX0 := 0;
+      ClipX1 := SrcX1;
+      if ClipX1 > HiMap.Width then
+        ClipX1 := HiMap.Width;
+      if ClipX1 <= ClipX0 then
+        Continue;
+      AllCount := (SrcX1 - SrcX0) * (SrcY1 - SrcY0);
+      DarkCount := 0;
+      for SrcY := ClipY0 to ClipY1 - 1 do
+        for SrcX := ClipX0 to ClipX1 - 1 do
+          if HiMap.Dark[SrcY * HiMap.Width + SrcX] <> 0 then
+            Inc(DarkCount);
+      if DarkCount * 100 >= AThreshold * AllCount then
+        AMap.Dark[PosY * AWidth + PosX] := 1;
+    end;
+  end;
+end;
+
+// Символ ACode (CP1251) в картинку AWidth x AHeight: начало клетки - в
+// (APadX, APadY), плюс сдвиг и выравнивание. Своя картинка на символ: он
+// не залезает в соседние клетки. Масштаб не 100% - RenderScaledChar
 procedure RenderChar(const AParams: TTtfParams; ACode, AWidth, AHeight,
   APadX, APadY: Integer; ABitmap: TBitmap; var AMap: TDarkMap);
 var
   Uni, PosX, Threshold: Integer;
 begin
+  if AParams.Smooth then
+    Threshold := AParams.Threshold
+  else
+    Threshold := 50;
+  Uni := Cp1251ToUnicode(ACode);
+  if (Uni > 32) and ((AParams.ScaleX <> 100) or (AParams.ScaleY <> 100)) then
+  begin
+    RenderScaledChar(AParams, Uni, AWidth, AHeight, APadX, APadY, Threshold,
+      AMap);
+    Exit;
+  end;
   ABitmap.Canvas.Brush.Style := bsSolid;
   ABitmap.Canvas.Brush.Color := clWhite;
   ABitmap.Canvas.FillRect(Rect(0, 0, AWidth, AHeight));
-  Uni := Cp1251ToUnicode(ACode);
   if Uni > 32 then
   begin
     PosX := AParams.OffsetX;
@@ -376,14 +511,9 @@ begin
       PosX := PosX + (AParams.CellW - CharWidthOn(ABitmap.Canvas, Uni)) div 2;
     CharOutOn(ABitmap.Canvas, APadX + PosX, APadY + AParams.OffsetY, Uni);
   end;
-  if AParams.Smooth then
-    Threshold := AParams.Threshold
-  else
-    Threshold := 50;
   ReadDark(ABitmap, Threshold, AMap);
 end;
 
-// Картинка для RenderChar
 function NewCharBitmap(const AParams: TTtfParams; AWidth,
   AHeight: Integer): TBitmap;
 begin
@@ -454,6 +584,10 @@ begin
   // Клетка с запасом вокруг: видно, что вылезает за клетку
   PadX := AParams.PixelSize + 4;
   PadY := AParams.PixelSize + 4;
+  if AParams.ScaleX > 100 then
+    PadX := PadX * AParams.ScaleX div 100;
+  if AParams.ScaleY > 100 then
+    PadY := PadY * AParams.ScaleY div 100;
   BigW := AParams.CellW + 2 * PadX;
   BigH := AParams.CellH + 2 * PadY;
   Count := AParams.LastChar - AParams.FirstChar + 1;
@@ -848,7 +982,7 @@ begin
   RowStep := FTextHeight + 14;
   Position := poMainFormCenter;
   Width := 900;
-  Height := 760;
+  Height := 820;
   Constraints.MinWidth := 700;
   Constraints.MinHeight := 600;
 
@@ -899,6 +1033,27 @@ begin
   FEdGapX := AddEdit(ColX, RowY, 50, 'Пустых точек между соседними ' +
     'символами (UTFT рисует клетки вплотную - промежуток внутри клетки)');
   FEdGapY := AddEdit(ColX + 70, RowY, 50, 'Пустых точек между строками');
+  Inc(RowY, RowStep);
+  AddLabel('Масштаб X, Y, %:', 8, RowY);
+  FEdScaleX := AddEdit(ColX, RowY, 50, 'Ширина символа, % (меньше 100 - ' +
+    'сжать, больше - растянуть); размер шрифта тот же');
+  FEdScaleY := AddEdit(ColX + 70, RowY, 50, 'Высота символа, %');
+  Inc(RowY, RowStep);
+  FBtnScale[0] := MakeButton('X -', 'Сжать по горизонтали на 5% ' +
+    '(Shift - на 1%)', 8, RowY - 1, 48, BtnScaleClick);
+  FBtnScale[1] := MakeButton('X +', 'Растянуть по горизонтали на 5% ' +
+    '(Shift - на 1%)', 60, RowY - 1, 48, BtnScaleClick);
+  FBtnScale[2] := MakeButton('Y -', 'Сжать по вертикали на 5% ' +
+    '(Shift - на 1%)', 112, RowY - 1, 48, BtnScaleClick);
+  FBtnScale[3] := MakeButton('Y +', 'Растянуть по вертикали на 5% ' +
+    '(Shift - на 1%)', 164, RowY - 1, 48, BtnScaleClick);
+  FBtnScale[0].Tag := 0;
+  FBtnScale[1].Tag := 1;
+  FBtnScale[2].Tag := 2;
+  FBtnScale[3].Tag := 3;
+  FBtnScaleFit := MakeButton('Вписать', 'Сжать или растянуть символы по ' +
+    'горизонтали и вертикали отдельно, чтобы при этом размере шрифта они ' +
+    'с промежутками заняли клетку', 216, RowY - 1, 74, BtnScaleFitClick);
   Inc(RowY, RowStep);
   FBtnFit := MakeButton('Размер под клетку', 'Наибольший размер шрифта, ' +
     'при котором все символы диапазона с промежутками входят в клетку; ' +
@@ -989,6 +1144,8 @@ begin
   FEdOffY.Text := '0';
   FEdGapX.Text := '2';
   FEdGapY.Text := '0';
+  FEdScaleX.Text := '100';
+  FEdScaleY.Text := '100';
   FEdThreshold.Text := '50';
   FCmbRange.ItemIndex := 0;
   FEdFirst.Text := '32';
@@ -1038,6 +1195,10 @@ begin
      (AParams.GapY < 0) or (AParams.GapX >= AParams.CellW) or
      (AParams.GapY >= AParams.CellH) then
     Problem := 'Промежуток X, Y: от 0, меньше клетки'
+  else if not EditNumber(FEdScaleX, AParams.ScaleX) or
+     not EditNumber(FEdScaleY, AParams.ScaleY) or (AParams.ScaleX < 10) or
+     (AParams.ScaleX > 400) or (AParams.ScaleY < 10) or (AParams.ScaleY > 400) then
+    Problem := 'Масштаб X, Y: 10..400 %'
   else if not EditNumber(FEdThreshold, AParams.Threshold) or
      (AParams.Threshold < 1) or (AParams.Threshold > 99) then
     Problem := 'Порог: 1..99 %'
@@ -1078,6 +1239,8 @@ begin
     FEdOffY.Text := IntToStr(AParams.OffsetY);
     FEdGapX.Text := IntToStr(AParams.GapX);
     FEdGapY.Text := IntToStr(AParams.GapY);
+    FEdScaleX.Text := IntToStr(AParams.ScaleX);
+    FEdScaleY.Text := IntToStr(AParams.ScaleY);
     FEdThreshold.Text := IntToStr(AParams.Threshold);
     FEdFirst.Text := IntToStr(AParams.FirstChar);
     FEdLast.Text := IntToStr(AParams.LastChar);
@@ -1407,6 +1570,104 @@ begin
       AInk.Left;
 end;
 
+// X-, X+, Y-, Y+: масштаб на 5% (Shift - на 1%)
+procedure TDlgTtfToUtft.BtnScaleClick(Sender: TObject);
+var
+  Params: TTtfParams;
+  Step: Integer;
+begin
+  if not ReadParams(Params) then
+    Exit;
+  Step := 5;
+  if GetKeyState(VK_SHIFT) < 0 then
+    Step := 1;
+  case TComponent(Sender).Tag of
+    0: Dec(Params.ScaleX, Step);
+    1: Inc(Params.ScaleX, Step);
+    2: Dec(Params.ScaleY, Step);
+    3: Inc(Params.ScaleY, Step);
+  end;
+  if Params.ScaleX < 10 then Params.ScaleX := 10;
+  if Params.ScaleX > 400 then Params.ScaleX := 400;
+  if Params.ScaleY < 10 then Params.ScaleY := 10;
+  if Params.ScaleY > 400 then Params.ScaleY := 400;
+  WriteParams(Params);
+  FTimer.Enabled := False;
+  Rebuild;
+end;
+
+// Вписать: наибольший масштаб по X, потом по Y, при котором точки всех
+// символов с промежутками входят в клетку; символы - по середине
+procedure TDlgTtfToUtft.BtnScaleFitClick(Sender: TObject);
+var
+  Params: TTtfParams;
+  Ink: TTtfInk;
+  Axis, LowScale, HighScale, MidScale, BestScale, NeedW, NeedH: Integer;
+
+  function Fits(AAxis, AScale: Integer): Boolean;
+  var
+    Probe: TTtfParams;
+    ProbeInk: TTtfInk;
+  begin
+    Probe := Params;
+    Probe.OffsetX := 0;
+    Probe.OffsetY := 0;
+    if AAxis = 0 then
+      Probe.ScaleX := AScale
+    else
+      Probe.ScaleY := AScale;
+    ProbeInk := TtfMeasureInk(Probe);
+    Result := ProbeInk.Found;
+    if Result then
+    begin
+      InkCellSize(Probe, ProbeInk, NeedW, NeedH);
+      if AAxis = 0 then
+        Result := NeedW <= Params.CellW
+      else
+        Result := NeedH <= Params.CellH;
+    end;
+  end;
+
+begin
+  if not ReadParams(Params) then
+    Exit;
+  Screen.Cursor := crHourGlass;
+  try
+    for Axis := 0 to 1 do
+    begin
+      LowScale := 10;
+      HighScale := 400;
+      BestScale := 0;
+      while LowScale <= HighScale do
+      begin
+        MidScale := (LowScale + HighScale) div 2;
+        if Fits(Axis, MidScale) then
+        begin
+          BestScale := MidScale;
+          LowScale := MidScale + 1;
+        end
+        else
+          HighScale := MidScale - 1;
+      end;
+      if BestScale = 0 then
+        Continue;
+      if Axis = 0 then
+        Params.ScaleX := BestScale
+      else
+        Params.ScaleY := BestScale;
+    end;
+    Params.OffsetX := 0;
+    Params.OffsetY := 0;
+    Ink := TtfMeasureInk(Params);
+    if Ink.Found then
+      CenterOffsets(Params, Ink);
+    WriteParams(Params);
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  Rebuild;
+end;
+
 // Наименьшая клетка для размера шрифта и промежутков
 procedure TDlgTtfToUtft.BtnFitCellClick(Sender: TObject);
 var
@@ -1563,6 +1824,9 @@ begin
     if Params.Italic then
       Comment := Comment + ' italic';
     Comment := Comment + Format(', %d px', [Params.PixelSize]);
+    if (Params.ScaleX <> 100) or (Params.ScaleY <> 100) then
+      Comment := Comment + Format(', scale %d%% x %d%%', [Params.ScaleX,
+        Params.ScaleY]);
     Source := TStringList.Create;
     try
       Source.Text := TtfFontSource(FFont, Comment);
@@ -1659,6 +1923,8 @@ begin
     Params.OffsetY := Ini.ReadInteger(TtfSection, 'OffsetY', Params.OffsetY);
     Params.GapX := Ini.ReadInteger(TtfSection, 'GapX', Params.GapX);
     Params.GapY := Ini.ReadInteger(TtfSection, 'GapY', Params.GapY);
+    Params.ScaleX := Ini.ReadInteger(TtfSection, 'ScaleX', Params.ScaleX);
+    Params.ScaleY := Ini.ReadInteger(TtfSection, 'ScaleY', Params.ScaleY);
     Params.Threshold := Ini.ReadInteger(TtfSection, 'Threshold', Params.Threshold);
     Params.FirstChar := Ini.ReadInteger(TtfSection, 'First', Params.FirstChar);
     Params.LastChar := Ini.ReadInteger(TtfSection, 'Last', Params.LastChar);
@@ -1705,6 +1971,8 @@ begin
     Ini.WriteInteger(TtfSection, 'OffsetY', Params.OffsetY);
     Ini.WriteInteger(TtfSection, 'GapX', Params.GapX);
     Ini.WriteInteger(TtfSection, 'GapY', Params.GapY);
+    Ini.WriteInteger(TtfSection, 'ScaleX', Params.ScaleX);
+    Ini.WriteInteger(TtfSection, 'ScaleY', Params.ScaleY);
     Ini.WriteInteger(TtfSection, 'Threshold', Params.Threshold);
     Ini.WriteInteger(TtfSection, 'First', Params.FirstChar);
     Ini.WriteInteger(TtfSection, 'Last', Params.LastChar);
