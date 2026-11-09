@@ -2033,6 +2033,7 @@ object Form1: TForm1
             Height = 18
             ShowHint = True
             OnDblClick = GitFieldDblClick
+            PopupMenu = FGitCopyMenu
           end
           object FGitLblOrigin: TUiLabel
             AutoSize = True
@@ -2054,6 +2055,7 @@ object Form1: TForm1
             Height = 18
             ShowHint = True
             OnDblClick = GitFieldDblClick
+            PopupMenu = FGitCopyMenu
           end
           object FGitLblManual: TUiLabel
             AutoSize = True
@@ -2671,6 +2673,13 @@ object Form1: TForm1
     Left = 216
     Top = 16
     OnPopup = GitCopyMenuPopup
+    object FGitMiCopySel: TMenuItem
+      Caption = 'Копировать выделенное'
+      OnClick = GitCopySelClick
+    end
+    object FGitMiCopySelSep: TMenuItem
+      Caption = '-'
+    end
     object FGitMiCopyPath: TMenuItem
       Caption = 'Copy Local Path'
       OnClick = GitCopyPathClick
