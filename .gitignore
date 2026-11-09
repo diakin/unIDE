@@ -146,3 +146,5 @@ uniFAR/*_compile.bat
 
 # ArdSim build output (sketch copied into ArdSim)
 /ArdSim/ardsim_build/
+/uniFAR/tools/7zip/License.txt
+/uniFAR/tools/7zip/unide_7zip.txt
