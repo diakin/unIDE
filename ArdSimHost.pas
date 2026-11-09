@@ -197,6 +197,10 @@ type
     // шрифты UTFT скетча (FindFont), что стереть и что нарисовать
     FFontCache: TList;           // TUtftFont всех найденных файлов
     FFontCacheSketch: string;    // для какого скетча собран
+    // Все шрифты папок FontRoots со вложенными (список шрифтов
+    // инспектора: и не объявленные в скетче)
+    FLibFonts: TList;
+    FLibFontsKey: string;        // FontRoots.Text, по которому собран
     // Превью: FPreview - пункт списка под мышью, FKept - выбранные
     // шрифты (TArdPreviewItem), каждое до перерисовки своего места скетчем
     FPreview: TObject;
@@ -221,6 +225,7 @@ type
     function CtlOverPoint(AX, AY: Integer): Boolean;
     procedure SetSelectedControl(const AName: string);
     procedure LoadFontCache;
+    procedure FreeLibFonts;
     procedure DrawPreview;
     procedure ClearAllPreviews;
     procedure BuildSignals;
@@ -320,6 +325,9 @@ type
     // папки скетча, %ARDSIM_FONTS%, замены ArdSim\fonts - в том же порядке,
     // что берёт build_sim.cmd. nil - не найден
     function FindFont(const AName: string): TUtftFont;
+    // Имена всех шрифтов UTFT в папках FontRoots (со вложенными), без
+    // повторов, по алфавиту. Папки читаются один раз, пока FontRoots те же
+    procedure LibraryFontNames(AList: TStrings);
     // Поверх экрана эмулятора: стереть AClear цветом ABack, нарисовать
     // AText шрифтом AFont с (AX, AY), как UTFT::print. Цвета - TColor.
     // Картинка эмулятора не меняется: это только показ
@@ -1127,6 +1135,7 @@ begin
       TObject(FFontCache[ResIdx]).Free;
     FFontCache.Free;
   end;
+  FreeLibFonts;
 end;
 
 procedure TArdSimPanel.Resize;
@@ -2609,6 +2618,94 @@ begin
       Result := Item;
       Exit;
     end;
+  end;
+  // не из сборки: шрифт библиотек, ещё не объявленный в скетче
+  if FLibFonts <> nil then
+    for FontIdx := 0 to FLibFonts.Count - 1 do
+    begin
+      Item := TUtftFont(FLibFonts[FontIdx]);
+      if Item.IsFont and (Item.Name = AName) then
+      begin
+        Result := Item;
+        Exit;
+      end;
+    end;
+end;
+
+procedure TArdSimPanel.FreeLibFonts;
+var
+  FontIdx: Integer;
+begin
+  if FLibFonts = nil then
+    Exit;
+  // превью держат шрифты
+  ClearAllPreviews;
+  for FontIdx := 0 to FLibFonts.Count - 1 do
+    TObject(FLibFonts[FontIdx]).Free;
+  FreeAndNil(FLibFonts);
+  FLibFontsKey := '';
+end;
+
+procedure TArdSimPanel.LibraryFontNames(AList: TStrings);
+const
+  MaxFileSize = 8 * 1024 * 1024;   // как ArdSimFonts
+var
+  RootIdx, FontIdx: Integer;
+  Names: TStringList;
+  Item: TUtftFont;
+
+  procedure ScanFolder(const AFolder: string; ADepth: Integer);
+  var
+    Found: TSearchRec;
+    Path: string;
+  begin
+    if ADepth > 8 then
+      Exit;
+    Path := IncludeTrailingPathDelimiter(AFolder);
+    if FindFirst(Path + '*', faAnyFile, Found) = 0 then
+    begin
+      repeat
+        if (Found.Name = '.') or (Found.Name = '..') then
+          Continue;
+        if (Found.Attr and faDirectory) <> 0 then
+          ScanFolder(Path + Found.Name, ADepth + 1)
+        else if SameText(ExtractFileExt(Found.Name), '.c') and
+                (Found.Size <= MaxFileSize) then
+        try
+          UtftParseFile(Path + Found.Name, FLibFonts);
+        except
+          // не читается - пропуск
+        end;
+      until FindNext(Found) <> 0;
+      FindClose(Found);
+    end;
+  end;
+
+begin
+  AList.Clear;
+  if (FLibFonts = nil) or (FLibFontsKey <> FFontRoots.Text) then
+  begin
+    FreeLibFonts;
+    FLibFonts := TList.Create;
+    FLibFontsKey := FFontRoots.Text;
+    for RootIdx := 0 to FFontRoots.Count - 1 do
+      if DirectoryExists(FFontRoots[RootIdx]) then
+        ScanFolder(FFontRoots[RootIdx], 0);
+  end;
+  Names := TStringList.Create;
+  try
+    Names.Sorted := True;
+    Names.Duplicates := dupIgnore;
+    Names.CaseSensitive := True;
+    for FontIdx := 0 to FLibFonts.Count - 1 do
+    begin
+      Item := TUtftFont(FLibFonts[FontIdx]);
+      if Item.IsFont and (Item.Name <> '') then
+        Names.Add(Item.Name);
+    end;
+    AList.Assign(Names);
+  finally
+    Names.Free;
   end;
 end;
 

@@ -3165,6 +3165,8 @@ type
     procedure ArdSendOverride(const ANewText: string);
     procedure ArdSendLabelOverride(const ANewText: string);
     procedure ArdSimCtlMoved(Sender: TObject; AHash: Cardinal; ALeft, ATop: Integer);
+    procedure ArdSetFontRoots;
+    procedure ArdAddFontExtern(const AName: string);
     procedure WMArdPreviewClosed(var Msg: TMessage); message WM_USER + 331;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
@@ -29397,13 +29399,18 @@ end;
 // Перед сборкой и запуском: скетч - цель сборки Arduino, g++ - свой MinGW
 // unIDE (нет - build_sim.cmd ищет сам), папки libraries для шрифтов UTFT
 procedure TForm1.ArdSimNeedSketch(Sender: TObject);
-var
-  Settings: TArdSettings;
 begin
   FArdSim.SketchFile := BuildTargetOf(bkArduino);
   FArdSim.MingwBin := ExtractFilePath(string(MingwLocalGpp));
-  // Шрифты UTFT скетча - из папок libraries (со вложенными), как у
-  // Include Library: скетчбук, своя папка библиотек, Arduino IDE
+  ArdSetFontRoots;
+end;
+
+// Шрифты UTFT скетча - из папок libraries (со вложенными), как у
+// Include Library: скетчбук, своя папка библиотек, Arduino IDE
+procedure TForm1.ArdSetFontRoots;
+var
+  Settings: TArdSettings;
+begin
   Settings := ArdCurSettings;
   FArdSim.FontRoots.Clear;
   if Settings.SketchPath <> '' then
@@ -33643,6 +33650,8 @@ const
   ArdCapColor = 'Цвет (setColor)';
   ArdCapBack = 'Цвет фона (setBackColor)';
   ArdCapFont = 'Шрифт (setFont)';
+  // Список шрифтов: ниже - из папок libraries, extern добавится при выборе
+  ArdFontSeparator = '---- libraries: extern добавится ----';
   ArdNotSet = '(не задан выше в этой функции)';
 
 // Аргумент коротко - для подписи узла
@@ -34136,7 +34145,9 @@ var
   CellRect: TRect;
   Preview: TArdTextPreview;
   OvCall: TArdCall;
-  CallIdx: Integer;
+  CallIdx, FontIdx: Integer;
+  LibFonts: TStringList;
+  FontAdded: Boolean;
 begin
   Node := TDfmNode(FObjCurNode);
   Sketch := TArdSketch(FArdSketch);
@@ -34274,6 +34285,31 @@ begin
     FObjComboColors := False;
     FObjCombo.Style := csDropDown;
     FObjCombo.Items.Assign(Sketch.Fonts);
+    // Ниже - шрифты папок libraries, не объявленные в скетче: при выборе
+    // unIDE добавит extern uint8_t Имя[]; (ArdAddFontExtern)
+    if FArdSim <> nil then
+    begin
+      if FArdSim.FontRoots.Count = 0 then
+        ArdSetFontRoots;
+      Screen.Cursor := crHourGlass;
+      LibFonts := TStringList.Create;
+      try
+        FArdSim.LibraryFontNames(LibFonts);
+        FontAdded := False;
+        for FontIdx := 0 to LibFonts.Count - 1 do
+          if (Sketch.Fonts.IndexOf(LibFonts[FontIdx]) < 0) and
+             (Sketch.Defines.IndexOfName(LibFonts[FontIdx]) < 0) then
+          begin
+            if not FontAdded then
+              FObjCombo.Items.Add(ArdFontSeparator);
+            FontAdded := True;
+            FObjCombo.Items.Add(LibFonts[FontIdx]);
+          end;
+      finally
+        LibFonts.Free;
+        Screen.Cursor := crDefault;
+      end;
+    end;
     FObjCombo.Text := EdUiText(OldText);
     FObjEditOld := FObjCombo.Text;
     FObjActive := FObjCombo;
@@ -34315,7 +34351,7 @@ end;
 procedure TForm1.ArdApplyEdit;
 var
   Obj: TDfmNode;
-  EditText, NewText, CurLine, OldTrim: string;
+  EditText, NewText, CurLine, OldTrim, NewExtern: string;
   LineStart, LineLen, ValCol, ValLen: Integer;
 
   procedure TextChanged;
@@ -34334,12 +34370,20 @@ begin
     EditText := FObjEdit.Text
   else
     EditText := Trim(FObjEdit.Text);
-  if (EditText = FObjEditOld) or ((EditText = '') and not FObjEditIsStr) then
+  if (EditText = FObjEditOld) or ((EditText = '') and not FObjEditIsStr) or
+     (FArdOvFont and (EditText = ArdFontSeparator)) then
   begin
     ObjCancelEdit;
     Exit;
   end;
   EditText := EdFromUiText(EditText);
+  // Шрифт библиотек, ещё не объявленный в скетче - после правки extern
+  NewExtern := '';
+  if FArdOvFont and (FArdSketch <> nil) and (FArdSim <> nil) and
+     (TArdSketch(FArdSketch).Fonts.IndexOf(EditText) < 0) and
+     (TArdSketch(FArdSketch).Defines.IndexOfName(EditText) < 0) and
+     (FArdSim.FindFont(EditText) <> nil) then
+    NewExtern := EditText;
   if FObjEditIsStr then
     NewText := ArdQuote(EditText)
   else
@@ -34364,6 +34408,8 @@ begin
               ExtractFileName(FArdEditFile) + ', строка ' +
               IntToStr(FArdEditLine + 1) + ')');
       ArdSendLabelOverride(NewText);
+      if NewExtern <> '' then
+        ArdAddFontExtern(NewExtern);
     end;
     ObjScheduleRelines(Obj, FObjEditName);
     Exit;
@@ -34405,7 +34451,53 @@ begin
           '   (строка ' + IntToStr(FArdEditLine + 1) + ')');
   ArdSendOverride(NewText);
   ArdSendLabelOverride(NewText);
+  if NewExtern <> '' then
+    ArdAddFontExtern(NewExtern);
   ObjScheduleRelines(Obj, FObjEditName);
+end;
+
+// Шрифт AName выбран из папок libraries: в скетче (текст вкладки) строка
+// extern uint8_t AName[]; - после последнего такого объявления, нет их -
+// первой строкой. Без неё скетч не соберётся; на экране эмулятора новый
+// шрифт - после сборки (до неё - превью поверх экрана)
+procedure TForm1.ArdAddFontExtern(const AName: string);
+var
+  LineIdx, LineTotal, InsLine, LineStart: Integer;
+  LineText: string;
+begin
+  InsLine := 0;
+  LineTotal := EdApi.LineCount;
+  for LineIdx := 0 to LineTotal - 1 do
+  begin
+    LineStart := EdApi.LineIndex(LineIdx);
+    if LineStart < 0 then
+      Break;
+    LineText := Trim(ReadLineText(LineIdx, LineStart, EdApi.LineLength(LineStart)));
+    if (Copy(LineText, 1, 7) = 'extern ') and (Pos('uint8_t', LineText) > 0) and
+       (Pos('[', LineText) > 0) then
+      InsLine := LineIdx + 1;
+  end;
+  LineStart := EdApi.LineIndex(InsLine);
+  if LineStart < 0 then
+    Exit;
+  Inc(FObjOwnWrite);
+  try
+    EditorFreeze;
+    try
+      RichEdit1.SelStart := LineStart;
+      RichEdit1.SelLength := 0;
+      RichEdit1.SelText := 'extern uint8_t ' + AName + '[];' + #13#10;
+    finally
+      EditorThaw;
+    end;
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  FArdTextKey := '';
+  FArdEdKey := '';
+  LogComp('Инспектор ino: шрифт ' + AName + ' - добавлена строка ' +
+          IntToStr(InsLine + 1) + ': extern uint8_t ' + AName +
+          '[];   на экране эмулятора - после сборки (Build)');
 end;
 
 // Правка свойства надписи TLabel - сразу в работающий эмулятор: он
