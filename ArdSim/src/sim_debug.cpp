@@ -1039,6 +1039,7 @@ void simCtlAttach(void *area)
 {
   CtlTable = (volatile uint32_t *)area;
   CtlTable[SimCtlShownOffset / 4] = SimScreenClears;
+  CtlTable[SimCtlShownOffset / 4 + 2] = (uint32_t)SimCtlShownBytes;
   for (size_t index = 0; index < controls().size(); index++)
     ctlShownInit(index);
 }
@@ -1077,6 +1078,27 @@ bool simCtlWhere(int px, int py, uint32_t *codes, int &count)
   for (int index = 0; index < SimDbgWhereMax; index++)
     codes[index] = index < count ? best->Codes[index] : 0;
   return true;
+}
+
+void simCtlShownText(const void *control, const char *caption, int fontColor, int color,
+                     int fontWidth, int fontHeight)
+{
+  for (size_t index = 0; index < controls().size(); index++)
+    if (controls()[index].Control == control)
+    {
+      volatile uint32_t *fields = ctlShownEntry(index);
+      if (!fields)
+        return;
+      fields[5] = packPair(fontColor, color);
+      fields[6] = (uint32_t)(fontWidth & 0xFF) | ((uint32_t)(fontHeight & 0xFF) << 8);
+      volatile char *text = (volatile char *)fields + SimCtlShownTextOffset;
+      size_t length = 0;
+      const size_t maxLength = SimCtlShownBytes - SimCtlShownTextOffset - 1;
+      for (; caption && caption[length] && length < maxLength; length++)
+        text[length] = caption[length];
+      text[length] = 0;
+      return;
+    }
 }
 
 void simCtlScreenCleared()

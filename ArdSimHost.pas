@@ -328,6 +328,11 @@ type
     // Имена всех шрифтов UTFT в папках FontRoots (со вложенными), без
     // повторов, по алфавиту. Папки читаются один раз, пока FontRoots те же
     procedure LibraryFontNames(AList: TStrings);
+    // Надпись TLabel AName на экране эмулятора сейчас: текст, где он
+    // нарисован (AX, AY - как UTFT::print), цвета, место текста в прежнем
+    // шрифте (AClear). False - не на экране или эмулятор не сообщает
+    function CtlShownText(const AName: string; var AX, AY: Integer;
+      var AText: string; var AFore, ABack: TColor; var AClear: TRect): Boolean;
     // Поверх экрана эмулятора: стереть AClear цветом ABack, нарисовать
     // AText шрифтом AFont с (AX, AY), как UTFT::print. Цвета - TColor.
     // Картинка эмулятора не меняется: это только показ
@@ -518,7 +523,8 @@ const
   // последнем выводе ($FFFFFFFF - не выводилась), int16 Left, Top как
   // нарисованы, int16 рамка занятых точек: левый, верхний, правый, нижний
   CtlShownOffset = 16 + CtlEntryBytes * CtlMaxEntries;
-  CtlShownBytes = 32;
+  CtlShownBytes = 128;
+  CtlShownTextOffset = 32;
   CtlMaxControls = 1024;
   CtlTableBytes = CtlShownOffset + 16 + CtlShownBytes * CtlMaxControls;
   SharedBytes = CtlOffset + CtlTableBytes;
@@ -2944,6 +2950,9 @@ begin
   if (AHash = 0) or not CtlOverrideAvailable then
     Exit;
   Shown := PCardinal(PAnsiChar(FView) + CtlOffset + CtlShownOffset);
+  // эмулятор другой версии: другие записи
+  if PCardinal(PAnsiChar(Shown) + 8)^ <> CtlShownBytes then
+    Exit;
   Count := Integer(PCardinal(PAnsiChar(Shown) + 4)^);
   if Count > CtlMaxControls then
     Count := CtlMaxControls;
@@ -2984,6 +2993,8 @@ begin
   if not CtlOverrideAvailable then
     Exit;
   Shown := PCardinal(PAnsiChar(FView) + CtlOffset + CtlShownOffset);
+  if PCardinal(PAnsiChar(Shown) + 8)^ <> CtlShownBytes then
+    Exit;
   Count := Integer(PCardinal(PAnsiChar(Shown) + 4)^);
   if Count > CtlMaxControls then
     Count := CtlMaxControls;
@@ -3005,6 +3016,53 @@ begin
     end;
   end;
   {$ENDIF}
+end;
+
+function TArdSimPanel.CtlShownText(const AName: string; var AX, AY: Integer;
+  var AText: string; var AFore, ABack: TColor; var AClear: TRect): Boolean;
+var
+  Entry: PCardinal;
+  Words: PSmallIntArrayH;
+  Chars: PAnsiChar;
+  CharIdx, FontW, FontH: Integer;
+  ColorWord: Cardinal;
+
+  function Rgb565ToTColor(AValue: Cardinal): TColor;
+  var
+    Red, Green, Blue: Cardinal;
+  begin
+    Red := (AValue shr 11) and $1F;
+    Green := (AValue shr 5) and $3F;
+    Blue := AValue and $1F;
+    Red := (Red shl 3) or (Red shr 2);
+    Green := (Green shl 2) or (Green shr 4);
+    Blue := (Blue shl 3) or (Blue shr 2);
+    Result := TColor(Red or (Green shl 8) or (Blue shl 16));
+  end;
+
+begin
+  Result := False;
+  Entry := CtlShownEntry(ArgNameHash(AName));
+  if Entry = nil then
+    Exit;
+  Words := PSmallIntArrayH(Entry);
+  AX := Words^[4] + 3;
+  AY := Words^[5] + 4;
+  ColorWord := PCardinal(PAnsiChar(Entry) + 20)^;
+  AFore := Rgb565ToTColor(ColorWord and $FFFF);
+  ABack := Rgb565ToTColor(ColorWord shr 16);
+  FontW := PByte(PAnsiChar(Entry) + 24)^;
+  FontH := PByte(PAnsiChar(Entry) + 25)^;
+  Chars := PAnsiChar(Entry) + CtlShownTextOffset;
+  AText := '';
+  CharIdx := 0;
+  while (CharIdx < CtlShownBytes - CtlShownTextOffset) and (Chars[CharIdx] <> #0) do
+  begin
+    AText := AText + Chars[CharIdx];
+    Inc(CharIdx);
+  end;
+  AClear := Rect(AX, AY, AX + Length(AText) * FontW, AY + FontH);
+  Result := AText <> '';
 end;
 
 function TArdSimPanel.CtlOverPoint(AX, AY: Integer): Boolean;

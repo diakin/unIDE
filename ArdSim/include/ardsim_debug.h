@@ -267,6 +267,10 @@ void simCtlRegister(const char *name, void *control, SimCtlRedrawFn redraw);
 bool simCtlNumber(const void *control, int prop, long &value);
 bool simCtlText(const void *control, int prop, String &value);
 bool simCtlFont(const void *control, int prop, uint8_t *&font);
+// caption as drawn, colors (RGB565) and font cell size: the host draws a
+// font preview over it
+void simCtlShownText(const void *control, const char *caption, int fontColor, int color,
+                     int fontWidth, int fontHeight);
 // the sketch draws the control now: its statement and call lines are kept,
 // a redraw from simPoll answers screen clicks with them
 void simCtlDrawing(const void *control);

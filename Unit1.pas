@@ -2116,6 +2116,10 @@ type
     FArdPrevText, FArdPrevOldFont: string;
     FArdPrevFore, FArdPrevBack: Integer;
     FArdPrevTransparent: Boolean;
+    // TLabel: что стереть под превью - место текста в прежнем шрифте
+    // по эмулятору (FArdPrevOldFont тогда не нужен)
+    FArdPrevClear: TRect;
+    FArdPrevHasClear: Boolean;
     FArdPreviewOk: Boolean;
     // Правка аргумента - в работающий эмулятор (ArdSendOverride): какой
     // вызов (имя, строка с 0, какой по счёту с этим именем в строке),
@@ -34145,9 +34149,11 @@ var
   CellRect: TRect;
   Preview: TArdTextPreview;
   OvCall: TArdCall;
-  CallIdx, FontIdx: Integer;
+  CallIdx, FontIdx, ShownX, ShownY: Integer;
   LibFonts: TStringList;
   FontAdded: Boolean;
+  ShownText: string;
+  ShownFore, ShownBack: TColor;
 begin
   Node := TDfmNode(FObjCurNode);
   Sketch := TArdSketch(FArdSketch);
@@ -34278,6 +34284,22 @@ begin
     FArdPrevFore := Preview.Fore;
     FArdPrevBack := Preview.Back;
     FArdPrevTransparent := Preview.Transparent;
+    FArdPrevHasClear := False;
+    // Надпись TLabel: текст, место и цвета - как она сейчас на экране
+    // эмулятора (и Caption-выражение, и Top(itop) в выводе)
+    if Call.IsLabel and (RowData < ArdRowColor) and
+       FArdSim.CtlShownText(Call.Name, ShownX, ShownY, ShownText, ShownFore,
+                            ShownBack, FArdPrevClear) then
+    begin
+      FArdPreviewOk := True;
+      FArdPrevX := ShownX;
+      FArdPrevY := ShownY;
+      FArdPrevText := ShownText;
+      FArdPrevFore := Integer(ShownFore);
+      FArdPrevBack := Integer(ShownBack);
+      FArdPrevTransparent := False;
+      FArdPrevHasClear := True;
+    end;
   end;
 
   if IsFont then
@@ -42313,7 +42335,9 @@ begin
   end;
   ClearRect := Rect(0, 0, 0, 0);
   OldFont := FArdSim.FindFont(FArdPrevOldFont);
-  if OldFont <> nil then
+  if FArdPrevHasClear then
+    ClearRect := FArdPrevClear
+  else if OldFont <> nil then
     ClearRect := Rect(FArdPrevX, FArdPrevY,
                       FArdPrevX + Length(FArdPrevText) * OldFont.SizeX,
                       FArdPrevY + OldFont.SizeY);

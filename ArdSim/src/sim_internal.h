@@ -118,16 +118,19 @@ void simArgAttach(void *area);
 //         or text, ANSI, zero-terminated)
 //   SimCtlShownOffset: what the controls show now (the simulator writes,
 //         the host draws the marker and drags): uint32 screen clears now
-//         (SimScreenClears), count of controls; from +16 entries of
-//         SimCtlShownBytes in the order of registration: uint32 hash of
-//         the name, screen clears at the last drawing (0xFFFFFFFF - not
-//         drawn), int16 left, top (as drawn), int16 box left, top, right,
-//         bottom (pixels it took)
+//         (SimScreenClears), count of controls, SimCtlShownBytes (the
+//         host checks it); from +16 entries of SimCtlShownBytes in the
+//         order of registration: uint32 hash of the name, screen clears at
+//         the last drawing (0xFFFFFFFF - not drawn), int16 left, top (as
+//         drawn), int16 box left, top, right, bottom (pixels it took),
+//         uint16 font color, color (text background); uint8 font width,
+//         height; from +32 the caption as drawn (ANSI, zero-ended)
 const size_t SimCtlEntryBytes = 128;
 const size_t SimCtlTextBytes = SimCtlEntryBytes - 16;
 const size_t SimCtlMaxEntries = 128;
 const size_t SimCtlShownOffset = 16 + SimCtlEntryBytes * SimCtlMaxEntries;
-const size_t SimCtlShownBytes = 32;
+const size_t SimCtlShownBytes = 128;
+const size_t SimCtlShownTextOffset = 32;
 const size_t SimCtlMaxControls = 1024;
 const size_t SimCtlTableBytes = SimCtlShownOffset + 16 + SimCtlShownBytes * SimCtlMaxControls;
 void simCtlAttach(void *area);
