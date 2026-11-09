@@ -205,7 +205,7 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.72';
+  FarBuild = 'b.73';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -773,6 +773,7 @@ type
     // Поиск файлов (Alt+F7): окно Find file - что искать (запоминается),
     // окно найденного - поверх панелей
     FFindMask: WideString;
+    FSelMaskHist: TFarNames;      // Gray+ / Gray-: прежние маски (список поля)
     FSelMask: WideString;         // Gray+ / Gray-: последняя маска выделения
     FFindText: WideString;
     FFindMaskHist: TFarNames;     // прежние маски и тексты (списки полей)
@@ -905,6 +906,7 @@ type
     procedure ToggleSelection;
     function SelectKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure StartSelectMask(ASelect: Boolean);
+    procedure SelectMaskConfirm;
     procedure SelectByMask(const AMaskText: WideString; ASelect: Boolean);
     procedure SelectByExt(ASelect: Boolean);
     procedure SelectAllFiles(ASelect: Boolean);
@@ -5470,12 +5472,15 @@ procedure TFarView.StartSelectMask(ASelect: Boolean);
 begin
   if FSelMask = '' then
     FSelMask := '*.*';
+  // Поле с раскрывающимся списком прежних масок, как в FAR
   if ASelect then
-    DlgOpen(fdSelectMask, 'Select', ['Select files by mask:'], False, False,
-      True, FSelMask, ['OK', 'Cancel'])
+    DlgOpen(fdSelectMask, 'Select', [], False, False, False, '',
+      ['OK', 'Cancel'])
   else
-    DlgOpen(fdDeselectMask, 'Deselect', ['Deselect files by mask:'], False,
-      False, True, FSelMask, ['OK', 'Cancel']);
+    DlgOpen(fdDeselectMask, 'Deselect', [], False, False, False, '',
+      ['OK', 'Cancel']);
+  DlgAddCombo('Mask:', FSelMask, FSelMaskHist);
+  FDlgRow := 0;
 end;
 
 // Маски через ';' или ',' ('*.pas;*.dfm'). Папки не трогаются (так в FAR
@@ -5990,6 +5995,12 @@ begin
   if (FDlgKind = fdFtpEdit) and (AButton <= 1) then
   begin
     FtpEditConfirm(AButton = 1);
+    Exit;
+  end;
+  // Gray+ / Gray-: OK - выделение по маске из поля
+  if (FDlgKind in [fdSelectMask, fdDeselectMask]) and (AButton = 0) then
+  begin
+    SelectMaskConfirm;
     Exit;
   end;
   // Редактор: поиск
@@ -13534,6 +13545,23 @@ begin
   SetLength(AList, DstIndex);
 end;
 
+// [ OK ] в окне Select / Deselect: маска - в список прежних, выделение
+procedure TFarView.SelectMaskConfirm;
+var
+  MaskText: WideString;
+  DoSelect: Boolean;
+begin
+  MaskText := '';
+  if Length(FDlgRows) > 0 then
+    MaskText := FarTrimW(FDlgRows[0].Text);
+  DoSelect := FDlgKind = fdSelectMask;
+  DlgClose;
+  if MaskText = '' then
+    MaskText := '*.*';
+  FarHistoryPush(FSelMaskHist, MaskText, FarFindHistoryMax);
+  SelectByMask(MaskText, DoSelect);
+end;
+
 // Разделитель слов для Ctrl+стрелок и двойного щелчка
 function FarDlgIsSep(AChar: WideChar): Boolean;
 begin
@@ -18021,11 +18049,16 @@ begin
       FarHistoryPush(FEditReplHist, FarDecodePath(Ini.ReadString(
         FarFindHistorySection, 'EdRepl' + IntToStr(HistoryIndex), '')),
         FarFindHistoryMax);
+      FarHistoryPush(FSelMaskHist, FarDecodePath(Ini.ReadString(
+        FarFindHistorySection, 'SelMask' + IntToStr(HistoryIndex), '')),
+        FarFindHistoryMax);
     end;
     if Length(FEditFindHist) > 0 then
       FEditFind := FEditFindHist[0];
     if Length(FEditReplHist) > 0 then
       FEditReplace := FEditReplHist[0];
+    if Length(FSelMaskHist) > 0 then
+      FSelMask := FSelMaskHist[0];
     FEditFindCase := Ini.ReadInteger(FarIniSection, 'EdFindCase', 0) = 1;
     FEditFindWhole := Ini.ReadInteger(FarIniSection, 'EdFindWhole', 0) = 1;
     FEditFindReverse := Ini.ReadInteger(FarIniSection, 'EdFindReverse', 0) = 1;
@@ -18153,6 +18186,10 @@ begin
     for HistoryIndex := 0 to High(FEditReplHist) do
       Ini.WriteString(FarFindHistorySection, 'EdRepl' +
         IntToStr(HistoryIndex + 1), FarEncodePath(FEditReplHist[HistoryIndex]));
+    // Gray+ / Gray-: маски выделения
+    for HistoryIndex := 0 to High(FSelMaskHist) do
+      Ini.WriteString(FarFindHistorySection, 'SelMask' +
+        IntToStr(HistoryIndex + 1), FarEncodePath(FSelMaskHist[HistoryIndex]));
     Ini.WriteInteger(FarIniSection, 'EdFindCase', Ord(FEditFindCase));
     Ini.WriteInteger(FarIniSection, 'EdFindWhole', Ord(FEditFindWhole));
     Ini.WriteInteger(FarIniSection, 'EdFindReverse', Ord(FEditFindReverse));
