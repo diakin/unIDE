@@ -4090,7 +4090,7 @@ type
     // Сборка RapidQ Basic (rc.exe) и выбор между ней и Delphi
     function  BuildIsRapidQ: Boolean;
     function  CurBuildKind: Integer;
-    function  WinBuildKind(AWinIdx: Integer; const AFileNm: string): Integer;
+    function  WinBuildKind(AWinIdx: Integer; const AFileNm, ABuildPrj: string): Integer;
     function  ManualBuildKind(const AFile: string): Integer;
     procedure SetManualBuildKind(const AFile: string; AKind: Integer);
     function  BuildTargetOf(AKind: Integer): string;
@@ -15601,12 +15601,13 @@ end;
 // Сборщик активной вкладки
 function TForm1.CurBuildKind: Integer;
 begin
-  Result := WinBuildKind(FWindowsIndex, FCurrentFileName);
+  Result := WinBuildKind(FWindowsIndex, FCurrentFileName, BuildProject);
 end;
 
-// Сборщик файла AFileNm окна AWinIdx (главный .bas - по окну); почему -
-// в FBuildReason
-function TForm1.WinBuildKind(AWinIdx: Integer; const AFileNm: string): Integer;
+// Сборщик файла AFileNm окна AWinIdx (главный .bas - по окну). Файлы,
+// которые сами сборщик не определяют (.log, .ini, .txt...), - по типу
+// проекта ABuildPrj. Почему - в FBuildReason
+function TForm1.WinBuildKind(AWinIdx: Integer; const AFileNm, ABuildPrj: string): Integer;
 var
   FileNm, Ext, Owner, PrjName, PrjNote: string;
   Dprs: TStringList;
@@ -15622,7 +15623,7 @@ begin
 
   FileNm := AFileNm;
   Ext := LowerCase(ExtractFileExt(FileNm));
-  PrjName := BuildProject;
+  PrjName := ABuildPrj;
   PrjKind := ProjectBuildKind(PrjName);
   if PrjName <> '' then
     PrjNote := 'тип проекта ' + PrjName
@@ -21552,7 +21553,11 @@ begin
     Result := '>' + ExtractFileDir(PathNative(FWindows[WinIdx].FileName));
   // FBuildReason - причина для лога сборки активной вкладки, не трогаем
   SavedReason := FBuildReason;
-  Kind := WinBuildKind(WinIdx, FWindows[WinIdx].FileName);
+  // Тип проекта - того, которому принадлежит файл, а не текущего: иначе
+  // hang.log проекта Delphi при текущем проекте FreeBASIC получал другой
+  // ключ, чем .pas того же проекта
+  Kind := WinBuildKind(WinIdx, FWindows[WinIdx].FileName,
+    TabProjectOf(WinIdx));
   FBuildReason := SavedReason;
   if Kind <> bkNone then
     Result := Result + '|' + BuildKindName(Kind);
