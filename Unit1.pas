@@ -995,6 +995,8 @@ type
     mRosSep4: TMenuItem;
     ToolsMenu: TMenuItem;
     FGitCopyMenu: TUiPopupMenu;
+    FGitMiCopySel: TMenuItem;
+    FGitMiCopySelSep: TMenuItem;
     FGitMiCopyPath: TMenuItem;
     FGitMiCopyRemote: TMenuItem;
     FGitMiCopyBranch: TMenuItem;
@@ -1392,6 +1394,7 @@ type
     procedure GitCopyPathClick(Sender: TObject);
     procedure GitCopyRemoteClick(Sender: TObject);
     procedure GitCopyBranchClick(Sender: TObject);
+    procedure GitCopySelClick(Sender: TObject);
     procedure AuxTimerTick(Sender: TObject);
     procedure DsgOtherTimerTick(Sender: TObject);
     procedure RqDbgTimerTick(Sender: TObject);
@@ -76127,7 +76130,7 @@ end;
 const
   GitIniSection = 'Git';
   GitEdPathHint = 'Локальная папка репозитория: выделите мышью и Ctrl+C ' +
-    '(двойной щелчок - всё)';
+    '(двойной щелчок - всё); правый щелчок - меню копирования';
   // Сколько недавних репозиториев помнит кнопка Repository...
   GitRecentMax = 20;
   // GitRunConsole / GitConsoleLogin: консоль не запускалась
@@ -77296,8 +77299,8 @@ begin
   // .dfm: FGitEdRemote.OnDblClick := GitFieldDblClick;
   // .dfm: FGitLblManual := NewLabel(470, 27, '(выбран вручную)');
   GitShowRepoFields(False);
-  // Меню копирования: правый щелчок по строкам панели (у полей пути и
-  // origin - своё меню Windows с Копировать)
+  // Меню копирования: правый щелчок по строкам панели и по полям пути и
+  // origin (там же - Копировать выделенное, если в поле есть выделение)
   // .dfm: FGitCopyMenu := TUiPopupMenu.Create(Self);
   // .dfm: FGitCopyMenu.OnPopup := GitCopyMenuPopup;
   // .dfm: FGitMiCopyPath := TMenuItem.Create(FGitCopyMenu);
@@ -77316,6 +77319,8 @@ begin
   // .dfm: FGitLblRepo.PopupMenu := FGitCopyMenu;
   // .dfm: FGitLblOrigin.PopupMenu := FGitCopyMenu;
   // .dfm: FGitLblManual.PopupMenu := FGitCopyMenu;
+  // .dfm: FGitEdPath.PopupMenu := FGitCopyMenu;
+  // .dfm: FGitEdRemote.PopupMenu := FGitCopyMenu;
   // .dfm: NewLabel(4, 51, 'Branch:');
   // .dfm: FGitCmbBranch := TUiComboBox.Create(Self);
   // .dfm: FGitCmbBranch.Parent := FGitBar;
@@ -79939,7 +79944,14 @@ begin
 end;
 
 procedure TForm1.GitCopyMenuPopup(Sender: TObject);
+var
+  HasSel: Boolean;
 begin
+  // Копировать выделенное - только по полю пути / origin с выделением
+  HasSel := (FGitCopyMenu.PopupComponent is TUiEdit) and
+    (TUiEdit(FGitCopyMenu.PopupComponent).SelLength > 0);
+  FGitMiCopySel.Visible := HasSel;
+  FGitMiCopySelSep.Visible := HasSel;
   FGitMiCopyRemote.Enabled := FGitRemoteUrl <> '';
   FGitMiCopyBranch.Enabled := FGitBranchName <> '';
 end;
@@ -79962,6 +79974,12 @@ procedure TForm1.GitCopyBranchClick(Sender: TObject);
 begin
   if FGitBranchName <> '' then
     Clipboard.AsText := FGitBranchName;
+end;
+
+procedure TForm1.GitCopySelClick(Sender: TObject);
+begin
+  if FGitCopyMenu.PopupComponent is TUiEdit then
+    TUiEdit(FGitCopyMenu.PopupComponent).CopyToClipboard;
 end;
 
 // Двойной щелчок по полю пути / origin - выделить весь текст
