@@ -1466,6 +1466,7 @@ type
     FGitOpStart: string;
     FGitBehind: Integer;
     FGitBusy: Boolean;
+    FGitLocalRetry: Boolean;   // повтор команды из окна «незакоммиченные изменения»
     FGitCancel: Boolean;
     FGitBranchFill: Boolean;
     FGitIniLoaded: Boolean;
@@ -3479,6 +3480,8 @@ type
     procedure GitAddRemoteOnlyBranches(const AGit, ARepo: string;
                             AList: TStrings);
     function  GitLongOp(const AGit, ARepo, AArgs: string): Integer;
+    function  GitOfferLocalChanges(const AGit, ARepo, AArgs: string;
+                         const AOutput: WideString; AResult: Integer): Integer;
     function  GitExplain(const AArgs: string; const AOutput: WideString;
                          AExitCode: Integer; var AIsError: Boolean): string;
     procedure GitSetHint(const AText: string; AIsError: Boolean);
@@ -73335,6 +73338,105 @@ begin
       BusyNote('git: ' + HintText, False, 20000)
     else
       BusyNote('git: ' + HintText, True, 8000);
+  end;
+  // Checkout / pull остановлен незакоммиченными изменениями - окно с
+  // выбором: Commit, Stash и повторить, Discard и повторить
+  if (Result <> 0) and not FGitLocalRetry then
+    Result := GitOfferLocalChanges(AGit, ARepo, AArgs, Output, Result);
+end;
+
+// Команда AArgs остановлена: "Your local changes to the following files
+// would be overwritten" (файлы - строками с табуляцией в выводе). Окно:
+//   Commit...          - окно Commit (команда не повторяется);
+//   Stash и повторить  - изменения этих файлов в stash, команда ещё раз;
+//                        вернуть - Branch - Restore Stash;
+//   Discard и повторить - изменения отменяются (с вопросом), команда ещё раз;
+//   Отмена.
+// Перед Stash и Discard с файлов снимается skip-worktree: с ним git не
+// видит изменений, и ни stash, ни checkout HEAD их не берут.
+// Ответ - код выхода (повтора или прежний AResult)
+function TForm1.GitOfferLocalChanges(const AGit, ARepo, AArgs: string;
+  const AOutput: WideString; AResult: Integer): Integer;
+var
+  OutLower, NameList, PathArgs: string;
+  Lines, Files: TStringList;
+  LineIdx, Answer: Integer;
+  Output: WideString;
+  Changes: TGitChanges;
+begin
+  Result := AResult;
+  OutLower := AnsiLowerCase(string(AOutput));
+  if (Pos('would be overwritten by', OutLower) = 0) or
+     (Pos('untracked working tree files', OutLower) > 0) then
+    Exit;
+  Lines := TStringList.Create;
+  Files := TStringList.Create;
+  try
+    GitSplitLines(AOutput, Lines);
+    for LineIdx := 0 to Lines.Count - 1 do
+      if (Lines[LineIdx] <> '') and (Lines[LineIdx][1] = #9) and
+         (Trim(Lines[LineIdx]) <> '') then
+        Files.Add(Trim(Lines[LineIdx]));
+    if Files.Count = 0 then
+      Exit;
+
+    NameList := '';
+    PathArgs := '';
+    SetLength(Changes, Files.Count);
+    for LineIdx := 0 to Files.Count - 1 do
+    begin
+      if LineIdx < 15 then
+        NameList := NameList + '  ' + Files[LineIdx] + #13#10;
+      PathArgs := PathArgs + ' ' + string(GitQuote(WideString(Files[LineIdx])));
+      Changes[LineIdx].Code := ' M';
+      Changes[LineIdx].Path := WideString(Files[LineIdx]);
+      Changes[LineIdx].OrigPath := '';
+    end;
+    if Files.Count > 15 then
+      NameList := NameList + '  ... и ещё ' + IntToStr(Files.Count - 15) +
+        #13#10;
+
+    Answer := MessageDlgButtons('9837:git ' + AArgs + #13#10#13#10 +
+      'не выполнен: в этих файлах есть незакоммиченные изменения, git их ' +
+      'не перезаписывает:'#13#10#13#10 + NameList + #13#10 +
+      'Commit... - закоммитить изменения (окно Commit).'#13#10 +
+      'Stash и повторить - отложить изменения этих файлов и выполнить ' +
+      'команду ещё раз; вернуть их - Branch - Restore Stash.'#13#10 +
+      'Discard и повторить - отменить изменения (правки пропадут) и ' +
+      'выполнить команду ещё раз.', mtWarning,
+      'Незакоммиченные изменения',
+      ['Commit...', 'Stash и повторить', 'Discard и повторить', 'Отмена'],
+      1, 3);
+    case Answer of
+      0:
+        GitCommitIn(AGit, ARepo);
+      1, 2:
+        begin
+          // skip-worktree мешает и stash, и checkout HEAD - снять
+          GitRunIn(AGit, ARepo, 'update-index --no-skip-worktree --' +
+            PathArgs, True, Output);
+          if Answer = 1 then
+          begin
+            if GitRunIn(AGit, ARepo, 'stash push -m ' +
+               string(GitQuote(WideString('unIDE before ' + AArgs))) + ' --' +
+               PathArgs, True, Output) <> 0 then
+              Exit;
+            LogGit('Git: изменения отложены в stash; вернуть - Branch - ' +
+              'Restore Stash');
+          end
+          else if not GitDiscardIn(AGit, ARepo, Changes, True) then
+            Exit;
+          FGitLocalRetry := True;
+          try
+            Result := GitLongOp(AGit, ARepo, AArgs);
+          finally
+            FGitLocalRetry := False;
+          end;
+        end;
+    end;
+  finally
+    Files.Free;
+    Lines.Free;
   end;
 end;
 
