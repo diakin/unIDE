@@ -169,6 +169,11 @@ unit UnFar;
 //      Ctrl+Gray- - файлы с расширением файла под курсором, Shift+Gray+ /
 //      Shift+Gray- - все файлы / снять всё, Gray* - обратить (Ctrl+Gray* -
 //      и папки). Командная строка не пуста - символ идёт в неё.
+//    - b.74: меню F9: пункт выбирается и буквой, и Alt+буквой (Alt+C -
+//      Colors и т.д.); пункт Compare folders (O, Alt+O), как Сравнение
+//      папок в FAR: в обеих панелях выделяются файлы, которых нет в другой
+//      панели или которые новее одноимённых в другой панели (папки не
+//      сравниваются).
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -205,7 +210,7 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.73';
+  FarBuild = 'b.74';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -910,6 +915,7 @@ type
     procedure SelectByMask(const AMaskText: WideString; ASelect: Boolean);
     procedure SelectByExt(ASelect: Boolean);
     procedure SelectAllFiles(ASelect: Boolean);
+    procedure CompareFolders;
     procedure InvertSelection(AWithDirs: Boolean);
     procedure SelectionChanged;
     procedure EnterItem;
@@ -5543,6 +5549,134 @@ begin
   SelectionChanged;
 end;
 
+// Номера файлов панели (без '..' и папок), по имени - для CompareFolders
+procedure FarSortByName(const AItems: TFarItems; var AOrder: array of Integer;
+  ALow, AHigh: Integer);
+var
+  LeftPos, RightPos, Pivot, Swap: Integer;
+begin
+  while ALow < AHigh do
+  begin
+    LeftPos := ALow;
+    RightPos := AHigh;
+    Pivot := AOrder[(ALow + AHigh) div 2];
+    repeat
+      while FarCompareNames(AItems[AOrder[LeftPos]].Name,
+            AItems[Pivot].Name) < 0 do
+        Inc(LeftPos);
+      while FarCompareNames(AItems[AOrder[RightPos]].Name,
+            AItems[Pivot].Name) > 0 do
+        Dec(RightPos);
+      if LeftPos <= RightPos then
+      begin
+        Swap := AOrder[LeftPos];
+        AOrder[LeftPos] := AOrder[RightPos];
+        AOrder[RightPos] := Swap;
+        Inc(LeftPos);
+        Dec(RightPos);
+      end;
+    until LeftPos > RightPos;
+    if ALow < RightPos then
+      FarSortByName(AItems, AOrder, ALow, RightPos);
+    ALow := LeftPos;
+  end;
+end;
+
+// F9 - Compare folders (Сравнение папок FAR): выделение в обеих панелях
+// снимается, затем выделяются файлы, которых нет в другой панели, и файлы
+// новее одноимённых в другой панели (по времени изменения). Папки не
+// сравниваются.
+procedure TFarView.CompareFolders;
+var
+  Orders: array[0..1] of array of Integer;
+  OrderLen, SelTotal: array[0..1] of Integer;
+  PanelIdx, ItemIndex, PosLeft, PosRight, NameCmp, TimeCmp: Integer;
+  Panel: TFarPanel;
+  LeftPanel, RightPanel: TFarPanel;
+begin
+  for PanelIdx := 0 to 1 do
+  begin
+    Panel := FPanels[PanelIdx];
+    SetLength(Orders[PanelIdx], Panel.Count);
+    OrderLen[PanelIdx] := 0;
+    SelTotal[PanelIdx] := 0;
+    for ItemIndex := 0 to Panel.Count - 1 do
+    begin
+      Panel.SetSelected(ItemIndex, False);
+      if not Panel.FItems[ItemIndex].IsUp and
+         not Panel.FItems[ItemIndex].IsDir then
+      begin
+        Orders[PanelIdx][OrderLen[PanelIdx]] := ItemIndex;
+        Inc(OrderLen[PanelIdx]);
+      end;
+    end;
+    if OrderLen[PanelIdx] > 1 then
+      FarSortByName(Panel.FItems, Orders[PanelIdx], 0,
+        OrderLen[PanelIdx] - 1);
+  end;
+  LeftPanel := FPanels[0];
+  RightPanel := FPanels[1];
+  PosLeft := 0;
+  PosRight := 0;
+  while (PosLeft < OrderLen[0]) or (PosRight < OrderLen[1]) do
+  begin
+    if PosLeft >= OrderLen[0] then
+      NameCmp := 1
+    else if PosRight >= OrderLen[1] then
+      NameCmp := -1
+    else
+      NameCmp := FarCompareNames(
+        LeftPanel.FItems[Orders[0][PosLeft]].Name,
+        RightPanel.FItems[Orders[1][PosRight]].Name);
+    if NameCmp < 0 then
+    begin
+      // Только слева
+      LeftPanel.SetSelected(Orders[0][PosLeft], True);
+      Inc(SelTotal[0]);
+      Inc(PosLeft);
+    end
+    else if NameCmp > 0 then
+    begin
+      // Только справа
+      RightPanel.SetSelected(Orders[1][PosRight], True);
+      Inc(SelTotal[1]);
+      Inc(PosRight);
+    end
+    else
+    begin
+      // Есть в обеих - выделяется более новый
+      TimeCmp := FarFileTimeCmp(
+        LeftPanel.FItems[Orders[0][PosLeft]].WriteTime,
+        RightPanel.FItems[Orders[1][PosRight]].WriteTime);
+      if TimeCmp > 0 then
+      begin
+        LeftPanel.SetSelected(Orders[0][PosLeft], True);
+        Inc(SelTotal[0]);
+      end
+      else if TimeCmp < 0 then
+      begin
+        RightPanel.SetSelected(Orders[1][PosRight], True);
+        Inc(SelTotal[1]);
+      end;
+      Inc(PosLeft);
+      Inc(PosRight);
+    end;
+  end;
+  for PanelIdx := 0 to 1 do
+  begin
+    Panel := FPanels[PanelIdx];
+    if Panel.FSelFirst then
+      Panel.Resort;
+    EnsureVisible(Panel);
+  end;
+  if SelTotal[0] + SelTotal[1] = 0 then
+    Status(FarProduct + ': файлы в папках одинаковы')
+  else
+    Status(FarProduct + ': отличаются файлов - слева ' +
+      IntToStr(SelTotal[0]) + ', справа ' + IntToStr(SelTotal[1]));
+  Invalidate;
+end;
+
 procedure TFarView.InvertSelection(AWithDirs: Boolean);
 var
   Panel: TFarPanel;
@@ -7199,8 +7333,8 @@ begin
         end;
       end;
   else
-    // Буква - пункт с этой буквой быстрого выбора
-    if not ACtrl and not AAlt and
+    // Буква или Alt+буква - пункт с этой буквой быстрого выбора
+    if not ACtrl and
        (((AKey >= Ord('A')) and (AKey <= Ord('Z'))) or
         ((AKey >= Ord('0')) and (AKey <= Ord('9')))) then
       for ItemIndex := 0 to High(FMenuItems) do
@@ -7290,6 +7424,8 @@ begin
             FOnSchemesDialog(Self)
           else
             OpenSchemeWindow;
+        6:
+          CompareFolders;
       end;
     fmPalGroups:
       if Item.Tag >= 0 then
@@ -15927,16 +16063,16 @@ end;
 // F9: меню Options (только оно - решено). Что ещё не сделано - серым
 procedure TFarView.ShowOptionsMenu;
 const
-  ItemTexts: array[0..8] of string = ('&Panel settings', 'Con&firmations',
-    '', '&Themes', '&Colors', 'Files &highlighting', 'Sche&mes', '',
-    '&Save setup');
-  ItemTags: array[0..8] of Integer = (0, 0, 0, 4, 3, 1, 5, 0, 2);
+  ItemTexts: array[0..10] of string = ('C&ompare folders', '',
+    '&Panel settings', 'Con&firmations', '', '&Themes', '&Colors',
+    'Files &highlighting', 'Sche&mes', '', '&Save setup');
+  ItemTags: array[0..10] of Integer = (6, 0, 0, 0, 0, 4, 3, 1, 5, 0, 2);
 var
   Items: TFarMenuItems;
   ItemIndex: Integer;
 begin
-  SetLength(Items, 9);
-  for ItemIndex := 0 to 8 do
+  SetLength(Items, 11);
+  for ItemIndex := 0 to 10 do
   begin
     Items[ItemIndex].Text := ItemTexts[ItemIndex];
     Items[ItemIndex].RightText := '';
@@ -15947,10 +16083,10 @@ begin
     Items[ItemIndex].Data := '';
     Items[ItemIndex].Tag := ItemTags[ItemIndex];
   end;
-  Items[8].RightText := 'Shift+F9';
+  Items[10].RightText := 'Shift+F9';
   // Schemes: нет ни окна unIDE, ни папки схем - серым
-  Items[6].Disabled := (FSchemesDir = '') and not Assigned(FOnSchemesDialog);
-  MenuOpen(fmOptions, 'Options', Items, 3, FActive);
+  Items[8].Disabled := (FSchemesDir = '') and not Assigned(FOnSchemesDialog);
+  MenuOpen(fmOptions, 'Options', Items, 5, FActive);
 end;
 
 // ---------------------------------------------------------------------------

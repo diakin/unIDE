@@ -573,18 +573,32 @@ type
 var
   MapCounter: Integer = 0;
 
+// Папка ArdSim: рядом с unIDE или на уровень выше. Если есть обе (старая
+// копия в Output и папка репозитория), берётся та, где build_sim.cmd новее:
+// иначе сборка шла со старыми заголовками и ardprep.
 function ArdSimFindDir: string;
 var
-  ExeDir: string;
+  ExeDir, NearDir, UpperDir: string;
+  NearOk, UpperOk: Boolean;
 begin
   ExeDir := ExtractFilePath(ParamStr(0));
-  Result := ExeDir + 'ArdSim\';
-  if FileExists(Result + 'build_sim.cmd') then
-    Exit;
-  Result := ExpandFileName(ExeDir + '..\ArdSim\');
-  if FileExists(Result + 'build_sim.cmd') then
-    Exit;
-  Result := '';
+  NearDir := ExeDir + 'ArdSim\';
+  UpperDir := ExpandFileName(ExeDir + '..\ArdSim\');
+  NearOk := FileExists(NearDir + 'build_sim.cmd');
+  UpperOk := FileExists(UpperDir + 'build_sim.cmd');
+  if NearOk and UpperOk then
+  begin
+    if FileAge(UpperDir + 'build_sim.cmd') > FileAge(NearDir + 'build_sim.cmd') then
+      Result := UpperDir
+    else
+      Result := NearDir;
+  end
+  else if NearOk then
+    Result := NearDir
+  else if UpperOk then
+    Result := UpperDir
+  else
+    Result := '';
 end;
 
 function KeyLookOf(AKeyIdx: Integer): TKeyLook;
@@ -1394,6 +1408,7 @@ begin
     Exit;
   end;
   SimDir := IncludeTrailingPathDelimiter(SimDir);
+  Log('ArdSim: папка ' + SimDir);
   // Шрифты UTFT скетча из папок libraries: список ardsim_build\ardsim_fonts.txt
   Notes := TStringList.Create;
   try
