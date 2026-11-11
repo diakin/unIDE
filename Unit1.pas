@@ -3106,6 +3106,7 @@ type
     procedure BookmarkItemClick(Sender: TObject);
     procedure UpdatePathBar;
     procedure Status2Resize(Sender: TObject);
+    procedure Panel2SetHeight(NewHeight: Integer);
     procedure JumpToBookmark(WinIdx, BmIdx: Integer; Remember: Boolean);
     procedure PushBmHistory(WinIdx, BmIdx: Integer);
     procedure BmHistRemoveAt(HistIdx: Integer);
@@ -19334,6 +19335,26 @@ begin
   end;
 end;
 
+// Высота полосы пути (Panel2) - над Splitter1, как в форме. Порядок
+// панелей alBottom в LCL идёт по нижнему краю: Panel2, выросшая от
+// прежнего Top вниз, оказывалась ниже сплиттера, и сплиттер тянул её, а не
+// панель лога (лог не менял высоту). Нижний край Panel2 - верх сплиттера
+procedure TForm1.Panel2SetHeight(NewHeight: Integer);
+begin
+  if Panel2 = nil then
+    Exit;
+  if (Splitter1 <> nil) and (Splitter1.Parent = Panel2.Parent) and
+     Splitter1.Visible then
+  begin
+    if (Panel2.Height <> NewHeight) or
+       (Panel2.Top + Panel2.Height > Splitter1.Top) then
+      Panel2.SetBounds(Panel2.Left, Splitter1.Top - NewHeight, Panel2.Width,
+        NewHeight);
+  end
+  else if Panel2.Height <> NewHeight then
+    Panel2.Height := NewHeight;
+end;
+
 // Панель пути занимает всё, что осталось от размера и даты
 procedure TForm1.Status2Resize(Sender: TObject);
 var
@@ -19343,9 +19364,8 @@ begin
     Exit;
   // Полоса пути (Panel2) - по высоте строки состояния: в сборке Lazarus
   // высоту FStatus2 задаёт окно Windows уже после FormCreate
-  if (Panel2 <> nil) and (FStatus2.Parent = Panel2) and
-     (Panel2.Height <> FStatus2.Height) then
-    Panel2.Height := FStatus2.Height;
+  if (Panel2 <> nil) and (FStatus2.Parent = Panel2) then
+    Panel2SetHeight(FStatus2.Height);
 
   WidthPx := FStatus2.Width - FStatus2.Panels[1].Width - FStatus2.Panels[2].Width - 8;
   if WidthPx < 80 then
@@ -28546,7 +28566,7 @@ begin
   // Полоса пути (Panel2) - ровно по высоте своей строки состояния: лишняя
   // высота оставалась пустой полосой между горизонтальной прокруткой
   // редактора и путём файла
-  Panel2.Height := FStatus2.Height;
+  Panel2SetHeight(FStatus2.Height);
   Realign;
 
 
@@ -92089,8 +92109,7 @@ begin
       // Полоса пути (Panel2) - по высоте строки: в FormCreate её высота
       // взята у FStatus2 до подгонки (в сборке Lazarus там 0 - полосы
       // не было видно)
-      if (Panel2 <> nil) and (Panel2.Height <> FStatus2.Height) then
-        Panel2.Height := FStatus2.Height;
+      Panel2SetHeight(FStatus2.Height);
       Status2Resize(nil);
     end;
     if (StatusBar1 <> nil) and (StatusBar1.Panels.Count > 6) then
