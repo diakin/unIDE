@@ -569,7 +569,7 @@ end;
 // 'ArchTable1' -> ArchTable1.db) или имя одной из его папок есть в строках
 function TUnusedScan.IsReferenced(const ARel: string): Boolean;
 var
-  Rest, Part, FileName, BareName: string;
+  Rest, Part, FileName, BareName, Ext: string;
   SepPos: Integer;
 begin
   Result := False;
@@ -578,6 +578,12 @@ begin
   // 'Unit0.pas' из uses не делает нужным Unit0.pas.bak
   BareName := ChangeFileExt(FileName, '');
   if Pos('.', BareName) > 0 then
+    BareName := '';
+  // служебные файлы Paradox (индексы, настройки вида, memo) по имени таблицы
+  // не держим: таблицы теперь текстовые, нужен только .db для импорта
+  Ext := ExtractFileExt(FileName);
+  if (Ext = '.px') or (Ext = '.tv') or (Ext = '.fam') or (Ext = '.val') or
+     (Ext = '.mb') or (Copy(Ext, 1, 3) = '.xg') or (Copy(Ext, 1, 3) = '.yg') then
     BareName := '';
   if (FRefNames.IndexOf(FileName) >= 0) or
      ((BareName <> '') and (FRefNames.IndexOf(BareName) >= 0)) then
