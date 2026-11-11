@@ -65,6 +65,7 @@ uses
   DlgUtftEdit in 'DlgUtftEdit.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
+  DelphiUnused in 'DelphiUnused.pas',
   DelphiOpts in 'DelphiOpts.pas',
   ResFile in 'ResFile.pas',
   ClrScheme in 'ClrScheme.pas',
