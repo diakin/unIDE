@@ -762,7 +762,7 @@ object Form1: TForm1
       end
       object mPrjMoveUnused: TMenuItem
         Caption = 'Move Unused Files...'
-        Hint = 'Файлы сборки (.pas, .dfm, .dcu, .res и др.), которые .dpr не использует, - в папку unused рядом с .dpr'
+        Hint = 'Все файлы, не нужные для сборки .dpr (лишние модули, ini, данные, dll, exe, картинки, документы), - в папку unused рядом с .dpr'
         OnClick = MoveUnusedFilesClick
       end
       object mProjectFixPaths: TMenuItem

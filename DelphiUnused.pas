@@ -3,13 +3,13 @@ unit DelphiUnused;
 // Файлы папки проекта Delphi, которые не участвуют в сборке .dpr.
 // От .dpr по цепочке uses (и contains у .dpk) собираются модули проекта,
 // их .dfm, файлы из {$I}/{$INCLUDE} и {$R}/{$RESOURCE}, файлы самого
-// проекта (.res, .dof, .cfg, .dsk, .todo с именем .dpr). Остальные файлы
-// сборки (.pas, .dfm, .dcu, .inc, .res, .rc, .dpr, .bak, .~* и т.п.) в папке
-// проекта и её подпапках - неиспользуемые. Прочие файлы (ini, данные, dll,
-// картинки, документы) не рассматриваются: их нужность по исходникам не
-// определить.
+// проекта (.res, .dof, .cfg, .dsk, .todo с именем .dpr). Все остальные
+// файлы папки проекта и её подпапок - неиспользуемые, в том числе ini,
+// данные, dll, exe, картинки и документы: нужное для работы программы
+// пользователь возвращает сам. Не трогаются только .git и файлы git в
+// корне (.gitignore, .gitattributes).
 // Директивы {$IFDEF} не разбираются: модуль из любой ветки считается
-// нужным - так файлов уходит меньше, но ни один нужный не уходит.
+// нужным - так файлов уходит меньше, но ни один нужный для сборки не уходит.
 
 interface
 
@@ -54,7 +54,7 @@ type
     constructor Create(const ADpr, ASkipDirs: string);
     destructor Destroy; override;
     procedure Run(const ADprRel: string);
-    function IsBuildFile(const ARel: string): Boolean;
+    function IsMovable(const ARel: string): Boolean;
     property AllReal: TStringList read FAllReal;
     property Used: TStringList read FUsed;
   end;
@@ -549,37 +549,14 @@ begin
   end;
 end;
 
-// Файлы, которые относятся к сборке Delphi и могут быть лишними
-function TUnusedScan.IsBuildFile(const ARel: string): Boolean;
-const
-  BuildExts: array[0..20] of string = ('.pas', '.pp', '.dfm', '.xfm', '.inc',
-    '.dcu', '.res', '.rc', '.dcr', '.dpr', '.dpk', '.dof', '.cfg', '.dsk',
-    '.ddp', '.bak', '.todo', '.dproj', '.bdsproj', '.identcache', '.local');
+// Файл можно переносить: всё, кроме файлов git в корне проекта
+function TUnusedScan.IsMovable(const ARel: string): Boolean;
 var
-  Ext: string;
-  ExtIdx: Integer;
+  NameLower: string;
 begin
-  Ext := AnsiLowerCase(ExtractFileExt(ARel));
-  // .cfg, .dof и т.п. - файлы проекта, только если рядом есть одноимённый
-  // .dpr/.dpk/.pas: иначе это может быть файл данных программы (EBalanc.cfg)
-  if (Ext = '.cfg') or (Ext = '.dof') or (Ext = '.dsk') or (Ext = '.todo') or
-     (Ext = '.ddp') or (Ext = '.dproj') or (Ext = '.bdsproj') or
-     (Ext = '.identcache') or (Ext = '.local') then
-  begin
-    Result := (IndexOfRel(ChangeFileExt(ARel, '.dpr')) >= 0) or
-      (IndexOfRel(ChangeFileExt(ARel, '.dpk')) >= 0) or
-      (IndexOfRel(ChangeFileExt(ARel, '.pas')) >= 0);
-    Exit;
-  end;
-  Result := Copy(Ext, 1, 2) = '.~';   // резервные копии Delphi: .~pas, .~dfm
-  if Result then
-    Exit;
-  for ExtIdx := Low(BuildExts) to High(BuildExts) do
-    if Ext = BuildExts[ExtIdx] then
-    begin
-      Result := True;
-      Exit;
-    end;
+  NameLower := AnsiLowerCase(ARel);
+  Result := not ((NameLower = '.gitignore') or (NameLower = '.gitattributes') or
+    (NameLower = '.gitmodules'));
 end;
 
 function RelOfDpr(const ADpr: string): string;
@@ -598,7 +575,7 @@ begin
   try
     Scan.Run(RelOfDpr(ADpr));
     for FileIdx := 0 to Scan.AllReal.Count - 1 do
-      if Scan.IsBuildFile(Scan.AllReal[FileIdx]) and
+      if Scan.IsMovable(Scan.AllReal[FileIdx]) and
          (Scan.Used.IndexOf(AnsiLowerCase(Scan.AllReal[FileIdx])) < 0) then
         AUnused.Add(Scan.AllReal[FileIdx]);
   finally

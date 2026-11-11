@@ -19170,16 +19170,17 @@ begin
   end;
 end;
 
-// Move Unused Files: файлы сборки в папке проекта Delphi, которые .dpr не
-// использует (DelphiUnused: цепочка uses, {$I}, {$R}), переносятся в
-// <папка .dpr>\unused\<дата_время>\ с теми же подпапками. Файлы данных,
-// ini, dll, картинки не трогаются. Нужный файл после сборки - вернуть
-// вручную; список перенесённого - moved.txt в той же папке
+// Move Unused Files: все файлы папки проекта Delphi, которые не нужны для
+// сборки .dpr (DelphiUnused: цепочка uses, {$I}, {$R}), - и исходники, и
+// ini, данные, dll, exe, картинки, документы - переносятся в
+// <папка .dpr>\unused\<дата_время>\ с теми же подпапками; опустевшие
+// подпапки удаляются. Нужный файл - вернуть вручную; список перенесённого -
+// moved.txt в той же папке
 procedure TForm1.MoveUnusedFilesClick(Sender: TObject);
 const
   PreviewCount = 25;
 var
-  Dpr, DprDir, DestDir, SrcFile, DestFile, Preview: string;
+  Dpr, DprDir, DestDir, SrcFile, DestFile, Preview, SubDir: string;
   Unused, Moved, Skipped: TStringList;
   FileIdx: Integer;
 begin
@@ -19203,8 +19204,8 @@ begin
     end;
     if Unused.Count = 0 then
     begin
-      ShowMessage('9702:Move Unused Files: все файлы сборки в ' + DprDir +
-        ' используются в ' + ExtractFileName(Dpr));
+      ShowMessage('9702:Move Unused Files: все файлы в ' + DprDir +
+        ' нужны для сборки ' + ExtractFileName(Dpr));
       Exit;
     end;
     Unused.Sort;
@@ -19216,7 +19217,7 @@ begin
       Preview := Preview + '... и ещё ' + IntToStr(Unused.Count - PreviewCount) +
         #13#10;
     DestDir := DprDir + 'unused\' + FormatDateTime('yyyymmdd_hhnnss', Now) + '\';
-    if MessageDlg('9703:Файлы, которые не используются при сборке ' +
+    if MessageDlg('9703:Файлы, которые не нужны для сборки ' +
        ExtractFileName(Dpr) + ': ' + IntToStr(Unused.Count) + #13#10#13#10 +
        Preview + #13#10 + 'Перенести их в ' + DestDir + ' ?',
        mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
@@ -19234,7 +19235,13 @@ begin
       DestFile := DestDir + Unused[FileIdx];
       ForceDirectories(ExtractFileDir(DestFile));
       if MoveFile(PChar(SrcFile), PChar(DestFile)) then
-        Moved.Add(Unused[FileIdx])
+      begin
+        Moved.Add(Unused[FileIdx]);
+        // опустевшие подпапки - удалить (RemoveDir не удаляет непустую)
+        SubDir := ExcludeTrailingPathDelimiter(ExtractFilePath(SrcFile));
+        while (Length(SubDir) >= Length(DprDir)) and RemoveDir(SubDir) do
+          SubDir := ExcludeTrailingPathDelimiter(ExtractFilePath(SubDir));
+      end
       else
         Skipped.Add(Unused[FileIdx] + ' - ' + SysErrorMessage(GetLastError));
     end;
