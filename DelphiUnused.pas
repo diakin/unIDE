@@ -6,7 +6,8 @@ unit DelphiUnused;
 // проекта (.res, .dof, .cfg, .dsk, .todo с именем .dpr). Кроме того,
 // остаются файлы и папки, имена которых встречаются в строках этих
 // исходников ('Bal.ini', 'getnumcom.dll', '\ReportTpl\', 'ArchTable1'):
-// к ним программа обращается при работе. Все остальные
+// к ним программа обращается при работе. Остаются и папки скетчей Arduino
+// (папка с файлом .ino - прошивка прибора) целиком. Все остальные
 // файлы папки проекта и её подпапок - неиспользуемые, в том числе ini,
 // данные, dll, exe, картинки и документы: нужное для работы программы
 // пользователь возвращает сам. Не трогаются только .git и файлы git в
@@ -46,6 +47,7 @@ type
     FSearchDirs: TStringList;     // относительные папки поиска модулей
     FDprUnits: TStringList;       // имя модуля = путь из 'in'
     FRefNames: TStringList;       // имена из строк исходников (нижний регистр)
+    FSketchDirs: TStringList;     // папки с .ino (нижний регистр, с разделителем)
     procedure AddRefNames(const AText: string);
     procedure ScanTree(const ARelDir: string);
     function IndexOfRel(const ARel: string): Integer;
@@ -61,6 +63,7 @@ type
     procedure Run(const ADprRel: string);
     function IsMovable(const ARel: string): Boolean;
     function IsReferenced(const ARel: string): Boolean;
+    function IsInSketchDir(const ARel: string): Boolean;
     property AllReal: TStringList read FAllReal;
     property Used: TStringList read FUsed;
   end;
@@ -106,6 +109,9 @@ begin
   FRefNames := TStringList.Create;
   FRefNames.Sorted := True;
   FRefNames.Duplicates := dupIgnore;
+  FSketchDirs := TStringList.Create;
+  FSketchDirs.Sorted := True;
+  FSketchDirs.Duplicates := dupIgnore;
 end;
 
 destructor TUnusedScan.Destroy;
@@ -119,6 +125,7 @@ begin
   FSearchDirs.Free;
   FDprUnits.Free;
   FRefNames.Free;
+  FSketchDirs.Free;
   inherited Destroy;
 end;
 
@@ -146,6 +153,9 @@ begin
       else
       begin
         FAllReal.Add(RelPath);
+        if (ARelDir <> '') and
+           (AnsiLowerCase(ExtractFileExt(SearchRec.Name)) = '.ino') then
+          FSketchDirs.Add(AnsiLowerCase(ARelDir));
         FAllFiles.Add(AnsiLowerCase(RelPath));
         FByName.Add(AnsiLowerCase(SearchRec.Name) + '=' +
           IntToStr(FAllReal.Count - 1));
@@ -607,6 +617,22 @@ begin
   end;
 end;
 
+// Файл лежит в папке скетча Arduino (или в её подпапке)
+function TUnusedScan.IsInSketchDir(const ARel: string): Boolean;
+var
+  DirIdx: Integer;
+  RelLower: string;
+begin
+  Result := False;
+  RelLower := AnsiLowerCase(ARel);
+  for DirIdx := 0 to FSketchDirs.Count - 1 do
+    if Pos(FSketchDirs[DirIdx], RelLower) = 1 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
 procedure TUnusedScan.Run(const ADprRel: string);
 begin
   ScanTree('');
@@ -650,7 +676,8 @@ begin
     for FileIdx := 0 to Scan.AllReal.Count - 1 do
       if Scan.IsMovable(Scan.AllReal[FileIdx]) and
          (Scan.Used.IndexOf(AnsiLowerCase(Scan.AllReal[FileIdx])) < 0) and
-         not Scan.IsReferenced(Scan.AllReal[FileIdx]) then
+         not Scan.IsReferenced(Scan.AllReal[FileIdx]) and
+         not Scan.IsInSketchDir(Scan.AllReal[FileIdx]) then
         AUnused.Add(Scan.AllReal[FileIdx]);
   finally
     Scan.Free;
@@ -670,7 +697,8 @@ begin
     Scan.Run(RelOfDpr(ADpr));
     for FileIdx := 0 to Scan.AllReal.Count - 1 do
       if (Scan.Used.IndexOf(AnsiLowerCase(Scan.AllReal[FileIdx])) >= 0) or
-         Scan.IsReferenced(Scan.AllReal[FileIdx]) then
+         Scan.IsReferenced(Scan.AllReal[FileIdx]) or
+         Scan.IsInSketchDir(Scan.AllReal[FileIdx]) then
         AUsed.Add(Scan.AllReal[FileIdx]);
   finally
     Scan.Free;
