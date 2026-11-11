@@ -1202,6 +1202,7 @@ type
     procedure DeleteProjectClick(Sender: TObject);
     procedure AddToProjectClick(Sender: TObject);
     procedure OpenProjectFolderClick(Sender: TObject);
+    procedure MoveUnusedFilesClick(Sender: TObject);
     procedure FixPathsAfterMoveClick(Sender: TObject);
     procedure BuildReleaseClick(Sender: TObject);
     procedure ReleaseFilesClick(Sender: TObject);
@@ -4783,6 +4784,7 @@ var
     OsReg,        // чтение реестра Windows: установленные Delphi, AutoHotkey, Lazarus
     DsgClassDescW, // запись описания классов по RTTI (шаг 0.8)
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
+    DelphiUnused, // файлы сборки, которые .dpr не использует (Move Unused Files)
     DelphiOpts,   // Project options Delphi: номер сборки и версия в .res
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
@@ -19165,6 +19167,104 @@ begin
   finally
     OpenDialog1.Options := OldOptions;
     OpenDialog1.FileName := '';
+  end;
+end;
+
+// Move Unused Files: файлы сборки в папке проекта Delphi, которые .dpr не
+// использует (DelphiUnused: цепочка uses, {$I}, {$R}), переносятся в
+// <папка .dpr>\unused\<дата_время>\ с теми же подпапками. Файлы данных,
+// ini, dll, картинки не трогаются. Нужный файл после сборки - вернуть
+// вручную; список перенесённого - moved.txt в той же папке
+procedure TForm1.MoveUnusedFilesClick(Sender: TObject);
+const
+  PreviewCount = 25;
+var
+  Dpr, DprDir, DestDir, SrcFile, DestFile, Preview: string;
+  Unused, Moved, Skipped: TStringList;
+  FileIdx: Integer;
+begin
+  Dpr := DelphiTargetDpr;
+  if (Dpr = '') or not FileExists(Dpr) then
+  begin
+    ShowMessage('9701:Move Unused Files: не найден .dpr - откройте .dpr проекта ' +
+      'или файл из его папки');
+    Exit;
+  end;
+  DprDir := IncludeTrailingPathDelimiter(ExtractFilePath(Dpr));
+  Unused := TStringList.Create;
+  Moved := TStringList.Create;
+  Skipped := TStringList.Create;
+  try
+    Screen.Cursor := crHourGlass;
+    try
+      DelphiUnusedFiles(Dpr, 'unused', Unused);
+    finally
+      Screen.Cursor := crDefault;
+    end;
+    if Unused.Count = 0 then
+    begin
+      ShowMessage('9702:Move Unused Files: все файлы сборки в ' + DprDir +
+        ' используются в ' + ExtractFileName(Dpr));
+      Exit;
+    end;
+    Unused.Sort;
+    Preview := '';
+    for FileIdx := 0 to Unused.Count - 1 do
+      if FileIdx < PreviewCount then
+        Preview := Preview + Unused[FileIdx] + #13#10;
+    if Unused.Count > PreviewCount then
+      Preview := Preview + '... и ещё ' + IntToStr(Unused.Count - PreviewCount) +
+        #13#10;
+    DestDir := DprDir + 'unused\' + FormatDateTime('yyyymmdd_hhnnss', Now) + '\';
+    if MessageDlg('9703:Файлы, которые не используются при сборке ' +
+       ExtractFileName(Dpr) + ': ' + IntToStr(Unused.Count) + #13#10#13#10 +
+       Preview + #13#10 + 'Перенести их в ' + DestDir + ' ?',
+       mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+      Exit;
+
+    for FileIdx := 0 to Unused.Count - 1 do
+    begin
+      SrcFile := DprDir + Unused[FileIdx];
+      // Открытый в редакторе файл не трогаем: окно потеряло бы файл
+      if IndexOfWindowByFile(SrcFile) >= 0 then
+      begin
+        Skipped.Add(Unused[FileIdx] + ' - открыт в редакторе');
+        Continue;
+      end;
+      DestFile := DestDir + Unused[FileIdx];
+      ForceDirectories(ExtractFileDir(DestFile));
+      if MoveFile(PChar(SrcFile), PChar(DestFile)) then
+        Moved.Add(Unused[FileIdx])
+      else
+        Skipped.Add(Unused[FileIdx] + ' - ' + SysErrorMessage(GetLastError));
+    end;
+
+    if Moved.Count > 0 then
+    begin
+      Moved.Insert(0, '; Перенесено из ' + DprDir + ' (не используются при ' +
+        'сборке ' + ExtractFileName(Dpr) + '). Нужный файл - вернуть на то же ' +
+        'место');
+      try
+        Moved.SaveToFile(DestDir + 'moved.txt');
+      except
+        // список - для удобства; без него файлы всё равно перенесены
+      end;
+      Moved.Delete(0);
+    end;
+
+    ShowCompLog;
+    LogComp('Move Unused Files: ' + ExtractFileName(Dpr) + ' - перенесено ' +
+      IntToStr(Moved.Count) + ' в ' + DestDir);
+    for FileIdx := 0 to Moved.Count - 1 do
+      LogComp('  ' + Moved[FileIdx]);
+    for FileIdx := 0 to Skipped.Count - 1 do
+      LogComp('  не перенесён: ' + Skipped[FileIdx]);
+    if Moved.Count > 0 then
+      ShellOpen(Handle, DestDir);
+  finally
+    Unused.Free;
+    Moved.Free;
+    Skipped.Free;
   end;
 end;
 

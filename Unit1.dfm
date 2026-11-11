@@ -760,6 +760,11 @@ object Form1: TForm1
         Caption = 'Open Project Folder'
         OnClick = OpenProjectFolderClick
       end
+      object mPrjMoveUnused: TMenuItem
+        Caption = 'Move Unused Files...'
+        Hint = 'Файлы сборки (.pas, .dfm, .dcu, .res и др.), которые .dpr не использует, - в папку unused рядом с .dpr'
+        OnClick = MoveUnusedFilesClick
+      end
       object mProjectFixPaths: TMenuItem
         Caption = 'Fix paths after move'
         OnClick = FixPathsAfterMoveClick
