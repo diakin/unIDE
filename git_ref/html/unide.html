@@ -161,6 +161,10 @@ Push красная &mdash; есть неотправленные коммиты
 <tr><td>Tracked but Ignored Files...</td><td>Окно <a href="#tracked">Tracked but
   Ignored</a>: файлы, которые лежат в репозитории, хотя подходят под
   <code>.gitignore</code>.</td></tr>
+<tr><td>Синхронизировать...</td><td>Сначала <code>git fetch origin</code>, затем файлы рабочей папки,
+  которых нет в ветке на сервере (<code>origin/&lt;ветка&gt;</code>), копируются в папку
+  <code>&lt;имя&gt;_not_on_github_&lt;дата_время&gt;</code> рядом с репозиторием, с теми же подпапками.
+  Рабочая папка не меняется, папка <code>.git</code> не просматривается. Esc прерывает.</td></tr>
 <tr><td>Update from Default Branch</td><td>Влить в текущую ветку основную ветку
   сервера (<code>origin/HEAD</code>, иначе <code>origin/main</code> или
   <code>origin/master</code>): <code>git merge</code>. Сначала нужен Fetch.</td></tr>

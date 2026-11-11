@@ -1109,6 +1109,11 @@ object Form1: TForm1
         Hint = 'Файлы в репозитории, которые подходят под .gitignore: оставить (исключение в .gitignore) или убрать из репозитория (git rm --cached)'
         OnClick = GitTrackedClick
       end
+      object mBranchSyncLocalOnly: TMenuItem
+        Caption = 'Синхронизировать...'
+        Hint = 'Файлы рабочей папки, которых нет в ветке на сервере (после fetch): копия в папку <имя>_not_on_github_<дата> рядом с репозиторием'
+        OnClick = GitSyncLocalOnlyClick
+      end
       object mBranchUpdateFromDefault: TMenuItem
         Caption = 'Update from Default Branch'
         Hint = 'Влить в текущую ветку основную ветку сервера (git merge origin/<основная>)'
