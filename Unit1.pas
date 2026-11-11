@@ -13458,6 +13458,142 @@ begin
   LoadProject(FCurrentProject);
 end;
 
+// Переименование главного файла проекта Delphi вслед за именем проекта
+// (Project Properties, флажок "Переименовать файлы"). Переименовываются
+// .dpr и его спутники с тем же именем: .res (значок, версия), .cfg (ключи
+// dcc32), .dof (настройки среды), .todo, .dsk. В .dpr правится строка
+// "program <имя>;" и ссылка {%ToDo}, в .dof - InternalName и
+// OriginalFilename. Новый путь .dpr - в ANewDpr. False - ничего не сделано
+// или сделано не всё (причина в ALog).
+function RenameDelphiMainFiles(const AOldDpr, ANewBase: string;
+  ALog: TStrings; out ANewDpr: string): Boolean;
+const
+  SideExts: array[0..5] of string = ('.res', '.cfg', '.dof', '.todo',
+    '.dsk', '.dpr');
+var
+  DirPath, OldBase, OldFile, NewFile, FileText, LowText, Conflicts: string;
+  ExtIdx, ProgPos, NamePos, NameEnd: Integer;
+  FileStrm: TFileStream;
+
+  function LoadText(const AFileName: string): string;
+  var
+    Strm: TFileStream;
+  begin
+    Strm := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    try
+      SetLength(Result, Strm.Size);
+      if Strm.Size > 0 then
+        Strm.ReadBuffer(Result[1], Strm.Size);
+    finally
+      Strm.Free;
+    end;
+  end;
+
+begin
+  Result := False;
+  ANewDpr := AOldDpr;
+  DirPath := ExtractFilePath(AOldDpr);
+  OldBase := ChangeFileExt(ExtractFileName(AOldDpr), '');
+  if CompareText(OldBase, ANewBase) = 0 then
+  begin
+    Result := True; // имя то же - переименовывать нечего
+    Exit;
+  end;
+  if not IsValidIdent(ANewBase) then
+  begin
+    ShowMessage('7440:Имя проекта "' + ANewBase + '" не годится для ' +
+    'программы Delphi (буквы, цифры, _ и не с цифры). Файлы не ' +
+    'переименованы.');
+    Exit;
+  end;
+
+  // Файлы с новым именем уже есть - спросить один раз за все
+  Conflicts := '';
+  for ExtIdx := Low(SideExts) to High(SideExts) do
+    if FileExists(DirPath + OldBase + SideExts[ExtIdx]) and
+       FileExists(DirPath + ANewBase + SideExts[ExtIdx]) then
+      Conflicts := Conflicts + #13#10 + ANewBase + SideExts[ExtIdx];
+  if Conflicts <> '' then
+    if MessageDlg('7441:Файлы с новым именем уже есть:' + Conflicts +
+                  #13#10#13#10'Заменить их?', mtConfirmation,
+                  [mbYes, mbNo], 0) <> mrYes then
+      Exit;
+
+  // .dpr - последним: если что-то не переименовалось, проект остаётся
+  // на старом .dpr
+  for ExtIdx := Low(SideExts) to High(SideExts) do
+  begin
+    OldFile := DirPath + OldBase + SideExts[ExtIdx];
+    NewFile := DirPath + ANewBase + SideExts[ExtIdx];
+    if not FileExists(OldFile) then
+      Continue;
+    if FileExists(NewFile) and not DeleteFile(NewFile) then
+    begin
+      ALog.Add('не удалось заменить ' + NewFile);
+      Exit;
+    end;
+    if not RenameFile(OldFile, NewFile) then
+    begin
+      ALog.Add('не удалось переименовать ' + OldFile + ' -> ' + NewFile);
+      Exit;
+    end;
+    ALog.Add(ExtractFileName(OldFile) + ' -> ' + ExtractFileName(NewFile));
+  end;
+  ANewDpr := DirPath + ANewBase + '.dpr';
+
+  // program <имя>; и {%ToDo '<имя>.todo'}
+  FileText := LoadText(ANewDpr);
+  LowText := LowerCase(FileText);
+  ProgPos := Pos('program', LowText);
+  if ProgPos > 0 then
+  begin
+    NamePos := ProgPos + Length('program');
+    while (NamePos <= Length(FileText)) and
+          (FileText[NamePos] in [' ', #9, #13, #10]) do
+      Inc(NamePos);
+    NameEnd := NamePos;
+    while (NameEnd <= Length(FileText)) and
+          (FileText[NameEnd] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      Inc(NameEnd);
+    if CompareText(Copy(FileText, NamePos, NameEnd - NamePos), OldBase) = 0 then
+    begin
+      Delete(FileText, NamePos, NameEnd - NamePos);
+      Insert(ANewBase, FileText, NamePos);
+    end
+    else
+      ALog.Add('в ' + ExtractFileName(ANewDpr) + ' нет строки program ' +
+      OldBase + ' - имя программы не изменено');
+  end;
+  FileText := StringReplace(FileText, '''' + OldBase + '.todo''',
+    '''' + ANewBase + '.todo''', [rfReplaceAll, rfIgnoreCase]);
+  FileStrm := TFileStream.Create(ANewDpr, fmCreate);
+  try
+    if FileText <> '' then
+      FileStrm.WriteBuffer(FileText[1], Length(FileText));
+  finally
+    FileStrm.Free;
+  end;
+
+  // .dof: имя exe в данных о версии
+  NewFile := DirPath + ANewBase + '.dof';
+  if FileExists(NewFile) then
+  begin
+    FileText := LoadText(NewFile);
+    FileText := StringReplace(FileText, 'InternalName=' + OldBase,
+      'InternalName=' + ANewBase, [rfReplaceAll, rfIgnoreCase]);
+    FileText := StringReplace(FileText, 'OriginalFilename=' + OldBase + '.',
+      'OriginalFilename=' + ANewBase + '.', [rfReplaceAll, rfIgnoreCase]);
+    FileStrm := TFileStream.Create(NewFile, fmCreate);
+    try
+      if FileText <> '' then
+        FileStrm.WriteBuffer(FileText[1], Length(FileText));
+    finally
+      FileStrm.Free;
+    end;
+  end;
+  Result := True;
+end;
+
 // PROJECT PROPERTIES: имя, папка и тип текущего проекта - в том же окне,
 // что New Project (DlgNewPrj), только заполненном. Файлы проекта не
 // создаются, не копируются и не переносятся - меняется только его раздел
@@ -13475,6 +13611,11 @@ end;
 // Project Options среды Delphi 7 (DlgNewPrj, DelphiOpts). Её настройки
 // записываются в .dof, .dpr и .res главного файла проекта сразу после OK,
 // независимо от имени, папки и типа.
+//
+// Флажок "Переименовать .dpr, .res, .cfg, .dof по имени" (на месте "на базе
+// существующего") - единственный случай, когда файлы проекта меняются:
+// главный .dpr и его спутники получают имя проекта (RenameDelphiMainFiles),
+// Target и открытые вкладки переводятся на новый .dpr.
 procedure TForm1.ProjectPropsClick(Sender: TObject);
 var
   Dlg: TDlgNewPrj;
@@ -13485,9 +13626,11 @@ var
   IncSysDir, IncUserDir, IncMode, IncOwnDir, IncOwnList: string;
   FbIconPath, LazCpu, LazOs, LazOptions: string;
   Idx3, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
-  DirChanged, OptionsChanged: Boolean;
+  DirChanged, OptionsChanged, CanRenameDpr, RenameDpr, DprRenamed: Boolean;
   RosCfg: TRosSettings;
+  RenamedDpr, OldDprPath: string;
 begin
+  DprRenamed := False;
   if FCurrentProject = '' then
   begin
     ShowMessage('7307:Проект не открыт.');
@@ -13517,7 +13660,14 @@ begin
     // не нужна - проект уже есть. Подсказка папки по имени не
     // подключается: папка проекта от его имени не зависит.
     Dlg.Caption := 'Project Properties';
-    Dlg.chkBase.Visible := False;
+    // Флажок "на базе существующего" здесь не нужен - на его месте
+    // переименование главного файла Delphi вслед за именем проекта
+    CanRenameDpr := (CompareText(OldType, 'Delphi') = 0) and
+      (CompareText(ExtractFileExt(OldTarget), '.dpr') = 0) and
+      FileExists(OldTarget);
+    Dlg.chkBase.Visible := CanRenameDpr;
+    Dlg.chkBase.Checked := False;
+    Dlg.chkBase.Caption := 'Переименовать .dpr, .res, .cfg, .dof по имени';
     Dlg.edName.Text := OldName;
     Dlg.edDir.Text := OldDir;
     Idx3 := Dlg.cbType.Items.IndexOf(OldType);
@@ -13579,6 +13729,11 @@ begin
     NewName := Trim(Dlg.edName.Text);
     NewDir := Trim(Dlg.edDir.Text);
     NewType := Dlg.cbType.Text;
+    // Только при том же типе: иначе дальше может понадобиться выбор
+    // другого главного файла, и отказ от него оставил бы переименование
+    // без записи в editor.ini
+    RenameDpr := CanRenameDpr and Dlg.chkBase.Checked and
+      (CompareText(NewType, OldType) = 0);
 
     // Папка inc - в раздел проекта сразу (переименование раздела ниже
     // переносит и её)
@@ -13679,9 +13834,29 @@ begin
       end;
     end;
 
+    // Главный файл .dpr со спутниками - под новое имя проекта. После
+    // Project options: они записаны в файлы со старым именем
+    if RenameDpr then
+    begin
+      OptLog := TStringList.Create;
+      try
+        if RenameDelphiMainFiles(OldTarget, NewName, OptLog, RenamedDpr) and
+           (CompareText(RenamedDpr, OldTarget) <> 0) then
+        begin
+          DprRenamed := True;
+          OldDprPath := OldTarget;
+          OldTarget := RenamedDpr;
+        end;
+        for LogIdx := 0 to OptLog.Count - 1 do
+          LogRaw('Project Properties: ' + OptLog[LogIdx]);
+      finally
+        OptLog.Free;
+      end;
+    end;
+
     // Имя, папка и тип не поменялись - писать в editor.ini нечего. Если
     // .dpr переписан (Title, формы), открытые вкладки перечитываются.
-    if (NewName = OldName) and not DirChanged and
+    if (NewName = OldName) and not DirChanged and not DprRenamed and
        (CompareText(NewType, OldType) = 0) then
     begin
       if OptionsChanged then
@@ -13731,6 +13906,25 @@ begin
   Prj := TProjectIni.Create(SettingsFileName, NewName);
   Keys := TStringList.Create;
   try
+    // Окна и вкладки: прежний .dpr открыт под старым именем
+    if DprRenamed then
+      for SectIdx := 0 to 1 do
+      begin
+        if SectIdx = 0 then
+          SectName := 'Windows'
+        else
+          SectName := 'Tabs';
+        Prj.ReadSection(SectName, Keys);
+        for KeyIdx := 0 to Keys.Count - 1 do
+        begin
+          Val := Prj.ReadString(SectName, Keys[KeyIdx], '');
+          FoundAt := Pos(AnsiUpperCase(OldDprPath), AnsiUpperCase(Val));
+          if FoundAt > 0 then
+            Prj.WriteString(SectName, Keys[KeyIdx],
+                            Copy(Val, 1, FoundAt - 1) + OldTarget +
+                            Copy(Val, FoundAt + Length(OldDprPath), MaxInt));
+        end;
+      end;
     // Окна и вкладки: значение - "<номер> <путь>", старая папка ищется
     // внутри значения
     if DirChanged then
