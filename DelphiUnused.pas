@@ -3,7 +3,10 @@ unit DelphiUnused;
 // Файлы папки проекта Delphi, которые не участвуют в сборке .dpr.
 // От .dpr по цепочке uses (и contains у .dpk) собираются модули проекта,
 // их .dfm, файлы из {$I}/{$INCLUDE} и {$R}/{$RESOURCE}, файлы самого
-// проекта (.res, .dof, .cfg, .dsk, .todo с именем .dpr). Все остальные
+// проекта (.res, .dof, .cfg, .dsk, .todo с именем .dpr). Кроме того,
+// остаются файлы и папки, имена которых встречаются в строках этих
+// исходников ('Bal.ini', 'getnumcom.dll', '\ReportTpl\', 'ArchTable1'):
+// к ним программа обращается при работе. Все остальные
 // файлы папки проекта и её подпапок - неиспользуемые, в том числе ini,
 // данные, dll, exe, картинки и документы: нужное для работы программы
 // пользователь возвращает сам. Не трогаются только .git и файлы git в
@@ -42,6 +45,8 @@ type
     FQueue: TStringList;          // пути как на диске, ещё не разобраны
     FSearchDirs: TStringList;     // относительные папки поиска модулей
     FDprUnits: TStringList;       // имя модуля = путь из 'in'
+    FRefNames: TStringList;       // имена из строк исходников (нижний регистр)
+    procedure AddRefNames(const AText: string);
     procedure ScanTree(const ARelDir: string);
     function IndexOfRel(const ARel: string): Integer;
     function NormRel(const ABaseRelDir, APath: string): string;
@@ -55,6 +60,7 @@ type
     destructor Destroy; override;
     procedure Run(const ADprRel: string);
     function IsMovable(const ARel: string): Boolean;
+    function IsReferenced(const ARel: string): Boolean;
     property AllReal: TStringList read FAllReal;
     property Used: TStringList read FUsed;
   end;
@@ -97,6 +103,9 @@ begin
   FQueue := TStringList.Create;
   FSearchDirs := TStringList.Create;
   FDprUnits := TStringList.Create;
+  FRefNames := TStringList.Create;
+  FRefNames.Sorted := True;
+  FRefNames.Duplicates := dupIgnore;
 end;
 
 destructor TUnusedScan.Destroy;
@@ -109,6 +118,7 @@ begin
   FQueue.Free;
   FSearchDirs.Free;
   FDprUnits.Free;
+  FRefNames.Free;
   inherited Destroy;
 end;
 
@@ -473,6 +483,7 @@ begin
                   not (Src[Pos0] in [#10, #13]) do
               Inc(Pos0);
             AddTok(Copy(Src, TokStart, Pos0 - TokStart), tkString);
+            AddRefNames(Copy(Src, TokStart, Pos0 - TokStart));
             Inc(Pos0);
           end;
         'A'..'Z', 'a'..'z', '_':
@@ -534,6 +545,62 @@ begin
   end;
 end;
 
+// Части строки между \ и / - возможные имена файлов и папок:
+// MyDir + '\ReportTpl\' + LangC -> 'reporttpl'; 'Bal.ini' -> 'bal.ini'
+procedure TUnusedScan.AddRefNames(const AText: string);
+var
+  Rest, Part: string;
+  SepPos: Integer;
+begin
+  Rest := SameDirSep(AText);
+  while Rest <> '' do
+  begin
+    SepPos := Pos(PathDelim, Rest);
+    if SepPos = 0 then
+      SepPos := Length(Rest) + 1;
+    Part := Trim(Copy(Rest, 1, SepPos - 1));
+    Delete(Rest, 1, SepPos);
+    if (Length(Part) >= 2) and (Pos('*', Part) = 0) and (Pos('?', Part) = 0) then
+      FRefNames.Add(AnsiLowerCase(Part));
+  end;
+end;
+
+// Файл нужен программе при работе: его имя (с расширением или без - для
+// 'ArchTable1' -> ArchTable1.db) или имя одной из его папок есть в строках
+function TUnusedScan.IsReferenced(const ARel: string): Boolean;
+var
+  Rest, Part, FileName, BareName: string;
+  SepPos: Integer;
+begin
+  Result := False;
+  FileName := AnsiLowerCase(ExtractFileName(ARel));
+  // без расширения - только простое имя: 'ArchTable1' -> ArchTable1.db, но
+  // 'Unit0.pas' из uses не делает нужным Unit0.pas.bak
+  BareName := ChangeFileExt(FileName, '');
+  if Pos('.', BareName) > 0 then
+    BareName := '';
+  if (FRefNames.IndexOf(FileName) >= 0) or
+     ((BareName <> '') and (FRefNames.IndexOf(BareName) >= 0)) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Rest := AnsiLowerCase(ExtractFilePath(ARel));
+  while Rest <> '' do
+  begin
+    SepPos := Pos(PathDelim, Rest);
+    if SepPos = 0 then
+      SepPos := Length(Rest) + 1;
+    Part := Copy(Rest, 1, SepPos - 1);
+    Delete(Rest, 1, SepPos);
+    if (Part <> '') and (FRefNames.IndexOf(Part) >= 0) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
 procedure TUnusedScan.Run(const ADprRel: string);
 begin
   ScanTree('');
@@ -576,7 +643,8 @@ begin
     Scan.Run(RelOfDpr(ADpr));
     for FileIdx := 0 to Scan.AllReal.Count - 1 do
       if Scan.IsMovable(Scan.AllReal[FileIdx]) and
-         (Scan.Used.IndexOf(AnsiLowerCase(Scan.AllReal[FileIdx])) < 0) then
+         (Scan.Used.IndexOf(AnsiLowerCase(Scan.AllReal[FileIdx])) < 0) and
+         not Scan.IsReferenced(Scan.AllReal[FileIdx]) then
         AUnused.Add(Scan.AllReal[FileIdx]);
   finally
     Scan.Free;
@@ -595,7 +663,8 @@ begin
   try
     Scan.Run(RelOfDpr(ADpr));
     for FileIdx := 0 to Scan.AllReal.Count - 1 do
-      if Scan.Used.IndexOf(AnsiLowerCase(Scan.AllReal[FileIdx])) >= 0 then
+      if (Scan.Used.IndexOf(AnsiLowerCase(Scan.AllReal[FileIdx])) >= 0) or
+         Scan.IsReferenced(Scan.AllReal[FileIdx]) then
         AUsed.Add(Scan.AllReal[FileIdx]);
   finally
     Scan.Free;
