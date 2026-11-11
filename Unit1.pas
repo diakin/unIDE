@@ -1364,6 +1364,7 @@ type
     procedure GitStashDropClick(Sender: TObject);
     procedure GitHiddenClick(Sender: TObject);
     procedure GitTrackedClick(Sender: TObject);
+    procedure GitSyncLocalOnlyClick(Sender: TObject);
     procedure GitUpdateFromDefaultClick(Sender: TObject);
     procedure GitMergeClick(Sender: TObject);
     procedure GitMergeIntoClick(Sender: TObject);
@@ -79875,6 +79876,8 @@ begin
     // .dfm: 'репозитории, которые подходят под .gitignore: оставить (исключение в ' +
     // .dfm: '.gitignore) или убрать из репозитория (git rm --cached)',
     // .dfm: GitTrackedClick);
+  // .dfm: AddItem(BranchMenu, 'Синхронизировать...', 'Файлы рабочей папки, ' +
+    // .dfm: 'которых нет в ветке на сервере, - копией в папку рядом', GitSyncLocalOnlyClick);
   // .dfm: AddItem(BranchMenu, '-', '', nil);
   // .dfm: AddItem(BranchMenu, 'Update from Default Branch', 'Влить в текущую ' +
     // .dfm: 'ветку основную ветку сервера (git merge origin/<основная>)',
@@ -83133,6 +83136,146 @@ begin
   if Changed then
     GitSetHint('.gitignore / список файлов репозитория изменены - ' +
       'закоммитьте (Commit...)', False);
+end;
+
+// ---------------------------------------------------------------------------
+//  Синхронизировать: файлы рабочей папки, которых нет в ветке на сервере
+//  (origin/<ветка>, после fetch), копируются в папку рядом с репозиторием
+//  <имя>_not_on_github_<дата_время> с теми же подпапками. Рабочая папка не
+//  меняется; папка .git не просматривается. Что нужно - вернуть вручную
+// ---------------------------------------------------------------------------
+procedure TForm1.GitSyncLocalOnlyClick(Sender: TObject);
+const
+  MaxLoggedFiles = 300;
+var
+  Git, Repo, RepoDir, Upstream, DestDir, RelPath, SrcFile, DestFile: string;
+  Output: WideString;
+  RemoteFiles: TStringList;
+  EntryStart, EntryEnd, CopiedCount, FailedCount, ScannedCount: Integer;
+  Cancelled: Boolean;
+
+  procedure CopyLocalOnly(const ARelDir: string);
+  var
+    SearchRec: TSearchRec;
+    FoundIdx: Integer;
+  begin
+    if FindFirst(RepoDir + ARelDir + '*', faAnyFile, SearchRec) <> 0 then
+      Exit;
+    try
+      repeat
+        if (SearchRec.Name = '.') or (SearchRec.Name = '..') then
+          Continue;
+        RelPath := ARelDir + SearchRec.Name;
+        if (SearchRec.Attr and faDirectory) <> 0 then
+        begin
+          if (ARelDir = '') and SameText(SearchRec.Name, '.git') then
+            Continue;
+          CopyLocalOnly(RelPath + '\');
+        end
+        else
+        begin
+          Inc(ScannedCount);
+          if (ScannedCount mod 200) = 0 then
+          begin
+            Application.ProcessMessages;
+            if Application.Active and (GetAsyncKeyState(VK_ESCAPE) < 0) then
+              Cancelled := True;
+          end;
+          if not RemoteFiles.Find(RelPath, FoundIdx) then
+          begin
+            SrcFile := RepoDir + RelPath;
+            DestFile := DestDir + RelPath;
+            ForceDirectories(ExtractFileDir(DestFile));
+            if CopyFile(PChar(SrcFile), PChar(DestFile), False) then
+            begin
+              Inc(CopiedCount);
+              if CopiedCount <= MaxLoggedFiles then
+                LogGit('  ' + RelPath);
+            end
+            else
+            begin
+              Inc(FailedCount);
+              LogGit('  не скопирован: ' + RelPath + ' - ' +
+                SysErrorMessage(GetLastError), clRed);
+            end;
+          end;
+        end;
+      until Cancelled or (FindNext(SearchRec) <> 0);
+    finally
+      FindClose(SearchRec);
+    end;
+  end;
+
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  RepoDir := IncludeTrailingPathDelimiter(StringReplace(Repo, '/', '\',
+    [rfReplaceAll]));
+  Upstream := GitQuery(Git, Repo,
+    'rev-parse --abbrev-ref --symbolic-full-name @{u}');
+  if Upstream = '' then
+  begin
+    ShowGitLog;
+    LogGit('Git: у текущей ветки нет ветки на сервере - сравнивать не с ' +
+            'чем', clRed);
+    Exit;
+  end;
+  // Свежий список файлов с сервера
+  if GitLongOp(Git, Repo, 'fetch origin') <> 0 then
+    Exit;
+  if GitRunIn(Git, Repo, 'ls-tree -r -z --name-only ' + Upstream, False,
+     Output) <> 0 then
+  begin
+    ShowGitLog;
+    LogGit('Git: список файлов ветки ' + Upstream + ' не прочитать ' +
+            '(git ls-tree)', clRed);
+    Exit;
+  end;
+  RemoteFiles := TStringList.Create;
+  try
+    RemoteFiles.CaseSensitive := False; // Windows: регистр имён не важен
+    EntryStart := 1;
+    while EntryStart <= Length(Output) do
+    begin
+      EntryEnd := EntryStart;
+      while (EntryEnd <= Length(Output)) and (Output[EntryEnd] <> #0) do
+        Inc(EntryEnd);
+      if EntryEnd > EntryStart then
+        RemoteFiles.Add(StringReplace(string(Copy(Output, EntryStart,
+          EntryEnd - EntryStart)), '/', '\', [rfReplaceAll]));
+      EntryStart := EntryEnd + 1;
+    end;
+    RemoteFiles.Sorted := True;
+
+    DestDir := ExtractFilePath(ExcludeTrailingPathDelimiter(RepoDir)) +
+      ExtractFileName(ExcludeTrailingPathDelimiter(RepoDir)) +
+      '_not_on_github_' + FormatDateTime('yyyymmdd_hhnnss', Now) + '\';
+    ShowGitLog;
+    LogGitBreak;
+    LogGit('Синхронизировать: файлы, которых нет в ' + Upstream + ' (' +
+      IntToStr(RemoteFiles.Count) + ' файлов на сервере), копируются в ' +
+      DestDir);
+    CopiedCount := 0;
+    FailedCount := 0;
+    ScannedCount := 0;
+    Cancelled := False;
+    CopyLocalOnly('');
+    if CopiedCount > MaxLoggedFiles then
+      LogGit('  ... и ещё ' + IntToStr(CopiedCount - MaxLoggedFiles));
+    if Cancelled then
+      LogGit('Прервано (Esc). Скопировано ' + IntToStr(CopiedCount), clRed)
+    else if (CopiedCount = 0) and (FailedCount = 0) then
+      LogGit('Все ' + IntToStr(ScannedCount) + ' локальных файлов есть на ' +
+        'сервере - копировать нечего', TColor($008000))
+    else
+      LogGit('Просмотрено ' + IntToStr(ScannedCount) + ', скопировано ' +
+        IntToStr(CopiedCount) + ', ошибок ' + IntToStr(FailedCount),
+        TColor($008000));
+    if CopiedCount > 0 then
+      ShellOpen(Handle, DestDir);
+  finally
+    RemoteFiles.Free;
+  end;
 end;
 
 // ---------------------------------------------------------------------------
