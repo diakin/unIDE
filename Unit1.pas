@@ -1150,6 +1150,7 @@ type
     procedure ArdSimHidden(Sender: TObject);
     procedure ArdSimViewFiles(Sender: TObject);
     procedure ArdDataTimerTick(Sender: TObject);
+    procedure ArdMatchSetTop(AOnTop: Boolean);
     procedure ArdSimNeedSketch(Sender: TObject);
     function  ArdSimSaveFiles(Sender: TObject): Boolean;
     procedure ArdSimLog(Sender: TObject; const AText: string);
@@ -2214,6 +2215,7 @@ type
     // Просмотр файлов замеров (ArdSimViewFiles): опрос Test.dat под
     // курсором Match list, пока открыто окно поиска или Match list
     FArdDataTimer: TTimer;
+    FArdMatchTop: Boolean;   // Match list поверх всех окон на время просмотра
     // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
     // Program reset; создаются в FormCreate
     btnEmuBuild: TUiIconButton;
@@ -25167,6 +25169,14 @@ begin
       // размер и время
       if FMatchRows[Idx].HitCount < 0 then
       begin
+        // строка под курсором - цветом выделения: при просмотре Test.dat
+        // эмулятором видно, какой файл показан
+        if gdSelected in State then
+        begin
+          Cnv.Brush.Color := clHighlight;
+          Cnv.FillRect(Rect);
+          Cnv.Font.Color := clHighlightText;
+        end;
         Cnv.Brush.Style := bsClear;
         if ACol = 1 then
           Cnv.TextOut(Rect.Left + 3, Rect.Top + 1, FMatchRows[Idx].FileName +
@@ -29784,10 +29794,31 @@ begin
     FArdDataTimer.OnTimer := ArdDataTimerTick;
   end;
   FArdDataTimer.Enabled := True;
+  ArdMatchSetTop(True);
+end;
+
+// Match list поверх всех окон (Андрей 12.11: в режиме просмотра Test.dat
+// список не должен уходить под окно эмулятора и редактор). Флаг окна
+// WS_EX_TOPMOST остаётся и у спрятанного окна, поэтому ставится сразу
+procedure TForm1.ArdMatchSetTop(AOnTop: Boolean);
+begin
+  if AOnTop = FArdMatchTop then
+    Exit;
+  if AOnTop then
+    EnsureMatchForm
+  else if FMatchForm = nil then
+    Exit;
+  FArdMatchTop := AOnTop;
+  if AOnTop then
+    SetWindowPos(FMatchForm.Handle, HWND_TOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE)
+  else
+    SetWindowPos(FMatchForm.Handle, HWND_NOTOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE);
 end;
 
 // Test.dat в строке под курсором Match list - эмулятору. Окно поиска и
-// Match list оба закрыты - опрос останавливается
+// Match list оба закрыты - опрос останавливается, Match list - обычное окно
 procedure TForm1.ArdDataTimerTick(Sender: TObject);
 var
   RowIdx: Integer;
@@ -29799,6 +29830,7 @@ begin
   begin
     if FArdDataTimer <> nil then
       FArdDataTimer.Enabled := False;
+    ArdMatchSetTop(False);
     Exit;
   end;
   if (FMatchForm = nil) or not FMatchForm.Visible or (FMatchGrid = nil) then
