@@ -1151,6 +1151,8 @@ type
     procedure ArdSimViewFiles(Sender: TObject);
     procedure ArdDataTimerTick(Sender: TObject);
     procedure ArdMatchSetTop(AOnTop: Boolean);
+    function ArdMatchRowPx(ARowIdx: Integer): Integer;
+    procedure ArdPlaceMatchForm;
     procedure ArdSimNeedSketch(Sender: TObject);
     function  ArdSimSaveFiles(Sender: TObject): Boolean;
     procedure ArdSimLog(Sender: TObject; const AText: string);
@@ -2215,6 +2217,7 @@ type
     // Просмотр файлов замеров (ArdSimViewFiles): опрос Test.dat под
     // курсором Match list, пока открыто окно поиска или Match list
     FArdDataTimer: TTimer;
+    FArdMatchTextPx: Integer; // самая широкая строка-файл Match list при просмотре Test.dat
     FArdMatchTop: Boolean;   // Match list поверх всех окон на время просмотра
     // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
     // Program reset; создаются в FormCreate
@@ -24796,6 +24799,11 @@ var
 begin
   if FMatchForm = nil then
     Exit;
+  if FArdMatchTop then
+  begin
+    ArdPlaceMatchForm;
+    Exit;
+  end;
 
   FMatchForm.ClientWidth := MatchFormWidth;
   FMatchForm.Top := Top;
@@ -26683,6 +26691,10 @@ begin
   finally
     FindClose(Found);
   end;
+  // просмотр Test.dat: путь не помещается - окно шире
+  if FArdMatchTop and (FMatchForm <> nil) and FMatchForm.Visible and
+     (ArdMatchRowPx(RowIdx) > FArdMatchTextPx) then
+    ArdPlaceMatchForm;
 end;
 
 // Искать файл на диске: обход нашёл файл - сразу строкой в Match list
@@ -29810,11 +29822,71 @@ begin
     Exit;
   FArdMatchTop := AOnTop;
   if AOnTop then
+  begin
     SetWindowPos(FMatchForm.Handle, HWND_TOPMOST, 0, 0, 0, 0,
-                 SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE)
+                 SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE);
+    if FMatchForm.Visible then
+      ArdPlaceMatchForm;
+  end
   else
     SetWindowPos(FMatchForm.Handle, HWND_NOTOPMOST, 0, 0, 0, 0,
                  SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE);
+end;
+
+// Ширина строки-файла Match list (путь, размер, время) так, как её рисует
+// MatchGridDrawCell; 0 - строка не файл
+function TForm1.ArdMatchRowPx(ARowIdx: Integer): Integer;
+var
+  Cnv: TCanvas;
+begin
+  Result := 0;
+  if (FMatchForm = nil) or (FMatchGrid = nil) or (ARowIdx < 0) or
+     (ARowIdx > High(FMatchRows)) or (FMatchRows[ARowIdx].Kind <> mrkGroup) or
+     (FMatchRows[ARowIdx].HitCount >= 0) then
+    Exit;
+  Cnv := FMatchForm.Canvas;
+  Cnv.Font := FMatchGrid.Font;
+  Cnv.Font.Style := [fsBold];
+  Result := Cnv.TextWidth(FMatchRows[ARowIdx].FileName + '      ' +
+                          EdUiText(FMatchRows[ARowIdx].Text));
+end;
+
+// Match list при просмотре Test.dat (Андрей 12.11): высота - пол экрана,
+// ширина - чтобы пути не обрезались, место - по центру части экрана левее
+// окна эмулятора, чтобы список его не закрывал
+procedure TForm1.ArdPlaceMatchForm;
+var
+  AreaLeft, AreaRight, RowIdx, RowPx, NeedWidth: Integer;
+begin
+  if (FMatchForm = nil) or (FMatchGrid = nil) then
+    Exit;
+  AreaLeft := Screen.WorkAreaLeft;
+  AreaRight := Screen.WorkAreaLeft + Screen.WorkAreaWidth;
+  if (FArdSimWin <> nil) and FArdSimWin.Visible and
+     (FArdSimWin.Left > AreaLeft + 200) and (FArdSimWin.Left < AreaRight) then
+    AreaRight := FArdSimWin.Left;
+
+  FArdMatchTextPx := 0;
+  for RowIdx := 0 to High(FMatchRows) do
+  begin
+    RowPx := ArdMatchRowPx(RowIdx);
+    if RowPx > FArdMatchTextPx then
+      FArdMatchTextPx := RowPx;
+  end;
+
+  // колонки 0 и 2 и запас 22 под полосу прокрутки - как в MatchFormResize
+  NeedWidth := FArdMatchTextPx + 12 + FMatchGrid.ColWidths[0] +
+               FMatchGrid.ColWidths[2] + 22;
+  if NeedWidth < MatchFormWidth then
+    NeedWidth := MatchFormWidth;
+  FMatchForm.ClientWidth := NeedWidth;
+  if FMatchForm.Width > AreaRight - AreaLeft then
+    FMatchForm.Width := AreaRight - AreaLeft;
+  FMatchForm.Height := Screen.WorkAreaHeight div 2;
+  FMatchForm.Left := AreaLeft + (AreaRight - AreaLeft - FMatchForm.Width) div 2;
+  FMatchForm.Top := Screen.WorkAreaTop +
+                    (Screen.WorkAreaHeight - FMatchForm.Height) div 2;
+  MatchFormResize(nil);
 end;
 
 // Test.dat в строке под курсором Match list - эмулятору. Окно поиска и
