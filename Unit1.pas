@@ -1148,6 +1148,11 @@ type
     function MakeEmuButton(const AHint: string; ATag: Integer): TUiIconButton;
     procedure ArdSimPlaced(Sender: TObject);
     procedure ArdSimHidden(Sender: TObject);
+    procedure ArdSimViewFiles(Sender: TObject);
+    procedure ArdDataTimerTick(Sender: TObject);
+    procedure ArdMatchSetTop(AOnTop: Boolean);
+    function ArdMatchRowPx(ARowIdx: Integer): Integer;
+    procedure ArdPlaceMatchForm;
     procedure ArdSimNeedSketch(Sender: TObject);
     function  ArdSimSaveFiles(Sender: TObject): Boolean;
     procedure ArdSimLog(Sender: TObject; const AText: string);
@@ -1493,6 +1498,7 @@ type
     FGitOpStart: string;
     FGitBehind: Integer;
     FGitBusy: Boolean;
+    FGitLocalRetry: Boolean;   // повтор команды из окна «незакоммиченные изменения»
     FGitCancel: Boolean;
     FGitBranchFill: Boolean;
     FGitIniLoaded: Boolean;
@@ -2208,6 +2214,11 @@ type
     FArdWhereTick: Cardinal;
     FArdWhereLevel: Integer;
     FArdSimWasRunning: Boolean;   // для ArdSimStateChange: запуск эмулятора
+    // Просмотр файлов замеров (ArdSimViewFiles): опрос Test.dat под
+    // курсором Match list, пока открыто окно поиска или Match list
+    FArdDataTimer: TTimer;
+    FArdMatchTextPx: Integer; // самая широкая строка-файл Match list при просмотре Test.dat
+    FArdMatchTop: Boolean;   // Match list поверх всех окон на время просмотра
     // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
     // Program reset; создаются в FormCreate
     btnEmuBuild: TUiIconButton;
@@ -3105,6 +3116,7 @@ type
     procedure BookmarkItemClick(Sender: TObject);
     procedure UpdatePathBar;
     procedure Status2Resize(Sender: TObject);
+    procedure Panel2SetHeight(NewHeight: Integer);
     procedure JumpToBookmark(WinIdx, BmIdx: Integer; Remember: Boolean);
     procedure PushBmHistory(WinIdx, BmIdx: Integer);
     procedure BmHistRemoveAt(HistIdx: Integer);
@@ -3601,6 +3613,8 @@ type
     procedure GitRemoteRefs(const AGit, ARepo: string; AList: TStringList);
     procedure GitShowFetched(const AGit, ARepo: string;
       ABefore, AAfter: TStringList);
+    function  GitOfferLocalChanges(const AGit, ARepo, AArgs: string;
+                         const AOutput: WideString; AResult: Integer): Integer;
     function  GitExplain(const AArgs: string; const AOutput: WideString;
                          AExitCode: Integer; var AIsError: Boolean): string;
     procedure GitSetHint(const AText: string; AIsError: Boolean);
@@ -8581,6 +8595,9 @@ var
   SavedLeft, SavedTop, SavedWidth, SavedHeight: Integer;
   RectVal, Desk, Tmp: TRect;
 begin
+  // При запуске окно - во весь экран всегда (Андрей 12.11), сохранённое
+  // положение - размер окна после "Восстановить"
+  try
   SavedWidth := Ini.ReadInteger('MainForm', 'Width', 0);
   SavedHeight := Ini.ReadInteger('MainForm', 'Height', 0);
   if (SavedWidth < 200) or (SavedHeight < 150) then
@@ -8602,8 +8619,7 @@ begin
 
   //  Position := poDesigned; // иначе VCL сам сдвинет окно при показе
   SetBounds(SavedLeft, SavedTop, SavedWidth, SavedHeight);
-
-  if Ini.ReadBool('MainForm', 'Maximized', False) then
+  finally
     {$IFDEF FPC}
     // LCL: развернуть, когда окно уже показано. Окно, развёрнутое до
     // показа, на Windows 7 открывалось не во весь экран и без изменения
@@ -8612,6 +8628,7 @@ begin
     {$ELSE}
     WindowState := wsMaximized;
     {$ENDIF}
+  end;
 end;
 
 // editor.ini - одной записью (TBufIniFile): через TIniFile каждый ключ
@@ -19331,6 +19348,26 @@ begin
   end;
 end;
 
+// Высота полосы пути (Panel2) - над Splitter1, как в форме. Порядок
+// панелей alBottom в LCL идёт по нижнему краю: Panel2, выросшая от
+// прежнего Top вниз, оказывалась ниже сплиттера, и сплиттер тянул её, а не
+// панель лога (лог не менял высоту). Нижний край Panel2 - верх сплиттера
+procedure TForm1.Panel2SetHeight(NewHeight: Integer);
+begin
+  if Panel2 = nil then
+    Exit;
+  if (Splitter1 <> nil) and (Splitter1.Parent = Panel2.Parent) and
+     Splitter1.Visible then
+  begin
+    if (Panel2.Height <> NewHeight) or
+       (Panel2.Top + Panel2.Height > Splitter1.Top) then
+      Panel2.SetBounds(Panel2.Left, Splitter1.Top - NewHeight, Panel2.Width,
+        NewHeight);
+  end
+  else if Panel2.Height <> NewHeight then
+    Panel2.Height := NewHeight;
+end;
+
 // Панель пути занимает всё, что осталось от размера и даты
 procedure TForm1.Status2Resize(Sender: TObject);
 var
@@ -19340,9 +19377,8 @@ begin
     Exit;
   // Полоса пути (Panel2) - по высоте строки состояния: в сборке Lazarus
   // высоту FStatus2 задаёт окно Windows уже после FormCreate
-  if (Panel2 <> nil) and (FStatus2.Parent = Panel2) and
-     (Panel2.Height <> FStatus2.Height) then
-    Panel2.Height := FStatus2.Height;
+  if (Panel2 <> nil) and (FStatus2.Parent = Panel2) then
+    Panel2SetHeight(FStatus2.Height);
 
   WidthPx := FStatus2.Width - FStatus2.Panels[1].Width - FStatus2.Panels[2].Width - 8;
   if WidthPx < 80 then
@@ -24766,6 +24802,11 @@ var
 begin
   if FMatchForm = nil then
     Exit;
+  if FArdMatchTop then
+  begin
+    ArdPlaceMatchForm;
+    Exit;
+  end;
 
   FMatchForm.ClientWidth := MatchFormWidth;
   FMatchForm.Top := Top;
@@ -25139,10 +25180,18 @@ begin
       // размер и время
       if FMatchRows[Idx].HitCount < 0 then
       begin
+        // строка под курсором - цветом выделения: при просмотре Test.dat
+        // эмулятором видно, какой файл показан
+        if gdSelected in State then
+        begin
+          Cnv.Brush.Color := clHighlight;
+          Cnv.FillRect(Rect);
+          Cnv.Font.Color := clHighlightText;
+        end;
         Cnv.Brush.Style := bsClear;
         if ACol = 1 then
           Cnv.TextOut(Rect.Left + 3, Rect.Top + 1, FMatchRows[Idx].FileName +
-                      '      ' + EdUiText(FMatchRows[Idx].Text));
+                      '      ' + FMatchRows[Idx].Text);
         Cnv.Brush.Style := bsSolid;
         Exit;
       end;
@@ -25279,6 +25328,12 @@ begin
   end;
 end;
 
+// Файл замера для эмулятора: Test.dat (BalA-190, программа на ПК)
+function ArdIsDataFile(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileName(AFileName), 'Test.dat');
+end;
+
 procedure TForm1.MatchGridMouseDown(Sender: TObject; Button: TMouseButton;
                                     Shift: TShiftState; PosX, PosY: Integer);
 var
@@ -25304,8 +25359,22 @@ begin
   // По заголовку сворачиваем группу целиком, а не только по квадратику:
   // попасть в девять пикселей мышью труднее, чем в строку
   if (FMatchRows[Idx].Kind = mrkGroup) and (FMatchRows[Idx].HitCount < 0) then
-    // Искать файл: строка-файл - открыть файл
-    OpenNamedFile(FMatchRows[Idx].FileName)
+  begin
+    // двойной щелчок по строке-файлу - путь к файлу в буфер обмена (Андрей 12.11)
+    if ssDouble in Shift then
+    begin
+      Clipboard.AsText := FMatchRows[Idx].FileName;
+      StatusBar1.SimpleText := 'Путь скопирован в буфер обмена: ' +
+                               FMatchRows[Idx].FileName;
+      StatusBar1.SimplePanel := True;
+      Exit;
+    end;
+    // Искать файл: строка-файл - открыть файл. Test.dat при просмотре
+    // замеров (кнопка эмулятора) - только эмулятору (ArdDataTimerTick)
+    if not ((FArdDataTimer <> nil) and FArdDataTimer.Enabled and
+            ArdIsDataFile(FMatchRows[Idx].FileName)) then
+      OpenNamedFile(FMatchRows[Idx].FileName);
+  end
   else if FMatchRows[Idx].Kind = mrkGroup then
     ToggleMatchGroup(Idx)
   else
@@ -26634,6 +26703,10 @@ begin
   finally
     FindClose(Found);
   end;
+  // просмотр Test.dat: путь не помещается - окно шире
+  if FArdMatchTop and (FMatchForm <> nil) and FMatchForm.Visible and
+     (ArdMatchRowPx(RowIdx) > FArdMatchTextPx) then
+    ArdPlaceMatchForm;
 end;
 
 // Искать файл на диске: обход нашёл файл - сразу строкой в Match list
@@ -28543,7 +28616,7 @@ begin
   // Полоса пути (Panel2) - ровно по высоте своей строки состояния: лишняя
   // высота оставалась пустой полосой между горизонтальной прокруткой
   // редактора и путём файла
-  Panel2.Height := FStatus2.Height;
+  Panel2SetHeight(FStatus2.Height);
   Realign;
 
 
@@ -29568,6 +29641,7 @@ begin
   FArdSim.OnDbgNeedBreaks := ArdDbgNeedBreaks;
   FArdSim.OnScreenWhere := ArdSimScreenWhere;
   FArdSim.OnCtlMoved := ArdSimCtlMoved;
+  FArdSim.OnViewFiles := ArdSimViewFiles;
   FArdSimWin.OnPlaced := ArdSimPlaced;
   FArdSimWin.OnHidden := ArdSimHidden;
   FArdSimKeepWidth := -1;
@@ -29710,6 +29784,147 @@ begin
   FRightPanel.Width := FArdSimKeepWidth;
   FArdSimKeepWidth := -1;
   FormResizeEvent(Self);
+end;
+
+// Кнопка "View files Test.dat" панели "Сигналы" эмулятора (просьба Андрея
+// 12.11): окно "Искать файл - по маскам, на диске" (Find In Files в режиме
+// поиска файлов), в поле масок добавлен test.dat. Найденные файлы - в
+// Match list; Test.dat под курсором Match list уходит эмулятору
+// (ArdDataTimerTick), щелчок по нему не открывает файл в редакторе
+procedure TForm1.ArdSimViewFiles(Sender: TObject);
+var
+  Dlg: TDlgFifDisk;
+  Masks: string;
+begin
+  FifShowWindow(False, True);
+  if FFifDlg = nil then
+    Exit;
+  Dlg := TDlgFifDisk(FFifDlg);
+  if not FFifRunning and not FFifListing then
+  begin
+    Masks := Trim(Dlg.edMask.Text);
+    if Pos(';test.dat;', ';' + LowerCase(StringReplace(Masks, ' ', '',
+           [rfReplaceAll])) + ';') = 0 then
+      if Masks = '' then
+        Masks := 'test.dat'
+      else
+        Masks := Masks + ';test.dat';
+    Dlg.edMask.Text := Masks;
+  end;
+  if FArdDataTimer = nil then
+  begin
+    FArdDataTimer := TTimer.Create(Self);
+    FArdDataTimer.Interval := 300;
+    FArdDataTimer.OnTimer := ArdDataTimerTick;
+  end;
+  FArdDataTimer.Enabled := True;
+  ArdMatchSetTop(True);
+end;
+
+// Match list поверх всех окон (Андрей 12.11: в режиме просмотра Test.dat
+// список не должен уходить под окно эмулятора и редактор). Флаг окна
+// WS_EX_TOPMOST остаётся и у спрятанного окна, поэтому ставится сразу
+procedure TForm1.ArdMatchSetTop(AOnTop: Boolean);
+begin
+  if AOnTop = FArdMatchTop then
+    Exit;
+  if AOnTop then
+    EnsureMatchForm
+  else if FMatchForm = nil then
+    Exit;
+  FArdMatchTop := AOnTop;
+  if AOnTop then
+  begin
+    SetWindowPos(FMatchForm.Handle, HWND_TOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE);
+    if FMatchForm.Visible then
+      ArdPlaceMatchForm;
+  end
+  else
+    SetWindowPos(FMatchForm.Handle, HWND_NOTOPMOST, 0, 0, 0, 0,
+                 SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE);
+end;
+
+// Ширина строки-файла Match list (путь, размер, время) так, как её рисует
+// MatchGridDrawCell; 0 - строка не файл
+function TForm1.ArdMatchRowPx(ARowIdx: Integer): Integer;
+var
+  Cnv: TCanvas;
+begin
+  Result := 0;
+  if (FMatchForm = nil) or (FMatchGrid = nil) or (ARowIdx < 0) or
+     (ARowIdx > High(FMatchRows)) or (FMatchRows[ARowIdx].Kind <> mrkGroup) or
+     (FMatchRows[ARowIdx].HitCount >= 0) then
+    Exit;
+  Cnv := FMatchForm.Canvas;
+  Cnv.Font := FMatchGrid.Font;
+  Cnv.Font.Style := [fsBold];
+  Result := Cnv.TextWidth(FMatchRows[ARowIdx].FileName + '      ' +
+                          FMatchRows[ARowIdx].Text);
+end;
+
+// Match list при просмотре Test.dat (Андрей 12.11): высота - пол экрана,
+// ширина - чтобы пути не обрезались, место - по центру части экрана левее
+// окна эмулятора, чтобы список его не закрывал
+procedure TForm1.ArdPlaceMatchForm;
+var
+  AreaLeft, AreaRight, RowIdx, RowPx, NeedWidth: Integer;
+begin
+  if (FMatchForm = nil) or (FMatchGrid = nil) then
+    Exit;
+  AreaLeft := Screen.WorkAreaLeft;
+  AreaRight := Screen.WorkAreaLeft + Screen.WorkAreaWidth;
+  if (FArdSimWin <> nil) and FArdSimWin.Visible and
+     (FArdSimWin.Left > AreaLeft + 200) and (FArdSimWin.Left < AreaRight) then
+    AreaRight := FArdSimWin.Left;
+
+  FArdMatchTextPx := 0;
+  for RowIdx := 0 to High(FMatchRows) do
+  begin
+    RowPx := ArdMatchRowPx(RowIdx);
+    if RowPx > FArdMatchTextPx then
+      FArdMatchTextPx := RowPx;
+  end;
+
+  // колонки 0 и 2 и запас 22 под полосу прокрутки - как в MatchFormResize
+  NeedWidth := FArdMatchTextPx + 12 + FMatchGrid.ColWidths[0] +
+               FMatchGrid.ColWidths[2] + 22;
+  if NeedWidth < MatchFormWidth then
+    NeedWidth := MatchFormWidth;
+  FMatchForm.ClientWidth := NeedWidth;
+  if FMatchForm.Width > AreaRight - AreaLeft then
+    FMatchForm.Width := AreaRight - AreaLeft;
+  FMatchForm.Height := Screen.WorkAreaHeight div 2;
+  FMatchForm.Left := AreaLeft + (AreaRight - AreaLeft - FMatchForm.Width) div 2;
+  FMatchForm.Top := Screen.WorkAreaTop +
+                    (Screen.WorkAreaHeight - FMatchForm.Height) div 2;
+  MatchFormResize(nil);
+end;
+
+// Test.dat в строке под курсором Match list - эмулятору. Окно поиска и
+// Match list оба закрыты - опрос останавливается, Match list - обычное окно
+procedure TForm1.ArdDataTimerTick(Sender: TObject);
+var
+  RowIdx: Integer;
+  FileName: string;
+begin
+  if (FArdSim = nil) or
+     (((FFifDlg = nil) or not FFifDlg.Visible) and
+      ((FMatchForm = nil) or not FMatchForm.Visible)) then
+  begin
+    if FArdDataTimer <> nil then
+      FArdDataTimer.Enabled := False;
+    ArdMatchSetTop(False);
+    Exit;
+  end;
+  if (FMatchForm = nil) or not FMatchForm.Visible or (FMatchGrid = nil) then
+    Exit;
+  RowIdx := FMatchGrid.Row - 1;
+  if (RowIdx < 0) or (RowIdx > High(FMatchRows)) then
+    Exit;
+  FileName := FMatchRows[RowIdx].FileName;
+  if ArdIsDataFile(FileName) then
+    FArdSim.ShowDataFile(FileName);
 end;
 
 // Перед сборкой и запуском: скетч - цель сборки Arduino, g++ - свой MinGW
@@ -77235,6 +77450,105 @@ begin
     else
       BusyNote('git: ' + HintText, True, 8000);
   end;
+  // Checkout / pull остановлен незакоммиченными изменениями - окно с
+  // выбором: Commit, Stash и повторить, Discard и повторить
+  if (Result <> 0) and not FGitLocalRetry then
+    Result := GitOfferLocalChanges(AGit, ARepo, AArgs, Output, Result);
+end;
+
+// Команда AArgs остановлена: "Your local changes to the following files
+// would be overwritten" (файлы - строками с табуляцией в выводе). Окно:
+//   Commit...          - окно Commit (команда не повторяется);
+//   Stash и повторить  - изменения этих файлов в stash, команда ещё раз;
+//                        вернуть - Branch - Restore Stash;
+//   Discard и повторить - изменения отменяются (с вопросом), команда ещё раз;
+//   Отмена.
+// Перед Stash и Discard с файлов снимается skip-worktree: с ним git не
+// видит изменений, и ни stash, ни checkout HEAD их не берут.
+// Ответ - код выхода (повтора или прежний AResult)
+function TForm1.GitOfferLocalChanges(const AGit, ARepo, AArgs: string;
+  const AOutput: WideString; AResult: Integer): Integer;
+var
+  OutLower, NameList, PathArgs: string;
+  Lines, Files: TStringList;
+  LineIdx, Answer: Integer;
+  Output: WideString;
+  Changes: TGitChanges;
+begin
+  Result := AResult;
+  OutLower := AnsiLowerCase(string(AOutput));
+  if (Pos('would be overwritten by', OutLower) = 0) or
+     (Pos('untracked working tree files', OutLower) > 0) then
+    Exit;
+  Lines := TStringList.Create;
+  Files := TStringList.Create;
+  try
+    GitSplitLines(AOutput, Lines);
+    for LineIdx := 0 to Lines.Count - 1 do
+      if (Lines[LineIdx] <> '') and (Lines[LineIdx][1] = #9) and
+         (Trim(Lines[LineIdx]) <> '') then
+        Files.Add(Trim(Lines[LineIdx]));
+    if Files.Count = 0 then
+      Exit;
+
+    NameList := '';
+    PathArgs := '';
+    SetLength(Changes, Files.Count);
+    for LineIdx := 0 to Files.Count - 1 do
+    begin
+      if LineIdx < 15 then
+        NameList := NameList + '  ' + Files[LineIdx] + #13#10;
+      PathArgs := PathArgs + ' ' + string(GitQuote(WideString(Files[LineIdx])));
+      Changes[LineIdx].Code := ' M';
+      Changes[LineIdx].Path := WideString(Files[LineIdx]);
+      Changes[LineIdx].OrigPath := '';
+    end;
+    if Files.Count > 15 then
+      NameList := NameList + '  ... и ещё ' + IntToStr(Files.Count - 15) +
+        #13#10;
+
+    Answer := MessageDlgButtons('9837:git ' + AArgs + #13#10#13#10 +
+      'не выполнен: в этих файлах есть незакоммиченные изменения, git их ' +
+      'не перезаписывает:'#13#10#13#10 + NameList + #13#10 +
+      'Commit... - закоммитить изменения (окно Commit).'#13#10 +
+      'Stash и повторить - отложить изменения этих файлов и выполнить ' +
+      'команду ещё раз; вернуть их - Branch - Restore Stash.'#13#10 +
+      'Discard и повторить - отменить изменения (правки пропадут) и ' +
+      'выполнить команду ещё раз.', mtWarning,
+      'Незакоммиченные изменения',
+      ['Commit...', 'Stash и повторить', 'Discard и повторить', 'Отмена'],
+      1, 3);
+    case Answer of
+      0:
+        GitCommitIn(AGit, ARepo);
+      1, 2:
+        begin
+          // skip-worktree мешает и stash, и checkout HEAD - снять
+          GitRunIn(AGit, ARepo, 'update-index --no-skip-worktree --' +
+            PathArgs, True, Output);
+          if Answer = 1 then
+          begin
+            if GitRunIn(AGit, ARepo, 'stash push -m ' +
+               string(GitQuote(WideString('unIDE before ' + AArgs))) + ' --' +
+               PathArgs, True, Output) <> 0 then
+              Exit;
+            LogGit('Git: изменения отложены в stash; вернуть - Branch - ' +
+              'Restore Stash');
+          end
+          else if not GitDiscardIn(AGit, ARepo, Changes, True) then
+            Exit;
+          FGitLocalRetry := True;
+          try
+            Result := GitLongOp(AGit, ARepo, AArgs);
+          finally
+            FGitLocalRetry := False;
+          end;
+        end;
+    end;
+  finally
+    Files.Free;
+    Lines.Free;
+  end;
 end;
 
 // Подсказка на панели Git (справа от строки Build): красная - ошибка,
@@ -91987,8 +92301,7 @@ begin
       // Полоса пути (Panel2) - по высоте строки: в FormCreate её высота
       // взята у FStatus2 до подгонки (в сборке Lazarus там 0 - полосы
       // не было видно)
-      if (Panel2 <> nil) and (Panel2.Height <> FStatus2.Height) then
-        Panel2.Height := FStatus2.Height;
+      Panel2SetHeight(FStatus2.Height);
       Status2Resize(nil);
     end;
     if (StatusBar1 <> nil) and (StatusBar1.Panels.Count > 6) then

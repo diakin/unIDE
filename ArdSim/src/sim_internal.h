@@ -195,6 +195,13 @@ struct SimSignalConfig
   SimChannel Channel[SIM_ANALOG_CHANNELS];
   SimRotor Rotor;
   bool SdFail;           // [SD] Fail=1: no card, SD.begin and card.init fail
+  // [DataFile]: A0, A1 and the tacho replay a measurement file (Test.dat of
+  // BalA-190: frames of 4 int16 - A0, A1, A4 tacho, us between marks - 32000)
+  bool DataOn;
+  char DataPath[260];
+  double DataScale;      // ADC counts per file unit
+  double DataOffset;     // ADC counts added (file values are around zero)
+  double DataRpm;        // file without mark times: RPM (0 - Garmoniki.txt, else [Tacho] RPM)
 };
 // Rotor -> H1 of the sensor channels (no-op when the rotor is off)
 void simRotorApply(SimSignalConfig &config);

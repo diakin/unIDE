@@ -9,6 +9,9 @@
 // harmonic P degrees of rotation after the mark.
 // The settings come from ardsim.ini next to the exe (re-read when it
 // changes) and from the window panel.
+//
+// [DataFile] Enabled=1: A0, A1 and the tacho come from a measurement file
+// instead (replayDataFile below).
 #define WIN32_LEAN_AND_MEAN
 #define NOMINMAX
 #include <windows.h>
@@ -18,6 +21,8 @@
 #include <cstdlib>
 #include <cstring>
 #include <cstdarg>
+#include <string>
+#include <vector>
 
 static const double TwoPi = 6.283185307179586;
 
@@ -65,6 +70,8 @@ void simSignalDefaults(SimSignalConfig &config)
   rotor.KAmp[0][1] = 0.004; rotor.KPhase[0][1] = 80;
   rotor.KAmp[1][0] = 0.003; rotor.KPhase[1][0] = 110;
   rotor.KAmp[1][1] = 0.009; rotor.KPhase[1][1] = 20;
+  config.DataScale = 1;
+  config.DataOffset = 2048;
   simRotorApply(config);
 }
 
@@ -200,6 +207,11 @@ bool simSignalLoad(const char *path, SimSignalConfig &config)
   config.Vref = iniNumber(path, "ADC", "Vref", defaults.Vref);
   config.SdFail = iniNumber(path, "SD", "Fail", 0) != 0;
   config.LcdPixelNs = iniNumber(path, "LCD", "PixelNs", defaults.LcdPixelNs);
+  config.DataOn = iniNumber(path, "DataFile", "Enabled", 0) != 0;
+  GetPrivateProfileStringA("DataFile", "Path", "", config.DataPath, sizeof(config.DataPath), path);
+  config.DataScale = iniNumber(path, "DataFile", "Scale", defaults.DataScale);
+  config.DataOffset = iniNumber(path, "DataFile", "Offset", defaults.DataOffset);
+  config.DataRpm = iniNumber(path, "DataFile", "RPM", 0);
   for (int channel = 0; channel < SIM_ANALOG_CHANNELS; channel++)
   {
     char section[8];
@@ -284,6 +296,11 @@ bool simSignalSave(const char *path, const SimSignalConfig &config)
   iniWrite(path, "ADC", "Vref", "%g", config.Vref);
   iniWrite(path, "SD", "Fail", "%d", config.SdFail ? 1 : 0);
   iniWrite(path, "LCD", "PixelNs", "%g", config.LcdPixelNs);
+  iniWrite(path, "DataFile", "Enabled", "%d", config.DataOn ? 1 : 0);
+  WritePrivateProfileStringA("DataFile", "Path", config.DataPath, path);
+  iniWrite(path, "DataFile", "Scale", "%g", config.DataScale);
+  iniWrite(path, "DataFile", "Offset", "%g", config.DataOffset);
+  iniWrite(path, "DataFile", "RPM", "%g", config.DataRpm);
   const SimRotor &rotor = config.Rotor;
   iniWrite(path, "Rotor", "Enabled", "%d", rotor.Enabled ? 1 : 0);
   WritePrivateProfileStringA("Rotor", "Angles", rotor.AnglesWithRotation ? "with" : "against", path);
@@ -353,6 +370,250 @@ static void takePending()
   ActiveReady = true;
 }
 
+// ---------------------------------------------------------------- data file
+// Measurement file (Test.dat written by the PC program from BalA-190
+// firmware data): frames of 4 little-endian int16 - A0, A1 (around zero),
+// A4 tacho (raw ADC), and -32000, or at a mark (the frame after the tacho
+// falling edge) the micros since the previous mark minus 32000. The file
+// is played as a signal in real (sim) time: frame time is taken from the
+// mark times, without them from the tacho channel and the RPM. The span
+// from the first to the last mark (whole turns) repeats, so the sketch
+// measures as on a running rotor. A0/A1 counts = Offset + Scale * value.
+struct DataReplay
+{
+  std::string Path;
+  bool Loaded;
+  std::vector<short> Frames;     // 4 values per frame
+  int Count;                     // frames
+  std::vector<int> Marks;        // frame index of each mark, rising order
+  double FrameUs;                // micros per frame
+  double Pos;                    // current frame position (Marks.front() .. Marks.back())
+  double RevBase;                // whole turns of the passed loops
+  double DataRpm, TachoRpm;      // ini values of the last load
+  bool MarkZero;                 // Marks[0] = 0 added (mark times: the measurement starts at a mark)
+  uint32_t Version;              // + 1 at each load (simDataFileVersion)
+};
+static DataReplay Replay = {"", false, std::vector<short>(), 0, std::vector<int>(), 0, 0, 0, 0, 0, false, 0};
+
+static bool replayActive()
+{
+  return Active.DataOn && Replay.Loaded;
+}
+
+// Garmoniki.txt next to Test.dat (PC program): line k - harmonic k of the
+// rotation frequency, "Hz<TAB>A1<TAB>A2" with decimal commas, line 0 - 0 Hz
+// without the Hz column. RPM = 60 * Hz of the last line / its number;
+// 0 - no file or nothing to read
+static double harmonicsRpm(const std::string &dataPath)
+{
+  size_t slash = dataPath.find_last_of("\\/");
+  std::string dir = slash == std::string::npos ? std::string() : dataPath.substr(0, slash + 1);
+  FILE *input = fopen((dir + "Garmoniki.txt").c_str(), "r");
+  if (!input)
+    return 0;
+  char line[256];
+  int lineNo = -1;
+  double rpm = 0;
+  while (fgets(line, sizeof(line), input))
+  {
+    lineNo++;
+    if (lineNo == 0 || line[0] == '\t')
+      continue;
+    for (char *cursor = line; *cursor && *cursor != '\t'; cursor++)
+      if (*cursor == ',')
+        *cursor = '.';
+    double hz = atof(line);
+    if (hz > 0)
+      rpm = 60.0 * hz / lineNo;
+  }
+  fclose(input);
+  return rpm;
+}
+
+// File -> Replay; false: not readable, too short or without turns
+static bool replayLoad(const char *path, double rpm)
+{
+  Replay.Path = path;
+  Replay.Loaded = false;
+  Replay.Frames.clear();
+  Replay.Marks.clear();
+  Replay.Count = 0;
+  // relative path - from the exe folder (ardsim.ini is there too)
+  std::string fullPath = path;
+  if (!fullPath.empty() && fullPath[0] != '\\' && fullPath[0] != '/' &&
+      (fullPath.size() < 2 || fullPath[1] != ':'))
+    fullPath = simExeDir() + fullPath;
+  FILE *input = fopen(fullPath.c_str(), "rb");
+  if (!input)
+    return false;
+  std::vector<short> data;
+  short chunk[4096];
+  size_t got;
+  while ((got = fread(chunk, sizeof(short), 4096, input)) > 0)
+    data.insert(data.end(), chunk, chunk + got);
+  fclose(input);
+  int count = (int)(data.size() / 4);
+  if (count < 64)
+    return false;
+  // Mark times in channel 3
+  std::vector<int> marks;
+  double markUs = 0;
+  for (int frame = 0; frame < count; frame++)
+    if (data[frame * 4 + 3] != -32000 && data[frame * 4 + 3] != 0)
+    {
+      if (marks.empty())
+        marks.push_back(0);      // the measurement starts at a mark
+      // the same time in two frames in a row (seen in a real file): one mark
+      if (frame - marks.back() < 4)
+        continue;
+      marks.push_back(frame);
+      markUs += data[frame * 4 + 3] + 32000.0;
+    }
+  double frameUs = 0;
+  bool markZero = marks.size() >= 2;
+  if (marks.size() >= 2)
+    frameUs = markUs / marks.back();
+  else
+  {
+    // No mark times: falling edges of the tacho channel, frame time from the RPM
+    marks.clear();
+    int low = 32767, high = -32768;
+    for (int frame = 0; frame < count; frame++)
+    {
+      int value = data[frame * 4 + 2];
+      if (value < low) low = value;
+      if (value > high) high = value;
+    }
+    if (high - low > 100)
+    {
+      int lowLevel = low + (high - low) / 3, highLevel = high - (high - low) / 3;
+      bool isHigh = data[2] > lowLevel;
+      for (int frame = 1; frame < count; frame++)
+      {
+        int value = data[frame * 4 + 2];
+        if (isHigh && value < lowLevel)
+        {
+          isHigh = false;
+          marks.push_back(frame);
+        }
+        else if (!isHigh && value > highLevel)
+          isHigh = true;
+      }
+    }
+    // RPM: [DataFile] RPM, else Garmoniki.txt next to the file, else [Tacho] RPM
+    if (rpm <= 0)
+      rpm = harmonicsRpm(fullPath);
+    if (rpm <= 0)
+      rpm = Active.Rpm;
+    if (marks.size() < 2 || rpm <= 0)
+      return false;
+    frameUs = 60e6 / rpm * (marks.size() - 1) / (marks.back() - marks.front());
+  }
+  if (frameUs <= 0)
+    return false;
+  Replay.Frames.swap(data);
+  Replay.Count = count;
+  Replay.Marks.swap(marks);
+  Replay.FrameUs = frameUs;
+  Replay.MarkZero = markZero;
+  Replay.Version++;
+  if (Replay.Version == 0)
+    Replay.Version = 1;
+  Replay.Pos = Replay.Marks.front();
+  Replay.RevBase = std::ceil(Revs);
+  Replay.Loaded = true;
+  return true;
+}
+
+// Index of the turn that holds frame position pos
+static int replayTurn(double pos)
+{
+  const std::vector<int> &marks = Replay.Marks;
+  int low = 0, high = (int)marks.size() - 2;
+  while (low < high)
+  {
+    int middle = (low + high + 1) / 2;
+    if (marks[middle] <= pos)
+      low = middle;
+    else
+      high = middle - 1;
+  }
+  return low;
+}
+
+static double replayRevs()
+{
+  int turn = replayTurn(Replay.Pos);
+  double length = Replay.Marks[turn + 1] - Replay.Marks[turn];
+  return Replay.RevBase + turn + (Replay.Pos - Replay.Marks[turn]) / length;
+}
+
+// Path or switch changed in the ini: (re)load on the sketch thread
+static void replayCheck()
+{
+  if (!Active.DataOn)
+    return;
+  // the RPM fields matter for a file without mark times: reload on a change
+  if (Replay.Path != Active.DataPath || Replay.DataRpm != Active.DataRpm ||
+      Replay.TachoRpm != Active.Rpm)
+  {
+    Replay.DataRpm = Active.DataRpm;
+    Replay.TachoRpm = Active.Rpm;
+    replayLoad(Active.DataPath, Active.DataRpm);
+  }
+}
+
+uint32_t simDataFileVersion()
+{
+  takePending();
+  if (!ActiveReady)
+    return 0;
+  replayCheck();
+  return replayActive() ? Replay.Version : 0;
+}
+
+int simDataFileRead(uint16_t *frames, int maxFrames, int *marks, int maxMarks,
+                    int *markCount, double *frameUs)
+{
+  *markCount = 0;
+  *frameUs = 0;
+  if (simDataFileVersion() == 0 || maxFrames <= 0)
+    return 0;
+  int taken = Replay.Count < maxFrames ? Replay.Count : maxFrames;
+  for (int frame = 0; frame < maxFrames; frame++)
+  {
+    int source = frame < taken ? frame : taken - 1;
+    for (int channel = 0; channel < 3; channel++)
+    {
+      double value = Replay.Frames[source * 4 + channel];
+      if (channel < 2)
+        value = Active.DataOffset + Active.DataScale * value;
+      if (value < 0) value = 0;
+      if (value > 4095) value = 4095;
+      frames[frame * 4 + channel] = (uint16_t)value;
+    }
+    frames[frame * 4 + 3] = 0;
+  }
+  // the mark at frame 0 is where the measurement started, not a mark inside it
+  for (size_t index = Replay.MarkZero ? 1 : 0; index < Replay.Marks.size(); index++)
+    if (Replay.Marks[index] < taken && *markCount < maxMarks)
+      marks[(*markCount)++] = Replay.Marks[index];
+  *frameUs = Replay.FrameUs;
+  return taken;
+}
+
+static double replayValue(int channel)
+{
+  double pos = Replay.Pos;
+  int frame = (int)pos;
+  if (frame >= Replay.Count - 1)
+    frame = Replay.Count - 2;
+  double frac = pos - frame;
+  double first = Replay.Frames[frame * 4 + channel];
+  double second = Replay.Frames[(frame + 1) * 4 + channel];
+  return first + (second - first) * frac;
+}
+
 // Advances the rotor to "now". Returns tacho edges since the last call:
 // bit 0 - a falling edge (mark), bit 1 - a rising edge (end of pulse)
 int simSignalAdvance(uint64_t now)
@@ -368,13 +629,31 @@ int simSignalAdvance(uint64_t now)
     LastMicros = now;
     return 0;
   }
-  double turns = (double)(now - LastMicros) * Active.Rpm / 60e6;
-  LastMicros = now;
-  if (turns <= 0)
-    return 0;
+  replayCheck();
   double pulse = Active.PulseDeg / 360.0;
   double before = Revs;
-  Revs += turns;
+  if (replayActive())
+  {
+    Replay.Pos += (double)(now - LastMicros) / Replay.FrameUs;
+    LastMicros = now;
+    double loopLength = Replay.Marks.back() - Replay.Marks.front();
+    while (Replay.Pos >= Replay.Marks.back())
+    {
+      Replay.Pos -= loopLength;
+      Replay.RevBase += Replay.Marks.size() - 1;
+    }
+    Revs = replayRevs();
+    if (Revs <= before)
+      return 0;
+  }
+  else
+  {
+    double turns = (double)(now - LastMicros) * Active.Rpm / 60e6;
+    LastMicros = now;
+    if (turns <= 0)
+      return 0;
+    Revs += turns;
+  }
   if (!Active.TachoOn)
     return 0;
   int edges = 0;
@@ -387,12 +666,22 @@ int simSignalAdvance(uint64_t now)
 
 uint64_t simSignalNextEdge()
 {
-  if (!ActiveReady || !Active.TachoOn || Active.Rpm <= 0 || LastMicros == 0)
+  if (!ActiveReady || !Active.TachoOn || LastMicros == 0)
+    return UINT64_MAX;
+  bool replay = replayActive();
+  if (!replay && Active.Rpm <= 0)
     return UINT64_MAX;
   double pulse = Active.PulseDeg / 360.0;
   double toFall = std::floor(Revs) + 1 - Revs;
   double toRise = std::floor(Revs - pulse) + 1 - (Revs - pulse);
   double turns = toFall < toRise ? toFall : toRise;
+  if (replay)
+  {
+    // turn length of the current turn of the file
+    int turn = replayTurn(Replay.Pos);
+    double frames = Replay.Marks[turn + 1] - Replay.Marks[turn];
+    return LastMicros + (uint64_t)(turns * frames * Replay.FrameUs);
+  }
   return LastMicros + (uint64_t)(turns * 60e6 / Active.Rpm);
 }
 
@@ -410,7 +699,7 @@ int simTachoPin()
 
 int simTachoLevel()
 {
-  if (!ActiveReady || !Active.TachoOn || Active.Rpm <= 0)
+  if (!ActiveReady || !Active.TachoOn || (Active.Rpm <= 0 && !replayActive()))
     return 1;
   double fraction = Revs - std::floor(Revs);
   return fraction < Active.PulseDeg / 360.0 ? 0 : 1;
@@ -436,6 +725,13 @@ double simSignalVolts(int channel, uint64_t now)
     return 0;
   if (channel == Active.TachoAnalog && Active.TachoOn)
     return simTachoLevel() ? Active.Vref : 0;
+  if (replayActive())
+  {
+    if (channel != 0 && channel != 1)
+      return 0;
+    double counts = Active.DataOffset + Active.DataScale * replayValue(channel);
+    return counts / 4096.0 * Active.Vref;
+  }
   const SimChannel &source = Active.Channel[channel];
   double angle = TwoPi * (Revs - std::floor(Revs));
   double volts = source.Offset;

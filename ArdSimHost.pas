@@ -144,6 +144,8 @@ type
     FFontRoots: TStringList;  // папки libraries: шрифты UTFT для сборки
     FOnLog: TArdSimTextEvent;
     FOnOpenFile: TArdSimTextEvent;
+    FOnViewFiles: TNotifyEvent;
+    FDataFile: string;        // файл замера (Test.dat), выбранный в Match list
     FOnNeedSketch: TNotifyEvent;
     FOnSaveFiles: TArdSimSaveEvent;
     FOnStateChange: TNotifyEvent;
@@ -188,6 +190,8 @@ type
     FSigApply: TUiButton;
     FSigIni: TUiButton;   // открыть ardsim.ini (кнопка ini верхней строки скрыта в окне эмулятора)
     FSigNote: TUiLabel;
+    FSigView: TUiButton;  // View files Test.dat: поиск файлов замеров (Unit1)
+    FSigData: TUiCheckBox;  // [DataFile] Enabled: A0, A1 и тахометр - из файла замера
     FSigShown: Boolean;
     FSigDirty: Boolean;
     FSigLoading: Boolean;
@@ -252,6 +256,7 @@ type
     procedure BtnRunClick(Sender: TObject);
     procedure BtnStopClick(Sender: TObject);
     procedure BtnIniClick(Sender: TObject);
+    procedure SigViewClick(Sender: TObject);
     procedure BtnWindowClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure LayoutControls;
@@ -290,6 +295,12 @@ type
     procedure RunSim;
     procedure OpenIni;
     procedure OpenArdSimWindow;
+    // Просмотр файлов замеров: курсор Match list встал на файл AFileName
+    // (Test.dat). Пишется в ardsim.ini ([DataFile] Enabled=1, Path):
+    // эмулятор за полсекунды переходит на сигнал из файла, скетч считает
+    // по нему обычный замер
+    procedure ShowDataFile(const AFileName: string);
+    property DataFile: string read FDataFile;
 
     // ---- отладчик
     // Эмулятор идёт и скетч собран с отладкой (SIM_STEP)
@@ -396,6 +407,9 @@ type
     property FontRoots: TStringList read FFontRoots;
     property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
     property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
+    // Кнопка "View files Test.dat" панели "Сигналы": Unit1 открывает окно
+    // поиска файлов с маской test.dat
+    property OnViewFiles: TNotifyEvent read FOnViewFiles write FOnViewFiles;
     property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
     // Перед сборкой и запуском: Unit1 сохраняет изменённые вкладки и проект;
     // False - не всё сохранено, сборки и запуска нет
@@ -1173,7 +1187,7 @@ const
   StatusH = 18;
   SerialMinH = 60;
   SigHeadH = 20;
-  SigPanelH = 184;
+  SigPanelH = 210;
 var
   AreaW, PosY, ButtonW, BtnIdx, SigH: Integer;
   DeviceSize: TPoint;
@@ -1264,6 +1278,47 @@ end;
 procedure TArdSimPanel.OpenArdSimWindow;
 begin
   BtnWindowClick(Self);
+end;
+
+procedure TArdSimPanel.SigViewClick(Sender: TObject);
+begin
+  if Assigned(FOnViewFiles) then
+    FOnViewFiles(Self);
+end;
+
+procedure TArdSimPanel.ShowDataFile(const AFileName: string);
+var
+  Ini: TIniFile;
+begin
+  if AFileName = FDataFile then
+    Exit;
+  FDataFile := AFileName;
+  if FDataFile = '' then
+    Exit;
+  if (FSketchFile = '') and Assigned(FOnNeedSketch) then
+    FOnNeedSketch(Self);
+  if (FSketchFile = '') or not FileExists(IniOfSketch) then
+  begin
+    SetStatus('Файл замера: ' + FDataFile + ' - ardsim.ini появится после первого запуска');
+    Exit;
+  end;
+  Ini := TIniFile.Create(IniOfSketch);
+  try
+    Ini.WriteString('DataFile', 'Enabled', '1');
+    Ini.WriteString('DataFile', 'Path', FDataFile);
+    Ini.UpdateFile;
+  finally
+    Ini.Free;
+  end;
+  // поля панели не трогаем, если там неприменённые правки
+  if not FSigDirty and (FSigData <> nil) then
+  begin
+    FSigLoading := True;
+    FSigData.Checked := True;
+    FSigLoading := False;
+    FSigIniAge := FileAge(IniOfSketch);
+  end;
+  SetStatus('Файл замера: ' + FDataFile);
 end;
 
 procedure TArdSimPanel.SetShowToolbar(AValue: Boolean);
@@ -1867,6 +1922,21 @@ begin
   FSigIni.SetBounds(106, 160, 90, 22);
   FSigIni.OnClick := BtnIniClick;
   FSigNote := AddLabel('', 204, 160, 300);
+  FSigView := TUiButton.Create(Self);
+  FSigView.Parent := FSigPanel;
+  FSigView.Caption := 'View files Test.dat';
+  FSigView.Hint := 'Окно "Искать файл - по маскам, на диске" с маской test.dat: ' +
+    'найденные файлы - в Match list, Test.dat под курсором списка ' +
+    'передаётся эмулятору';
+  FSigView.ShowHint := True;
+  FSigView.TabStop := False;
+  FSigView.SetBounds(0, 186, 196, 22);
+  FSigView.OnClick := SigViewClick;
+  FSigData := AddCheck('Сигнал из файла замера', 204, 187, 300);
+  FSigData.Hint := 'A0, A1 и тахометр - из файла Test.dat ([DataFile] в ardsim.ini) ' +
+    'вместо генератора. Обороты - по временам меток в файле, без них - по ' +
+    'Garmoniki.txt рядом с файлом, без него - из поля "обороты"';
+  FSigData.ShowHint := True;
   SigUpdateState;
 end;
 
@@ -1941,6 +2011,7 @@ begin
     FSigTacho.Checked := Ini.ReadString('Tacho', 'Enabled', '1') <> '0';
     FSigRpm.Text := Ini.ReadString('Tacho', 'RPM', '1500');
     FSigSdFail.Checked := Ini.ReadString('SD', 'Fail', '0') <> '0';
+    FSigData.Checked := Ini.ReadString('DataFile', 'Enabled', '0') <> '0';
     FSigRotor.Checked := Ini.ReadString('Rotor', 'Enabled', '0') <> '0';
     for RowIdx := 0 to 1 do
     begin
@@ -1981,6 +2052,10 @@ begin
       Ini.WriteString('SD', 'Fail', '1')
     else
       Ini.WriteString('SD', 'Fail', '0');
+    if FSigData.Checked then
+      Ini.WriteString('DataFile', 'Enabled', '1')
+    else
+      Ini.WriteString('DataFile', 'Enabled', '0');
     if FSigRotor.Checked then
       Ini.WriteString('Rotor', 'Enabled', '1')
     else
