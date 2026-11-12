@@ -29865,23 +29865,14 @@ end;
 procedure TForm1.ArdSimViewFiles(Sender: TObject);
 var
   Dlg: TDlgFifDisk;
-  Masks: string;
 begin
   FifShowWindow(False, True);
   if FFifDlg = nil then
     Exit;
   Dlg := TDlgFifDisk(FFifDlg);
+  // поле "Доп. маски" - только test.dat (Андрей 12.11: прежние маски убрать)
   if not FFifRunning and not FFifListing then
-  begin
-    Masks := Trim(Dlg.edMask.Text);
-    if Pos(';test.dat;', ';' + LowerCase(StringReplace(Masks, ' ', '',
-           [rfReplaceAll])) + ';') = 0 then
-      if Masks = '' then
-        Masks := 'test.dat'
-      else
-        Masks := Masks + ';test.dat';
-    Dlg.edMask.Text := Masks;
-  end;
+    Dlg.edMask.Text := 'test.dat';
   if FArdDataTimer = nil then
   begin
     FArdDataTimer := TTimer.Create(Self);
