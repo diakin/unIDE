@@ -402,6 +402,9 @@ type
     FFtpDir: string;
     FFtpConn: TFarFtpConn;
     FFtpSession: Integer;
+    // Список найденных файлов (ReadFound): маска поиска, '' - обычная
+    // папка. FPath - папка, от которой искали; имена - относительно неё
+    FFoundMask: WideString;
     procedure SortItems;
     function ItemLess(const ItemA, ItemB: TFarItem): Boolean;
   public
@@ -419,6 +422,13 @@ type
     procedure BuildArcView(const AFocusName: WideString);
     function IsArchive: Boolean;
     function IsFtp: Boolean;
+    // Все файлы по маскам AMask ('Test.dat', '*.dat;*.bin') в ARoot и
+    // вложенных папках, имена - относительно ARoot ('sub\Test.dat'),
+    // строка '..' - назад в папку ARoot. Не больше FarFoundMax файлов и
+    // FarFoundMaxDirs просмотренных папок
+    function ReadFound(const ARoot, AMask, AFocusName: WideString;
+      var AError: string): Boolean;
+    function IsFound: Boolean;
     // Уйти с FTP: соединение закрыть, режим - обычная папка
     procedure FtpLeave;
     // Путь для заголовка: в архиве - архив и папка в нём
@@ -1286,6 +1296,19 @@ type
     procedure ShowFile(const AFileName: WideString);
     // Активная панель - в папку APath (uniFAR: папка из командной строки)
     procedure ShowFolder(const APath: WideString);
+    // Панель APanel (0 / 1) - в папку APath; активная панель не меняется
+    procedure ShowFolderAt(APanel: Integer; const APath: WideString);
+    // Панель APanel - список файлов по маскам AMask из ARoot и вложенных
+    // папок (TFarPanel.ReadFound), курсор - на первом файле, панель
+    // становится активной. Просмотрщик Test.dat эмулятора (Unit1)
+    procedure ShowFound(APanel: Integer; const ARoot, AMask: WideString);
+    // Панель APanel показывает список найденных файлов
+    function PanelIsFound(APanel: Integer): Boolean;
+    // Папка панели APanel (с разделителем на конце)
+    function PanelPath(APanel: Integer): WideString;
+    // Файл под курсором панели APanel - полный путь; '' - папка, '..',
+    // архив, FTP
+    function CursorFile(APanel: Integer): WideString;
     procedure LoadState(const AIniName: string; const ADefaultDir: WideString);
     // Закрытие unIDE: в редакторе F4 изменён текст - спросить (окном
     // Windows). False - не закрывать
@@ -1455,6 +1478,12 @@ const
   FarWatchInterval = 250;          // мс, опрос сигналов
   FarWatchQuiet = 300;             // мс без новых сигналов - перечитать
   FarWatchMaxDelay = 2000;         // но не реже, чем раз в столько мс
+
+  // Список найденных файлов в панели (TFarPanel.ReadFound): не больше
+  // файлов и просмотренных папок
+  FarFoundMax = 5000;
+  FarFoundMaxDirs = 20000;
+  FarReparseAttr = $400;           // FILE_ATTRIBUTE_REPARSE_POINT
 
   // Буква сортировки в левом верхнем углу панели (как в FAR 2): по
   // возрастанию - строчная, обратный порядок - прописная
@@ -3274,6 +3303,7 @@ begin
   FArcEntries := nil;
   FArcPassword := '';
   FArcLevels := nil;
+  FFoundMask := '';
 
   FFileCount := 0;
   FFileBytes := 0;
@@ -3305,6 +3335,136 @@ begin
   Result := FArcFile <> '';
 end;
 
+function TFarPanel.IsFound: Boolean;
+begin
+  Result := FFoundMask <> '';
+end;
+
+function TFarPanel.ReadFound(const ARoot, AMask, AFocusName: WideString;
+  var AError: string): Boolean;
+var
+  RootPath: WideString;
+  Masks: TFarFindMasks;
+  NewItems: TFarItems;
+  NewCount, DirsLeft, ItemIndex: Integer;
+  FreeAvail, TotalBytes, TotalFree: Int64;
+
+  procedure ScanDir(const ARelDir: WideString);
+  var
+    FindData: TFarFindData;
+    FindHandle: THandle;
+    FoundName: WideString;
+    IsDirItem: Boolean;
+  begin
+    if (DirsLeft <= 0) or (NewCount >= FarFoundMax) then
+      Exit;
+    Dec(DirsLeft);
+    FindHandle := FarFindFirst(PWideChar(RootPath + ARelDir + '*'), FindData);
+    if FindHandle = INVALID_HANDLE_VALUE then
+      Exit;
+    try
+      repeat
+        FoundName := PWideChar(@FindData.cFileName[0]);
+        if (FoundName <> '.') and (FoundName <> '..') then
+        begin
+          IsDirItem := FindData.dwFileAttributes and
+                       FILE_ATTRIBUTE_DIRECTORY <> 0;
+          if IsDirItem then
+          begin
+            // Ссылки на папки (junction) не обходим - нет петель
+            if FindData.dwFileAttributes and FarReparseAttr = 0 then
+              ScanDir(ARelDir + FoundName + FarSep);
+          end
+          else if (NewCount < FarFoundMax) and
+                  FarMasksMatch(FoundName, Masks) then
+          begin
+            if NewCount >= Length(NewItems) then
+              SetLength(NewItems, Length(NewItems) * 2);
+            NewItems[NewCount].Name := ARelDir + FoundName;
+            NewItems[NewCount].Attr := FindData.dwFileAttributes;
+            NewItems[NewCount].IsDir := False;
+            NewItems[NewCount].IsUp := False;
+            NewItems[NewCount].Selected := False;
+            NewItems[NewCount].DirSizeKnown := False;
+            NewItems[NewCount].WriteTime := FindData.ftLastWriteTime;
+            NewItems[NewCount].CreateTime := FindData.ftCreationTime;
+            NewItems[NewCount].AccessTime := FindData.ftLastAccessTime;
+            NewItems[NewCount].OrigIndex := NewCount;
+            NewItems[NewCount].Size := Int64(FindData.nFileSizeHigh) shl 32 +
+                                       FindData.nFileSizeLow;
+            Inc(NewCount);
+          end;
+        end;
+      until not FarFindNext(FindHandle, FindData);
+    finally
+      Windows.FindClose(FindHandle);
+    end;
+  end;
+
+begin
+  Result := False;
+  AError := '';
+  RootPath := FarWithSlash(ARoot);
+  if not FarDirExists(RootPath) then
+  begin
+    AError := 'нет папки ' + string(RootPath);
+    Exit;
+  end;
+  FarSplitMasks(AMask, Masks);
+  SetLength(NewItems, 64);
+  NewItems[0].Name := '..';
+  NewItems[0].IsUp := True;
+  NewItems[0].IsDir := True;
+  NewItems[0].Size := 0;
+  NewItems[0].Attr := FILE_ATTRIBUTE_DIRECTORY;
+  NewItems[0].Selected := False;
+  NewItems[0].DirSizeKnown := False;
+  NewItems[0].OrigIndex := -1;
+  FillChar(NewItems[0].CreateTime, SizeOf(TFileTime), 0);
+  FillChar(NewItems[0].AccessTime, SizeOf(TFileTime), 0);
+  FillChar(NewItems[0].WriteTime, SizeOf(TFileTime), 0);
+  NewCount := 1;
+  DirsLeft := FarFoundMaxDirs;
+  ScanDir('');
+
+  if FFtpMode <> 0 then
+    FtpLeave;
+  FPath := RootPath;
+  FItems := NewItems;
+  FCount := NewCount;
+  FArcFile := '';
+  FArcTitle := '';
+  FArcDir := '';
+  FArcEntries := nil;
+  FArcPassword := '';
+  FArcLevels := nil;
+  FFoundMask := AMask;
+  SortItems;
+
+  FFileCount := 0;
+  FFileBytes := 0;
+  for ItemIndex := 0 to FCount - 1 do
+    if not FItems[ItemIndex].IsDir then
+    begin
+      Inc(FFileCount);
+      Inc(FFileBytes, FItems[ItemIndex].Size);
+    end;
+  FFreeKnown := FarDiskFree(PWideChar(FPath), @FreeAvail, @TotalBytes,
+    @TotalFree);
+  if FFreeKnown then
+    FFreeBytes := FreeAvail;
+
+  FCursor := 0;
+  FTopIndex := 0;
+  if AFocusName <> '' then
+  begin
+    FCursor := IndexOfName(AFocusName);
+    if FCursor < 0 then
+      FCursor := 0;
+  end;
+  Result := True;
+end;
+
 function TFarPanel.DisplayPath: WideString;
 begin
   if FFtpMode = 1 then
@@ -3316,6 +3476,8 @@ begin
       Result := Result + '/';
     Result := Result + FarFtpDecode(FFtpDir);
   end
+  else if FFoundMask <> '' then
+    Result := 'Find ' + FFoundMask + ': ' + FPath
   else if FArcFile = '' then
     Result := FPath
   else if FArcDir = '' then
@@ -3507,6 +3669,11 @@ begin
   // Архив перечитывать нечего - его папка строится заново из записей
   if IsArchive then
     BuildArcView(FocusName)
+  else if IsFound then
+  begin
+    if not ReadFound(FPath, FFoundMask, FocusName, ErrorText) then
+      Exit;
+  end
   else if not ReadDir(FPath, FocusName, ErrorText) then
     Exit;
   FTopIndex := OldTop;
@@ -3960,7 +4127,8 @@ begin
     ASecond := 0;
 end;
 
-// Имён на экране панели (две колонки; список адресов FTP - одна)
+// Имён на экране панели (две колонки; список адресов FTP и список
+// найденных файлов - одна)
 function TFarView.PageSize(APanel: TFarPanel): Integer;
 begin
   Result := FileRows * PanelColumns(APanel);
@@ -4156,6 +4324,12 @@ begin
   ColumnWidths(PanelW, FirstW, SecondW);
   Rows := FileRows;
   InnerW := PanelW - 2;
+  // Список найденных файлов: одна колонка во всю ширину - пути длинные
+  if Panel.IsFound then
+  begin
+    FirstW := InnerW;
+    SecondW := 0;
+  end;
 
   // Список адресов FTP: Host | Home | User, строка на адрес
   if Panel.FFtpMode = 1 then
@@ -4165,11 +4339,12 @@ begin
     // Заголовки колонок
     PutCentered(PanelX + 1, 1, FirstW, 'Name', FPal[fpPanelHeader],
       FPal[fpPanelBack]);
-    PutCentered(PanelX + 2 + FirstW, 1, SecondW, 'Name', FPal[fpPanelHeader],
-      FPal[fpPanelBack]);
+    if SecondW > 0 then
+      PutCentered(PanelX + 2 + FirstW, 1, SecondW, 'Name',
+        FPal[fpPanelHeader], FPal[fpPanelBack]);
 
     // Имена: колонка за колонкой, сверху вниз
-    for ColumnIndex := 0 to 1 do
+    for ColumnIndex := 0 to PanelColumns(Panel) - 1 do
     begin
       if ColumnIndex = 0 then
       begin
@@ -4520,8 +4695,9 @@ begin
   ColumnWidths(PanelW, FirstW, SecondW);
   if (Row < 2) or (Row >= 2 + FileRows) then
     Exit;
-  // Список адресов FTP: строка на адрес во всю ширину
-  if FPanels[APanelIndex].FFtpMode = 1 then
+  // Список адресов FTP и список найденных файлов: строка на элемент во
+  // всю ширину
+  if (FPanels[APanelIndex].FFtpMode = 1) or FPanels[APanelIndex].IsFound then
   begin
     if (Col <= PanelX) or (Col >= PanelX + PanelW - 1) then
       Exit;
@@ -5876,6 +6052,12 @@ begin
     ArcUp(Panel);
     Exit;
   end;
+  // Список найденных файлов - назад в папку, от которой искали
+  if Panel.IsFound then
+  begin
+    ChangeDir(Panel, Panel.Path, '');
+    Exit;
+  end;
   ParentDir := Panel.ParentPath(ChildName);
   if ParentDir <> '' then
     ChangeDir(Panel, ParentDir, ChildName);
@@ -6736,6 +6918,63 @@ begin
     FActive := 1 - FActive;
   ChangeDir(ActivePanel, FarWithSlash(APath), '');
   Invalidate;
+end;
+
+procedure TFarView.ShowFolderAt(APanel: Integer; const APath: WideString);
+begin
+  if (APanel < 0) or (APanel > 1) or (APath = '') or
+     not FarDirExists(APath) or EditorShown(APanel) then
+    Exit;
+  ChangeDir(FPanels[APanel], FarWithSlash(APath), '');
+  Invalidate;
+end;
+
+procedure TFarView.ShowFound(APanel: Integer; const ARoot, AMask: WideString);
+var
+  Panel: TFarPanel;
+  ErrorText: string;
+begin
+  if (APanel < 0) or (APanel > 1) or EditorShown(APanel) then
+    Exit;
+  Panel := FPanels[APanel];
+  if not Panel.ReadFound(ARoot, AMask, '', ErrorText) then
+  begin
+    Status(FarProduct + ': поиск ' + string(AMask) + ' - ' + ErrorText);
+    Exit;
+  end;
+  FActive := APanel;
+  if Panel.Count > 1 then
+    Panel.Cursor := 1;
+  EnsureVisible(Panel);
+  Invalidate;
+  Status(FarProduct + ': ' + string(AMask) + ' - найдено файлов: ' +
+    IntToStr(Panel.Count - 1));
+end;
+
+function TFarView.PanelIsFound(APanel: Integer): Boolean;
+begin
+  Result := (APanel >= 0) and (APanel <= 1) and FPanels[APanel].IsFound;
+end;
+
+function TFarView.PanelPath(APanel: Integer): WideString;
+begin
+  Result := '';
+  if (APanel >= 0) and (APanel <= 1) then
+    Result := FPanels[APanel].Path;
+end;
+
+function TFarView.CursorFile(APanel: Integer): WideString;
+var
+  Panel: TFarPanel;
+begin
+  Result := '';
+  if (APanel < 0) or (APanel > 1) then
+    Exit;
+  Panel := FPanels[APanel];
+  if Panel.IsArchive or Panel.IsFtp or (Panel.Cursor < 0) or
+     (Panel.Cursor >= Panel.Count) or Panel.FItems[Panel.Cursor].IsDir then
+    Exit;
+  Result := Panel.Path + Panel.FItems[Panel.Cursor].Name;
 end;
 
 procedure TFarView.ShowFile(const AFileName: WideString);
@@ -8420,7 +8659,7 @@ end;
 // Колонок имён у панели: в списке адресов - одна строка на адрес
 function TFarView.PanelColumns(APanel: TFarPanel): Integer;
 begin
-  if APanel.FFtpMode = 1 then
+  if (APanel.FFtpMode = 1) or APanel.IsFound then
     Result := 1
   else
     Result := 2;

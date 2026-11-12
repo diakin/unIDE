@@ -1148,6 +1148,8 @@ type
     function MakeEmuButton(const AHint: string; ATag: Integer): TUiIconButton;
     procedure ArdSimPlaced(Sender: TObject);
     procedure ArdSimHidden(Sender: TObject);
+    procedure ArdSimViewFiles(Sender: TObject);
+    procedure ArdDataTimerTick(Sender: TObject);
     procedure ArdSimNeedSketch(Sender: TObject);
     function  ArdSimSaveFiles(Sender: TObject): Boolean;
     procedure ArdSimLog(Sender: TObject; const AText: string);
@@ -2209,6 +2211,9 @@ type
     FArdWhereTick: Cardinal;
     FArdWhereLevel: Integer;
     FArdSimWasRunning: Boolean;   // для ArdSimStateChange: запуск эмулятора
+    // Просмотр файлов замеров (ArdSimViewFiles): опрос файла под курсором
+    // панели FAR со списком Test.dat, пока FAR открыт
+    FArdDataTimer: TTimer;
     // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
     // Program reset; создаются в FormCreate
     btnEmuBuild: TUiIconButton;
@@ -29591,6 +29596,7 @@ begin
   FArdSim.OnDbgNeedBreaks := ArdDbgNeedBreaks;
   FArdSim.OnScreenWhere := ArdSimScreenWhere;
   FArdSim.OnCtlMoved := ArdSimCtlMoved;
+  FArdSim.OnViewFiles := ArdSimViewFiles;
   FArdSimWin.OnPlaced := ArdSimPlaced;
   FArdSimWin.OnHidden := ArdSimHidden;
   FArdSimKeepWidth := -1;
@@ -29733,6 +29739,69 @@ begin
   FRightPanel.Width := FArdSimKeepWidth;
   FArdSimKeepWidth := -1;
   FormResizeEvent(Self);
+end;
+
+// Кнопка "View files Test.dat" панели "Сигналы" эмулятора (просьба Андрея
+// 12.11): unIDE FAR на месте редактора, т.е. левее окна эмулятора (полоса
+// FArdSimGap). Левая панель - папка скетча, правая - все Test.dat в ней и
+// во вложенных папках (TFarView.ShowFound). FAR уже открыт - поиск от
+// папки левой панели. Файл под курсором списка уходит эмулятору
+// (ArdDataTimerTick)
+procedure TForm1.ArdSimViewFiles(Sender: TObject);
+var
+  RootDir: string;
+begin
+  RootDir := '';
+  if (FFar <> nil) and FFar.Visible and not FFarHalf then
+    RootDir := string(FFar.PanelPath(0));
+  if (RootDir = '') or not DirectoryExists(RootDir) then
+    RootDir := ExtractFilePath(BuildTargetOf(bkArduino));
+  if (RootDir = '') or not DirectoryExists(RootDir) then
+    RootDir := ExtractFilePath(FCurrentFileName);
+  if (RootDir = '') or not DirectoryExists(RootDir) then
+  begin
+    ArdSimLog(Sender, 'View files Test.dat: нет папки скетча');
+    Exit;
+  end;
+  // Режим F4 (одна панель рядом с редактором) - сначала закрыть: нужны обе
+  if (FFar <> nil) and FFar.Visible and FFarHalf then
+    FarClose(Self);
+  FarMenuClick(Self);
+  if FFar = nil then
+    Exit;
+  FFar.ShowFolderAt(0, WideString(RootDir));
+  FFar.ShowFound(1, WideString(RootDir), 'Test.dat');
+  if FArdDataTimer = nil then
+  begin
+    FArdDataTimer := TTimer.Create(Self);
+    FArdDataTimer.Interval := 300;
+    FArdDataTimer.OnTimer := ArdDataTimerTick;
+  end;
+  FArdDataTimer.Enabled := True;
+  ArdDataTimerTick(Self);
+end;
+
+// Файл под курсором панели FAR со списком найденных Test.dat (активной,
+// иначе другой) - эмулятору. FAR закрыт или списка нет - опрос
+// останавливается
+procedure TForm1.ArdDataTimerTick(Sender: TObject);
+var
+  PanelIdx: Integer;
+  FileName: string;
+begin
+  if (FFar = nil) or not FFar.Visible or (FArdSim = nil) or
+     (not FFar.PanelIsFound(0) and not FFar.PanelIsFound(1)) then
+  begin
+    if FArdDataTimer <> nil then
+      FArdDataTimer.Enabled := False;
+    Exit;
+  end;
+  PanelIdx := FFar.ActiveIndex;
+  if not FFar.PanelIsFound(PanelIdx) then
+    PanelIdx := 1 - PanelIdx;
+  FileName := string(FFar.CursorFile(PanelIdx));
+  if FileName <> '' then
+    FArdSim.ShowDataFile(FileName);
 end;
 
 // Перед сборкой и запуском: скетч - цель сборки Arduino, g++ - свой MinGW

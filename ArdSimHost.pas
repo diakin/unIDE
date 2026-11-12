@@ -144,6 +144,8 @@ type
     FFontRoots: TStringList;  // папки libraries: шрифты UTFT для сборки
     FOnLog: TArdSimTextEvent;
     FOnOpenFile: TArdSimTextEvent;
+    FOnViewFiles: TNotifyEvent;
+    FDataFile: string;        // файл замера (Test.dat), выбранный в FAR
     FOnNeedSketch: TNotifyEvent;
     FOnSaveFiles: TArdSimSaveEvent;
     FOnStateChange: TNotifyEvent;
@@ -188,6 +190,7 @@ type
     FSigApply: TUiButton;
     FSigIni: TUiButton;   // открыть ardsim.ini (кнопка ini верхней строки скрыта в окне эмулятора)
     FSigNote: TUiLabel;
+    FSigView: TUiButton;  // View files Test.dat: FAR со списком файлов замеров (Unit1)
     FSigShown: Boolean;
     FSigDirty: Boolean;
     FSigLoading: Boolean;
@@ -252,6 +255,7 @@ type
     procedure BtnRunClick(Sender: TObject);
     procedure BtnStopClick(Sender: TObject);
     procedure BtnIniClick(Sender: TObject);
+    procedure SigViewClick(Sender: TObject);
     procedure BtnWindowClick(Sender: TObject);
     procedure TimerTick(Sender: TObject);
     procedure LayoutControls;
@@ -290,6 +294,11 @@ type
     procedure RunSim;
     procedure OpenIni;
     procedure OpenArdSimWindow;
+    // Просмотр файлов замеров: курсор FAR встал на файл AFileName
+    // (Test.dat). Пока только показывается в строке состояния; чтение
+    // данных и обработка скетчем - следующий шаг
+    procedure ShowDataFile(const AFileName: string);
+    property DataFile: string read FDataFile;
 
     // ---- отладчик
     // Эмулятор идёт и скетч собран с отладкой (SIM_STEP)
@@ -396,6 +405,9 @@ type
     property FontRoots: TStringList read FFontRoots;
     property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
     property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
+    // Кнопка "View files Test.dat" панели "Сигналы": Unit1 открывает FAR
+    // со списком файлов замеров
+    property OnViewFiles: TNotifyEvent read FOnViewFiles write FOnViewFiles;
     property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
     // Перед сборкой и запуском: Unit1 сохраняет изменённые вкладки и проект;
     // False - не всё сохранено, сборки и запуска нет
@@ -1173,7 +1185,7 @@ const
   StatusH = 18;
   SerialMinH = 60;
   SigHeadH = 20;
-  SigPanelH = 184;
+  SigPanelH = 210;
 var
   AreaW, PosY, ButtonW, BtnIdx, SigH: Integer;
   DeviceSize: TPoint;
@@ -1264,6 +1276,21 @@ end;
 procedure TArdSimPanel.OpenArdSimWindow;
 begin
   BtnWindowClick(Self);
+end;
+
+procedure TArdSimPanel.SigViewClick(Sender: TObject);
+begin
+  if Assigned(FOnViewFiles) then
+    FOnViewFiles(Self);
+end;
+
+procedure TArdSimPanel.ShowDataFile(const AFileName: string);
+begin
+  if AFileName = FDataFile then
+    Exit;
+  FDataFile := AFileName;
+  if FDataFile <> '' then
+    SetStatus('Файл замера: ' + FDataFile);
 end;
 
 procedure TArdSimPanel.SetShowToolbar(AValue: Boolean);
@@ -1867,6 +1894,17 @@ begin
   FSigIni.SetBounds(106, 160, 90, 22);
   FSigIni.OnClick := BtnIniClick;
   FSigNote := AddLabel('', 204, 160, 300);
+  FSigView := TUiButton.Create(Self);
+  FSigView.Parent := FSigPanel;
+  FSigView.Caption := 'View files Test.dat';
+  FSigView.Hint := 'Встроенный FAR левее эмулятора: в одной панели папка ' +
+    'скетча, в другой - все Test.dat в ней и во вложенных папках. Файл под ' +
+    'курсором передаётся эмулятору. Если FAR уже открыт, поиск идёт от ' +
+    'папки его левой панели';
+  FSigView.ShowHint := True;
+  FSigView.TabStop := False;
+  FSigView.SetBounds(0, 186, 196, 22);
+  FSigView.OnClick := SigViewClick;
   SigUpdateState;
 end;
 
