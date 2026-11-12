@@ -9,7 +9,11 @@ unit ArdSimFonts;
 //  скетча и папки %ARDSIM_FONTS%: их build_sim.cmd собирает сам.
 //  Остальные ищутся в папках libraries (ARoots) со всеми вложенными
 //  папками: первый .c, где есть массив-шрифт с этим именем. Порядок - как
-//  в ARoots, в папке сначала файлы, потом вложенные папки, всё по имени.
+//  в ARoots; в каждой папке libraries сначала просматриваются библиотеки,
+//  чей заголовок подключён в скетче через #include (UTFT.h -> UTFT),
+//  затем остальные; в папке сначала файлы, потом вложенные папки, всё по
+//  имени. Без этого копия шрифтов в папке с именем раньше по алфавиту
+//  (например 111qqq) перехватывала шрифты у UTFT.
 //  Файл с массивом, который уже есть (другой файл того же шрифта), не
 //  берётся: линкер выдал бы повторное определение.
 //
@@ -228,6 +232,116 @@ begin
   end;
 end;
 
+// Имена файлов из #include <...> и #include "..." (без пути)
+procedure CollectIncludes(const AText: string; ANames: TStrings);
+var
+  Src, Header: string;
+  Found, Pos1, Pos2: Integer;
+  CloseCh: Char;
+begin
+  Src := StripComments(AText);
+  Found := 0;
+  while True do
+  begin
+    Found := PosEx('#include', Src, Found + 1);
+    if Found = 0 then
+      Break;
+    Pos1 := Found + 8;
+    while (Pos1 <= Length(Src)) and (Src[Pos1] in [' ', #9]) do
+      Inc(Pos1);
+    if Pos1 > Length(Src) then
+      Break;
+    if Src[Pos1] = '<' then
+      CloseCh := '>'
+    else if Src[Pos1] = '"' then
+      CloseCh := '"'
+    else
+      Continue;
+    Pos2 := Pos1 + 1;
+    while (Pos2 <= Length(Src)) and (Src[Pos2] <> CloseCh) and
+      not (Src[Pos2] in [#10, #13]) do
+      Inc(Pos2);
+    if (Pos2 > Length(Src)) or (Src[Pos2] <> CloseCh) then
+      Continue;
+    Header := Copy(Src, Pos1 + 1, Pos2 - Pos1 - 1);
+    Pos1 := Length(Header);
+    while (Pos1 > 0) and not (Header[Pos1] in ['/', '\']) do
+      Dec(Pos1);
+    Header := Copy(Header, Pos1 + 1, MaxInt);
+    if (Header <> '') and (ANames.IndexOf(Header) < 0) then
+      ANames.Add(Header);
+  end;
+end;
+
+// Есть ли в папке библиотеки (в корне или в src) один из заголовков.
+// AByName - ещё и имя папки совпадает с именем заголовка (UTFT.h -> UTFT),
+// как при выборе библиотеки в arduino-cli
+function DirHasHeader(const ADir: string; AHeaders: TStrings;
+  AByName: Boolean): Boolean;
+var
+  Index: Integer;
+  DirSlash: string;
+begin
+  Result := False;
+  DirSlash := IncludeTrailingPathDelimiter(ADir);
+  for Index := 0 to AHeaders.Count - 1 do
+    if (FileExists(DirSlash + AHeaders[Index]) or
+        FileExists(DirSlash + 'src' + PathDelim + AHeaders[Index])) and
+       (not AByName or SameText(ExtractFileName(ExcludeTrailingPathDelimiter(ADir)),
+        ChangeFileExt(AHeaders[Index], ''))) then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+// Кандидаты одной папки libraries: сначала библиотеки, названные как
+// подключённый заголовок, затем прочие с этим заголовком, затем всё
+// остальное; каждый файл один раз
+procedure ListRootCandidates(const ARoot: string; AHeaders, AFiles: TStrings);
+var
+  Search: TSearchRec;
+  Dirs, AllFiles: TStringList;
+  Index, Pass, NameIdx: Integer;
+begin
+  Dirs := TStringList.Create;
+  AllFiles := TStringList.Create;
+  try
+    if AHeaders.Count > 0 then
+    begin
+      if FindFirst(IncludeTrailingPathDelimiter(ARoot) + '*', faAnyFile,
+         Search) = 0 then
+      begin
+        repeat
+          if ((Search.Attr and faDirectory) <> 0) and (Search.Name <> '.') and
+             (Search.Name <> '..') and (Search.Name[1] <> '.') then
+            Dirs.Add(IncludeTrailingPathDelimiter(ARoot) + Search.Name);
+        until FindNext(Search) <> 0;
+        FindClose(Search);
+      end;
+      Dirs.Sort;
+      for Pass := 0 to 1 do
+        for Index := 0 to Dirs.Count - 1 do
+          if DirHasHeader(Dirs[Index], AHeaders, Pass = 0) then
+          begin
+            AllFiles.Clear;
+            ListFilesDeep(Dirs[Index], AllFiles, 1);
+            for NameIdx := 0 to AllFiles.Count - 1 do
+              if AFiles.IndexOf(AllFiles[NameIdx]) < 0 then
+                AFiles.Add(AllFiles[NameIdx]);
+          end;
+      AllFiles.Clear;
+    end;
+    ListFilesDeep(ARoot, AllFiles, 0);
+    for NameIdx := 0 to AllFiles.Count - 1 do
+      if AFiles.IndexOf(AllFiles[NameIdx]) < 0 then
+        AFiles.Add(AllFiles[NameIdx]);
+  finally
+    Dirs.Free;
+    AllFiles.Free;
+  end;
+end;
+
 // Есть ли в тексте имя отдельным словом
 function HasIdent(const AText, AName: string): Boolean;
 var
@@ -254,7 +368,7 @@ procedure ArdSimPickFonts(const ASketchFile: string; ARoots: TStrings;
   const AEnvFontsDir: string; AList, ALog: TStrings);
 var
   SketchDir, Text, Root: string;
-  Needed, Provided, SketchFiles, Candidates, FileNames: TStringList;
+  Needed, Provided, SketchFiles, Candidates, FileNames, Headers: TStringList;
   FileIdx, NameIdx, RootIdx, Conflict: Integer;
   Wanted: Boolean;
 begin
@@ -264,13 +378,18 @@ begin
   SketchFiles := TStringList.Create;
   Candidates := TStringList.Create;
   FileNames := TStringList.Create;
+  Headers := TStringList.Create;
   try
     // Что объявлено в скетче
     ListFiles(SketchDir, '*.ino', SketchFiles);
     ListFiles(SketchDir, '*.h', SketchFiles);
     ListFiles(SketchDir, '*.cpp', SketchFiles);
     for FileIdx := 0 to SketchFiles.Count - 1 do
-      CollectExterns(ReadText(SketchFiles[FileIdx]), Needed);
+    begin
+      Text := ReadText(SketchFiles[FileIdx]);
+      CollectExterns(Text, Needed);
+      CollectIncludes(Text, Headers);
+    end;
     // Что уже есть: .c папки скетча, %ARDSIM_FONTS%
     SketchFiles.Clear;
     ListFiles(SketchDir, '*.c', SketchFiles);
@@ -290,7 +409,7 @@ begin
       if (Root = '') or not DirectoryExists(Root) then
         Continue;
       Candidates.Clear;
-      ListFilesDeep(Root, Candidates, 0);
+      ListRootCandidates(Root, Headers, Candidates);
       for FileIdx := 0 to Candidates.Count - 1 do
       begin
         if Needed.Count = 0 then
@@ -352,6 +471,7 @@ begin
     SketchFiles.Free;
     Candidates.Free;
     FileNames.Free;
+    Headers.Free;
   end;
 end;
 
