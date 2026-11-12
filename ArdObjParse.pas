@@ -1100,6 +1100,15 @@ begin
          not TokIs(FTokens, Idx - 1, '.') and (Labels.IndexOf(Tok.Text) >= 0) then
         ParseLabelCallAt(Idx, Func,
                          TArdLabel(Labels.Objects[Labels.IndexOf(Tok.Text)]));
+      // TLabelDraw(lblX).Top(y).Caption(s).Draw() - временная копия надписи
+      // (BS10Controls.h); надпись - lblX, свойства - как у lblX.Top(y)...
+      if (Tok.Kind = atkIdent) and (Tok.Text = 'TLabelDraw') and
+         TokIs(FTokens, Idx + 1, '(') and (TokAt(FTokens, Idx + 2) <> nil) and
+         (TokAt(FTokens, Idx + 2).Kind = atkIdent) and
+         TokIs(FTokens, Idx + 3, ')') and TokIs(FTokens, Idx + 4, '.') and
+         (Labels.IndexOf(TokText(Idx + 2)) >= 0) then
+        ParseLabelCallAt(Idx + 2, Func,
+                         TArdLabel(Labels.Objects[Labels.IndexOf(TokText(Idx + 2))]));
       if (Tok.Kind = atkIdent) and TokIs(FTokens, Idx + 1, '(') then
       begin
         ObjTok := nil;
@@ -1462,6 +1471,9 @@ begin
     SetTo[PropIdx] := -1;
   end;
   Idx := ANameIdx + 1;
+  // TLabelDraw(lblX). - после имени ')'
+  if TokIs(FTokens, Idx, ')') then
+    Inc(Idx);
   CloseIdx := -1;
   while TokIs(FTokens, Idx, '.') and (TokAt(FTokens, Idx + 1) <> nil) and
         (TokAt(FTokens, Idx + 1).Kind = atkIdent) and

@@ -8595,6 +8595,9 @@ var
   SavedLeft, SavedTop, SavedWidth, SavedHeight: Integer;
   RectVal, Desk, Tmp: TRect;
 begin
+  // При запуске окно - во весь экран всегда (Андрей 12.11), сохранённое
+  // положение - размер окна после "Восстановить"
+  try
   SavedWidth := Ini.ReadInteger('MainForm', 'Width', 0);
   SavedHeight := Ini.ReadInteger('MainForm', 'Height', 0);
   if (SavedWidth < 200) or (SavedHeight < 150) then
@@ -8616,8 +8619,7 @@ begin
 
   //  Position := poDesigned; // иначе VCL сам сдвинет окно при показе
   SetBounds(SavedLeft, SavedTop, SavedWidth, SavedHeight);
-
-  if Ini.ReadBool('MainForm', 'Maximized', False) then
+  finally
     {$IFDEF FPC}
     // LCL: развернуть, когда окно уже показано. Окно, развёрнутое до
     // показа, на Windows 7 открывалось не во весь экран и без изменения
@@ -8626,6 +8628,7 @@ begin
     {$ELSE}
     WindowState := wsMaximized;
     {$ENDIF}
+  end;
 end;
 
 // editor.ini - одной записью (TBufIniFile): через TIniFile каждый ключ
