@@ -17865,13 +17865,32 @@ procedure TForm1.HfListDrawItem(Control: TWinControl; Index: Integer;
 var
   Lst: TCheckListBox;
   TextRect: TRect;
+  TextColor: TColor;
 begin
   Lst := TCheckListBox(Control);
+  // Цвета строки задаются здесь явно: текст выводится через DrawTextW по
+  // Canvas.Handle, и цвет шрифта холста в DC может не попасть - в тёмной
+  // теме строки выходили чёрными на тёмном фоне
+  // odSelected в Unit1 не годится - в сборке LCL это имя другого
+  // перечисления; выделение берётся у списка
+  if (Index >= 0) and (Index < Lst.Items.Count) and Lst.Selected[Index] then
+  begin
+    Lst.Canvas.Brush.Color := clHighlight;
+    TextColor := clHighlightText;
+  end
+  else
+  begin
+    Lst.Canvas.Brush.Color := Lst.Color;
+    TextColor := UiColor('List.Text');
+  end;
   Lst.Canvas.FillRect(Rect);
   if (Index < 0) or (Index > Lst.Items.Count - 1) then
     Exit;
   if (FHfRedDir <> '') and (CompareText(Lst.Items[Index], FHfRedDir) = 0) then
-    Lst.Canvas.Font.Color := $3C3CFF; // ярко-красный: виден и на тёмном фоне
+    TextColor := $3C3CFF; // ярко-красный: виден и на тёмном фоне
+  Lst.Canvas.Font.Color := TextColor;
+  SetBkMode(Lst.Canvas.Handle, TRANSPARENT);
+  SetTextColor(Lst.Canvas.Handle, ColorToRGB(TextColor));
   TextRect := Rect;
   Inc(TextRect.Left, 2);
   UiDrawText(Lst.Canvas.Handle, PChar(Lst.Items[Index]), -1, TextRect,
@@ -29865,14 +29884,20 @@ end;
 procedure TForm1.ArdSimViewFiles(Sender: TObject);
 var
   Dlg: TDlgFifDisk;
+  ExtIdx: Integer;
 begin
   FifShowWindow(False, True);
   if FFifDlg = nil then
     Exit;
   Dlg := TDlgFifDisk(FFifDlg);
   // поле "Доп. маски" - только test.dat (Андрей 12.11: прежние маски убрать)
+  // и галки в списке "Маски" снимаются - ищется только test.dat
   if not FFifRunning and not FFifListing then
+  begin
     Dlg.edMask.Text := 'test.dat';
+    for ExtIdx := 0 to Dlg.lstExt.Items.Count - 1 do
+      Dlg.lstExt.Checked[ExtIdx] := False;
+  end;
   if FArdDataTimer = nil then
   begin
     FArdDataTimer := TTimer.Create(Self);
