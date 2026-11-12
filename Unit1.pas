@@ -25357,6 +25357,15 @@ begin
   // попасть в девять пикселей мышью труднее, чем в строку
   if (FMatchRows[Idx].Kind = mrkGroup) and (FMatchRows[Idx].HitCount < 0) then
   begin
+    // двойной щелчок по строке-файлу - путь к файлу в буфер обмена (Андрей 12.11)
+    if ssDouble in Shift then
+    begin
+      Clipboard.AsText := FMatchRows[Idx].FileName;
+      StatusBar1.SimpleText := 'Путь скопирован в буфер обмена: ' +
+                               FMatchRows[Idx].FileName;
+      StatusBar1.SimplePanel := True;
+      Exit;
+    end;
     // Искать файл: строка-файл - открыть файл. Test.dat при просмотре
     // замеров (кнопка эмулятора) - только эмулятору (ArdDataTimerTick)
     if not ((FArdDataTimer <> nil) and FArdDataTimer.Enabled and
