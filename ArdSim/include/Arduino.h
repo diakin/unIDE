@@ -147,6 +147,18 @@ extern SimSerial SerialUSB;
 
 // Simulator hooks (ArdSim/src)
 void simPoll();
+
+// ArdSim only (a real board does not define ARDSIM): measurement file view
+// of unIDE ("View files Test.dat", ardsim.ini [DataFile]).
+#define ARDSIM 1
+// 0 - no file is viewed; another value - changes when another file is chosen
+uint32_t simDataFileVersion();
+// The viewed file as the sketch would sample it: maxFrames frames of 4 values
+// (A0, A1 counts of the 12-bit ADC, A4 tacho, 0), the frame numbers of the
+// tacho marks and micros per frame. Returns frames taken from the file
+// (frames past its end repeat the last one), 0 - no file
+int simDataFileRead(uint16_t *frames, int maxFrames, int *marks, int maxMarks,
+                    int *markCount, double *frameUs);
 void setup();
 void loop();
 

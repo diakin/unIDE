@@ -390,8 +390,10 @@ struct DataReplay
   double Pos;                    // current frame position (Marks.front() .. Marks.back())
   double RevBase;                // whole turns of the passed loops
   double DataRpm, TachoRpm;      // ini values of the last load
+  bool MarkZero;                 // Marks[0] = 0 added (mark times: the measurement starts at a mark)
+  uint32_t Version;              // + 1 at each load (simDataFileVersion)
 };
-static DataReplay Replay = {"", false, std::vector<short>(), 0, std::vector<int>(), 0, 0, 0, 0, 0};
+static DataReplay Replay = {"", false, std::vector<short>(), 0, std::vector<int>(), 0, 0, 0, 0, 0, false, 0};
 
 static bool replayActive()
 {
@@ -468,6 +470,7 @@ static bool replayLoad(const char *path, double rpm)
       markUs += data[frame * 4 + 3] + 32000.0;
     }
   double frameUs = 0;
+  bool markZero = marks.size() >= 2;
   if (marks.size() >= 2)
     frameUs = markUs / marks.back();
   else
@@ -512,6 +515,10 @@ static bool replayLoad(const char *path, double rpm)
   Replay.Count = count;
   Replay.Marks.swap(marks);
   Replay.FrameUs = frameUs;
+  Replay.MarkZero = markZero;
+  Replay.Version++;
+  if (Replay.Version == 0)
+    Replay.Version = 1;
   Replay.Pos = Replay.Marks.front();
   Replay.RevBase = std::ceil(Revs);
   Replay.Loaded = true;
@@ -554,6 +561,45 @@ static void replayCheck()
     Replay.TachoRpm = Active.Rpm;
     replayLoad(Active.DataPath, Active.DataRpm);
   }
+}
+
+uint32_t simDataFileVersion()
+{
+  takePending();
+  if (!ActiveReady)
+    return 0;
+  replayCheck();
+  return replayActive() ? Replay.Version : 0;
+}
+
+int simDataFileRead(uint16_t *frames, int maxFrames, int *marks, int maxMarks,
+                    int *markCount, double *frameUs)
+{
+  *markCount = 0;
+  *frameUs = 0;
+  if (simDataFileVersion() == 0 || maxFrames <= 0)
+    return 0;
+  int taken = Replay.Count < maxFrames ? Replay.Count : maxFrames;
+  for (int frame = 0; frame < maxFrames; frame++)
+  {
+    int source = frame < taken ? frame : taken - 1;
+    for (int channel = 0; channel < 3; channel++)
+    {
+      double value = Replay.Frames[source * 4 + channel];
+      if (channel < 2)
+        value = Active.DataOffset + Active.DataScale * value;
+      if (value < 0) value = 0;
+      if (value > 4095) value = 4095;
+      frames[frame * 4 + channel] = (uint16_t)value;
+    }
+    frames[frame * 4 + 3] = 0;
+  }
+  // the mark at frame 0 is where the measurement started, not a mark inside it
+  for (size_t index = Replay.MarkZero ? 1 : 0; index < Replay.Marks.size(); index++)
+    if (Replay.Marks[index] < taken && *markCount < maxMarks)
+      marks[(*markCount)++] = Replay.Marks[index];
+  *frameUs = Replay.FrameUs;
+  return taken;
 }
 
 static double replayValue(int channel)
