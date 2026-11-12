@@ -559,6 +559,28 @@ type
   // Что создаёт DelphiNewModule (File - New - Pascal)
   TDelphiNewKind = (dnkForm, dnkUnit, dnkDataModule, dnkFrame);
 
+  {$IFDEF FPC}
+  // Сплиттер LCL с ResizeStyle = rsPattern: размер ставится в MouseUp. Если
+  // во время перетаскивания захват мыши забрало другое окно, MouseUp до
+  // сплиттера не доходит: линия-след остаётся на экране, размер панели не
+  // меняется, а следующее перетаскивание продолжает старое. Здесь потеря
+  // захвата (и движение мыши без нажатой кнопки) заканчивает перетаскивание
+  // так же, как отпускание кнопки. Тот же класс получают Splitter1, Split и
+  // FFarSplitter (имя TSplitter перекрывает ExtCtrls.TSplitter в этом модуле)
+  TSplitter = class(ExtCtrls.TSplitter)
+  private
+    FDragOn: Boolean;
+    procedure DragFinish;
+  protected
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
+      X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
+      X, Y: Integer); override;
+    procedure CaptureChanged; override;
+  end;
+  {$ENDIF}
+
   TForm1 = class(TForm)
     // Окно основного редактора (шаг 0.7.7: своё окно, не RichEdit). Имя
     // прежнее; текст, выделение, ввод - у своего редактора (FEdEmu,
@@ -4859,6 +4881,55 @@ var
   {$IFDEF FPC}{$R *.lfm}{$ELSE}{$R *.dfm}{$ENDIF}
   {$R formsnapshot_src.res} // FormSnapshot.pas для пробного запуска - ProbeRun
   {$R toolbar_icons.res} // ЭТА СТРОЧКА ЗАСТАВИТ DELPHI ИЗ RC-ФАЙЛА СДЕЛАТЬ ВШИТЫЙ РЕСУРС!
+
+{$IFDEF FPC}
+{ TSplitter }
+
+procedure TSplitter.DragFinish;
+var
+  CursorPt: TPoint;
+begin
+  if not FDragOn then
+    Exit;
+  FDragOn := False;
+  GetCursorPos(CursorPt);
+  StopSplitterMove(CursorPt);
+end;
+
+procedure TSplitter.MouseDown(Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  inherited MouseDown(Button, Shift, X, Y);
+  if Button = mbLeft then
+    FDragOn := True;
+end;
+
+// Кнопку отпустили, а MouseUp не пришёл - закончить, как при отпускании
+procedure TSplitter.MouseMove(Shift: TShiftState; X, Y: Integer);
+begin
+  if FDragOn and not (ssLeft in Shift) then
+  begin
+    DragFinish;
+    Exit;
+  end;
+  inherited MouseMove(Shift, X, Y);
+end;
+
+procedure TSplitter.MouseUp(Button: TMouseButton; Shift: TShiftState;
+  X, Y: Integer);
+begin
+  FDragOn := False;
+  inherited MouseUp(Button, Shift, X, Y);
+end;
+
+// Захват мыши ушёл (при обычном отпускании - тоже, до MouseUp): размер - по
+// месту курсора сейчас, линия-след убирается
+procedure TSplitter.CaptureChanged;
+begin
+  inherited CaptureChanged;
+  DragFinish;
+end;
+{$ENDIF}
 
   // ---------------------------------------------------------------------------
   //  Пробная сборка самого редактора
