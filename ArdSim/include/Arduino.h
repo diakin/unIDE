@@ -20,6 +20,10 @@
 typedef uint8_t byte;
 typedef bool boolean;
 typedef uint16_t word;
+// the Due core gets these from newlib <sys/types.h>; MinGW has none of them
+typedef unsigned int uint;
+typedef unsigned short ushort;
+typedef unsigned long ulong;
 
 #define HIGH 0x1
 #define LOW  0x0
@@ -133,6 +137,17 @@ public:
   int read() { return -1; }
   int peek() { return -1; }
   void flush() {}
+  // Stream input: the simulator has no serial input, so nothing arrives
+  void setTimeout(unsigned long timeout) { (void)timeout; }
+  String readString() { return String(); }
+  String readStringUntil(char terminator) { (void)terminator; return String(); }
+  size_t readBytes(char *buffer, size_t length) { (void)buffer; (void)length; return 0; }
+  size_t readBytes(uint8_t *buffer, size_t length) { (void)buffer; (void)length; return 0; }
+  size_t readBytesUntil(char terminator, char *buffer, size_t length)
+  { (void)terminator; (void)buffer; (void)length; return 0; }
+  long parseInt() { return 0; }
+  float parseFloat() { return 0; }
+  bool find(const char *target) { (void)target; return false; }
   size_t write(uint8_t value) override;
   size_t write(const uint8_t *buffer, size_t size) override;
   using Print::write;
