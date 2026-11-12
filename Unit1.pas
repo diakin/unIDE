@@ -2211,8 +2211,8 @@ type
     FArdWhereTick: Cardinal;
     FArdWhereLevel: Integer;
     FArdSimWasRunning: Boolean;   // для ArdSimStateChange: запуск эмулятора
-    // Просмотр файлов замеров (ArdSimViewFiles): опрос файла под курсором
-    // панели FAR со списком Test.dat, пока FAR открыт
+    // Просмотр файлов замеров (ArdSimViewFiles): опрос Test.dat под
+    // курсором Match list, пока открыто окно поиска или Match list
     FArdDataTimer: TTimer;
     // Кнопки эмулятора в ряду Project (Arduino), после Verify / Upload /
     // Program reset; создаются в FormCreate
@@ -25307,6 +25307,12 @@ begin
   end;
 end;
 
+// Файл замера для эмулятора: Test.dat (BalA-190, программа на ПК)
+function ArdIsDataFile(const AFileName: string): Boolean;
+begin
+  Result := SameText(ExtractFileName(AFileName), 'Test.dat');
+end;
+
 procedure TForm1.MatchGridMouseDown(Sender: TObject; Button: TMouseButton;
                                     Shift: TShiftState; PosX, PosY: Integer);
 var
@@ -25332,8 +25338,13 @@ begin
   // По заголовку сворачиваем группу целиком, а не только по квадратику:
   // попасть в девять пикселей мышью труднее, чем в строку
   if (FMatchRows[Idx].Kind = mrkGroup) and (FMatchRows[Idx].HitCount < 0) then
-    // Искать файл: строка-файл - открыть файл
-    OpenNamedFile(FMatchRows[Idx].FileName)
+  begin
+    // Искать файл: строка-файл - открыть файл. Test.dat при просмотре
+    // замеров (кнопка эмулятора) - только эмулятору (ArdDataTimerTick)
+    if not ((FArdDataTimer <> nil) and FArdDataTimer.Enabled and
+            ArdIsDataFile(FMatchRows[Idx].FileName)) then
+      OpenNamedFile(FMatchRows[Idx].FileName);
+  end
   else if FMatchRows[Idx].Kind = mrkGroup then
     ToggleMatchGroup(Idx)
   else
@@ -29742,35 +29753,30 @@ begin
 end;
 
 // Кнопка "View files Test.dat" панели "Сигналы" эмулятора (просьба Андрея
-// 12.11): unIDE FAR на месте редактора, т.е. левее окна эмулятора (полоса
-// FArdSimGap). Левая панель - папка скетча, правая - все Test.dat в ней и
-// во вложенных папках (TFarView.ShowFound). FAR уже открыт - поиск от
-// папки левой панели. Файл под курсором списка уходит эмулятору
-// (ArdDataTimerTick)
+// 12.11): окно "Искать файл - по маскам, на диске" (Find In Files в режиме
+// поиска файлов), в поле масок добавлен test.dat. Найденные файлы - в
+// Match list; Test.dat под курсором Match list уходит эмулятору
+// (ArdDataTimerTick), щелчок по нему не открывает файл в редакторе
 procedure TForm1.ArdSimViewFiles(Sender: TObject);
 var
-  RootDir: string;
+  Dlg: TDlgFifDisk;
+  Masks: string;
 begin
-  RootDir := '';
-  if (FFar <> nil) and FFar.Visible and not FFarHalf then
-    RootDir := string(FFar.PanelPath(0));
-  if (RootDir = '') or not DirectoryExists(RootDir) then
-    RootDir := ExtractFilePath(BuildTargetOf(bkArduino));
-  if (RootDir = '') or not DirectoryExists(RootDir) then
-    RootDir := ExtractFilePath(FCurrentFileName);
-  if (RootDir = '') or not DirectoryExists(RootDir) then
+  FifShowWindow(False, True);
+  if FFifDlg = nil then
+    Exit;
+  Dlg := TDlgFifDisk(FFifDlg);
+  if not FFifRunning and not FFifListing then
   begin
-    ArdSimLog(Sender, 'View files Test.dat: нет папки скетча');
-    Exit;
+    Masks := Trim(Dlg.edMask.Text);
+    if Pos(';test.dat;', ';' + LowerCase(StringReplace(Masks, ' ', '',
+           [rfReplaceAll])) + ';') = 0 then
+      if Masks = '' then
+        Masks := 'test.dat'
+      else
+        Masks := Masks + ';test.dat';
+    Dlg.edMask.Text := Masks;
   end;
-  // Режим F4 (одна панель рядом с редактором) - сначала закрыть: нужны обе
-  if (FFar <> nil) and FFar.Visible and FFarHalf then
-    FarClose(Self);
-  FarMenuClick(Self);
-  if FFar = nil then
-    Exit;
-  FFar.ShowFolderAt(0, WideString(RootDir));
-  FFar.ShowFound(1, WideString(RootDir), 'Test.dat');
   if FArdDataTimer = nil then
   begin
     FArdDataTimer := TTimer.Create(Self);
@@ -29778,29 +29784,30 @@ begin
     FArdDataTimer.OnTimer := ArdDataTimerTick;
   end;
   FArdDataTimer.Enabled := True;
-  ArdDataTimerTick(Self);
 end;
 
-// Файл под курсором панели FAR со списком найденных Test.dat (активной,
-// иначе другой) - эмулятору. FAR закрыт или списка нет - опрос
-// останавливается
+// Test.dat в строке под курсором Match list - эмулятору. Окно поиска и
+// Match list оба закрыты - опрос останавливается
 procedure TForm1.ArdDataTimerTick(Sender: TObject);
 var
-  PanelIdx: Integer;
+  RowIdx: Integer;
   FileName: string;
 begin
-  if (FFar = nil) or not FFar.Visible or (FArdSim = nil) or
-     (not FFar.PanelIsFound(0) and not FFar.PanelIsFound(1)) then
+  if (FArdSim = nil) or
+     (((FFifDlg = nil) or not FFifDlg.Visible) and
+      ((FMatchForm = nil) or not FMatchForm.Visible)) then
   begin
     if FArdDataTimer <> nil then
       FArdDataTimer.Enabled := False;
     Exit;
   end;
-  PanelIdx := FFar.ActiveIndex;
-  if not FFar.PanelIsFound(PanelIdx) then
-    PanelIdx := 1 - PanelIdx;
-  FileName := string(FFar.CursorFile(PanelIdx));
-  if FileName <> '' then
+  if (FMatchForm = nil) or not FMatchForm.Visible or (FMatchGrid = nil) then
+    Exit;
+  RowIdx := FMatchGrid.Row - 1;
+  if (RowIdx < 0) or (RowIdx > High(FMatchRows)) then
+    Exit;
+  FileName := FMatchRows[RowIdx].FileName;
+  if ArdIsDataFile(FileName) then
     FArdSim.ShowDataFile(FileName);
 end;
 

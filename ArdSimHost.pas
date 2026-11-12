@@ -145,7 +145,7 @@ type
     FOnLog: TArdSimTextEvent;
     FOnOpenFile: TArdSimTextEvent;
     FOnViewFiles: TNotifyEvent;
-    FDataFile: string;        // файл замера (Test.dat), выбранный в FAR
+    FDataFile: string;        // файл замера (Test.dat), выбранный в Match list
     FOnNeedSketch: TNotifyEvent;
     FOnSaveFiles: TArdSimSaveEvent;
     FOnStateChange: TNotifyEvent;
@@ -190,7 +190,7 @@ type
     FSigApply: TUiButton;
     FSigIni: TUiButton;   // открыть ardsim.ini (кнопка ini верхней строки скрыта в окне эмулятора)
     FSigNote: TUiLabel;
-    FSigView: TUiButton;  // View files Test.dat: FAR со списком файлов замеров (Unit1)
+    FSigView: TUiButton;  // View files Test.dat: поиск файлов замеров (Unit1)
     FSigData: TUiCheckBox;  // [DataFile] Enabled: A0, A1 и тахометр - из файла замера
     FSigShown: Boolean;
     FSigDirty: Boolean;
@@ -295,7 +295,7 @@ type
     procedure RunSim;
     procedure OpenIni;
     procedure OpenArdSimWindow;
-    // Просмотр файлов замеров: курсор FAR встал на файл AFileName
+    // Просмотр файлов замеров: курсор Match list встал на файл AFileName
     // (Test.dat). Пишется в ardsim.ini ([DataFile] Enabled=1, Path):
     // эмулятор за полсекунды переходит на сигнал из файла, скетч считает
     // по нему обычный замер
@@ -407,8 +407,8 @@ type
     property FontRoots: TStringList read FFontRoots;
     property OnLog: TArdSimTextEvent read FOnLog write FOnLog;
     property OnOpenFile: TArdSimTextEvent read FOnOpenFile write FOnOpenFile;
-    // Кнопка "View files Test.dat" панели "Сигналы": Unit1 открывает FAR
-    // со списком файлов замеров
+    // Кнопка "View files Test.dat" панели "Сигналы": Unit1 открывает окно
+    // поиска файлов с маской test.dat
     property OnViewFiles: TNotifyEvent read FOnViewFiles write FOnViewFiles;
     property OnNeedSketch: TNotifyEvent read FOnNeedSketch write FOnNeedSketch;
     // Перед сборкой и запуском: Unit1 сохраняет изменённые вкладки и проект;
@@ -1925,10 +1925,9 @@ begin
   FSigView := TUiButton.Create(Self);
   FSigView.Parent := FSigPanel;
   FSigView.Caption := 'View files Test.dat';
-  FSigView.Hint := 'Встроенный FAR левее эмулятора: в одной панели папка ' +
-    'скетча, в другой - все Test.dat в ней и во вложенных папках. Файл под ' +
-    'курсором передаётся эмулятору. Если FAR уже открыт, поиск идёт от ' +
-    'папки его левой панели';
+  FSigView.Hint := 'Окно "Искать файл - по маскам, на диске" с маской test.dat: ' +
+    'найденные файлы - в Match list, Test.dat под курсором списка ' +
+    'передаётся эмулятору';
   FSigView.ShowHint := True;
   FSigView.TabStop := False;
   FSigView.SetBounds(0, 186, 196, 22);
