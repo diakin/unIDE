@@ -25188,7 +25188,7 @@ begin
         Cnv.Brush.Style := bsClear;
         if ACol = 1 then
           Cnv.TextOut(Rect.Left + 3, Rect.Top + 1, FMatchRows[Idx].FileName +
-                      '      ' + EdUiText(FMatchRows[Idx].Text));
+                      '      ' + FMatchRows[Idx].Text);
         Cnv.Brush.Style := bsSolid;
         Exit;
       end;
@@ -29848,7 +29848,7 @@ begin
   Cnv.Font := FMatchGrid.Font;
   Cnv.Font.Style := [fsBold];
   Result := Cnv.TextWidth(FMatchRows[ARowIdx].FileName + '      ' +
-                          EdUiText(FMatchRows[ARowIdx].Text));
+                          FMatchRows[ARowIdx].Text);
 end;
 
 // Match list при просмотре Test.dat (Андрей 12.11): высота - пол экрана,
