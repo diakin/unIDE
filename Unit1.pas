@@ -26603,12 +26603,33 @@ procedure TForm1.FifCollectDirs(const ADirs, AMasks: string;
                                 AOnFile: TFifFileFound);
 var
   Dirs, Seen: TStringList;
-  DirIdx, FileIdx, Found: Integer;
+  DirIdx, OtherIdx, FileIdx, Found: Integer;
+  DirLow, OtherLow: string;
 begin
   Dirs := TStringList.Create;
   Seen := TStringList.Create;
   try
     FifSplitDirs(ADirs, Dirs);
+    // Повтор папки и (с подпапками) папка внутри другой из списка не
+    // обходятся: их файлы иначе приходят в Match list по второму разу ещё
+    // во время обхода, до чистки повторов ниже
+    for DirIdx := Dirs.Count - 1 downto 0 do
+    begin
+      DirLow := AnsiLowerCase(IncludeTrailingPathDelimiter(Dirs[DirIdx]));
+      for OtherIdx := 0 to Dirs.Count - 1 do
+      begin
+        if OtherIdx = DirIdx then
+          Continue;
+        OtherLow := AnsiLowerCase(IncludeTrailingPathDelimiter(Dirs[OtherIdx]));
+        if ((OtherLow = DirLow) and (OtherIdx < DirIdx)) or
+           (ASubDirs and (Length(OtherLow) < Length(DirLow)) and
+            (Copy(DirLow, 1, Length(OtherLow)) = OtherLow)) then
+        begin
+          Dirs.Delete(DirIdx);
+          Break;
+        end;
+      end;
+    end;
     for DirIdx := 0 to Dirs.Count - 1 do
     begin
       FifCollectDir(IncludeTrailingPathDelimiter(Dirs[DirIdx]), AMasks,
