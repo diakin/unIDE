@@ -26870,6 +26870,42 @@ end;
 // Искать файл на диске: обход нашёл файл - сразу строкой в Match list
 // (новые строки показывает FifStep не реже раза в 100 мс); тот же файл
 // второй раз (папка внутри другой отмеченной) - мимо
+// Ключ содержимого файла: размер и FNV-1a всех байт ('' - не прочитан).
+// Просмотр Test.dat эмулятора: одинаковые замеры, разложенные по разным
+// папкам, в Match list - одной строкой
+{$IFOPT Q+}{$DEFINE FileKeyQ}{$Q-}{$ENDIF}
+{$IFOPT R+}{$DEFINE FileKeyR}{$R-}{$ENDIF}
+function FifFileDataKey(const AFile: string): string;
+var
+  Stream: TFileStream;
+  Buf: array[0..65535] of Byte;
+  Got, ByteIdx: Integer;
+  Hash: Cardinal;
+  Size: Int64;
+begin
+  Result := '';
+  try
+    Stream := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
+  except
+    Exit;
+  end;
+  try
+    Hash := 2166136261;
+    Size := 0;
+    repeat
+      Got := Stream.Read(Buf, SizeOf(Buf));
+      for ByteIdx := 0 to Got - 1 do
+        Hash := (Hash xor Buf[ByteIdx]) * 16777619;
+      Inc(Size, Got);
+    until Got <= 0;
+    Result := '#' + IntToStr(Size) + ':' + IntToHex(Integer(Hash), 8);
+  finally
+    Stream.Free;
+  end;
+end;
+{$IFDEF FileKeyQ}{$Q+}{$UNDEF FileKeyQ}{$ENDIF}
+{$IFDEF FileKeyR}{$R+}{$UNDEF FileKeyR}{$ENDIF}
+
 procedure TForm1.FifFileFoundName(const AFile: string; var ACancel: Boolean);
 var
   FileKey: string;
@@ -26886,6 +26922,17 @@ begin
     if FFifSeen.Find(FileKey, Found) then
       Exit;
     FFifSeen.Add(FileKey);
+    // просмотр Test.dat: файл с тем же содержимым уже в списке - пропуск
+    if FArdMatchTop then
+    begin
+      FileKey := FifFileDataKey(AFile);
+      if FileKey <> '' then
+      begin
+        if FFifSeen.Find(FileKey, Found) then
+          Exit;
+        FFifSeen.Add(FileKey);
+      end;
+    end;
   end;
   FifAddFileRow(AFile);
   Inc(FFifFiles);
