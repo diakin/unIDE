@@ -17626,6 +17626,23 @@ begin
       HfSelectPath(APreselect);
     end;
 
+    // Сохранённый список мог прийти с отмеченными вложенными папками
+    // (например, из сборки, где галки не было видно) - при открытии их
+    // галки снимаются, как при щелчке по папке верхнего уровня
+    if not FHfSearchMode then
+    begin
+      K := 0;
+      for I := 0 to FHfList.Items.Count - 1 do
+        if FHfList.Checked[I] and (HfNestedChecked(I) >= 0) then
+        begin
+          FHfList.Checked[I] := False;
+          Inc(K);
+        end;
+      if K > 0 then
+        HfNote('Сняты галки вложенных папок (' + IntToStr(K) +
+               '): они внутри других отмеченных');
+    end;
+
     if Dlg.ShowModal <> mrOk then
       Exit;
 
