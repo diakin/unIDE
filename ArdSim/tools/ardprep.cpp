@@ -1430,7 +1430,11 @@ static void collectFontArrays(const std::vector<std::string> &files, std::set<st
         size_t scan = index + 2;
         while (scan < tokens.size() && !(tokens[scan].Kind == TokPunct && tokens[scan].Text == "]"))
           scan++;
-        if (scan + 1 < tokens.size() && tokens[scan + 1].Kind == TokPunct && tokens[scan + 1].Text == "=")
+        // "Name[1144] PROGMEM = {" (UTFT font files): words between ] and =
+        scan++;
+        while (scan < tokens.size() && tokens[scan].Kind == TokIdent)
+          scan++;
+        if (scan < tokens.size() && tokens[scan].Kind == TokPunct && tokens[scan].Text == "=")
           arrays.insert(tokens[index].Text);
       }
   }
