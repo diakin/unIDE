@@ -17866,11 +17866,29 @@ var
   Lst: TCheckListBox;
   TextRect: TRect;
   TextColor: TColor;
+  {$IFDEF FPC}
+  CheckRect, BoxRect: TRect;
+  BoxSize: Integer;
+  BoxState: Cardinal;
+  {$ENDIF}
 begin
   Lst := TCheckListBox(Control);
+  TextRect := Rect;
+  {$IFDEF FPC}
+  // В LCL win32 у TCheckListBox со стилем lbOwnerDraw* квадратик галки не
+  // рисуется и Rect - вся строка. Галка рисуется здесь в квадрате шириной
+  // в высоту строки слева: щелчок в этом квадрате LCL считает щелчком по
+  // галке. Текст - правее, как у стандартной отрисовки LCL
+  CheckRect := Rect;
+  CheckRect.Right := Rect.Left + Rect.Bottom - Rect.Top;
+  TextRect.Left := CheckRect.Right + 4;
+  Lst.Canvas.Brush.Color := Lst.Color;
+  Lst.Canvas.FillRect(Classes.Rect(Rect.Left, Rect.Top, TextRect.Left,
+                                   Rect.Bottom));
+  {$ENDIF}
   // Цвета строки задаются здесь явно: текст выводится через DrawTextW по
   // Canvas.Handle, и цвет шрифта холста в DC может не попасть - в тёмной
-  // теме строки выходили чёрными на тёмном фоне
+  // теме строки выходили чёрными на тёмном фоне.
   // odSelected в Unit1 не годится - в сборке LCL это имя другого
   // перечисления; выделение берётся у списка
   if (Index >= 0) and (Index < Lst.Items.Count) and Lst.Selected[Index] then
@@ -17883,15 +17901,27 @@ begin
     Lst.Canvas.Brush.Color := Lst.Color;
     TextColor := UiColor('List.Text');
   end;
-  Lst.Canvas.FillRect(Rect);
+  Lst.Canvas.FillRect(TextRect);
   if (Index < 0) or (Index > Lst.Items.Count - 1) then
     Exit;
   if (FHfRedDir <> '') and (CompareText(Lst.Items[Index], FHfRedDir) = 0) then
     TextColor := $3C3CFF; // ярко-красный: виден и на тёмном фоне
+  {$IFDEF FPC}
+  BoxSize := CheckRect.Bottom - CheckRect.Top - 2;
+  if BoxSize > 13 then
+    BoxSize := 13;
+  BoxRect.Left := (CheckRect.Left + CheckRect.Right - BoxSize) div 2 + 1;
+  BoxRect.Top := (CheckRect.Top + CheckRect.Bottom - BoxSize) div 2;
+  BoxRect.Right := BoxRect.Left + BoxSize;
+  BoxRect.Bottom := BoxRect.Top + BoxSize;
+  BoxState := DFCS_BUTTONCHECK;
+  if Lst.Checked[Index] then
+    BoxState := BoxState or DFCS_CHECKED;
+  DrawFrameControl(Lst.Canvas.Handle, BoxRect, DFC_BUTTON, BoxState);
+  {$ENDIF}
   Lst.Canvas.Font.Color := TextColor;
   SetBkMode(Lst.Canvas.Handle, TRANSPARENT);
   SetTextColor(Lst.Canvas.Handle, ColorToRGB(TextColor));
-  TextRect := Rect;
   Inc(TextRect.Left, 2);
   UiDrawText(Lst.Canvas.Handle, PChar(Lst.Items[Index]), -1, TextRect,
            DT_SINGLELINE or DT_VCENTER or DT_NOPREFIX);
