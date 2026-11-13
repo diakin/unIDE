@@ -174,6 +174,11 @@ uint32_t simDataFileVersion();
 // (frames past its end repeat the last one), 0 - no file
 int simDataFileRead(uint16_t *frames, int maxFrames, int *marks, int maxMarks,
                     int *markCount, double *frameUs);
+// The chosen file cannot be shown (no tacho marks, no RPM, too short...):
+// not 0, changes when another file is chosen; simDataFileError - why
+#define ARDSIM_DATAFILE_FAILED 1
+uint32_t simDataFileFailed();
+const char *simDataFileError();
 void setup();
 void loop();
 

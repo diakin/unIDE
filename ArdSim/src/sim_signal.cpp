@@ -430,8 +430,11 @@ static double harmonicsRpm(const std::string &dataPath)
   return rpm;
 }
 
+// Why the last load failed (simDataFileError), "" after a good load
+static std::string ReplayError;
+
 // File -> Replay; false: not readable, too short or without turns
-static bool replayLoad(const char *path, double rpm)
+static bool replayLoadData(const char *path, double rpm)
 {
   Replay.Path = path;
   Replay.Loaded = false;
@@ -445,7 +448,10 @@ static bool replayLoad(const char *path, double rpm)
     fullPath = simExeDir() + fullPath;
   FILE *input = fopen(fullPath.c_str(), "rb");
   if (!input)
+  {
+    ReplayError = "file not opened";
     return false;
+  }
   std::vector<short> data;
   short chunk[4096];
   size_t got;
@@ -454,7 +460,10 @@ static bool replayLoad(const char *path, double rpm)
   fclose(input);
   int count = (int)(data.size() / 4);
   if (count < 64)
+  {
+    ReplayError = "file too short";
     return false;
+  }
   // Mark times in channel 3
   std::vector<int> marks;
   double markUs = 0;
@@ -505,24 +514,44 @@ static bool replayLoad(const char *path, double rpm)
       rpm = harmonicsRpm(fullPath);
     if (rpm <= 0)
       rpm = Active.Rpm;
-    if (marks.size() < 2 || rpm <= 0)
+    if (marks.size() < 2)
+    {
+      ReplayError = "no tacho marks";
       return false;
+    }
+    if (rpm <= 0)
+    {
+      ReplayError = "no RPM (Garmoniki.txt)";
+      return false;
+    }
     frameUs = 60e6 / rpm * (marks.size() - 1) / (marks.back() - marks.front());
   }
   if (frameUs <= 0)
+  {
+    ReplayError = "bad mark times";
     return false;
+  }
   Replay.Frames.swap(data);
   Replay.Count = count;
   Replay.Marks.swap(marks);
   Replay.FrameUs = frameUs;
   Replay.MarkZero = markZero;
-  Replay.Version++;
-  if (Replay.Version == 0)
-    Replay.Version = 1;
   Replay.Pos = Replay.Marks.front();
   Replay.RevBase = std::ceil(Revs);
   Replay.Loaded = true;
   return true;
+}
+
+// Every load, good or not, gets a new Version: the sketch sees that another
+// file was chosen also when this one cannot be shown (simDataFileFailed)
+static bool replayLoad(const char *path, double rpm)
+{
+  ReplayError = "";
+  bool loaded = replayLoadData(path, rpm);
+  Replay.Version++;
+  if (Replay.Version == 0)
+    Replay.Version = 1;
+  return loaded;
 }
 
 // Index of the turn that holds frame position pos
@@ -570,6 +599,20 @@ uint32_t simDataFileVersion()
     return 0;
   replayCheck();
   return replayActive() ? Replay.Version : 0;
+}
+
+uint32_t simDataFileFailed()
+{
+  takePending();
+  if (!ActiveReady)
+    return 0;
+  replayCheck();
+  return (Active.DataOn && !Replay.Loaded && Replay.Version != 0) ? Replay.Version : 0;
+}
+
+const char *simDataFileError()
+{
+  return ReplayError.c_str();
 }
 
 int simDataFileRead(uint16_t *frames, int maxFrames, int *marks, int maxMarks,
