@@ -191,6 +191,10 @@ type
     // ArgFile, ArgLine - место значения в файле форм). Line и Func - от
     // AAt (вызов, где надпись передана аргументом). nil - не надпись.
     function LabelDeclCall(const AName: string; AAt: TArdCall): TArdCall;
+    // Надписи TLabel, которые упоминает тело функции AFunc (не параметры) и
+    // тела функций скетча, вызванных из неё (до 3 уровней): имена в AList
+    // по первому упоминанию. Так у InputNumber видны lblInpActive и т.п.
+    procedure FuncLabelRefs(AFunc: TArdFunc; AList: TStrings);
     // Цвет выражения как TColor ($00BBGGRR): число RGB565 (0xF800, 63488),
     // VGA_..., RGB24TOLCD(0xRRGGBB), три числа "r, g, b", имя #define.
     // False - не вычисляется (переменная, выражение).
@@ -224,6 +228,8 @@ type
 // Параметр функции скетча - цвет / шрифт / строка (по имени и типу)
 function ArdParamIsColor(const AName, AType: string): Boolean;
 function ArdParamIsFont(const AName, AType: string): Boolean;
+// Свойство TLabel со значением 0 или 1 (Filled, Rounded, Rect, Proportional)
+function ArdLabelPropIsFlag(AProp: Integer): Boolean;
 // Имена параметров метода UTFT (print - Text, X, Y, Deg)
 procedure ArdMethodParams(const AMethod: string; AArgCount: Integer;
                           AList: TStrings);
@@ -329,6 +335,11 @@ begin
             ((Pos('uint8_t', LowType) > 0) and
              ((Pos('[', LowType) > 0) or (Pos('*', LowType) > 0))) or
             (Pos('fontdatatype', LowType) > 0);
+end;
+
+function ArdLabelPropIsFlag(AProp: Integer): Boolean;
+begin
+  Result := AProp in [8, 9, 12, 13];
 end;
 
 procedure ArdMethodParams(const AMethod: string; AArgCount: Integer;
@@ -1627,6 +1638,48 @@ begin
   end;
   Result.ArgsText := '';
   FDeclCalls.Add(Result);
+end;
+
+procedure TArdSketch.FuncLabelRefs(AFunc: TArdFunc; AList: TStrings);
+var
+  Visited: TList;
+
+  procedure Scan(AScanFunc: TArdFunc; ADepth: Integer);
+  var
+    TokIdx: Integer;
+    Tok: TArdTok;
+  begin
+    if (AScanFunc = nil) or (ADepth > 3) or (Visited.IndexOf(AScanFunc) >= 0) then
+      Exit;
+    Visited.Add(AScanFunc);
+    if (AScanFunc.BodyTok < 0) or (AScanFunc.EndTok >= FTokens.Count) then
+      Exit;
+    for TokIdx := AScanFunc.BodyTok + 1 to AScanFunc.EndTok - 1 do
+    begin
+      Tok := TArdTok(FTokens[TokIdx]);
+      if (Tok.Kind = atkIdent) and (Labels.IndexOf(Tok.Text) >= 0) and
+         (AScanFunc.ParamNames.IndexOf(Tok.Text) < 0) and
+         (AList.IndexOf(Tok.Text) < 0) and
+         ((TokIdx = 0) or (TokText(TokIdx - 1) <> '.')) then
+        AList.Add(Tok.Text);
+    end;
+    // Вызванные функции скетча - по словам Имя( : в Calls есть не все
+    // (InputShowValue выводит только через параметр-надпись)
+    for TokIdx := AScanFunc.BodyTok + 1 to AScanFunc.EndTok - 2 do
+      if (TArdTok(FTokens[TokIdx]).Kind = atkIdent) and
+         (TokText(TokIdx + 1) = '(') and (TokText(TokIdx - 1) <> '.') then
+        Scan(FuncByName(TArdTok(FTokens[TokIdx]).Text), ADepth + 1);
+  end;
+
+begin
+  if (AFunc = nil) or (Labels = nil) then
+    Exit;
+  Visited := TList.Create;
+  try
+    Scan(AFunc, 0);
+  finally
+    Visited.Free;
+  end;
 end;
 
 // Значение аргумента: по словам скетча или (значение из файла форм) по

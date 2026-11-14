@@ -3209,7 +3209,7 @@ type
     procedure ArdRefreshInspector;
     function  ArdCallCaption(ACall: TObject): string;
     procedure ArdFillObjTables(AObj: TObject);
-    function ArdArgLabelCall(ACall: TObject): TObject; // TArdCall
+    function ArdArgLabelCall(ACall: TObject; AGroup: Integer = 0): TObject; // TArdCall
     procedure ArdGlyphUpdate;
     procedure ArdGlyphHide;
     function ArdGlyphTextRow: TListItem;
@@ -34414,6 +34414,10 @@ const
   // Свойства надписи, переданной аргументом в функцию скетча
   // (InputNumber(lblInpM1_Win2, ...)): ArdRowLabel + номер свойства TLabel
   ArdRowLabel = 200000;
+  // Группа надписей у вызова: 0 - надпись-аргумент, 1.. - надписи, которые
+  // упоминает тело функции (FuncLabelRefs: lblInpActive у InputNumber);
+  // Data = ArdRowLabel + группа * ArdRowLabelGroup + номер свойства
+  ArdRowLabelGroup = 100;
   ArdCapColor = 'Цвет (setColor)';
   ArdCapBack = 'Цвет фона (setBackColor)';
   ArdCapFont = 'Шрифт (setFont)';
@@ -34586,21 +34590,45 @@ end;
 
 // Надпись TLabel среди аргументов вызова функции скетча (первая) - как
 // вывод со значениями объявления (TArdSketch.LabelDeclCall); nil - нет
-function TForm1.ArdArgLabelCall(ACall: TObject): TObject;
+function TForm1.ArdArgLabelCall(ACall: TObject; AGroup: Integer): TObject;
 var
-  ArgIdx: Integer;
+  ArgIdx, RefIdx: Integer;
   Call: TArdCall;
+  Sketch: TArdSketch;
+  ArgName: string;
+  Refs: TStringList;
 begin
   Result := nil;
   Call := TArdCall(ACall);
+  Sketch := TArdSketch(FArdSketch);
   if (Call = nil) or Call.IsLabel or (Call.Kind <> ackUser) or
-     (FArdSketch = nil) then
+     (Sketch = nil) or (AGroup < 0) then
     Exit;
+  ArgName := '';
   for ArgIdx := 0 to Call.Args.Count - 1 do
+    if Sketch.Labels.IndexOf(Trim(Call.Args[ArgIdx])) >= 0 then
+    begin
+      ArgName := Trim(Call.Args[ArgIdx]);
+      Break;
+    end;
+  if AGroup = 0 then
   begin
-    Result := TArdSketch(FArdSketch).LabelDeclCall(Call.Args[ArgIdx], Call);
-    if Result <> nil then
-      Exit;
+    if ArgName <> '' then
+      Result := Sketch.LabelDeclCall(ArgName, Call);
+    Exit;
+  end;
+  if Call.Target = nil then
+    Exit;
+  Refs := TStringList.Create;
+  try
+    Sketch.FuncLabelRefs(Call.Target, Refs);
+    RefIdx := Refs.IndexOf(ArgName);
+    if RefIdx >= 0 then
+      Refs.Delete(RefIdx);
+    if AGroup <= Refs.Count then
+      Result := Sketch.LabelDeclCall(Refs[AGroup - 1], Call);
+  finally
+    Refs.Free;
   end;
 end;
 
@@ -34612,7 +34640,7 @@ var
   Func: TArdFunc;
   Item: TListItem;
   Names: TStringList;
-  ArgIdx, FuncTotal, ValueLine, ColorValue: Integer;
+  ArgIdx, FuncTotal, ValueLine, ColorValue, LabelGroup: Integer;
   ValueText: string;
 
   // Колонки (ArdColumns): Свойство | Переменная | Значение | Строка кода.
@@ -34754,10 +34782,22 @@ begin
     end;
     // Аргумент - надпись TLabel (поле InputNumber и т.п.): ниже её свойства
     // из объявления, правятся как у вывода самой надписи (в файле форм)
-    LabelCall := TArdCall(ArdArgLabelCall(Call));
-    if LabelCall <> nil then
+    // Ниже - надписи, которые берёт сама функция (цвета состояний поля
+    // InputNumber: lblInpActive, lblInpOk, lblInpError)
+    for LabelGroup := 0 to 49 do
     begin
-      AddUiRow(LabelCall.Name + ': TLabel', '', '', -1, -1);
+      LabelCall := TArdCall(ArdArgLabelCall(Call, LabelGroup));
+      if LabelCall = nil then
+      begin
+        if LabelGroup = 0 then
+          Continue;
+        Break;
+      end;
+      if LabelGroup = 0 then
+        AddUiRow(LabelCall.Name + ': TLabel', '', '', -1, -1)
+      else
+        AddUiRow(LabelCall.Name + ': TLabel (в ' + Call.Name + ')', '', '',
+                 -1, -1);
       for ArgIdx := 0 to LabelCall.Args.Count - 1 do
       begin
         if ArgIdx > High(ArdLabelProps) then
@@ -34770,7 +34810,8 @@ begin
                                       (ColorValue and $FF00) or
                                       ((ColorValue shr 16) and $FF), 6);
         AddUiRow('  ' + ArdLabelProps[ArgIdx], EdUiText(LabelCall.Args[ArgIdx]),
-                 ValueText, -1, ArdRowLabel + ArgIdx);
+                 ValueText, -1,
+                 ArdRowLabel + LabelGroup * ArdRowLabelGroup + ArgIdx);
         if (LabelCall.ArgFile[ArgIdx] > 0) and (Item.SubItems.Count >= 3) then
           Item.SubItems[2] :=
             ExtractFileName(Sketch.IncludeFiles[LabelCall.ArgFile[ArgIdx] - 1]) +
@@ -35164,10 +35205,11 @@ begin
   // Свойство надписи-аргумента: правка как у вывода этой надписи
   if RowData >= ArdRowLabel then
   begin
-    Call := TArdCall(ArdArgLabelCall(Call));
+    Call := TArdCall(ArdArgLabelCall(Call,
+              (RowData - ArdRowLabel) div ArdRowLabelGroup));
     if Call = nil then
       Exit;
-    RowData := RowData - ArdRowLabel;
+    RowData := (RowData - ArdRowLabel) mod ArdRowLabelGroup;
   end;
   IsColor := False;
   IsFont := False;
@@ -35220,6 +35262,13 @@ begin
       ParamType := Call.Target.ParamTypes[RowData];
       IsFont := ArdParamIsFont(ParamName, ParamType);
       IsColor := not IsFont and ArdParamIsColor(ParamName, ParamType);
+    end
+    else if Call.IsLabel and (RowData <= High(ArdLabelProps)) then
+    begin
+      // Свойство TLabel: шрифт и цвета - по имени (Font, Color, FontColor,
+      // BorderColor)
+      IsFont := ArdParamIsFont(ArdLabelProps[RowData], '');
+      IsColor := not IsFont and ArdParamIsColor(ArdLabelProps[RowData], '');
     end
     else if (Call.Name = 'fillScr') and (Call.Args.Count = 1) then
       IsColor := True;
@@ -35307,6 +35356,18 @@ begin
     FObjCombo.Items.Clear;
     for FontIdx := 0 to High(ArdAlignNames) do
       FObjCombo.Items.Add(ArdAlignNames[FontIdx]);
+    FObjCombo.Text := EdUiText(OldText);
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else if Call.IsLabel and ArdLabelPropIsFlag(RowData) then
+  begin
+    // Filled, Rounded, Rect, Proportional - 0 или 1
+    FObjComboColors := False;
+    FObjCombo.Style := csDropDown;
+    FObjCombo.Items.Clear;
+    FObjCombo.Items.Add('0');
+    FObjCombo.Items.Add('1');
     FObjCombo.Text := EdUiText(OldText);
     FObjEditOld := FObjCombo.Text;
     FObjActive := FObjCombo;
