@@ -226,9 +226,12 @@ function ArdQuote(const AText: string): string;
 
 const
   // Свойства TLabel - по порядку аргументов Label() и полей объявления
-  ArdLabelProps: array[0..12] of string = (
+  // Proportional (BS10 14.11) - последнее; объявление без него (13 значений)
+  // тоже принимается, тогда строки Proportional в инспекторе нет
+  ArdLabelProps: array[0..13] of string = (
     'Left', 'Top', 'Width', 'Height', 'Caption', 'Color', 'Font',
-    'FontColor', 'Filled', 'Rounded', 'BorderColor', 'LineWidth', 'Rect');
+    'FontColor', 'Filled', 'Rounded', 'BorderColor', 'LineWidth', 'Rect',
+    'Proportional');
 
 implementation
 
@@ -1438,7 +1441,8 @@ begin
           Inc(ValIdx);
         end;
         AddValue(ValStart, CloseIdx - 1);
-        if (Decl.Values.Count = Length(ArdLabelProps)) and
+        if ((Decl.Values.Count = Length(ArdLabelProps)) or
+            (Decl.Values.Count = Length(ArdLabelProps) - 1)) and
            (Labels.IndexOf(Decl.Name) < 0) then
           Labels.AddObject(Decl.Name, Decl)
         else
@@ -1462,7 +1466,8 @@ var
   Call: TArdCall;
   Idx, CloseIdx, PropIdx, ArgIdx: Integer;
   FirstTok, LastTok, NameTok: TArdTok;
-  SetFrom, SetTo: array[0..12] of Integer;
+  SetFrom, SetTo: array[0..13] of Integer;
+  PropCount: Integer;
 begin
   Result := -1;
   for PropIdx := 0 to High(SetFrom) do
@@ -1511,13 +1516,14 @@ begin
   Call.CloseTok := Result;
   Call.CloseLine := TArdTok(FTokens[Result]).Line;
   Call.CloseCol := TArdTok(FTokens[Result]).Col;
-  SetLength(Call.ArgLine, Length(ArdLabelProps));
-  SetLength(Call.ArgCol, Length(ArdLabelProps));
-  SetLength(Call.ArgLen, Length(ArdLabelProps));
-  SetLength(Call.ArgFirstTok, Length(ArdLabelProps));
-  SetLength(Call.ArgLastTok, Length(ArdLabelProps));
-  SetLength(Call.ArgFile, Length(ArdLabelProps));
-  for ArgIdx := 0 to High(ArdLabelProps) do
+  PropCount := ALabel.Values.Count;
+  SetLength(Call.ArgLine, PropCount);
+  SetLength(Call.ArgCol, PropCount);
+  SetLength(Call.ArgLen, PropCount);
+  SetLength(Call.ArgFirstTok, PropCount);
+  SetLength(Call.ArgLastTok, PropCount);
+  SetLength(Call.ArgFile, PropCount);
+  for ArgIdx := 0 to PropCount - 1 do
     if (SetFrom[ArgIdx] >= 0) and (SetFrom[ArgIdx] <= SetTo[ArgIdx]) then
     begin
       // Задано в этом выводе: lblX.Top(intop)
