@@ -73,6 +73,7 @@ uses
   RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
   MingwTool,      // свой MinGW-w64 GCC (tools\mingw): сборка скетча под ПК
   ArdSimHost,     // вкладка Emulator: скетч, собранный ArdSim, в правой панели
+  ArdGlyphPanel,  // знаки шрифта надписи под таблицей инспектора (.ino)
   GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
   UiCaptionTabs,  // вкладки Components | Git на месте подписи рамки палитры
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
@@ -2122,6 +2123,10 @@ type
     FObjRapidQ: Boolean;    // в инспекторе - объекты CREATE файла RapidQ
     // В инспекторе - вывод на экран скетча .ino (ArdRefreshInspector)
     FObjArduino: Boolean;
+    // Знаки шрифта выбранной надписи под таблицей свойств (.ino): щелчок -
+    // знак в поле текста (ArdGlyphPick)
+    FArdGlyphs: TArdGlyphPanel;
+    FArdGlyphSplit: TSplitter;
     FArdSketch: TObject;    // TArdSketch (ArdObjParse) показанного текста
     FArdTextKey: string;    // по какому тексту он разобран: файл, длина, CRC
     // Правка значения вызова: строка, колонка и текст аргумента до правки
@@ -3204,6 +3209,10 @@ type
     procedure ArdRefreshInspector;
     function  ArdCallCaption(ACall: TObject): string;
     procedure ArdFillObjTables(AObj: TObject);
+    procedure ArdGlyphUpdate;
+    procedure ArdGlyphHide;
+    function ArdGlyphTextRow: TListItem;
+    procedure ArdGlyphPick(ACode: Integer);
     procedure ArdBeginEdit(AItem: TListItem);
     procedure ArdApplyEdit;
     function  ArdApplyFileEdit(const ANewText: string): Boolean;
@@ -33236,6 +33245,19 @@ FDsgUndo := TStringList.Create;
   FObjProps.OnCustomDrawItem := ObjPropsDrawItem;
   FObjProps.OnCustomDrawSubItem := ObjPropsDrawSubItem;
 
+  // Под таблицей свойств скетча - знаки шрифта надписи (ArdGlyphUpdate)
+  FArdGlyphs := TArdGlyphPanel.Create(Self);
+  FArdGlyphs.Visible := False;
+  FArdGlyphs.Align := alBottom;
+  FArdGlyphs.Height := 120;
+  FArdGlyphs.Parent := FObjPropsSheet;
+  FArdGlyphs.OnPick := ArdGlyphPick;
+  FArdGlyphSplit := TSplitter.Create(Self);
+  FArdGlyphSplit.Visible := False;
+  FArdGlyphSplit.Align := alBottom;
+  FArdGlyphSplit.Height := 4;
+  FArdGlyphSplit.Parent := FObjPropsSheet;
+
   FObjMissing := TStringList.Create;
   FRqExpanded := TStringList.Create;
   FRqExpanded.Sorted := True;
@@ -34736,6 +34758,177 @@ begin
   AddRow('Функций с выводом', IntToStr(FuncTotal), -1, -1);
 end;
 
+// Знаки шрифта под таблицей свойств скетча. Шрифт - у надписи TLabel
+// поле Font, у print - setFont выше, у функции скетча - аргумент-шрифт.
+// Данные шрифта - из эмулятора (FindFont: файлы сборки и libraries), без
+// эмулятора знаков нет - только подпись.
+procedure TForm1.ArdGlyphUpdate;
+var
+  Node: TDfmNode;
+  Sketch: TArdSketch;
+  Call: TArdCall;
+  FontArg, Target: string;
+  ArgIdx, FontLine, WantHeight, MaxHeight: Integer;
+  Font: TUtftFont;
+  TextRow: TListItem;
+begin
+  if FArdGlyphs = nil then
+    Exit;
+  Node := TDfmNode(FObjCurNode);
+  Sketch := TArdSketch(FArdSketch);
+  FontArg := '';
+  FontLine := 0;
+  if FObjArduino and (Node <> nil) and (Sketch <> nil) and
+     (Node.Line >= 0) and (Node.Line < Sketch.Calls.Count) then
+  begin
+    Call := TArdCall(Sketch.Calls[Node.Line]);
+    FontLine := Call.Line;
+    if Call.IsLabel then
+    begin
+      if Call.Args.Count > 6 then
+        FontArg := Trim(Call.Args[6]);
+    end
+    else if (Call.Kind = ackText) and (Call.FontCall <> nil) then
+    begin
+      FontArg := Trim(Call.FontCall.ArgsText);
+      FontLine := Call.FontCall.Line;
+    end
+    else if (Call.Kind = ackUser) and (Call.Target <> nil) then
+      for ArgIdx := 0 to Call.Args.Count - 1 do
+        if (ArgIdx < Call.Target.ParamNames.Count) and
+           ArdParamIsFont(Call.Target.ParamNames[ArgIdx],
+                          Call.Target.ParamTypes[ArgIdx]) then
+        begin
+          FontArg := Trim(Call.Args[ArgIdx]);
+          Break;
+        end;
+  end;
+  if FontArg = '' then
+  begin
+    ArdGlyphHide;
+    Exit;
+  end;
+  TextRow := ArdGlyphTextRow;
+  Target := '';
+  if TextRow <> nil then
+    Target := TextRow.Caption;
+  Font := nil;
+  if FArdSim <> nil then
+    Font := FArdSim.FindFont(Sketch.FontArrayName(FontArg, FontLine));
+  if Font <> nil then
+    FArdGlyphs.SetFont(Font, FontArg, Target)
+  else if FArdSim = nil then
+    FArdGlyphs.ClearFont('Шрифт ' + FontArg + ': знаки видны, когда ' +
+      'открыт эмулятор (файлы шрифтов берутся из его сборки)')
+  else
+    FArdGlyphs.ClearFont('Шрифт ' + FontArg + ': файл .c не найден ' +
+      'среди файлов сборки эмулятора и папок libraries');
+
+  // Высота - чтобы были видны все знаки, но не больше половины вкладки
+  WantHeight := FArdGlyphs.PreferredHeight(FObjPropsSheet.ClientWidth);
+  MaxHeight := FObjPropsSheet.ClientHeight div 2;
+  if WantHeight > MaxHeight then
+    WantHeight := MaxHeight;
+  if WantHeight < 24 then
+    WantHeight := 24;
+  if not FArdGlyphs.Visible then
+  begin
+    FArdGlyphs.Height := WantHeight;
+    FArdGlyphs.Visible := True;
+    // Разделитель - над панелью: в LCL порядок alBottom - по нижнему краю
+    FArdGlyphSplit.Top := FArdGlyphs.Top - FArdGlyphSplit.Height;
+    FArdGlyphSplit.Visible := True;
+  end
+  else if FArdGlyphs.Height <> WantHeight then
+  begin
+    FArdGlyphs.Height := WantHeight;
+    FArdGlyphSplit.Top := FArdGlyphs.Top - FArdGlyphSplit.Height;
+  end;
+end;
+
+procedure TForm1.ArdGlyphHide;
+begin
+  if FArdGlyphs = nil then
+    Exit;
+  FArdGlyphSplit.Visible := False;
+  FArdGlyphs.Visible := False;
+end;
+
+// Строка таблицы, куда идёт знак: выбранная, если её значение - строка в
+// кавычках; иначе Caption надписи; иначе первый аргумент-строка вызова
+function TForm1.ArdGlyphTextRow: TListItem;
+var
+  Node: TDfmNode;
+  Sketch: TArdSketch;
+  Call: TArdCall;
+  ItemIdx, RowData: Integer;
+  LitText: string;
+
+  function IsTextRow(AItem: TListItem): Boolean;
+  begin
+    Result := False;
+    if AItem = nil then
+      Exit;
+    RowData := Integer(AItem.Data);
+    Result := (RowData >= 0) and (RowData < Call.Args.Count) and
+              (RowData < ArdRowColor) and
+              ArdUnquote(Trim(Call.Args[RowData]), LitText);
+  end;
+
+begin
+  Result := nil;
+  Node := TDfmNode(FObjCurNode);
+  Sketch := TArdSketch(FArdSketch);
+  if (Node = nil) or (Sketch = nil) or (Node.Line < 0) or
+     (Node.Line >= Sketch.Calls.Count) then
+    Exit;
+  Call := TArdCall(Sketch.Calls[Node.Line]);
+  if IsTextRow(FObjProps.Selected) then
+  begin
+    Result := FObjProps.Selected;
+    Exit;
+  end;
+  for ItemIdx := 0 to FObjProps.Items.Count - 1 do
+    if Call.IsLabel and (Integer(FObjProps.Items[ItemIdx].Data) = 4) then
+    begin
+      Result := FObjProps.Items[ItemIdx];
+      Exit;
+    end;
+  for ItemIdx := 0 to FObjProps.Items.Count - 1 do
+    if IsTextRow(FObjProps.Items[ItemIdx]) then
+    begin
+      Result := FObjProps.Items[ItemIdx];
+      Exit;
+    end;
+end;
+
+// Щелчок по знаку: в открытое поле строки - на место курсора; иначе
+// открывается правка строки текста (ArdGlyphTextRow) и знак - в конец
+procedure TForm1.ArdGlyphPick(ACode: Integer);
+var
+  TextRow: TListItem;
+begin
+  if not (FObjEditing and (FObjActive = FObjEdit)) then
+  begin
+    // Открыта правка другого свойства - записать её, как при уходе фокуса
+    if FObjEditing then
+      ObjApplyEdit;
+    if FObjEditing then
+      Exit;   // значение не прошло проверку - поле осталось открытым
+    TextRow := ArdGlyphTextRow;
+    if TextRow = nil then
+      Exit;
+    FObjProps.Selected := TextRow;
+    ArdBeginEdit(TextRow);
+    if not (FObjEditing and (FObjActive = FObjEdit)) then
+      Exit;
+    FObjEdit.SelStart := Length(FObjEdit.Text);
+    FObjEdit.SelLength := 0;
+  end;
+  FObjEdit.SelText := EdUiText(Chr(ACode));
+  FObjEdit.SetFocus;
+end;
+
 // Колонки таблицы свойств у скетча: Свойство | Переменная | Значение |
 // Строка кода (строка, где переменной аргумента присвоено значение). У файлов
 // Delphi и RapidQ - прежние три колонки с прежними подписями и ширинами.
@@ -34743,6 +34936,8 @@ procedure TForm1.ArdColumns(AOn: Boolean);
 var
   ColIdx: Integer;
 begin
+  if not AOn then
+    ArdGlyphHide;
   if (FObjProps = nil) or (AOn = FArdColsOn) or
      (FObjProps.Columns.Count < 3) then
     Exit;
@@ -52669,8 +52864,10 @@ begin
     if FObjArduino then
     begin
       ArdFillObjTables(Obj);
+      ArdGlyphUpdate;
       Exit;
     end;
+    ArdGlyphHide;
     // Объект RapidQ - таблицы по описанию классов (RapidQFillObjTables)
     if FObjRapidQ then
     begin

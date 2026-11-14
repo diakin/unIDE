@@ -127,6 +127,7 @@ uses
   RufusTool in 'RufusTool.pas',
   MingwTool in 'MingwTool.pas',
   ArdSimFonts in 'ArdSimFonts.pas',
+  ArdGlyphPanel in 'ArdGlyphPanel.pas',
   ArdSimHost in 'ArdSimHost.pas',
   ArdObjParse in 'ArdObjParse.pas',
   GitRun in 'GitRun.pas',
