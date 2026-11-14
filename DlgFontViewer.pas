@@ -56,6 +56,7 @@ const
 
 type
   TFontOpenFileEvent = procedure(const AFileName: string) of object;
+  TUtftRects = array of TRect;
 
   // Один массив из .c-файла: шрифт или то, что им не оказалось (Problem)
   TUtftFont = class
@@ -206,6 +207,18 @@ function FontViewerInstance: TDlgFontViewer;
 // Образец 1:1 белым на чёрном шириной FontViewWidth по SampleCodes;
 // AShowCells - клетки через одну темнее
 function UtftMakeSample(AFont: TUtftFont; AShowCells: Boolean): TBitmap;
+
+// Пропорциональный образец - как PrintProp в BS10.ino: знак без пустых
+// столбцов слева и справа, следующий - через UtftPropGap точек; пустой
+// знак (пробел) - UtftPropSpace точек. Строки - по AWidth точек, белым на
+// чёрном. ACells - место каждого знака SampleCodes в картинке
+const
+  UtftPropGap = 2;
+function UtftPropGlyph(AFont: TUtftFont; ACode: Integer;
+  var ALeft: Integer): Integer;
+function UtftPropSpace(AFont: TUtftFont): Integer;
+function UtftMakePropSample(AFont: TUtftFont; AWidth: Integer;
+  var ACells: TUtftRects): TBitmap;
 
 // Разбор .c-файла: каждый массив с инициализатором { } - в AList
 // (TUtftFont). Результат - False, если файл не прочитан
@@ -805,6 +818,109 @@ begin
         Canvas.FillRect(Rect(CellX + RunStart, CellY + Row,
           CellX + AFont.SizeX, CellY + Row + 1));
     end;
+  end;
+end;
+
+// Столбцы знака с точками: первый (ALeft) и ширина; 0 - пустой знак или
+// кода нет (как PropGlyph в BS10.ino)
+function UtftPropGlyph(AFont: TUtftFont; ACode: Integer;
+  var ALeft: Integer): Integer;
+var
+  Offset, BytesPerRow, Row, Col, LowCol, HighCol: Integer;
+begin
+  Result := 0;
+  ALeft := 0;
+  Offset := AFont.GlyphOffset(ACode);
+  if Offset < 0 then
+    Exit;
+  BytesPerRow := AFont.SizeX div 8;
+  LowCol := AFont.SizeX;
+  HighCol := -1;
+  for Row := 0 to AFont.SizeY - 1 do
+    for Col := 0 to AFont.SizeX - 1 do
+      if (AFont.Data[Offset + Row * BytesPerRow + Col div 8] and
+          ($80 shr (Col mod 8))) <> 0 then
+      begin
+        if Col < LowCol then
+          LowCol := Col;
+        if Col > HighCol then
+          HighCol := Col;
+      end;
+  if HighCol < 0 then
+    Exit;
+  ALeft := LowCol;
+  Result := HighCol - LowCol + 1;
+end;
+
+// Ширина пустого знака: половина клетки, но не меньше 4 точек (PropSpace)
+function UtftPropSpace(AFont: TUtftFont): Integer;
+begin
+  Result := (AFont.SizeX + 2) div 2;
+  if Result < 4 then
+    Result := 4;
+end;
+
+function UtftMakePropSample(AFont: TUtftFont; AWidth: Integer;
+  var ACells: TUtftRects): TBitmap;
+var
+  CodeIdx, Code, Offset, InkW, InkLeft, StepW, PosX, LineIdx, Lines: Integer;
+  Row, Col, BytesPerRow, CellY: Integer;
+  Lefts, Widths: array of Integer;
+  Canvas: TCanvas;
+begin
+  Result := TBitmap.Create;
+  Result.PixelFormat := pf24bit;
+  SetLength(ACells, Length(AFont.SampleCodes));
+  SetLength(Lefts, Length(AFont.SampleCodes));
+  SetLength(Widths, Length(AFont.SampleCodes));
+  // Раскладка по строкам: знак, который не входит, - с новой строки
+  PosX := 0;
+  LineIdx := 0;
+  for CodeIdx := 0 to High(AFont.SampleCodes) do
+  begin
+    InkW := UtftPropGlyph(AFont, AFont.SampleCodes[CodeIdx], InkLeft);
+    if InkW > 0 then
+      StepW := InkW + UtftPropGap
+    else
+      StepW := UtftPropSpace(AFont);
+    if (PosX > 0) and (PosX + StepW - UtftPropGap > AWidth) then
+    begin
+      PosX := 0;
+      Inc(LineIdx);
+    end;
+    Lefts[CodeIdx] := InkLeft;
+    Widths[CodeIdx] := InkW;
+    ACells[CodeIdx] := Rect(PosX, LineIdx * AFont.SizeY, PosX + StepW,
+      (LineIdx + 1) * AFont.SizeY);
+    Inc(PosX, StepW);
+  end;
+  Lines := LineIdx + 1;
+  if Length(AFont.SampleCodes) = 0 then
+    Lines := 0;
+  Result.Width := AWidth;
+  Result.Height := Lines * AFont.SizeY;
+  if Result.Height = 0 then
+    Exit;
+  Canvas := Result.Canvas;
+  Canvas.Brush.Style := bsSolid;
+  Canvas.Brush.Color := FvScreenColor;
+  Canvas.FillRect(Rect(0, 0, Result.Width, Result.Height));
+  Canvas.Brush.Color := FvGlyphColor;
+  BytesPerRow := AFont.SizeX div 8;
+  for CodeIdx := 0 to High(AFont.SampleCodes) do
+  begin
+    if Widths[CodeIdx] = 0 then
+      Continue;
+    Code := AFont.SampleCodes[CodeIdx];
+    Offset := AFont.GlyphOffset(Code);
+    CellY := ACells[CodeIdx].Top;
+    for Row := 0 to AFont.SizeY - 1 do
+      for Col := Lefts[CodeIdx] to Lefts[CodeIdx] + Widths[CodeIdx] - 1 do
+        if (AFont.Data[Offset + Row * BytesPerRow + Col div 8] and
+            ($80 shr (Col mod 8))) <> 0 then
+          Canvas.FillRect(Rect(ACells[CodeIdx].Left + Col - Lefts[CodeIdx],
+            CellY + Row, ACells[CodeIdx].Left + Col - Lefts[CodeIdx] + 1,
+            CellY + Row + 1));
   end;
 end;
 

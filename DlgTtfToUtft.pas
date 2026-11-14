@@ -98,6 +98,8 @@ type
     FPrivateFiles: TStringList;  // подключённые .ttf (снять при закрытии)
     FFont: TUtftFont;         // построенный шрифт
     FSample: TBitmap;         // образец 1:1
+    FPropSample: TBitmap;     // образец пропорционально (PrintProp в BS10)
+    FPropCells: TUtftRects;   // места знаков в FPropSample
     FSelCode: Integer;        // символ крупно
     FTimer: TTimer;
     FTextHeight: Integer;
@@ -137,6 +139,7 @@ type
     procedure PaintPreview(ACanvas: TCanvas);
     procedure PreviewClick(PosX, PosY: Integer);
     function  ZoomTop: Integer;
+    function  PropTop: Integer;
     function  ZoomScale: Integer;
     procedure BtnTtfClick(Sender: TObject);
     procedure BtnFitClick(Sender: TObject);
@@ -894,6 +897,7 @@ begin
   {$ENDIF}
   FPrivateFiles.Free;
   FSample.Free;
+  FPropSample.Free;
   FFont.Free;
   if TtfWindow = Self then
     TtfWindow := nil;
@@ -1331,6 +1335,7 @@ begin
   if not ReadParams(Params) then
   begin
     FreeAndNil(FSample);
+    FreeAndNil(FPropSample);
     SetLength(FFont.Data, 0);
     FFont.CharCount := 0;
     LayoutPreview;
@@ -1344,6 +1349,8 @@ begin
     UtftSetSample(FFont, '');
     FreeAndNil(FSample);
     FSample := UtftMakeSample(FFont, True);
+    FreeAndNil(FPropSample);
+    FPropSample := UtftMakePropSample(FFont, FontViewWidth, FPropCells);
     Ink := TtfMeasureInk(Params);
   finally
     Screen.Cursor := crDefault;
@@ -1401,6 +1408,16 @@ begin
   Result := TtfPreviewGap + FTextHeight + 4;
   if FSample <> nil then
     Result := Result + FSample.Height + 2 * TtfPreviewGap + FTextHeight + 4;
+  if FPropSample <> nil then
+    Result := Result + FPropSample.Height + 2 * TtfPreviewGap + FTextHeight + 4;
+end;
+
+// Верх пропорционального образца (под образцом 1:1)
+function TDlgTtfToUtft.PropTop: Integer;
+begin
+  Result := TtfPreviewGap + FTextHeight + 4;
+  if FSample <> nil then
+    Result := Result + FSample.Height + 2 * TtfPreviewGap + FTextHeight + 4;
 end;
 
 procedure TDlgTtfToUtft.LayoutPreview;
@@ -1435,6 +1452,13 @@ begin
   ACanvas.TextOut(TtfPreviewGap, TtfPreviewGap, 'Образец 1:1 (щелчок - ' +
     'символ крупно):');
   ACanvas.Draw(TtfPreviewGap, TtfPreviewGap + FTextHeight + 4, FSample);
+  if FPropSample <> nil then
+  begin
+    ACanvas.TextOut(TtfPreviewGap, PropTop - FTextHeight - 4, Format(
+      'Пропорционально, как PrintProp в BS10 (промежуток %d, пробел %d):',
+      [UtftPropGap, UtftPropSpace(FFont)]));
+    ACanvas.Draw(TtfPreviewGap, PropTop, FPropSample);
+  end;
 
   // Выбранный символ крупно: точки и сетка
   Scale := ZoomScale;
@@ -1481,6 +1505,25 @@ var
 begin
   if (FSample = nil) or (FFont.SampleCols = 0) then
     Exit;
+  // Щелчок по пропорциональному образцу
+  if (FPropSample <> nil) and (PosY >= PropTop) and
+     (PosY < PropTop + FPropSample.Height) then
+  begin
+    LocalX := PosX - TtfPreviewGap;
+    LocalY := PosY - PropTop;
+    for CodeIdx := 0 to High(FPropCells) do
+      if (LocalX >= FPropCells[CodeIdx].Left) and
+         (LocalX < FPropCells[CodeIdx].Right) and
+         (LocalY >= FPropCells[CodeIdx].Top) and
+         (LocalY < FPropCells[CodeIdx].Bottom) and
+         (CodeIdx <= High(FFont.SampleCodes)) then
+      begin
+        FSelCode := FFont.SampleCodes[CodeIdx];
+        FPreview.Invalidate;
+        Break;
+      end;
+    Exit;
+  end;
   LocalX := PosX - TtfPreviewGap;
   LocalY := PosY - (TtfPreviewGap + FTextHeight + 4);
   if (LocalX < 0) or (LocalY < 0) or (LocalY >= FSample.Height) or
