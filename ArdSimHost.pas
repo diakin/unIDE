@@ -1958,6 +1958,10 @@ begin
     Exit;
   FSigDirty := True;
   SigUpdateState;
+  // галка "Сигнал из файла замера" применяется сразу (Андрей 14.11): скетч
+  // переключает метки File / Paused
+  if (Sender = FSigData) and FSigApply.Enabled then
+    SigApplyClick(Sender);
 end;
 
 procedure TArdSimPanel.SigUpdateState;
