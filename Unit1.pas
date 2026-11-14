@@ -32901,7 +32901,7 @@ begin
   Idx3 := FSubView[Item.Index];
   if (Idx3 < 0) or (Idx3 > High(FSubs)) then
     Exit;
-  Item.Caption := SubListCaption(FSubs[Idx3].Name);
+  Item.Caption := EdUiText(SubListCaption(FSubs[Idx3].Name));
   Item.SubItems.Clear;
   Item.SubItems.Add(IntToStr(FSubs[Idx3].BeginLine + 1));
   Item.SubItems.Add(IntToStr(FSubs[Idx3].EndLine + 1));
@@ -57108,18 +57108,28 @@ end;
 // скрыта, панель целиком под объявление.
 procedure TForm1.SubLabelShow(const AName: string);
 var
-  Txt: string;
+  Txt, FirstLine: string;
+  BreakPos: Integer;
 begin
   if FSubLabel = nil then
     Exit;
-  if AName = '' then
+  // Заголовок на нескольких строках (параметры C-функции) - только первая
+  // строка (Андрей 14.11); весь заголовок - в подсказке
+  FirstLine := AName;
+  BreakPos := Pos(#13, FirstLine);
+  if (BreakPos = 0) or ((Pos(#10, FirstLine) > 0) and (Pos(#10, FirstLine) < BreakPos)) then
+    BreakPos := Pos(#10, FirstLine);
+  if BreakPos > 0 then
+    FirstLine := Copy(FirstLine, 1, BreakPos - 1);
+  FirstLine := Trim(StringReplace(FirstLine, #9, ' ', [rfReplaceAll]));
+  if FirstLine = '' then
     Txt := ''
   else
-    Txt := '   ' + AName + '   ';
+    Txt := '   ' + EdUiText(FirstLine) + '   ';
   if FSubLabel.Caption <> Txt then
   begin
     FSubLabel.Caption := Txt;
-    FSubLabel.Hint := AName;
+    FSubLabel.Hint := EdUiText(AName);
   end;
   if FSubLabel.Visible <> (Txt <> '') then
     FSubLabel.Visible := Txt <> '';
@@ -57262,7 +57272,7 @@ begin
   FDeclWord := '';
   FDeclLine := HeadLine;
   FDeclCol := FirstPos;
-  FDeclText := Trim(StringReplace(LineText, #9, ' ', [rfReplaceAll]));
+  FDeclText := EdUiText(Trim(StringReplace(LineText, #9, ' ', [rfReplaceAll])));
   EdApi.GetSel(CaretSel);
   FDeclFromPos := CaretSel.cpMin;
   FDeclFromLine := EdApi.ExLineFromChar(FDeclFromPos);
@@ -57860,8 +57870,8 @@ begin
     begin
       FDeclLine := DeclLineIdx;
       FDeclCol := DeclCol;
-      FDeclText := Trim(StringReplace(Src[DeclLineIdx], #9, ' ',
-                                      [rfReplaceAll]));
+      FDeclText := EdUiText(Trim(StringReplace(Src[DeclLineIdx], #9, ' ',
+                                      [rfReplaceAll])));
       FDeclMode := 2;
       // Значение: последнее присваивание между объявлением и щелчком
       if DeclLineIdx < LineIdx then
@@ -57870,8 +57880,8 @@ begin
                                       FDeclWord);
         if AssignLine >= 0 then
           FDeclExtra := 'выше присвоено, ' + IntToStr(AssignLine + 1) +
-            ':   ' + Trim(StringReplace(Src[AssignLine], #9, ' ',
-                                        [rfReplaceAll]));
+            ':   ' + EdUiText(Trim(StringReplace(Src[AssignLine], #9, ' ',
+                                        [rfReplaceAll])));
       end;
       DeclPanelShow;
       Exit;
@@ -57919,8 +57929,8 @@ begin
             FDeclOtherFile := OtherName;
             FDeclLine := DeclLineIdx;
             FDeclCol := DeclCol;
-            FDeclText := Trim(StringReplace(OtherSrc[DeclLineIdx], #9, ' ',
-                                            [rfReplaceAll]));
+            FDeclText := EdUiText(Trim(StringReplace(OtherSrc[DeclLineIdx], #9, ' ',
+                                            [rfReplaceAll])));
             FDeclMode := 2;
             DeclPanelShow;
             Exit;
@@ -58083,12 +58093,13 @@ begin
     begin
       FDeclLine := DL;
       FDeclCol := DC;
-      FDeclText := Trim(StringReplace(Src[DL], #9, ' ', [rfReplaceAll]));
+      FDeclText := EdUiText(Trim(StringReplace(Src[DL], #9, ' ', [rfReplaceAll])));
       FDeclMode := 2;
     end
     else if FindDeclInUnits(Src, Cl, WU, FDeclOtherFile, DL, DC,
                             FDeclText) then
     begin
+      FDeclText := EdUiText(FDeclText);
       FDeclLine := DL;
       FDeclCol := DC;
       FDeclMode := 2;
@@ -72812,16 +72823,16 @@ DeclPanelShow;
     FDeclLine := Item.Line;
     FDeclCol := Item.Col;
     if FoundFile = '' then
-      FDeclText := Trim(StringReplace(SrcLines[Item.Line], #9, ' ',
-                                      [rfReplaceAll]))
+      FDeclText := EdUiText(Trim(StringReplace(SrcLines[Item.Line], #9, ' ',
+                                      [rfReplaceAll])))
     else
     begin
       FDeclOtherFile := FoundFile;
       if IndexOfWindowByFile(FoundFile) < 0 then
         RqDeclLoadLines(FoundFile, FileLines);
       if Item.Line < FileLines.Count then
-        FDeclText := Trim(StringReplace(FileLines[Item.Line], #9, ' ',
-                                        [rfReplaceAll]))
+        FDeclText := EdUiText(Trim(StringReplace(FileLines[Item.Line], #9, ' ',
+                                        [rfReplaceAll])))
       else
         FDeclText := '';
     end;
@@ -89136,7 +89147,7 @@ begin
   if (FMsgDepth = 0) and CiBeforeMessage(Message) then
     Exit;
   // Метки направляющих у краёв окна: щелчок - начало блока в панель
-  // объявления, каретка остаётся на месте; над меткой - курсор-рука
+  // объявления, каретка остаётся на месте; над меткой - курсор-стрелка
   if (FMsgDepth = 0) and not FGuideBusy and (Length(FGuideMarks) > 0) then
   begin
     if (Message.Msg = WM_LBUTTONDOWN) or (Message.Msg = WM_LBUTTONDBLCLK) then
@@ -89167,7 +89178,7 @@ begin
       Windows.ScreenToClient(RichEdit1.Handle, CursorPt);
       if GuideMarkAt(CursorPt.X, CursorPt.Y) >= 0 then
       begin
-        Windows.SetCursor(LoadCursor(0, IDC_HAND));
+        Windows.SetCursor(LoadCursor(0, IDC_ARROW)); // стрелка (Андрей 14.11)
         Message.Result := 1;
         Exit;
       end;
