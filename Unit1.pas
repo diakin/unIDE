@@ -35410,24 +35410,34 @@ end;
 
 // Правка значения TLabel в файле форм (FArdEditFile) прямо на диске: строка
 // FArdEditLine, колонка FArdEditCol, прежний текст FArdEditSrc. Кодировка
-// файла сохраняется (ANSI или UTF-8, с BOM или без). Файл открыт во вкладке
-// - не трогаем: там могут быть свои правки.
+// файла сохраняется (ANSI или UTF-8, с BOM или без). Файл открыт в окне
+// редактора (с вкладкой или без: закрытие вкладки окно не закрывает) - если
+// в окне есть несохранённые правки, не трогаем; иначе пишем на диск и
+// перечитываем окно.
 function TForm1.ArdApplyFileEdit(const ANewText: string): Boolean;
 var
   Raw, Text, LineText, OldTrim: string;
   Lines: TStringList;
-  IsUtf8, HasBom: Boolean;
-  ValCol: Integer;
+  IsUtf8, HasBom, WinModified: Boolean;
+  ValCol, EditWin: Integer;
   Stream: TFileStream;
   Bom: array[0..2] of Byte;
 begin
   Result := False;
-  if IndexOfWindowByFile(FArdEditFile) >= 0 then
+  EditWin := IndexOfWindowByFile(FArdEditFile);
+  if EditWin >= 0 then
   begin
-    ShowMessage(ExtractFileName(FArdEditFile) + ' открыт во вкладке - ' +
-      'правьте значение там (строка ' + IntToStr(FArdEditLine + 1) +
-      ') или закройте вкладку.');
-    Exit;
+    if EditWin = FWindowsIndex then
+      WinModified := RichEdit1.Modified
+    else
+      WinModified := FWindows[EditWin].Modified;
+    if WinModified then
+    begin
+      ShowMessage(ExtractFileName(FArdEditFile) + ' открыт в редакторе, и в нём ' +
+        'есть несохранённые изменения - сохраните файл или правьте значение там ' +
+        '(строка ' + IntToStr(FArdEditLine + 1) + ').');
+      Exit;
+    end;
   end;
   if not FileExists(FArdEditFile) then
   begin
@@ -35493,6 +35503,9 @@ begin
     Stream.Free;
   end;
   Result := True;
+  // Окно с этим файлом показывает уже новый текст
+  if EditWin >= 0 then
+    ReloadWindowFromDisk(EditWin, False);
 end;
 
 // Подключённый файл скетча (#include "Имя") из его папки: текст как ANSI
