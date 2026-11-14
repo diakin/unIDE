@@ -2374,6 +2374,8 @@ type
     // Идёт щелчок по метке: его запросы окну приходят в тот же
     // NewRichEditProc - перехват меток для них не нужен
     FGuideBusy: Boolean;
+    FGuideArrow: Boolean;      // над меткой курсор - стрелка (RichEdit1.Cursor)
+    FGuideOldCursor: TCursor;  // курсор редактора до стрелки
     // Список в диалоге Del WinList. Диалог модальный, поэтому одного поля хватает
     FDlgCheckList: TCheckListBox;
     // Статус-бар обновляется не сразу, а через этот таймер - см.
@@ -89148,6 +89150,28 @@ begin
     Exit;
   // Метки направляющих у краёв окна: щелчок - начало блока в панель
   // объявления, каретка остаётся на месте; над меткой - курсор-стрелка
+  // Курсор над меткой - через Cursor контрола: в сборке Lazarus (LCL win32)
+  // WM_SETCURSOR до этой процедуры не доходит, курсор ставит сама LCL по
+  // RichEdit1.Cursor (Андрей 14.11: был I-образный)
+  if (FMsgDepth = 0) and (Message.Msg = WM_MOUSEMOVE) then
+  begin
+    if (Length(FGuideMarks) > 0) and not FGuideBusy and
+       (GuideMarkAt(SmallInt(LoWord(Message.LParam)),
+                    SmallInt(HiWord(Message.LParam))) >= 0) then
+    begin
+      if RichEdit1.Cursor <> crArrow then
+      begin
+        FGuideOldCursor := RichEdit1.Cursor;
+        RichEdit1.Cursor := crArrow;
+        FGuideArrow := True;
+      end;
+    end
+    else if FGuideArrow then
+    begin
+      RichEdit1.Cursor := FGuideOldCursor;
+      FGuideArrow := False;
+    end;
+  end;
   if (FMsgDepth = 0) and not FGuideBusy and (Length(FGuideMarks) > 0) then
   begin
     if (Message.Msg = WM_LBUTTONDOWN) or (Message.Msg = WM_LBUTTONDBLCLK) then
