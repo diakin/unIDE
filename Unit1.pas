@@ -3210,6 +3210,7 @@ type
     function  ArdCallCaption(ACall: TObject): string;
     procedure ArdFillObjTables(AObj: TObject);
     function ArdArgLabelCall(ACall: TObject; AGroup: Integer = 0): TObject; // TArdCall
+    function ArdWhereLabelLevel(const ACodes: TArdDbgCodes; AHash: Cardinal): Integer;
     procedure ArdGlyphUpdate;
     procedure ArdGlyphHide;
     function ArdGlyphTextRow: TListItem;
@@ -30479,11 +30480,53 @@ begin
     Inc(Result);
 end;
 
+// Строка стека ACodes (от рисующей наружу), где есть имя надписи с хешем
+// AHash (ArdSimNameHash) как отдельное слово; -1 - нет
+function TForm1.ArdWhereLabelLevel(const ACodes: TArdDbgCodes; AHash: Cardinal): Integer;
+var
+  Sketch: TArdSketch;
+  LabelName, LineText: string;
+  LabelIdx, CodeIdx, FoundPos, AfterPos: Integer;
+begin
+  Result := -1;
+  Sketch := TArdSketch(FArdSketch);
+  if (AHash = 0) or (Sketch = nil) or (Sketch.Labels = nil) then
+    Exit;
+  LabelName := '';
+  for LabelIdx := 0 to Sketch.Labels.Count - 1 do
+    if ArdSimNameHash(Sketch.Labels[LabelIdx]) = AHash then
+    begin
+      LabelName := Sketch.Labels[LabelIdx];
+      Break;
+    end;
+  if LabelName = '' then
+    Exit;
+  for CodeIdx := 0 to High(ACodes) do
+  begin
+    LineText := ArdWhereLineText(ACodes[CodeIdx]);
+    FoundPos := Pos(LabelName, LineText);
+    while FoundPos > 0 do
+    begin
+      AfterPos := FoundPos + Length(LabelName);
+      if ((FoundPos = 1) or
+          not (LineText[FoundPos - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_'])) and
+         ((AfterPos > Length(LineText)) or
+          not (LineText[AfterPos] in ['A'..'Z', 'a'..'z', '0'..'9', '_'])) then
+      begin
+        Result := CodeIdx;
+        Exit;
+      end;
+      LineText[FoundPos] := ' ';
+      FoundPos := Pos(LabelName, LineText);
+    end;
+  end;
+end;
+
 procedure TForm1.ArdSimScreenWhere(Sender: TObject);
 var
   Codes: TArdDbgCodes;
   Code: Cardinal;
-  Level, CodeIdx, SrcLine: Integer;
+  Level, LabelLevel, CodeIdx, SrcLine: Integer;
   SrcFile, Chain, WhereKey, What: string;
 begin
   Codes := FArdSim.WhereCodes;
@@ -30496,6 +30539,11 @@ begin
   // переключаться по стеку не надо)
   WhereKey := FArdSim.WhereText + #1 + IntToStr(Codes[0]);
   Level := ArdWhereGuess(Codes, FArdSim.WhereText);
+  // Щелчок по надписи TLabel: строка стека, где стоит её имя (поле
+  // InputNumber рисуется через параметр - нужен вызов InputNumber(lblInp..))
+  LabelLevel := ArdWhereLabelLevel(Codes, FArdSim.WhereCtlHash);
+  if LabelLevel >= 0 then
+    Level := LabelLevel;
   FArdWhereText := WhereKey;
   FArdWhereTick := GetTickCount;
   FArdWhereLevel := Level;

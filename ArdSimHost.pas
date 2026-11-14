@@ -211,6 +211,7 @@ type
     FKept: TList;
     // Выбранная надпись TLabel (рамка на экране) и её перетаскивание
     FSelCtlHash: Cardinal;        // 0 - нет
+    FWhereCtlHash: Cardinal;      // надпись под последним щелчком, 0 - нет
     FDragging: Boolean;
     FDragMoved: Boolean;
     FDragFromX, FDragFromY: Integer;
@@ -383,6 +384,8 @@ type
     // пусто - в этой точке надписи нет
     property WhereCodes: TArdDbgCodes read FWhereCodes;
     property WhereText: string read FWhereText;
+    // TLabel под последним щелчком по экрану (ArdSimNameHash имени), 0 - нет
+    property WhereCtlHash: Cardinal read FWhereCtlHash;
     property OnScreenWhere: TNotifyEvent read FOnScreenWhere write FOnScreenWhere;
     // Окно Watch видно: значения обновляются и пока скетч идёт
     property LiveWatch: Boolean read FLiveWatch write FLiveWatch;
@@ -3256,6 +3259,7 @@ begin
   Result := False;
   FDragging := False;
   Hash := CtlHashAt(AX, AY);
+  FWhereCtlHash := Hash;
   if Hash = 0 then
     Exit;
   Entry := CtlShownEntry(Hash);
