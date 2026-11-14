@@ -1114,7 +1114,7 @@ void simCtlScreenCleared()
 void simCtlShown(const void *control, int left, int top, int boxLeft, int boxTop,
                  int boxRight, int boxBottom)
 {
-  simDrawCtlEnd();
+  simDrawCtlEnd(left, top);
   for (size_t index = 0; index < controls().size(); index++)
     if (controls()[index].Control == control)
     {

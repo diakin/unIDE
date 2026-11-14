@@ -50,6 +50,8 @@ struct DrawOp
   int Scale;
   const void *Ctl;       // control drawing it, null - the sketch itself
   uint32_t CtlSeq;       // which drawing of the control
+  int CtlLeft, CtlTop;   // Left, Top of the control in that drawing (simDrawCtlEnd)
+  bool CtlPlaced;        // CtlLeft, CtlTop known
   uint32_t Seq;
   uint32_t Owner;        // SimPixelOwner of its pixels
   int X1, Y1, X2, Y2;    // pixels it may touch
@@ -131,6 +133,8 @@ struct DrawScope
     op.Scale = scale;
     op.Ctl = DrawCtl;
     op.CtlSeq = DrawCtlSeq;
+    op.CtlLeft = op.CtlTop = 0;
+    op.CtlPlaced = false;
     op.Seq = Seq = ++DrawSeqCounter;
     op.Owner = 0;
     op.X1 = x1 < x2 ? x1 : x2; op.X2 = x1 < x2 ? x2 : x1;
@@ -176,8 +180,22 @@ void simDrawCtlBegin(const void *control)
   DrawCtlSeq = ++DrawCtlCounter;
 }
 
-void simDrawCtlEnd()
+void simDrawCtlEnd(int left, int top)
 {
+  // the entries of this drawing get the place of the control
+  if (DrawCtl)
+    for (size_t index = DrawLog.size(); index-- > 0;)
+    {
+      DrawOp &op = DrawLog[index];
+      if (op.Ctl == DrawCtl && op.CtlSeq == DrawCtlSeq)
+      {
+        op.CtlLeft = left;
+        op.CtlTop = top;
+        op.CtlPlaced = true;
+      }
+      else if (op.Ctl == nullptr || op.CtlSeq < DrawCtlSeq)
+        break;
+    }
   DrawCtl = nullptr;
 }
 
@@ -659,22 +677,31 @@ bool simScreenRestoreWithout(const void *control)
 {
   if (DrawLogOverflow || !control)
     return false;
-  uint32_t lastSeq = 0;
-  bool found = false;
+  // the last drawing of the control and all its drawings at the same
+  // place: the sketch may draw a label again and again (Paused!), each
+  // would show through after the move
+  const DrawOp *last = nullptr;
   for (size_t index = DrawLog.size(); index-- > 0;)
     if (DrawLog[index].Ctl == control)
     {
-      lastSeq = DrawLog[index].CtlSeq;
-      found = true;
+      last = &DrawLog[index];
       break;
     }
-  if (!found)
+  if (!last)
     return false;
+  uint32_t lastSeq = last->CtlSeq;
+  bool lastPlaced = last->CtlPlaced;
+  int lastLeft = last->CtlLeft, lastTop = last->CtlTop;
   std::vector<DrawOp> kept;
   kept.reserve(DrawLog.size());
   for (const DrawOp &op : DrawLog)
-    if (!(op.Ctl == control && op.CtlSeq == lastSeq))
+  {
+    bool drop = op.Ctl == control &&
+                (op.CtlSeq == lastSeq ||
+                 (lastPlaced && op.CtlPlaced && op.CtlLeft == lastLeft && op.CtlTop == lastTop));
+    if (!drop)
       kept.push_back(op);
+  }
   DrawLog.swap(kept);
 
   uint32_t oldOwner = SimPixelOwner;

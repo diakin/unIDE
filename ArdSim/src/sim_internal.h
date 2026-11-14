@@ -153,7 +153,7 @@ void simGraphicDrawn(int x1, int y1, int x2, int y2, bool filled);
 void simAreaFilled(int x1, int y1, int x2, int y2);
 // drawing log (sim_utft.cpp): which control draws now, replay in progress
 void simDrawCtlBegin(const void *control);
-void simDrawCtlEnd();
+void simDrawCtlEnd(int left, int top);
 void simDrawCtlSave(const void *&control, uint32_t &seq);
 void simDrawCtlRestore(const void *control, uint32_t seq);
 bool simDrawReplaying();
