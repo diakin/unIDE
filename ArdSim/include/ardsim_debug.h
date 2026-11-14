@@ -285,5 +285,11 @@ extern uint32_t SimScreenClears;
 // from simPoll keeps the one of the interrupted drawing
 uint32_t simPixelOwnerGet();
 void simPixelOwnerSet(uint32_t owner);
+// The screen as drawn since the last clrScr / fillScr, without the last
+// drawing of the control (it is drawn again after this): what lay under it
+// comes back. false - not possible (log full, control not in it), the
+// screen is not changed.
+#define ARDSIM_SCREEN_RESTORE 1
+bool simScreenRestoreWithout(const void *control);
 #endif
 #endif

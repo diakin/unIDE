@@ -5,6 +5,7 @@
 #include "sim_internal.h"
 #include <cstring>
 #include <cstdio>
+#include <vector>
 
 uint16_t SimScreen[SIM_SCREEN_H][SIM_SCREEN_W];
 volatile uint32_t SimScreenVersion = 0;
@@ -22,9 +23,193 @@ static inline void lcdPixels(double count)
   LcdDebtNs += count * SimLcdPixelNs;
 }
 
+// ---- drawing log: every top-level drawing call since the last clrScr /
+// fillScr, with the colors and font it used and the control (TLabel) that
+// drew it. A control moved or changed from unIDE is drawn again over the
+// screen replayed without its last drawing, so what lay under it comes
+// back (simScreenRestoreWithout). Entries covered by a later opaque area
+// are dropped when the log grows; if it still does not fit, the log stops
+// until the next clear and the restore answers false.
+namespace
+{
+enum DrawKind
+{
+  dkPixel, dkLine, dkRect, dkRoundRect, dkFillRect, dkFillRoundRect, dkCircle,
+  dkFillCircle, dkChar, dkPrint, dkBitmap, dkHLine, dkVLine
+};
+struct DrawOp
+{
+  uint8_t Kind;
+  UTFT *Obj;
+  int Args[4];
+  word Fore, Back;
+  bool Transparent;
+  uint8_t *Font;
+  std::string Text;
+  const uint16_t *Data;
+  int Scale;
+  const void *Ctl;       // control drawing it, null - the sketch itself
+  uint32_t CtlSeq;       // which drawing of the control
+  uint32_t Seq;
+  uint32_t Owner;        // SimPixelOwner of its pixels
+  int X1, Y1, X2, Y2;    // pixels it may touch
+  bool Opaque;           // all pixels of the box written
+};
+std::vector<DrawOp> DrawLog;
+word DrawLogBase = 0;            // fillScr color, black after clrScr
+bool DrawLogOverflow = false;
+int DrawDepth = 0;               // > 0 - inside a recorded call
+uint32_t DrawSeqCounter = 0;
+bool Replaying = false;
+const size_t DrawLogCompactAt = 20000;
+const size_t DrawLogMax = 60000;
+const void *DrawCtl = nullptr;
+uint32_t DrawCtlSeq = 0, DrawCtlCounter = 0;
+
+bool inside(const DrawOp &op, const DrawOp &cover)
+{
+  return op.X1 >= cover.X1 && op.Y1 >= cover.Y1 && op.X2 <= cover.X2 && op.Y2 <= cover.Y2;
+}
+
+// drop entries wholly under a later opaque entry (the last 64 such)
+void compactLog()
+{
+  std::vector<const DrawOp *> covers;
+  std::vector<bool> keep(DrawLog.size(), true);
+  for (size_t index = DrawLog.size(); index-- > 0;)
+  {
+    const DrawOp &op = DrawLog[index];
+    for (const DrawOp *cover : covers)
+      if (inside(op, *cover))
+      {
+        keep[index] = false;
+        break;
+      }
+    if (keep[index] && op.Opaque)
+    {
+      covers.push_back(&op);
+      if (covers.size() > 64)
+        covers.erase(covers.begin());
+    }
+  }
+  std::vector<DrawOp> kept;
+  kept.reserve(DrawLog.size());
+  for (size_t index = 0; index < DrawLog.size(); index++)
+    if (keep[index])
+      kept.push_back(DrawLog[index]);
+  DrawLog.swap(kept);
+}
+
+void clearLog(word base)
+{
+  DrawLog.clear();
+  DrawLogBase = base;
+  DrawLogOverflow = false;
+}
+
+// one recorded call: the entry is added when the outermost drawing call
+// starts; nested calls (drawRect -> hLine, print -> printChar) are not
+struct DrawScope
+{
+  bool Recorded;
+  uint32_t Seq;
+  DrawScope(UTFT *obj, word fore, word back, bool transparent, uint8_t *font, uint8_t kind,
+            int arg0, int arg1, int arg2, int arg3, int x1, int y1, int x2, int y2, bool opaque,
+            const char *text = nullptr, const uint16_t *data = nullptr, int scale = 1)
+    : Recorded(false), Seq(0)
+  {
+    if (Replaying || DrawDepth++ > 0 || DrawLogOverflow)
+      return;
+    DrawOp op;
+    op.Kind = kind;
+    op.Obj = obj;
+    op.Args[0] = arg0; op.Args[1] = arg1; op.Args[2] = arg2; op.Args[3] = arg3;
+    op.Fore = fore; op.Back = back; op.Transparent = transparent; op.Font = font;
+    if (text)
+      op.Text = text;
+    op.Data = data;
+    op.Scale = scale;
+    op.Ctl = DrawCtl;
+    op.CtlSeq = DrawCtlSeq;
+    op.Seq = Seq = ++DrawSeqCounter;
+    op.Owner = 0;
+    op.X1 = x1 < x2 ? x1 : x2; op.X2 = x1 < x2 ? x2 : x1;
+    op.Y1 = y1 < y2 ? y1 : y2; op.Y2 = y1 < y2 ? y2 : y1;
+    op.Opaque = opaque;
+    if (DrawLog.size() >= DrawLogCompactAt)
+      compactLog();
+    if (DrawLog.size() >= DrawLogMax)
+    {
+      DrawLogOverflow = true;
+      return;
+    }
+    DrawLog.push_back(op);
+    Recorded = true;
+  }
+  ~DrawScope()
+  {
+    if (Replaying)
+      return;
+    DrawDepth--;
+    if (!Recorded)
+      return;
+    // a redraw from simPoll may have removed entries meanwhile
+    for (size_t index = DrawLog.size(); index-- > 0;)
+      if (DrawLog[index].Seq == Seq)
+      {
+        DrawLog[index].Owner = SimPixelOwner;
+        break;
+      }
+  }
+};
+
+inline void drawPoll()
+{
+  if (!Replaying)
+    simPoll();
+}
+}
+
+void simDrawCtlBegin(const void *control)
+{
+  DrawCtl = control;
+  DrawCtlSeq = ++DrawCtlCounter;
+}
+
+void simDrawCtlEnd()
+{
+  DrawCtl = nullptr;
+}
+
+// a control redraw from simPoll may come inside a recorded call of the
+// sketch: its own calls are recorded as top-level ones
+static int SavedDrawDepth = 0;
+
+void simDrawCtlSave(const void *&control, uint32_t &seq)
+{
+  control = DrawCtl;
+  seq = DrawCtlSeq;
+  SavedDrawDepth = DrawDepth;
+  DrawDepth = 0;
+}
+
+void simDrawCtlRestore(const void *control, uint32_t seq)
+{
+  DrawCtl = control;
+  DrawCtlSeq = seq;
+  DrawDepth = SavedDrawDepth;
+}
+
+bool simDrawReplaying()
+{
+  return Replaying;
+}
+
 static void lcdDone()
 {
   SimScreenVersion++;
+  if (Replaying)
+    return;
   if (LcdDebtNs < 200000)       // pay in portions of 0.2 ms and more
     return;
   uint64_t until = simMicrosNow() + (uint64_t)(LcdDebtNs / 1000);
@@ -87,7 +272,8 @@ void UTFT::vLine(int x, int y, int length)
 
 void UTFT::clrScr()
 {
-  simPoll();
+  drawPoll();
+  clearLog(0);
   simCtlScreenCleared();
   memset(SimScreen, 0, sizeof(SimScreen));
   memset(SimOwnerMap, 0, sizeof(SimOwnerMap));
@@ -103,7 +289,8 @@ void UTFT::fillScr(byte red, byte green, byte blue)
 
 void UTFT::fillScr(word color)
 {
-  simPoll();
+  drawPoll();
+  clearLog(color);
   simCtlScreenCleared();
   for (int y = 0; y < SIM_SCREEN_H; y++)
     for (int x = 0; x < SIM_SCREEN_W; x++)
@@ -116,6 +303,7 @@ void UTFT::fillScr(word color)
 
 void UTFT::drawPixel(int x, int y)
 {
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkPixel, x, y, 0, 0, x, y, x, y, false);
   simGraphicDrawn(x, y, x, y, false);
   putPixel(x, y, FrontColor);
   lcdDone();
@@ -123,7 +311,8 @@ void UTFT::drawPixel(int x, int y)
 
 void UTFT::drawLine(int x1, int y1, int x2, int y2)
 {
-  simPoll();
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkLine, x1, y1, x2, y2, x1, y1, x2, y2, false);
+  drawPoll();
   simGraphicDrawn(x1, y1, x2, y2, false);
   if (y1 == y2)
   {
@@ -182,7 +371,8 @@ static void orderRect(int &x1, int &y1, int &x2, int &y2)
 
 void UTFT::drawRect(int x1, int y1, int x2, int y2)
 {
-  simPoll();
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkRect, x1, y1, x2, y2, x1, y1, x2, y2, false);
+  drawPoll();
   orderRect(x1, y1, x2, y2);
   simGraphicDrawn(x1, y1, x2, y2, false);
   hLine(x1, y1, x2 - x1);
@@ -193,7 +383,8 @@ void UTFT::drawRect(int x1, int y1, int x2, int y2)
 
 void UTFT::drawRoundRect(int x1, int y1, int x2, int y2)
 {
-  simPoll();
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkRoundRect, x1, y1, x2, y2, x1, y1, x2, y2, false);
+  drawPoll();
   orderRect(x1, y1, x2, y2);
   if ((x2 - x1) > 4 && (y2 - y1) > 4)
   {
@@ -211,7 +402,8 @@ void UTFT::drawRoundRect(int x1, int y1, int x2, int y2)
 
 void UTFT::fillRect(int x1, int y1, int x2, int y2)
 {
-  simPoll();
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkFillRect, x1, y1, x2, y2, x1, y1, x2, y2, true);
+  drawPoll();
   orderRect(x1, y1, x2, y2);
   simGraphicDrawn(x1, y1, x2, y2, true);
   for (int y = y1; y <= y2; y++)
@@ -222,7 +414,8 @@ void UTFT::fillRect(int x1, int y1, int x2, int y2)
 
 void UTFT::fillRoundRect(int x1, int y1, int x2, int y2)
 {
-  simPoll();
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkFillRoundRect, x1, y1, x2, y2, x1, y1, x2, y2, false);
+  drawPoll();
   orderRect(x1, y1, x2, y2);
   if ((x2 - x1) > 4 && (y2 - y1) > 4)
   {
@@ -249,7 +442,9 @@ void UTFT::fillRoundRect(int x1, int y1, int x2, int y2)
 
 void UTFT::drawCircle(int x, int y, int radius)
 {
-  simPoll();
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkCircle, x, y, radius, 0, x - radius, y - radius, x + radius, y + radius,
+                  false);
+  drawPoll();
   simGraphicDrawn(x - radius, y - radius, x + radius, y + radius, false);
   int balance = 1 - radius;
   int deltaX = 1;
@@ -285,7 +480,9 @@ void UTFT::drawCircle(int x, int y, int radius)
 
 void UTFT::fillCircle(int x, int y, int radius)
 {
-  simPoll();
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkFillCircle, x, y, radius, 0, x - radius, y - radius, x + radius, y + radius,
+                  false);
+  drawPoll();
   simGraphicDrawn(x - radius, y - radius, x + radius, y + radius, true);
   for (int offsetY = -radius; offsetY <= 0; offsetY++)
     for (int offsetX = -radius; offsetX <= 0; offsetX++)
@@ -331,8 +528,10 @@ uint8_t UTFT::getFontYsize() { return Font ? Font[1] : 0; }
 
 void UTFT::printChar(byte character, int x, int y)
 {
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkChar, character, x, y, 0, x, y,
+                  x + (Font ? Font[0] : 1) - 1, y + (Font ? Font[1] : 1) - 1, !Transparent && Font);
   SimPixelOwner = 0;   // text pixels: the text entry answers for them
-  simPoll();
+  drawPoll();
   if (!Font)
     return;
   int sizeX = Font[0];
@@ -378,6 +577,8 @@ void UTFT::print(const char *text, int x, int y, int deg)
     x = SIM_SCREEN_W - length * sizeX;
   else if (x == CENTER)
     x = (SIM_SCREEN_W - length * sizeX) / 2;
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkPrint, x, y, 0, 0, x, y, x + length * sizeX - 1,
+                  y + Font[1] - 1, !Transparent && length > 0, text);
   for (int index = 0; index < length; index++)
     printChar((byte)text[index], x + index * sizeX, y);
   if (length > 0)
@@ -431,7 +632,9 @@ void UTFT::drawBitmap(int x, int y, int sx, int sy, bitmapdatatype data, int sca
 
 void UTFT::drawBitmap(int x, int y, int sx, int sy, const uint16_t *data, int scale)
 {
-  simPoll();
+  DrawScope scope(this, FrontColor, BackColor, Transparent, Font, dkBitmap, x, y, sx, sy, x, y, x + sx * (scale < 1 ? 1 : scale) - 1,
+                  y + sy * (scale < 1 ? 1 : scale) - 1, data != nullptr, nullptr, data, scale);
+  drawPoll();
   if (!data)
     return;
   if (scale < 1)
@@ -446,4 +649,76 @@ void UTFT::drawBitmap(int x, int y, int sx, int sy, const uint16_t *data, int sc
           putPixel(x + col * scale + dx, y + row * scale + dy, color);
     }
   lcdDone();
+}
+
+// Screen as the log has it, without the last drawing of control: the
+// entries of that drawing are removed (the control draws itself again
+// after this). false - the log is not complete (overflow) or the control
+// is not in it; the screen is then not changed.
+bool simScreenRestoreWithout(const void *control)
+{
+  if (DrawLogOverflow || !control)
+    return false;
+  uint32_t lastSeq = 0;
+  bool found = false;
+  for (size_t index = DrawLog.size(); index-- > 0;)
+    if (DrawLog[index].Ctl == control)
+    {
+      lastSeq = DrawLog[index].CtlSeq;
+      found = true;
+      break;
+    }
+  if (!found)
+    return false;
+  std::vector<DrawOp> kept;
+  kept.reserve(DrawLog.size());
+  for (const DrawOp &op : DrawLog)
+    if (!(op.Ctl == control && op.CtlSeq == lastSeq))
+      kept.push_back(op);
+  DrawLog.swap(kept);
+
+  uint32_t oldOwner = SimPixelOwner;
+  double oldDebt = LcdDebtNs;
+  for (int y = 0; y < SIM_SCREEN_H; y++)
+    for (int x = 0; x < SIM_SCREEN_W; x++)
+      SimScreen[y][x] = DrawLogBase;
+  memset(SimOwnerMap, 0, sizeof(SimOwnerMap));
+  Replaying = true;
+  for (const DrawOp &op : DrawLog)
+  {
+    UTFT *obj = op.Obj;
+    word oldFore = obj->FrontColor, oldBack = obj->BackColor;
+    bool oldTransparent = obj->Transparent;
+    uint8_t *oldFont = obj->Font;
+    obj->FrontColor = op.Fore;
+    obj->BackColor = op.Back;
+    obj->Transparent = op.Transparent;
+    obj->Font = op.Font;
+    SimPixelOwner = op.Owner;
+    const int *args = op.Args;
+    switch (op.Kind)
+    {
+    case dkPixel: obj->drawPixel(args[0], args[1]); break;
+    case dkLine: obj->drawLine(args[0], args[1], args[2], args[3]); break;
+    case dkRect: obj->drawRect(args[0], args[1], args[2], args[3]); break;
+    case dkRoundRect: obj->drawRoundRect(args[0], args[1], args[2], args[3]); break;
+    case dkFillRect: obj->fillRect(args[0], args[1], args[2], args[3]); break;
+    case dkFillRoundRect: obj->fillRoundRect(args[0], args[1], args[2], args[3]); break;
+    case dkCircle: obj->drawCircle(args[0], args[1], args[2]); break;
+    case dkFillCircle: obj->fillCircle(args[0], args[1], args[2]); break;
+    case dkChar: obj->printChar((byte)args[0], args[1], args[2]); break;
+    case dkPrint: obj->print(op.Text.c_str(), args[0], args[1]); break;
+    case dkBitmap: obj->drawBitmap(args[0], args[1], args[2], args[3], op.Data, op.Scale); break;
+    default: break;
+    }
+    obj->FrontColor = oldFore;
+    obj->BackColor = oldBack;
+    obj->Transparent = oldTransparent;
+    obj->Font = oldFont;
+  }
+  Replaying = false;
+  LcdDebtNs = oldDebt;
+  SimPixelOwner = oldOwner;
+  SimScreenVersion++;
+  return true;
 }

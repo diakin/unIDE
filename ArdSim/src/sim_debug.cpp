@@ -649,7 +649,7 @@ bool sameCodes(const ScreenText &left, const ScreenText &right)
 
 void simTextDrawn(int x1, int y1, int x2, int y2, const char *text)
 {
-  if (!DbgHeader || !text || !*text)
+  if (!DbgHeader || !text || !*text || simDrawReplaying())
     return;
   ScreenText item;
   item.X1 = (short)x1;
@@ -671,6 +671,8 @@ void simTextDrawn(int x1, int y1, int x2, int y2, const char *text)
 
 void simGraphicDrawn(int x1, int y1, int x2, int y2, bool filled)
 {
+  if (simDrawReplaying())
+    return;
   SimPixelOwner = 0;
   if (!DbgHeader)
     return;
@@ -727,7 +729,7 @@ void simGraphicDrawn(int x1, int y1, int x2, int y2, bool filled)
 
 void simAreaFilled(int x1, int y1, int x2, int y2)
 {
-  if (!DbgHeader)
+  if (!DbgHeader || simDrawReplaying())
     return;
   textLock();
   forgetInside(x1, y1, x2, y2);
@@ -1046,6 +1048,7 @@ void simCtlAttach(void *area)
 
 void simCtlDrawing(const void *control)
 {
+  simDrawCtlBegin(control);
   if (CtlRedrawing)
     return;
   for (CtlRec &rec : controls())
@@ -1111,6 +1114,7 @@ void simCtlScreenCleared()
 void simCtlShown(const void *control, int left, int top, int boxLeft, int boxTop,
                  int boxRight, int boxBottom)
 {
+  simDrawCtlEnd();
   for (size_t index = 0; index < controls().size(); index++)
     if (controls()[index].Control == control)
     {
@@ -1201,7 +1205,12 @@ void simCtlPoll()
         CtlRedrawDepth = FrameDepth;
         CtlRedrawCodeCount = rec.CodeCount;
         memcpy(CtlRedrawCodes, rec.Codes, sizeof(CtlRedrawCodes));
+        // a sketch drawing interrupted here goes on as the same control
+        const void *drawCtl;
+        uint32_t drawCtlSeq;
+        simDrawCtlSave(drawCtl, drawCtlSeq);
         rec.Redraw(rec.Control);
+        simDrawCtlRestore(drawCtl, drawCtlSeq);
         CtlRedrawActive = false;
       }
   CtlRedrawing = false;

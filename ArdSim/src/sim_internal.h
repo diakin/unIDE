@@ -151,6 +151,12 @@ extern uint32_t SimPixelOwner;
 extern uint32_t SimOwnerMap[SIM_SCREEN_H][SIM_SCREEN_W];
 void simGraphicDrawn(int x1, int y1, int x2, int y2, bool filled);
 void simAreaFilled(int x1, int y1, int x2, int y2);
+// drawing log (sim_utft.cpp): which control draws now, replay in progress
+void simDrawCtlBegin(const void *control);
+void simDrawCtlEnd();
+void simDrawCtlSave(const void *&control, uint32_t &seq);
+void simDrawCtlRestore(const void *control, uint32_t seq);
+bool simDrawReplaying();
 
 // Signal generator (sim_signal.cpp)
 #define SIM_ANALOG_CHANNELS 12

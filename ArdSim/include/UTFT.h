@@ -90,6 +90,8 @@ public:
   void LCD_Write_DATA(char high, char low) { (void)high; (void)low; }
 
 private:
+  // emulator: replays the drawing log with the saved colors and font
+  friend bool simScreenRestoreWithout(const void *control);
   void hLine(int x, int y, int length);
   void vLine(int x, int y, int length);
   void putPixel(int x, int y, word color);
