@@ -177,6 +177,9 @@ type
     // Name=TArdLabel
     IncludeFiles: TStringList;
     Labels: TStringList;
+    // Вызовы-«объявления» для надписей, переданных в функцию скетча
+    // (InputNumber(lblInpM1_Win2, ...)): LabelDeclCall
+    FDeclCalls: TList;
     // Чтение подключённых файлов (задаёт Unit1 до Parse): без него TLabel
     // не ищутся
     OnInclude: TArdIncludeEvent;
@@ -184,6 +187,10 @@ type
     destructor Destroy; override;
     procedure Parse(const AText: string);
     function FuncByName(const AName: string): TArdFunc;
+    // Надпись AName как вывод со всеми значениями из объявления (Args,
+    // ArgFile, ArgLine - место значения в файле форм). Line и Func - от
+    // AAt (вызов, где надпись передана аргументом). nil - не надпись.
+    function LabelDeclCall(const AName: string; AAt: TArdCall): TArdCall;
     // Цвет выражения как TColor ($00BBGGRR): число RGB565 (0xF800, 63488),
     // VGA_..., RGB24TOLCD(0xRRGGBB), три числа "r, g, b", имя #define.
     // False - не вычисляется (переменная, выражение).
@@ -537,6 +544,12 @@ begin
   for Idx := 0 to Labels.Count - 1 do
     Labels.Objects[Idx].Free;
   Labels.Free;
+  if FDeclCalls <> nil then
+  begin
+    for Idx := 0 to FDeclCalls.Count - 1 do
+      TArdCall(FDeclCalls[Idx]).Free;
+    FDeclCalls.Free;
+  end;
   IncludeFiles.Free;
   Includes.Free;
   inherited Destroy;
@@ -1559,6 +1572,61 @@ begin
   Call.ArgsText := '';
   Calls.Add(Call);
   AFunc.Calls.Add(Call);
+end;
+
+// Надпись как вывод со значениями объявления - для строк инспектора у
+// вызова функции скетча, которой надпись передана (поле InputNumber)
+function TArdSketch.LabelDeclCall(const AName: string; AAt: TArdCall): TArdCall;
+var
+  LabelIdx, CallIdx, PropIdx, PropCount: Integer;
+  Decl: TArdLabel;
+begin
+  Result := nil;
+  LabelIdx := Labels.IndexOf(Trim(AName));
+  if LabelIdx < 0 then
+    Exit;
+  Decl := TArdLabel(Labels.Objects[LabelIdx]);
+  if FDeclCalls = nil then
+    FDeclCalls := TList.Create;
+  for CallIdx := 0 to FDeclCalls.Count - 1 do
+    if (TArdCall(FDeclCalls[CallIdx]).LabelDecl = Decl) and
+       (TArdCall(FDeclCalls[CallIdx]).Line = AAt.Line) and
+       (TArdCall(FDeclCalls[CallIdx]).Col = AAt.Col) then
+    begin
+      Result := TArdCall(FDeclCalls[CallIdx]);
+      Exit;
+    end;
+  Result := TArdCall.Create;
+  Result.Name := Decl.Name;
+  Result.IsLabel := True;
+  Result.LabelDecl := Decl;
+  Result.Kind := ackUser;
+  Result.Func := AAt.Func;
+  Result.Line := AAt.Line;
+  Result.Col := AAt.Col;
+  Result.NameTok := -1;
+  Result.CloseTok := -1;
+  Result.CloseLine := AAt.Line;
+  Result.CloseCol := AAt.Col;
+  PropCount := Decl.Values.Count;
+  SetLength(Result.ArgLine, PropCount);
+  SetLength(Result.ArgCol, PropCount);
+  SetLength(Result.ArgLen, PropCount);
+  SetLength(Result.ArgFirstTok, PropCount);
+  SetLength(Result.ArgLastTok, PropCount);
+  SetLength(Result.ArgFile, PropCount);
+  for PropIdx := 0 to PropCount - 1 do
+  begin
+    Result.Args.Add(Decl.Values[PropIdx]);
+    Result.ArgFirstTok[PropIdx] := -1;
+    Result.ArgLastTok[PropIdx] := -1;
+    Result.ArgFile[PropIdx] := Decl.FileIdx;
+    Result.ArgLine[PropIdx] := Decl.ValLine[PropIdx];
+    Result.ArgCol[PropIdx] := Decl.ValCol[PropIdx];
+    Result.ArgLen[PropIdx] := Decl.ValLen[PropIdx];
+  end;
+  Result.ArgsText := '';
+  FDeclCalls.Add(Result);
 end;
 
 // Значение аргумента: по словам скетча или (значение из файла форм) по

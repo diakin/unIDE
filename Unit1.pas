@@ -3209,6 +3209,7 @@ type
     procedure ArdRefreshInspector;
     function  ArdCallCaption(ACall: TObject): string;
     procedure ArdFillObjTables(AObj: TObject);
+    function ArdArgLabelCall(ACall: TObject): TObject; // TArdCall
     procedure ArdGlyphUpdate;
     procedure ArdGlyphHide;
     function ArdGlyphTextRow: TListItem;
@@ -34410,6 +34411,9 @@ const
   ArdRowColor = 100000;
   ArdRowBack = 100001;
   ArdRowFont = 100002;
+  // Свойства надписи, переданной аргументом в функцию скетча
+  // (InputNumber(lblInpM1_Win2, ...)): ArdRowLabel + номер свойства TLabel
+  ArdRowLabel = 200000;
   ArdCapColor = 'Цвет (setColor)';
   ArdCapBack = 'Цвет фона (setBackColor)';
   ArdCapFont = 'Шрифт (setFont)';
@@ -34580,11 +34584,31 @@ begin
   end;
 end;
 
+// Надпись TLabel среди аргументов вызова функции скетча (первая) - как
+// вывод со значениями объявления (TArdSketch.LabelDeclCall); nil - нет
+function TForm1.ArdArgLabelCall(ACall: TObject): TObject;
+var
+  ArgIdx: Integer;
+  Call: TArdCall;
+begin
+  Result := nil;
+  Call := TArdCall(ACall);
+  if (Call = nil) or Call.IsLabel or (Call.Kind <> ackUser) or
+     (FArdSketch = nil) then
+    Exit;
+  for ArgIdx := 0 to Call.Args.Count - 1 do
+  begin
+    Result := TArdSketch(FArdSketch).LabelDeclCall(Call.Args[ArgIdx], Call);
+    if Result <> nil then
+      Exit;
+  end;
+end;
+
 procedure TForm1.ArdFillObjTables(AObj: TObject);
 var
   Node: TDfmNode;
   Sketch: TArdSketch;
-  Call: TArdCall;
+  Call, LabelCall: TArdCall;
   Func: TArdFunc;
   Item: TListItem;
   Names: TStringList;
@@ -34644,6 +34668,10 @@ begin
     if (Node.Line >= 0) and (Node.Line < Sketch.Calls.Count) and
        TArdCall(Sketch.Calls[Node.Line]).IsLabel then
       FArdSim.SelectedControl := TArdCall(Sketch.Calls[Node.Line]).Name
+    else if (Node.Line >= 0) and (Node.Line < Sketch.Calls.Count) and
+       (ArdArgLabelCall(TArdCall(Sketch.Calls[Node.Line])) <> nil) then
+      FArdSim.SelectedControl :=
+        TArdCall(ArdArgLabelCall(TArdCall(Sketch.Calls[Node.Line]))).Name
     else
       FArdSim.SelectedControl := '';
   end;
@@ -34724,6 +34752,31 @@ begin
     finally
       Names.Free;
     end;
+    // Аргумент - надпись TLabel (поле InputNumber и т.п.): ниже её свойства
+    // из объявления, правятся как у вывода самой надписи (в файле форм)
+    LabelCall := TArdCall(ArdArgLabelCall(Call));
+    if LabelCall <> nil then
+    begin
+      AddUiRow(LabelCall.Name + ': TLabel', '', '', -1, -1);
+      for ArgIdx := 0 to LabelCall.Args.Count - 1 do
+      begin
+        if ArgIdx > High(ArdLabelProps) then
+          Break;
+        Sketch.ArgInfo(LabelCall, ArgIdx, ValueText, ValueLine);
+        if ArdParamIsColor(ArdLabelProps[ArgIdx], '') and
+           (Copy(ValueText, 1, 1) <> '#') and
+           Sketch.ColorOf(LabelCall.Args[ArgIdx], ColorValue) then
+          ValueText := '#' + IntToHex(((ColorValue and $FF) shl 16) or
+                                      (ColorValue and $FF00) or
+                                      ((ColorValue shr 16) and $FF), 6);
+        AddUiRow('  ' + ArdLabelProps[ArgIdx], EdUiText(LabelCall.Args[ArgIdx]),
+                 ValueText, -1, ArdRowLabel + ArgIdx);
+        if (LabelCall.ArgFile[ArgIdx] > 0) and (Item.SubItems.Count >= 3) then
+          Item.SubItems[2] :=
+            ExtractFileName(Sketch.IncludeFiles[LabelCall.ArgFile[ArgIdx] - 1]) +
+            ':' + IntToStr(LabelCall.ArgLine[ArgIdx] + 1);
+      end;
+    end;
     // Цвет, фон и шрифт текста - строки, где они заданы
     if Call.Kind = ackText then
     begin
@@ -34793,6 +34846,9 @@ begin
       FontArg := Trim(Call.FontCall.ArgsText);
       FontLine := Call.FontCall.Line;
     end
+    else if (ArdArgLabelCall(Call) <> nil) and
+            (TArdCall(ArdArgLabelCall(Call)).Args.Count > 6) then
+      FontArg := Trim(TArdCall(ArdArgLabelCall(Call)).Args[6])
     else if (Call.Kind = ackUser) and (Call.Target <> nil) then
       for ArgIdx := 0 to Call.Args.Count - 1 do
         if (ArgIdx < Call.Target.ParamNames.Count) and
@@ -34889,7 +34945,8 @@ begin
     Exit;
   end;
   for ItemIdx := 0 to FObjProps.Items.Count - 1 do
-    if Call.IsLabel and (Integer(FObjProps.Items[ItemIdx].Data) = 4) then
+    if (Call.IsLabel and (Integer(FObjProps.Items[ItemIdx].Data) = 4)) or
+       (Integer(FObjProps.Items[ItemIdx].Data) = ArdRowLabel + 4) then
     begin
       Result := FObjProps.Items[ItemIdx];
       Exit;
@@ -35104,6 +35161,14 @@ begin
     Exit;
   end;
   Call := TArdCall(Sketch.Calls[Node.Line]);
+  // Свойство надписи-аргумента: правка как у вывода этой надписи
+  if RowData >= ArdRowLabel then
+  begin
+    Call := TArdCall(ArdArgLabelCall(Call));
+    if Call = nil then
+      Exit;
+    RowData := RowData - ArdRowLabel;
+  end;
   IsColor := False;
   IsFont := False;
   if RowData >= ArdRowColor then
@@ -35181,7 +35246,7 @@ begin
   end;
 
   FObjEditName := AItem.Caption;
-  FObjEditIdx := RowData;
+  FObjEditIdx := Integer(AItem.Data);
   FObjEditInsert := False;
   FObjEditLine := FArdEditLine;
   FObjEditType := nil;
