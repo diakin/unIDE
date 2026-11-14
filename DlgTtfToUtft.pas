@@ -93,6 +93,8 @@ type
     FOnSaved: TTtfSavedEvent;
     FPlaceSaved: Boolean;
     FLoading: Boolean;
+    FFitBack: TTtfParams;     // параметры до «Вписать» - для «Отмена»
+    FFitBackValid: Boolean;   // кнопка «Вписать» сейчас - «Отмена»
     FNameEdited: Boolean;     // имя массива правили руками
     FSettingName: Boolean;
     FPrivateFiles: TStringList;  // подключённые .ttf (снять при закрытии)
@@ -146,6 +148,7 @@ type
     procedure BtnFitCellClick(Sender: TObject);
     procedure BtnScaleClick(Sender: TObject);
     procedure BtnScaleFitClick(Sender: TObject);
+    procedure ResetFitBack;
     procedure BtnSaveClick(Sender: TObject);
     procedure BtnCloseClick(Sender: TObject);
     procedure FormKeyDown(Sender: TObject; var Key: Word; Shift: TShiftState);
@@ -183,6 +186,9 @@ implementation
 
 const
   TtfSection = 'TtfToUtft';
+  FitHint = 'Сжать или растянуть символы по горизонтали и вертикали ' +
+    'отдельно, чтобы при этом размере шрифта они с промежутками заняли ' +
+    'клетку. После нажатия кнопка - «Отмена»: вернуть, как было';
   TtfSideWidth = 300;
   FR_PRIVATE_FLAG = $10;
   TtfPreviewGap = 10;
@@ -1055,9 +1061,8 @@ begin
   FBtnScale[1].Tag := 1;
   FBtnScale[2].Tag := 2;
   FBtnScale[3].Tag := 3;
-  FBtnScaleFit := MakeButton('Вписать', 'Сжать или растянуть символы по ' +
-    'горизонтали и вертикали отдельно, чтобы при этом размере шрифта они ' +
-    'с промежутками заняли клетку', 216, RowY - 1, 74, BtnScaleFitClick);
+  FBtnScaleFit := MakeButton('Вписать', FitHint, 216, RowY - 1, 74,
+    BtnScaleFitClick);
   Inc(RowY, RowStep);
   FBtnFit := MakeButton('Размер под клетку', 'Наибольший размер шрифта, ' +
     'при котором все символы диапазона с промежутками входят в клетку; ' +
@@ -1257,6 +1262,7 @@ procedure TDlgTtfToUtft.ParamChange(Sender: TObject);
 begin
   if FLoading then
     Exit;
+  ResetFitBack;
   if (Sender = FEdFirst) or (Sender = FEdLast) then
     FCmbRange.ItemIndex := FCmbRange.Items.Count - 1;
   FTimer.Enabled := False;
@@ -1619,6 +1625,7 @@ var
   Params: TTtfParams;
   Step: Integer;
 begin
+  ResetFitBack;
   if not ReadParams(Params) then
     Exit;
   Step := 5;
@@ -1672,8 +1679,19 @@ var
   end;
 
 begin
+  // Второе нажатие - «Отмена»: параметры, какими были до «Вписать»
+  if FFitBackValid then
+  begin
+    Params := FFitBack;
+    ResetFitBack;
+    WriteParams(Params);
+    FTimer.Enabled := False;
+    Rebuild;
+    Exit;
+  end;
   if not ReadParams(Params) then
     Exit;
+  FFitBack := Params;
   Screen.Cursor := crHourGlass;
   try
     for Axis := 0 to 1 do
@@ -1708,7 +1726,23 @@ begin
   finally
     Screen.Cursor := crDefault;
   end;
+  FTimer.Enabled := False;
+  FFitBackValid := True;
+  FBtnScaleFit.Caption := 'Отмена';
+  FBtnScaleFit.Hint := Format('Вернуть масштаб %d x %d %% и сдвиг %d, %d, ' +
+    'какие были до «Вписать»', [FFitBack.ScaleX, FFitBack.ScaleY,
+    FFitBack.OffsetX, FFitBack.OffsetY]);
   Rebuild;
+end;
+
+// Кнопка снова «Вписать»: параметры изменены руками или вписание отменено
+procedure TDlgTtfToUtft.ResetFitBack;
+begin
+  if not FFitBackValid then
+    Exit;
+  FFitBackValid := False;
+  FBtnScaleFit.Caption := 'Вписать';
+  FBtnScaleFit.Hint := FitHint;
 end;
 
 // Наименьшая клетка для размера шрифта и промежутков
@@ -1718,6 +1752,7 @@ var
   Ink, Check: TTtfInk;
   NeedW, NeedH, Attempt: Integer;
 begin
+  ResetFitBack;
   if not ReadParams(Params) then
     Exit;
   Screen.Cursor := crHourGlass;
@@ -1792,6 +1827,7 @@ var
   end;
 
 begin
+  ResetFitBack;
   if not ReadParams(Params) then
     Exit;
   Screen.Cursor := crHourGlass;
