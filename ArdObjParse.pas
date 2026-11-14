@@ -226,12 +226,16 @@ function ArdQuote(const AText: string): string;
 
 const
   // Свойства TLabel - по порядку аргументов Label() и полей объявления
-  // Proportional (BS10 14.11) - последнее; объявление без него (13 значений)
-  // тоже принимается, тогда строки Proportional в инспекторе нет
-  ArdLabelProps: array[0..13] of string = (
+  // Proportional (BS10 14.11) и Alignment (taLeftJustify, taRightJustify,
+  // taCenter - как TAlignment Delphi) - последние; объявление без них
+  // (13 или 14 значений) тоже принимается, тогда этих строк в инспекторе нет
+  ArdLabelProps: array[0..14] of string = (
     'Left', 'Top', 'Width', 'Height', 'Caption', 'Color', 'Font',
     'FontColor', 'Filled', 'Rounded', 'BorderColor', 'LineWidth', 'Rect',
-    'Proportional');
+    'Proportional', 'Alignment');
+  ArdLabelPropAlignment = 14;
+  ArdAlignNames: array[0..2] of string = (
+    'taLeftJustify', 'taRightJustify', 'taCenter');
 
 implementation
 
@@ -1441,8 +1445,8 @@ begin
           Inc(ValIdx);
         end;
         AddValue(ValStart, CloseIdx - 1);
-        if ((Decl.Values.Count = Length(ArdLabelProps)) or
-            (Decl.Values.Count = Length(ArdLabelProps) - 1)) and
+        if (Decl.Values.Count >= Length(ArdLabelProps) - 2) and
+           (Decl.Values.Count <= Length(ArdLabelProps)) and
            (Labels.IndexOf(Decl.Name) < 0) then
           Labels.AddObject(Decl.Name, Decl)
         else
@@ -1466,7 +1470,7 @@ var
   Call: TArdCall;
   Idx, CloseIdx, PropIdx, ArgIdx: Integer;
   FirstTok, LastTok, NameTok: TArdTok;
-  SetFrom, SetTo: array[0..13] of Integer;
+  SetFrom, SetTo: array[0..14] of Integer; // = ArdLabelProps
   PropCount: Integer;
 begin
   Result := -1;
@@ -2015,6 +2019,13 @@ begin
   end;
   for Idx := 0 to High(VgaNames) do
     if Named(VgaNames[Idx], VgaValues[Idx]) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  // Выравнивание TLabel (BS10Controls.h)
+  for Idx := 0 to High(ArdAlignNames) do
+    if Named(ArdAlignNames[Idx], Idx) then
     begin
       Result := True;
       Exit;

@@ -35031,7 +35031,19 @@ begin
     end;
   end;
 
-  if IsFont then
+  if Call.IsLabel and (RowData = ArdLabelPropAlignment) then
+  begin
+    // Alignment TLabel - список имён, как TAlignment в Delphi
+    FObjComboColors := False;
+    FObjCombo.Style := csDropDown;
+    FObjCombo.Items.Clear;
+    for FontIdx := 0 to High(ArdAlignNames) do
+      FObjCombo.Items.Add(ArdAlignNames[FontIdx]);
+    FObjCombo.Text := EdUiText(OldText);
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else if IsFont then
   begin
     FObjComboColors := False;
     FObjCombo.Style := csDropDown;
