@@ -2375,6 +2375,11 @@ type
     // NewRichEditProc - перехват меток для них не нужен
     FGuideBusy: Boolean;
     FGuideArrow: Boolean;      // над меткой курсор - стрелка (RichEdit1.Cursor)
+    // метка под мышью (обводится ярким цветом): уровень и край; метки
+    // пересоздаются при каждой отрисовке, поэтому не индекс
+    FGuideHotOn: Boolean;
+    FGuideHotLevel: Integer;
+    FGuideHotTop: Boolean;
     FGuideOldCursor: TCursor;  // курсор редактора до стрелки
     // Список в диалоге Del WinList. Диалог модальный, поэтому одного поля хватает
     FDlgCheckList: TCheckListBox;
@@ -3156,6 +3161,7 @@ type
     procedure LoadCustomClrSchema(const Ext: string; const AFile: string = '');
 
     procedure NewRichEditProc(var Message: TMessage);
+    procedure GuideHotSet(AMarkIdx: Integer);
     procedure NewRichEditProcBody(var Message: TMessage);
     //    procedure NewRichEditProc1(var Message: TMessage);
     procedure HighlightVisibleText;
@@ -57228,6 +57234,31 @@ begin
   end;
 end;
 
+// Метка под мышью: AMarkIdx - индекс в FGuideMarks, -1 - нет. Сменилась -
+// перерисовать окно (рамку рисует AddGuideMark)
+procedure TForm1.GuideHotSet(AMarkIdx: Integer);
+var
+  NewOn, NewTop: Boolean;
+  NewLevel: Integer;
+begin
+  NewOn := AMarkIdx >= 0;
+  NewLevel := -1;
+  NewTop := False;
+  if NewOn then
+  begin
+    NewLevel := FGuideMarks[AMarkIdx].Level;
+    NewTop := FGuideMarks[AMarkIdx].AtTop;
+  end;
+  if (NewOn = FGuideHotOn) and (not NewOn or
+     ((NewLevel = FGuideHotLevel) and (NewTop = FGuideHotTop))) then
+    Exit;
+  FGuideHotOn := NewOn;
+  FGuideHotLevel := NewLevel;
+  FGuideHotTop := NewTop;
+  // окно целиком: метки собираются заново при каждой полной отрисовке
+  Windows.InvalidateRect(RichEdit1.Handle, nil, False);
+end;
+
 // Щелчок по метке направляющей: у верхнего края - строка, с которой
 // начинается блок этой полосы, у нижнего - строка, которой он кончается;
 // она - в панель объявления (как объявление идентификатора). Начало
@@ -89155,9 +89186,12 @@ begin
   // RichEdit1.Cursor (Андрей 14.11: был I-образный)
   if (FMsgDepth = 0) and (Message.Msg = WM_MOUSEMOVE) then
   begin
-    if (Length(FGuideMarks) > 0) and not FGuideBusy and
-       (GuideMarkAt(SmallInt(LoWord(Message.LParam)),
-                    SmallInt(HiWord(Message.LParam))) >= 0) then
+    MarkIdx := -1;
+    if (Length(FGuideMarks) > 0) and not FGuideBusy then
+      MarkIdx := GuideMarkAt(SmallInt(LoWord(Message.LParam)),
+                             SmallInt(HiWord(Message.LParam)));
+    GuideHotSet(MarkIdx);
+    if MarkIdx >= 0 then
     begin
       if RichEdit1.Cursor <> crArrow then
       begin
@@ -90547,6 +90581,25 @@ var
 // нижний край. Прямоугольник полным цветом уровня (сама полоса -
 // бледным), шириной с полосу, но не уже 5 точек, высотой в полстроки.
 // Запоминается в FGuideMarks для щелчка.
+  procedure GuideHotFrame(const ABox: TRect);
+  var
+    FrameBox: TRect;
+    FrameBrush: HBRUSH;
+    FrameIdx: Integer;
+  begin
+    FrameBrush := CreateSolidBrush(RGB(255, 255, 0));
+    try
+      FrameBox := ABox;
+      for FrameIdx := 1 to 2 do
+      begin
+        InflateRect(FrameBox, 1, 1);
+        Windows.FrameRect(DC, FrameBox, FrameBrush);
+      end;
+    finally
+      DeleteObject(FrameBrush);
+    end;
+  end;
+
   procedure AddGuideMark(AX, AW: Integer; ATop: Boolean; ALevel: Integer);
   var
     MarkW, MarkH, MarkY, MarkIdx: Integer;
@@ -90565,6 +90618,9 @@ var
     MarkBox := Rect(AX, MarkY, AX + MarkW, MarkY + MarkH);
     if GuideMarkBrushes[ALevel mod HotTabLevels] <> 0 then
       Windows.FillRect(DC, MarkBox, GuideMarkBrushes[ALevel mod HotTabLevels]);
+    // под мышью - яркая рамка в 2 точки вокруг метки (Андрей 14.11)
+    if FGuideHotOn and (FGuideHotLevel = ALevel) and (FGuideHotTop = ATop) then
+      GuideHotFrame(MarkBox);
     MarkIdx := Length(FGuideMarks);
     SetLength(FGuideMarks, MarkIdx + 1);
     FGuideMarks[MarkIdx].Box := MarkBox;
