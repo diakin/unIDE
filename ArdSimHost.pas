@@ -70,6 +70,23 @@ type
   // AScreenPos - точка в координатах экрана для всплывающего меню
   TArdSimCtlMenuEvent = procedure(Sender: TObject; AHash: Cardinal;
     const AScreenPos: TPoint) of object;
+  TArdSimCtlHashEvent = procedure(Sender: TObject; AHash: Cardinal) of object;
+  // Надпись TLabel, добавленная после сборки (Paste в меню экрана):
+  // эмулятор её не знает, её рисует unIDE поверх экрана, пока скетч не
+  // пересобран. Значения - из объявления (Unit1.ArdSyncPhantoms)
+  TArdSimPhantom = class
+  public
+    Name: string;
+    Hash: Cardinal;          // ArdSimNameHash(Name)
+    AnchorHash: Cardinal;    // видна, пока на экране эта надпись; 0 - всегда
+    Left, Top, Width, Height: Integer;
+    Caption: AnsiString;
+    Font: TUtftFont;
+    Color, FontColor, BorderColor: Cardinal;   // $RRGGBB
+    Filled, Rounded, LineWidth, RectOn, Proportional, Alignment, Visible: Integer;
+    Box: TRect;              // занятые точки при последней отрисовке
+    Shown: Boolean;          // нарисована при последней отрисовке
+  end;
   TArdSimSaveEvent = function(Sender: TObject): Boolean of object;
   // Строки точек останова: (номер файла shl 20) or строка с 1
   TArdDbgCodes = array of Cardinal;
@@ -213,6 +230,9 @@ type
     // шрифты (TArdPreviewItem), каждое до перерисовки своего места скетчем
     FPreview: TObject;
     FKept: TList;
+    FPhantoms: TList;            // TArdSimPhantom
+    FDragPhantom: TArdSimPhantom;
+    FOnCtlSelect: TArdSimCtlHashEvent;
     // Выбранная надпись TLabel (рамка на экране) и её перетаскивание
     FSelCtlHash: Cardinal;        // 0 - нет
     FWhereCtlHash: Cardinal;      // надпись под последним щелчком, 0 - нет
@@ -234,12 +254,14 @@ type
     function CtlShownEntry(AHash: Cardinal): PCardinal;
     function CtlShownBox(AEntry: PCardinal): TRect;
     function CtlHashAt(AX, AY: Integer): Cardinal;
+    procedure DrawPhantoms;
     function CtlNearestHash(AX, AY: Integer; var ABox: TRect): Cardinal;
     procedure DrawCtlMarker;
     function SetCtlOverrideHash(AHash: Cardinal; AProp, AKind, ANumber: Integer;
                                 const AText: string): Boolean;
     function CtlMouseDown(AX, AY: Integer): Boolean;
     procedure CtlContextMenu(AX, AY: Integer; const AScreenPos: TPoint);
+    function CtlSimHashAt(AX, AY: Integer; var AArea: Integer): Cardinal;
     procedure CtlMouseMove(AX, AY: Integer);
     procedure CtlMouseUp;
     function CtlOverPoint(AX, AY: Integer): Boolean;
@@ -390,6 +412,18 @@ type
     property SelectedControl: string write SetSelectedControl;
     property OnCtlMoved: TArdSimCtlMovedEvent read FOnCtlMoved write FOnCtlMoved;
     property OnCtlMenu: TArdSimCtlMenuEvent read FOnCtlMenu write FOnCtlMenu;
+    // Надписи, добавленные после сборки (TArdSimPhantom): SetPhantom
+    // забирает объект себе (та же Name - замена), RemovePhantom по имени
+    procedure SetPhantom(APhantom: TArdSimPhantom);
+    procedure RemovePhantom(const AName: string);
+    procedure ClearPhantoms;
+    function PhantomByHash(AHash: Cardinal): TArdSimPhantom;
+    function PhantomCount: Integer;
+    // exe эмулятора скетча (время файла - собран ли после Paste)
+    function SimExeFile: string;
+    // Щелчок по надписи-фантому: строки отрисовки у эмулятора нет, Unit1
+    // ставит курсор на её вывод сам
+    property OnCtlSelect: TArdSimCtlHashEvent read FOnCtlSelect write FOnCtlSelect;
     // Аргумент AArgIdx вызова AName (метод UTFT или функция скетча) в
     // строке ALine (с 1) файла AFileIdx, AOccurrence-го с таким именем в
     // строке: число ANumber или шрифт AFont (имя массива, AFont <> '').
@@ -861,7 +895,13 @@ begin
   if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) then
   begin
     FOwnerPanel.CtlMouseDown(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
-    FOwnerPanel.ScreenWhere(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
+    if FOwnerPanel.PhantomByHash(FOwnerPanel.WhereCtlHash) <> nil then
+    begin
+      if Assigned(FOwnerPanel.OnCtlSelect) then
+        FOwnerPanel.OnCtlSelect(FOwnerPanel, FOwnerPanel.WhereCtlHash);
+    end
+    else
+      FOwnerPanel.ScreenWhere(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
     Exit;
   end;
   for KeyIdx := 0 to ArdSimKeyCount - 1 do
@@ -1196,6 +1236,8 @@ begin
   FFontRoots.Free;
   ClearAllPreviews;
   FKept.Free;
+  ClearPhantoms;
+  FPhantoms.Free;
   if FFontCache <> nil then
   begin
     for ResIdx := 0 to FFontCache.Count - 1 do
@@ -2621,6 +2663,8 @@ begin
     end;
     if (FPreview <> nil) or ((FKept <> nil) and (FKept.Count > 0)) then
       DrawPreview;
+    if PhantomCount > 0 then
+      DrawPhantoms;
     if FSelCtlHash <> 0 then
       DrawCtlMarker;
   end;
@@ -2692,9 +2736,15 @@ var
     end;
   end;
 
+var
+  PhIdx: Integer;
 begin
   // Превью держат шрифты кэша
   ClearAllPreviews;
+  // и надписи до сборки: шрифт найдут заново (Unit1.ArdSyncPhantoms)
+  if FPhantoms <> nil then
+    for PhIdx := 0 to FPhantoms.Count - 1 do
+      TArdSimPhantom(FPhantoms[PhIdx]).Font := nil;
   if FFontCache = nil then
     FFontCache := TList.Create;
   for ResIdx := 0 to FFontCache.Count - 1 do
@@ -3136,6 +3186,30 @@ end;
 // Надпись TLabel, нарисованная в точке AX, AY экрана: из нескольких -
 // с меньшей рамкой (подпись внутри панели). 0 - нет
 function TArdSimPanel.CtlHashAt(AX, AY: Integer): Cardinal;
+var
+  BestArea, Area, PhIdx: Integer;
+  Phantom: TArdSimPhantom;
+begin
+  Result := CtlSimHashAt(AX, AY, BestArea);
+  if FPhantoms = nil then
+    Exit;
+  for PhIdx := 0 to FPhantoms.Count - 1 do
+  begin
+    Phantom := TArdSimPhantom(FPhantoms[PhIdx]);
+    if Phantom.Shown and PtInRect(Phantom.Box, Point(AX, AY)) then
+    begin
+      Area := (Phantom.Box.Right - Phantom.Box.Left) * (Phantom.Box.Bottom - Phantom.Box.Top);
+      if (Result = 0) or (Area < BestArea) then
+      begin
+        BestArea := Area;
+        Result := Phantom.Hash;
+      end;
+    end;
+  end;
+end;
+
+// Только надписи эмулятора; AArea - площадь рамки найденной
+function TArdSimPanel.CtlSimHashAt(AX, AY: Integer; var AArea: Integer): Cardinal;
 {$IFDEF MSWINDOWS}
 var
   Shown, Entry: PCardinal;
@@ -3144,6 +3218,7 @@ var
 {$ENDIF}
 begin
   Result := 0;
+  AArea := MaxInt;
   {$IFDEF MSWINDOWS}
   if not CtlOverrideAvailable then
     Exit;
@@ -3170,6 +3245,7 @@ begin
       end;
     end;
   end;
+  AArea := BestArea;
   {$ENDIF}
 end;
 
@@ -3280,6 +3356,9 @@ begin
     Exit;
   Entry := CtlShownEntry(FSelCtlHash);
   Result := (Entry <> nil) and PtInRect(CtlShownBox(Entry), Point(AX, AY));
+  if not Result and (PhantomByHash(FSelCtlHash) <> nil) then
+    Result := PhantomByHash(FSelCtlHash).Shown and
+              PtInRect(PhantomByHash(FSelCtlHash).Box, Point(AX, AY));
 end;
 
 procedure TArdSimPanel.SetSelectedControl(const AName: string);
@@ -3337,9 +3416,12 @@ begin
   if Length(FPixels) < ArdSimScreenW * ArdSimScreenH then
     Exit;
   Entry := CtlShownEntry(FSelCtlHash);
-  if Entry = nil then
+  if Entry <> nil then
+    Box := CtlShownBox(Entry)
+  else if (PhantomByHash(FSelCtlHash) <> nil) and PhantomByHash(FSelCtlHash).Shown then
+    Box := PhantomByHash(FSelCtlHash).Box
+  else
     Exit;
-  Box := CtlShownBox(Entry);
   // снаружи занятых точек
   Box := Rect(Box.Left - 1, Box.Top - 1, Box.Right, Box.Bottom);
   Step := 0;
@@ -3367,21 +3449,31 @@ var
 begin
   Result := False;
   FDragging := False;
+  FDragPhantom := nil;
   Hash := CtlHashAt(AX, AY);
   FWhereCtlHash := Hash;
   if Hash = 0 then
     Exit;
   Entry := CtlShownEntry(Hash);
-  if Entry = nil then
-    Exit;
-  Words := PSmallIntArrayH(Entry);
+  if Entry <> nil then
+  begin
+    Words := PSmallIntArrayH(Entry);
+    FDragLeft := Words^[4];
+    FDragTop := Words^[5];
+  end
+  else
+  begin
+    FDragPhantom := PhantomByHash(Hash);
+    if FDragPhantom = nil then
+      Exit;
+    FDragLeft := FDragPhantom.Left;
+    FDragTop := FDragPhantom.Top;
+  end;
   FSelCtlHash := Hash;
   FDragging := True;
   FDragMoved := False;
   FDragFromX := AX;
   FDragFromY := AY;
-  FDragLeft := Words^[4];
-  FDragTop := Words^[5];
   FDragNewLeft := FDragLeft;
   FDragNewTop := FDragTop;
   FDevice.InvalidateScreen;
@@ -3424,7 +3516,7 @@ begin
       WhereY := (NearBox.Top + NearBox.Bottom) div 2;
     end;
   end;
-  if FWhereCtlHash <> 0 then
+  if (FWhereCtlHash <> 0) and (PhantomByHash(FWhereCtlHash) = nil) then
   begin
     FWhereWait := False;
     ScreenWhere(WhereX, WhereY);
@@ -3465,10 +3557,19 @@ begin
   if (NewLeft = FDragNewLeft) and (NewTop = FDragNewTop) then
     Exit;
   FDragMoved := True;
-  if NewLeft <> FDragNewLeft then
-    SetCtlOverrideHash(FSelCtlHash, 0, 1, NewLeft, '');
-  if NewTop <> FDragNewTop then
-    SetCtlOverrideHash(FSelCtlHash, 1, 1, NewTop, '');
+  if FDragPhantom <> nil then
+  begin
+    FDragPhantom.Left := NewLeft;
+    FDragPhantom.Top := NewTop;
+    FDevice.InvalidateScreen;
+  end
+  else
+  begin
+    if NewLeft <> FDragNewLeft then
+      SetCtlOverrideHash(FSelCtlHash, 0, 1, NewLeft, '');
+    if NewTop <> FDragNewTop then
+      SetCtlOverrideHash(FSelCtlHash, 1, 1, NewTop, '');
+  end;
   FDragNewLeft := NewLeft;
   FDragNewTop := NewTop;
 end;
@@ -3478,6 +3579,7 @@ begin
   if not FDragging then
     Exit;
   FDragging := False;
+  FDragPhantom := nil;
   if FDragMoved and Assigned(FOnCtlMoved) then
     FOnCtlMoved(Self, FSelCtlHash, FDragNewLeft, FDragNewTop);
 end;
@@ -3659,6 +3761,339 @@ begin
   Item := TArdPreviewItem(FPreview);
   if Item <> nil then
     DrawItem(Item);
+end;
+
+// ---------------------------------------------------------------------------
+//  Надписи-фантомы: TLabel, добавленные после сборки
+// ---------------------------------------------------------------------------
+
+function TArdSimPanel.PhantomCount: Integer;
+begin
+  if FPhantoms = nil then
+    Result := 0
+  else
+    Result := FPhantoms.Count;
+end;
+
+function TArdSimPanel.PhantomByHash(AHash: Cardinal): TArdSimPhantom;
+var
+  PhIdx: Integer;
+begin
+  Result := nil;
+  if (FPhantoms = nil) or (AHash = 0) then
+    Exit;
+  for PhIdx := 0 to FPhantoms.Count - 1 do
+    if TArdSimPhantom(FPhantoms[PhIdx]).Hash = AHash then
+    begin
+      Result := TArdSimPhantom(FPhantoms[PhIdx]);
+      Exit;
+    end;
+end;
+
+procedure TArdSimPanel.SetPhantom(APhantom: TArdSimPhantom);
+var
+  PhIdx: Integer;
+  Old: TArdSimPhantom;
+begin
+  if APhantom = nil then
+    Exit;
+  if FPhantoms = nil then
+    FPhantoms := TList.Create;
+  APhantom.Hash := ArgNameHash(APhantom.Name);
+  for PhIdx := 0 to FPhantoms.Count - 1 do
+  begin
+    Old := TArdSimPhantom(FPhantoms[PhIdx]);
+    if Old.Hash = APhantom.Hash then
+    begin
+      // перетаскивание этой надписи идёт - место из мыши не теряем
+      if FDragPhantom = Old then
+      begin
+        APhantom.Left := Old.Left;
+        APhantom.Top := Old.Top;
+        FDragPhantom := APhantom;
+      end;
+      APhantom.Box := Old.Box;
+      APhantom.Shown := Old.Shown;
+      Old.Free;
+      FPhantoms[PhIdx] := APhantom;
+      FDevice.InvalidateScreen;
+      Exit;
+    end;
+  end;
+  FPhantoms.Add(APhantom);
+  FDevice.InvalidateScreen;
+end;
+
+procedure TArdSimPanel.RemovePhantom(const AName: string);
+var
+  PhIdx: Integer;
+  Hash: Cardinal;
+begin
+  if FPhantoms = nil then
+    Exit;
+  Hash := ArgNameHash(AName);
+  for PhIdx := FPhantoms.Count - 1 downto 0 do
+    if TArdSimPhantom(FPhantoms[PhIdx]).Hash = Hash then
+    begin
+      if FDragPhantom = FPhantoms[PhIdx] then
+      begin
+        FDragPhantom := nil;
+        FDragging := False;
+      end;
+      TObject(FPhantoms[PhIdx]).Free;
+      FPhantoms.Delete(PhIdx);
+    end;
+  FDevice.InvalidateScreen;
+end;
+
+procedure TArdSimPanel.ClearPhantoms;
+var
+  PhIdx: Integer;
+begin
+  if FPhantoms = nil then
+    Exit;
+  for PhIdx := 0 to FPhantoms.Count - 1 do
+    TObject(FPhantoms[PhIdx]).Free;
+  FPhantoms.Clear;
+  FDragPhantom := nil;
+  if FDevice <> nil then
+    FDevice.InvalidateScreen;
+end;
+
+function TArdSimPanel.SimExeFile: string;
+begin
+  Result := ExeOfSketch;
+end;
+
+// Фантомы - как Label() в BS10.ino: прямоугольник (Rect, Filled, Rounded),
+// рамка LineWidth, текст на Top + 4 с отступом 3 или по Alignment. Видны,
+// пока на экране надпись AnchorHash (тот же экран, что у неё в скетче).
+// Visible 0 - серым, как у эмулятора
+procedure TArdSimPanel.DrawPhantoms;
+var
+  PhIdx: Integer;
+  Phantom, AnchorPh: TArdSimPhantom;
+
+  function Grey(AColor: Cardinal): Cardinal;
+  var
+    Level: Cardinal;
+  begin
+    Level := (((AColor shr 16) and $FF) * 299 + ((AColor shr 8) and $FF) * 587 +
+              (AColor and $FF) * 114) div 1000;
+    Result := (Level shl 16) or (Level shl 8) or Level;
+  end;
+
+  procedure PutPixel(APosX, APosY: Integer; AColor: Cardinal);
+  begin
+    if (APosX >= 0) and (APosX < ArdSimScreenW) and (APosY >= 0) and
+       (APosY < ArdSimScreenH) then
+      FPixels[APosY * ArdSimScreenW + APosX] := AColor;
+  end;
+
+  procedure HLine(AX1, AX2, APosY: Integer; AColor: Cardinal);
+  var
+    PosX: Integer;
+  begin
+    for PosX := AX1 to AX2 do
+      PutPixel(PosX, APosY, AColor);
+  end;
+
+  procedure VLine(APosX, AY1, AY2: Integer; AColor: Cardinal);
+  var
+    PosY: Integer;
+  begin
+    for PosY := AY1 to AY2 do
+      PutPixel(APosX, PosY, AColor);
+  end;
+
+  // UTFT drawRect / drawRoundRect (углы срезаны на точку)
+  procedure Frame(AX1, AY1, AX2, AY2: Integer; ARounded: Boolean; AColor: Cardinal);
+  begin
+    if ARounded and (AX2 - AX1 > 4) and (AY2 - AY1 > 4) then
+    begin
+      PutPixel(AX1 + 1, AY1 + 1, AColor);
+      PutPixel(AX2 - 1, AY1 + 1, AColor);
+      PutPixel(AX1 + 1, AY2 - 1, AColor);
+      PutPixel(AX2 - 1, AY2 - 1, AColor);
+      HLine(AX1 + 2, AX2 - 2, AY1, AColor);
+      HLine(AX1 + 2, AX2 - 2, AY2, AColor);
+      VLine(AX1, AY1 + 2, AY2 - 2, AColor);
+      VLine(AX2, AY1 + 2, AY2 - 2, AColor);
+    end
+    else
+    begin
+      HLine(AX1, AX2, AY1, AColor);
+      HLine(AX1, AX2, AY2, AColor);
+      VLine(AX1, AY1, AY2, AColor);
+      VLine(AX2, AY1, AY2, AColor);
+    end;
+  end;
+
+  // UTFT fillRect / fillRoundRect
+  procedure Fill(AX1, AY1, AX2, AY2: Integer; ARounded: Boolean; AColor: Cardinal);
+  var
+    PosY, Inset: Integer;
+  begin
+    for PosY := AY1 to AY2 do
+    begin
+      Inset := 0;
+      if ARounded and (AX2 - AX1 > 4) and (AY2 - AY1 > 4) then
+      begin
+        if (PosY = AY1) or (PosY = AY2) then
+          Inset := 2
+        else if (PosY = AY1 + 1) or (PosY = AY2 - 1) then
+          Inset := 1;
+      end;
+      HLine(AX1 + Inset, AX2 - Inset, PosY, AColor);
+    end;
+  end;
+
+  procedure DrawText(AFont: TUtftFont; const AText: AnsiString; APosX, APosY: Integer;
+    AFore, ABack: Cardinal; AProportional: Boolean);
+  var
+    CharIdx, Code, Offset, RowIdx, PartIdx, BitIdx, BytesPerRow: Integer;
+    CellX, PropX, InkW, InkLeft: Integer;
+    Bits: Byte;
+  begin
+    BytesPerRow := AFont.SizeX div 8;
+    PropX := APosX;
+    for CharIdx := 1 to Length(AText) do
+    begin
+      Code := Ord(AText[CharIdx]);
+      CellX := APosX + (CharIdx - 1) * AFont.SizeX;
+      if AProportional then
+      begin
+        InkW := UtftPropGlyph(AFont, Code, InkLeft);
+        if InkW <= 0 then
+        begin
+          Inc(PropX, UtftPropSpace(AFont));
+          Continue;
+        end;
+        CellX := PropX - InkLeft;
+        Inc(PropX, InkW + UtftPropGap);
+      end;
+      Offset := AFont.GlyphOffset(Code);
+      for RowIdx := 0 to AFont.SizeY - 1 do
+        for PartIdx := 0 to BytesPerRow - 1 do
+        begin
+          if (Offset >= 0) and
+             (Offset + RowIdx * BytesPerRow + PartIdx < Length(AFont.Data)) then
+            Bits := AFont.Data[Offset + RowIdx * BytesPerRow + PartIdx]
+          else
+            Bits := 0;
+          for BitIdx := 0 to 7 do
+            if (Bits and ($80 shr BitIdx)) <> 0 then
+              PutPixel(CellX + PartIdx * 8 + BitIdx, APosY + RowIdx, AFore)
+            else if not AProportional then
+              PutPixel(CellX + PartIdx * 8 + BitIdx, APosY + RowIdx, ABack);
+        end;
+    end;
+  end;
+
+  procedure DrawOne(APh: TArdSimPhantom);
+  var
+    BoxW, TextW, TextX, NeedW, FillW, LineIdx, FontH: Integer;
+    Back, Fore, Border: Cardinal;
+    Rounded, Solid: Boolean;
+  begin
+    Back := APh.Color;
+    Fore := APh.FontColor;
+    Border := APh.BorderColor;
+    if APh.Visible = 0 then
+    begin
+      Back := Grey(Back);
+      Fore := Grey(Fore);
+      Border := Grey(Border);
+    end;
+    Rounded := APh.Rounded = 1;
+    Solid := (APh.RectOn > 0) and (APh.Filled = 1);
+    TextW := 0;
+    FontH := 0;
+    if APh.Font <> nil then
+    begin
+      TextW := PreviewTextWidth(APh.Font, APh.Caption, APh.Proportional <> 0);
+      FontH := APh.Font.SizeY;
+    end;
+    NeedW := TextW + 6;
+    BoxW := APh.Width;
+    if BoxW < NeedW then
+      BoxW := NeedW;
+    if APh.RectOn > 0 then
+    begin
+      if APh.Filled = 1 then
+        Fill(APh.Left, APh.Top, APh.Left + BoxW, APh.Top + APh.Height, Rounded, Back)
+      else
+        Frame(APh.Left, APh.Top, APh.Left + BoxW, APh.Top + APh.Height, Rounded, Back);
+    end;
+    for LineIdx := 1 to APh.LineWidth do
+      Frame(APh.Left - LineIdx, APh.Top - LineIdx, APh.Left + BoxW + LineIdx,
+            APh.Top + APh.Height + LineIdx, Rounded, Border);
+    if APh.Alignment = 1 then
+      TextX := APh.Left + BoxW - 3 - TextW
+    else if APh.Alignment = 2 then
+      TextX := APh.Left + (BoxW - TextW) div 2
+    else
+      TextX := APh.Left + 3;
+    if (APh.Font <> nil) and (APh.Alignment <> 0) and not Solid then
+      Fill(APh.Left + 3, APh.Top + 4, APh.Left + BoxW - 3, APh.Top + 4 + FontH - 1,
+           False, Back);
+    if APh.Font <> nil then
+    begin
+      if APh.Proportional <> 0 then
+      begin
+        FillW := 0;
+        if not Solid and (APh.Alignment = 0) then
+        begin
+          FillW := APh.Font.SizeX * Length(APh.Caption);
+          if FillW > BoxW - 4 then
+            FillW := BoxW - 4;
+        end;
+        if FillW < TextW then
+          FillW := TextW;
+        if FillW > 0 then
+          Fill(TextX, APh.Top + 4, TextX + FillW - 1, APh.Top + 4 + FontH - 1, False, Back);
+      end;
+      DrawText(APh.Font, APh.Caption, TextX, APh.Top + 4, Fore, Back,
+               APh.Proportional <> 0);
+    end;
+    // занятые точки: прямоугольник с рамкой и текст
+    if (APh.RectOn > 0) or (APh.LineWidth > 0) then
+      APh.Box := Rect(APh.Left - APh.LineWidth, APh.Top - APh.LineWidth,
+                      APh.Left + BoxW + APh.LineWidth + 1,
+                      APh.Top + APh.Height + APh.LineWidth + 1)
+    else
+      APh.Box := Rect(TextX, APh.Top + 4, TextX + TextW, APh.Top + 4 + FontH);
+    if TextX < APh.Box.Left then
+      APh.Box.Left := TextX;
+    if TextX + TextW > APh.Box.Right then
+      APh.Box.Right := TextX + TextW;
+    if APh.Box.Right <= APh.Box.Left then
+      APh.Box.Right := APh.Box.Left + 4;
+    if APh.Box.Bottom <= APh.Box.Top then
+      APh.Box.Bottom := APh.Box.Top + 4;
+  end;
+
+begin
+  if Length(FPixels) < ArdSimScreenW * ArdSimScreenH then
+    Exit;
+  for PhIdx := 0 to FPhantoms.Count - 1 do
+  begin
+    Phantom := TArdSimPhantom(FPhantoms[PhIdx]);
+    // Тот же экран, что у надписи-соседа: она показана эмулятором или
+    // сама фантом, нарисованный выше по списку
+    Phantom.Shown := Phantom.AnchorHash = 0;
+    if not Phantom.Shown then
+    begin
+      Phantom.Shown := CtlShownEntry(Phantom.AnchorHash) <> nil;
+      if not Phantom.Shown then
+      begin
+        AnchorPh := PhantomByHash(Phantom.AnchorHash);
+        Phantom.Shown := (AnchorPh <> nil) and (AnchorPh <> Phantom) and AnchorPh.Shown;
+      end;
+    end;
+    if Phantom.Shown then
+      DrawOne(Phantom);
+  end;
 end;
 
 // ---------------------------------------------------------------------------

@@ -2147,6 +2147,9 @@ type
     FArdMenuNear: string;
     FArdMenuX, FArdMenuY: Integer;
     FArdClipName, FArdClipDecl: string;
+    // Надписи, вставленные после сборки (ArdSyncPhantoms): имя ->
+    // TArdPhantomInfo (сосед на экране, время вставки)
+    FArdPhantoms: TStringList;
     // Текст, по которому разобран скетч, по счётчику правок редактора
     // (EditorTextKey) - без чтения текста; FArdCaretKey - тот же ключ при
     // прошлом движении каретки (ArdSyncFromCaret)
@@ -3255,6 +3258,11 @@ type
     function  ArdLabelCopy: Boolean;
     function  ArdLabelDelete: Boolean;
     procedure ArdLabelPaste;
+    procedure ArdPhantomAdd(const AName, AAnchor: string);
+    procedure ArdSyncPhantoms;
+    procedure ArdPhantomsSimStarted;
+    procedure ArdSimCtlSelect(Sender: TObject; AHash: Cardinal);
+    procedure ArdGotoLabelCall(const AName: string);
     procedure ArdSetFontRoots;
     procedure ArdAddFontExtern(const AName: string);
     procedure WMArdPreviewClosed(var Msg: TMessage); message WM_USER + 331;
@@ -30089,6 +30097,7 @@ begin
   FArdSim.OnScreenWhere := ArdSimScreenWhere;
   FArdSim.OnCtlMoved := ArdSimCtlMoved;
   FArdSim.OnCtlMenu := ArdSimCtlMenu;
+  FArdSim.OnCtlSelect := ArdSimCtlSelect;
   FArdSim.OnViewFiles := ArdSimViewFiles;
   FArdSimWin.OnPlaced := ArdSimPlaced;
   FArdSimWin.OnHidden := ArdSimHidden;
@@ -30159,6 +30168,8 @@ begin
   if FArdSim.Running and not FArdSimWasRunning and (FDbgSession = nil) and
      not FRqDbgOn then
     DbgClearEdits;
+  if FArdSim.Running and not FArdSimWasRunning then
+    ArdPhantomsSimStarted;
   FArdSimWasRunning := FArdSim.Running;
 end;
 
@@ -34869,6 +34880,8 @@ begin
   finally
     Roots.Free;
   end;
+  // Новые значения объявлений - и у надписей, вставленных после сборки
+  ArdSyncPhantoms;
 end;
 
 // Надпись TLabel среди аргументов вызова функции скетча (первая) - как
@@ -36305,6 +36318,8 @@ begin
         FArdMenuNear := Sketch.Labels[LabelIdx];
         Break;
       end;
+  if (FArdMenuLabel <> '') and (FArdSim.PhantomByHash(AHash) <> nil) then
+    ArdGotoLabelCall(FArdMenuLabel);
   if (AHash <> 0) and (FArdMenuLabel = '') then
     LogComp('Эмулятор: надписи под мышью нет в разобранном скетче (вкладка ' +
             ExtractFileName(FCurrentFileName) + ')');
@@ -36359,9 +36374,11 @@ begin
   end;
   if Changed then
   begin
-    // Разобрать заново: инспектор - по новому тексту
+    // Разобрать заново: инспектор и надписи до сборки - по новому тексту
     FArdTextKey := '';
     FArdEdKey := '';
+    if (FCurrentFileName <> '') and IsSketchExt(FCurrentFileName) then
+      ArdRefreshInspector;
   end;
 end;
 
@@ -36533,6 +36550,7 @@ begin
   end;
   LogComp('Эмулятор: ' + NewName + ' вставлена в ' + ExtractFileName(FileName) +
           ' после ' + Target.Name + ' (строка ' + IntToStr(EndLine + 2) + ')');
+  ArdPhantomAdd(NewName, Target.Name);
   if Anchor = nil then
   begin
     LogComp('Эмулятор: у ' + Target.Name + ' нет вывода ' + Target.Name +
@@ -36573,7 +36591,7 @@ begin
     Dec(FObjOwnWrite);
   end;
   LogComp('Эмулятор: строка ' + IntToStr(InsLine + 1) + ': ' + NewName +
-          '.Draw();   на экране эмулятора - после сборки (Build)');
+          '.Draw();   до сборки (Build) надпись рисует unIDE поверх экрана');
 end;
 
 // Delete: строки скетча вида lblX....; и объявление в файле форм. Если имя
@@ -36696,6 +36714,193 @@ begin
           IntToStr(EndLine + 1) + ') и строк вывода в скетче: ' + IntToStr(DelCount) +
           '   на экране эмулятора - после сборки (Build)');
   Result := True;
+end;
+
+type
+  // Надпись, вставленная после сборки: сосед на экране и время вставки
+  // (exe эмулятора новее - она уже собрана)
+  TArdPhantomInfo = class
+  public
+    Anchor: string;
+    Added: TDateTime;
+  end;
+
+procedure TForm1.ArdPhantomAdd(const AName, AAnchor: string);
+var
+  Info: TArdPhantomInfo;
+  Idx: Integer;
+begin
+  if FArdPhantoms = nil then
+    FArdPhantoms := TStringList.Create;
+  Idx := FArdPhantoms.IndexOf(AName);
+  if Idx >= 0 then
+  begin
+    FArdPhantoms.Objects[Idx].Free;
+    FArdPhantoms.Delete(Idx);
+  end;
+  Info := TArdPhantomInfo.Create;
+  Info.Anchor := AAnchor;
+  Info.Added := Now;
+  FArdPhantoms.AddObject(AName, Info);
+end;
+
+// Надписи до сборки - в окно эмулятора, значения из объявлений (как их
+// вычисляет инспектор: числа, цвета, шрифты, текст в кавычках). Удалённые
+// из файла форм - убираются
+procedure TForm1.ArdSyncPhantoms;
+var
+  Sketch: TArdSketch;
+  Decl: TArdLabel;
+  Phantom: TArdSimPhantom;
+  Info: TArdPhantomInfo;
+  Idx: Integer;
+  Text: string;
+
+  function ValText(AIdx: Integer): string;
+  begin
+    if AIdx < Decl.Values.Count then
+      Result := Trim(Decl.Values[AIdx])
+    else
+      Result := '';
+  end;
+
+  function NumVal(AIdx, ADefault: Integer): Integer;
+  begin
+    if not Sketch.EvalText(ValText(AIdx), Result) then
+      Result := ADefault;
+  end;
+
+  // $RRGGBB: число - RGB565, иначе цвет выражения (TColor)
+  function ColorVal(AIdx: Integer): Cardinal;
+  var
+    Value: Integer;
+    Red, Green, Blue: Cardinal;
+  begin
+    Result := 0;
+    if Sketch.EvalText(ValText(AIdx), Value) then
+    begin
+      Red := (Cardinal(Value) shr 11) and $1F;
+      Green := (Cardinal(Value) shr 5) and $3F;
+      Blue := Cardinal(Value) and $1F;
+      Result := (((Red shl 3) or (Red shr 2)) shl 16) or
+                (((Green shl 2) or (Green shr 4)) shl 8) or
+                ((Blue shl 3) or (Blue shr 2));
+    end
+    else if Sketch.ColorOf(ValText(AIdx), Value) then
+      Result := ((Cardinal(Value) and $FF) shl 16) or (Cardinal(Value) and $FF00) or
+                ((Cardinal(Value) shr 16) and $FF);
+  end;
+
+begin
+  if (FArdPhantoms = nil) or (FArdSim = nil) then
+    Exit;
+  Sketch := TArdSketch(FArdSketch);
+  if Sketch = nil then
+    Exit;
+  for Idx := FArdPhantoms.Count - 1 downto 0 do
+  begin
+    Info := TArdPhantomInfo(FArdPhantoms.Objects[Idx]);
+    Decl := TArdLabel(ArdLabelByName(FArdPhantoms[Idx]));
+    if Decl = nil then
+    begin
+      FArdSim.RemovePhantom(FArdPhantoms[Idx]);
+      Info.Free;
+      FArdPhantoms.Delete(Idx);
+      Continue;
+    end;
+    Phantom := TArdSimPhantom.Create;
+    Phantom.Name := Decl.Name;
+    if ArdLabelByName(Info.Anchor) <> nil then
+      Phantom.AnchorHash := ArdSimNameHash(Info.Anchor)
+    else
+      Phantom.AnchorHash := 0;
+    Phantom.Left := NumVal(0, 0);
+    Phantom.Top := NumVal(1, 0);
+    Phantom.Width := NumVal(2, 0);
+    Phantom.Height := NumVal(3, 0);
+    if ArdUnquote(ValText(4), Text) then
+      Phantom.Caption := Text
+    else
+      Phantom.Caption := ValText(4);
+    Phantom.Color := ColorVal(5);
+    Phantom.Font := FArdSim.FindFont(Sketch.FontArrayName(ValText(6), MaxInt));
+    Phantom.FontColor := ColorVal(7);
+    Phantom.Filled := NumVal(8, 0);
+    Phantom.Rounded := NumVal(9, 0);
+    Phantom.BorderColor := ColorVal(10);
+    Phantom.LineWidth := NumVal(11, 0);
+    Phantom.RectOn := NumVal(12, 0);
+    Phantom.Proportional := NumVal(13, 0);
+    Phantom.Alignment := NumVal(14, 0);
+    Phantom.Visible := NumVal(15, 1);
+    FArdSim.SetPhantom(Phantom);
+  end;
+end;
+
+// Эмулятор запущен: надписи, вставленные до сборки его exe, в нём уже
+// есть - их unIDE больше не рисует. Запуск без сборки - рисует дальше
+procedure TForm1.ArdPhantomsSimStarted;
+var
+  Idx: Integer;
+  ExeTime: TDateTime;
+  ExeAge: Integer;
+begin
+  if (FArdPhantoms = nil) or (FArdSim = nil) then
+    Exit;
+  ExeAge := FileAge(FArdSim.SimExeFile);
+  if ExeAge <> -1 then
+  begin
+    ExeTime := FileDateToDateTime(ExeAge);
+    for Idx := FArdPhantoms.Count - 1 downto 0 do
+      if TArdPhantomInfo(FArdPhantoms.Objects[Idx]).Added <= ExeTime then
+      begin
+        FArdPhantoms.Objects[Idx].Free;
+        FArdPhantoms.Delete(Idx);
+      end;
+  end;
+  FArdSim.ClearPhantoms;
+  ArdSyncPhantoms;
+end;
+
+// Курсор на вывод надписи AName (первый) и её строку в инспекторе
+procedure TForm1.ArdGotoLabelCall(const AName: string);
+var
+  Sketch: TArdSketch;
+  Call: TArdCall;
+  CallIdx: Integer;
+begin
+  Sketch := TArdSketch(FArdSketch);
+  if Sketch = nil then
+    Exit;
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+  begin
+    Call := TArdCall(Sketch.Calls[CallIdx]);
+    if Call.IsLabel and (Call.LabelDecl <> nil) and (Call.LabelDecl.Name = AName) and
+       (Call.CloseTok >= 0) then
+    begin
+      GotoLine(Call.Line);
+      ArdSelectCallAtLine(Call.Line);
+      Exit;
+    end;
+  end;
+end;
+
+// Щелчок по надписи, вставленной после сборки: эмулятор строки её вывода
+// не знает - курсор ставится по разбору скетча
+procedure TForm1.ArdSimCtlSelect(Sender: TObject; AHash: Cardinal);
+var
+  Sketch: TArdSketch;
+  LabelIdx: Integer;
+begin
+  Sketch := TArdSketch(FArdSketch);
+  if Sketch = nil then
+    Exit;
+  for LabelIdx := 0 to Sketch.Labels.Count - 1 do
+    if ArdSimNameHash(Sketch.Labels[LabelIdx]) = AHash then
+    begin
+      ArdGotoLabelCall(Sketch.Labels[LabelIdx]);
+      Exit;
+    end;
 end;
 
 // Правка значения TLabel в файле форм (FArdEditFile) прямо на диске: строка
