@@ -11531,6 +11531,18 @@ begin
             (Arr[Idx].StartPos < ALineIndex);
 end;
 
+// Диапазон с символом CharIndex идёт дальше конца строки (AEndExcl -
+// позиция за её последним символом, от нуля): многострочный комментарий
+function InRangePastLine(const Arr: TCommentRangeArray; CharIndex,
+  AEndExcl: Integer): Boolean;
+var
+  Idx: Integer;
+begin
+  Idx := RangesLowerBound(Arr, CharIndex);
+  Result := (Idx < Length(Arr)) and (Arr[Idx].StartPos <= CharIndex) and
+            (Arr[Idx].EndPos > AEndExcl);
+end;
+
 // ---------------------------------------------------------------------------
 //  Карта после правки - от места правки до схождения (шаг 4)
 //
@@ -31350,7 +31362,11 @@ begin
   // строкой в кавычках ("b"}; в списке инициализации), - обычная строка
   // кода, её } закрывает блок. Иначе блок оставался открытым, и весь
   // остаток файла сдвигался вправо
-  LineScan.Inside := InRanges(CommentRanges, LineScan.FirstPos - 1) or
+  // Блочный комментарий в начале строки - тоже только перенесённый с прошлой
+  // строки или уходящий на следующие: строка "/*Filled*/ 1, ... };"
+  // (объявления TLabel в BS10Forms.h) - код, её } закрывает блок
+  LineScan.Inside := InRangeFromBefore(CommentRanges, LineScan.FirstPos - 1, ALineStart - 1) or
+              InRangePastLine(CommentRanges, LineScan.FirstPos - 1, ALineEnd) or
               InRangeFromBefore(StringRanges, LineScan.FirstPos - 1, ALineStart - 1);
   if LineScan.Inside then
     Exit; // строка внутри блочного комментария или литерала - разбирать нечего
