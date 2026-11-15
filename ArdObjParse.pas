@@ -241,11 +241,11 @@ const
   // Свойства TLabel - по порядку аргументов Label() и полей объявления
   // Proportional (BS10 14.11) и Alignment (taLeftJustify, taRightJustify,
   // taCenter - как TAlignment Delphi) - последние; объявление без них
-  // (13 или 14 значений) тоже принимается, тогда этих строк в инспекторе нет
-  ArdLabelProps: array[0..14] of string = (
+  // (13..15 значений: без Proportional, Alignment, Visible) тоже принимается, тогда этих строк в инспекторе нет
+  ArdLabelProps: array[0..15] of string = (
     'Left', 'Top', 'Width', 'Height', 'Caption', 'Color', 'Font',
     'FontColor', 'Filled', 'Rounded', 'BorderColor', 'LineWidth', 'Rect',
-    'Proportional', 'Alignment');
+    'Proportional', 'Alignment', 'Visible');
   ArdLabelPropAlignment = 14;
   ArdAlignNames: array[0..2] of string = (
     'taLeftJustify', 'taRightJustify', 'taCenter');
@@ -339,7 +339,7 @@ end;
 
 function ArdLabelPropIsFlag(AProp: Integer): Boolean;
 begin
-  Result := AProp in [8, 9, 12, 13];
+  Result := AProp in [8, 9, 12, 13, 15];
 end;
 
 procedure ArdMethodParams(const AMethod: string; AArgCount: Integer;
@@ -1469,7 +1469,7 @@ begin
           Inc(ValIdx);
         end;
         AddValue(ValStart, CloseIdx - 1);
-        if (Decl.Values.Count >= Length(ArdLabelProps) - 2) and
+        if (Decl.Values.Count >= 13) and
            (Decl.Values.Count <= Length(ArdLabelProps)) and
            (Labels.IndexOf(Decl.Name) < 0) then
           Labels.AddObject(Decl.Name, Decl)
