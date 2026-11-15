@@ -35081,6 +35081,12 @@ begin
       if (Call.Kind = ackUser) and (Call.Target <> nil) then
       begin
         Names.Assign(Call.Target.ParamNames);
+        // Поля объявления TLabel после аргументов Label() (Visible) -
+        // по их именам, не Arg16
+        if Call.IsLabel then
+          while (Names.Count < Call.Args.Count) and
+                (Names.Count <= High(ArdLabelProps)) do
+            Names.Add(ArdLabelProps[Names.Count]);
         while Names.Count < Call.Args.Count do
           Names.Add('Arg' + IntToStr(Names.Count + 1));
       end
