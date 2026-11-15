@@ -2666,6 +2666,10 @@ type
     FMatchTabs: TUiTabControl;
     FMatchSaved: array of TMatchSaved;
     FMatchTabIdx: Integer; // открытая вкладка; -1 - вкладок нет
+    // Место и размер Match list, заданные пользователем ([MatchList] в
+    // editor.ini); FMatchHasBounds = False - ставится справа от главного
+    FMatchBounds: TRect;
+    FMatchHasBounds: Boolean;
     FMatchTabsBusy: Boolean; // ярлычки перестраиваются - OnChange не слушаем
     // Копии до последней замены All по вкладкам, проекту, диску - для Undo
     FReplBackups: TReplBackupArray;
@@ -2929,6 +2933,7 @@ type
     // Окно результатов поиска
     procedure EnsureMatchForm;
     procedure PlaceMatchForm;
+    procedure MatchRememberBounds;
     procedure MatchFormResize(Sender: TObject);
     procedure ResetMatchRows;
     procedure MatchTabStore;
@@ -8584,6 +8589,12 @@ begin
     FUseHotTab          := Ini.ReadBool('Editor', 'HotTabHighlight', FUseHotTab);
     FUseSyntaxHighlight := Ini.ReadBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
     RestoreFormBounds(Ini);
+    FMatchBounds.Left := Ini.ReadInteger('MatchList', 'Left', 0);
+    FMatchBounds.Top := Ini.ReadInteger('MatchList', 'Top', 0);
+    FMatchBounds.Right := FMatchBounds.Left + Ini.ReadInteger('MatchList', 'Width', 0);
+    FMatchBounds.Bottom := FMatchBounds.Top + Ini.ReadInteger('MatchList', 'Height', 0);
+    FMatchHasBounds := (FMatchBounds.Right - FMatchBounds.Left >= 150) and
+                       (FMatchBounds.Bottom - FMatchBounds.Top >= 100);
     FTabChars           := Ini.ReadInteger('Editor', 'TabChars', FTabChars);
     FMaxFile32MB        := Ini.ReadInteger('Editor', 'MaxFile32MB', FMaxFile32MB);
     FShowSpaces         := Ini.ReadBool('Editor', 'ShowSpaces', FShowSpaces);
@@ -8755,6 +8766,14 @@ begin
     Ini := TBufIniFile.Create(SettingsFileName);
     try
       SaveFormBounds(Ini);
+      MatchRememberBounds;
+      if FMatchHasBounds then
+      begin
+        Ini.WriteInteger('MatchList', 'Left', FMatchBounds.Left);
+        Ini.WriteInteger('MatchList', 'Top', FMatchBounds.Top);
+        Ini.WriteInteger('MatchList', 'Width', FMatchBounds.Right - FMatchBounds.Left);
+        Ini.WriteInteger('MatchList', 'Height', FMatchBounds.Bottom - FMatchBounds.Top);
+      end;
       Ini.WriteBool('Editor', 'HotTabHighlight', FUseHotTab);
       Ini.WriteBool('Editor', 'DiffIgnoreSpace', FCmpIgnoreSpace);
       Ini.WriteBool('Editor', 'DiffIgnoreComments', FCmpIgnoreComments);
@@ -24980,6 +24999,7 @@ end;
 procedure TForm1.PlaceMatchForm;
 var
   FormLeft, ScrLeft, ScrRight: Integer;
+  Desk, Tmp: TRect;
 begin
   if FMatchForm = nil then
     Exit;
@@ -24987,6 +25007,29 @@ begin
   begin
     ArdPlaceMatchForm;
     Exit;
+  end;
+  // Место, которое пользователь задал окну (и сохранённое с прошлого
+  // запуска): показанное окно не двигаем (его могли перетащить), спрятанное - туда же. Окно,
+  // целиком ушедшее за рабочий стол (сменили монитор), - заново справа
+  if FMatchForm.Visible then
+  begin
+    MatchRememberBounds;
+    Exit;
+  end;
+  if FMatchHasBounds then
+  begin
+    Desk := Rect(Screen.DesktopLeft, Screen.DesktopTop,
+                 Screen.DesktopLeft + Screen.DesktopWidth,
+                 Screen.DesktopTop + Screen.DesktopHeight);
+    if IntersectRect(Tmp, FMatchBounds, Desk) then
+    begin
+      FMatchForm.SetBounds(FMatchBounds.Left, FMatchBounds.Top,
+                           FMatchBounds.Right - FMatchBounds.Left,
+                           FMatchBounds.Bottom - FMatchBounds.Top);
+      MatchFormResize(nil);
+      Exit;
+    end;
+    FMatchHasBounds := False;
   end;
 
   FMatchForm.ClientWidth := MatchFormWidth;
@@ -25007,6 +25050,17 @@ begin
 
   FMatchForm.Left := FormLeft;
   MatchFormResize(nil);
+end;
+
+// Запомнить место и размер Match list, как их оставил пользователь. Окно
+// просмотра Test.dat (FArdMatchTop) ставится само - его место не берём
+procedure TForm1.MatchRememberBounds;
+begin
+  if (FMatchForm = nil) or not FMatchForm.Visible or FArdMatchTop or
+     (FMatchForm.WindowState <> wsNormal) then
+    Exit;
+  FMatchBounds := FMatchForm.BoundsRect;
+  FMatchHasBounds := True;
 end;
 
 // Текстовая колонка занимает всё, что осталось от окна
@@ -25817,6 +25871,7 @@ end;
 
 procedure TForm1.MatchFormClose(Sender: TObject; var Action: TCloseAction);
 begin
+  MatchRememberBounds;
   Action := caHide; // окно переиспользуем, а не пересоздаём
 end;
 
@@ -30218,6 +30273,8 @@ procedure TForm1.ArdMatchSetTop(AOnTop: Boolean);
 begin
   if AOnTop = FArdMatchTop then
     Exit;
+  // Перед просмотром Test.dat - место обычного окна; после - обратно туда
+  MatchRememberBounds;
   if AOnTop then
     EnsureMatchForm
   else if FMatchForm = nil then
@@ -30231,8 +30288,17 @@ begin
       ArdPlaceMatchForm;
   end
   else
+  begin
     SetWindowPos(FMatchForm.Handle, HWND_NOTOPMOST, 0, 0, 0, 0,
                  SWP_NOMOVE or SWP_NOSIZE or SWP_NOACTIVATE);
+    if FMatchHasBounds and FMatchForm.Visible then
+    begin
+      FMatchForm.SetBounds(FMatchBounds.Left, FMatchBounds.Top,
+                           FMatchBounds.Right - FMatchBounds.Left,
+                           FMatchBounds.Bottom - FMatchBounds.Top);
+      MatchFormResize(nil);
+    end;
+  end;
 end;
 
 // Ширина строки-файла Match list (путь, размер, время) так, как её рисует
