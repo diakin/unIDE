@@ -2933,6 +2933,10 @@ type
     procedure MatchTabForNew(const APattern: string);
     procedure MatchTabsRefresh;
     procedure MatchTabsChange(Sender: TObject);
+    procedure MatchTabsMouseDown(Sender: TObject; Button: TMouseButton;
+      Shift: TShiftState; PosX, PosY: Integer);
+    procedure WMMatchTabClose(var Msg: TMessage); message WM_USER + 347;
+    procedure MatchRefreshClick(Sender: TObject);
     function  AddMatchGroup(const AFile: string; AWinIdx: Integer): Integer;
     procedure AddMatchHit(const AFile: string; AWinIdx, ALineNo,
                           AMatchPos: Integer; const ALine: string);
@@ -24956,7 +24960,9 @@ begin
   // Вкладки последних поисков
   FMatchTabs := Dlg.tabHistory;
   FMatchTabs.OnChange := MatchTabsChange;
+  FMatchTabs.OnMouseDown := MatchTabsMouseDown;
   FMatchTabIdx := -1;
+  Dlg.btnRefresh.OnClick := MatchRefreshClick;
   SetLength(FMatchSaved, 0);
 
   // Цвета IDE (Light / Dark)
@@ -25149,7 +25155,8 @@ begin
           TabText := Copy(TabText, 1, 24) + '...';
         if TabText = '' then
           TabText := '(пусто)';
-        FMatchTabs.Tabs.Add(TabText);
+        // крестик закрытия: щелчок по правому краю ярлычка (MatchTabsMouseDown)
+        FMatchTabs.Tabs.Add(TabText + '  x');
       end;
     finally
       FMatchTabs.Tabs.EndUpdate;
@@ -25188,6 +25195,148 @@ begin
   if (FMatchCur >= 0) and (FMatchCur <= High(FMatchRows)) and
      (FMatchGrid <> nil) and (FMatchCur + 1 < FMatchGrid.RowCount) then
     FMatchGrid.Row := FMatchCur + 1;
+end;
+
+// Ширина зоны крестика 'x' у правого края ярлычка вкладки Match list
+const
+  MatchTabCrossW = 18;
+
+// Щелчок по крестику ярлычка (правый край) или средней кнопкой - закрыть
+// вкладку. Закрытие - сообщением: выбор вкладки по этому же щелчку
+// (OnChange) должен закончиться раньше
+procedure TForm1.MatchTabsMouseDown(Sender: TObject; Button: TMouseButton;
+  Shift: TShiftState; PosX, PosY: Integer);
+var
+  TabIdx, HitIdx: Integer;
+  Box, HitBox: TRect;
+begin
+  if (FMatchTabs = nil) or not (Button in [mbLeft, mbMiddle]) then
+    Exit;
+  HitIdx := -1;
+  HitBox := Rect(0, 0, 0, 0);
+  for TabIdx := 0 to FMatchTabs.Tabs.Count - 1 do
+  begin
+    Box := FMatchTabs.TabRect(TabIdx);
+    if PtInRect(Box, Point(PosX, PosY)) then
+    begin
+      HitIdx := TabIdx;
+      HitBox := Box;
+      Break;
+    end;
+  end;
+  if HitIdx < 0 then
+    Exit;
+  if (Button = mbMiddle) or (PosX >= HitBox.Right - MatchTabCrossW) then
+    PostMessage(Handle, WM_USER + 347, HitIdx, 0);
+end;
+
+// Закрыть вкладку WParam. Открытая - на её место соседняя справа (или
+// последняя). Последняя оставшаяся вкладка не закрывается (ярлычков тогда
+// не видно)
+procedure TForm1.WMMatchTabClose(var Msg: TMessage);
+var
+  CloseIdx, NewIdx: Integer;
+begin
+  CloseIdx := Integer(Msg.WParam);
+  if (CloseIdx < 0) or (CloseIdx > High(FMatchSaved)) or
+     (Length(FMatchSaved) < 2) then
+    Exit;
+  if FFifRunning then
+  begin
+    StatusBar1.Panels[0].Text := 'Match list: идёт Find In Files - ' +
+                                 'вкладки после его конца';
+    Exit;
+  end;
+  if CloseIdx = FMatchTabIdx then
+  begin
+    MatchTabDelete(CloseIdx);
+    NewIdx := CloseIdx;
+    if NewIdx > High(FMatchSaved) then
+      NewIdx := High(FMatchSaved);
+    MatchTabLoad(NewIdx);
+    FillMatchGrid;
+    if (FMatchCur >= 0) and (FMatchCur <= High(FMatchRows)) and
+       (FMatchGrid <> nil) and (FMatchCur + 1 < FMatchGrid.RowCount) then
+      FMatchGrid.Row := FMatchCur + 1;
+  end
+  else
+    MatchTabDelete(CloseIdx);
+  MatchTabsRefresh;
+end;
+
+// "Обновить": образец открытой вкладки ищется заново в файлах её списка -
+// текст открытых окон из памяти, остальные с диска. Свёрнутые группы
+// остаются свёрнутыми, выделенная строка - та же, если вхождение на ней
+// осталось. Файлы без вхождений из списка уходят
+procedure TForm1.MatchRefreshClick(Sender: TObject);
+var
+  OldRows: TMatchRowArray;
+  Files: TStringList;
+  RowIdx, FileIdx, WinIdx, Total, FileCount, Grp, HitCount, CurLine: Integer;
+  Txt, CurFile: string;
+begin
+  if (FMatchForm = nil) or (FMatchPattern = '') then
+    Exit;
+  if FFifRunning then
+  begin
+    StatusBar1.Panels[0].Text := 'Match list: идёт Find In Files - ' +
+                                 'обновление после его конца';
+    Exit;
+  end;
+  OldRows := FMatchRows;
+  FMatchRows := nil;
+  CurFile := '';
+  CurLine := -1;
+  if (FMatchCur >= 0) and (FMatchCur <= High(OldRows)) then
+  begin
+    CurFile := OldRows[FMatchCur].FileName;
+    CurLine := OldRows[FMatchCur].LineNo;
+  end;
+  Total := 0;
+  FileCount := 0;
+  Files := TStringList.Create;
+  try
+    for RowIdx := 0 to High(OldRows) do
+      if OldRows[RowIdx].Kind = mrkGroup then
+        Files.AddObject(OldRows[RowIdx].FileName,
+                        TObject(Ord(OldRows[RowIdx].Collapsed)));
+    for FileIdx := 0 to Files.Count - 1 do
+    begin
+      WinIdx := IndexOfWindowByFile(Files[FileIdx]);
+      if (WinIdx >= 0) and (WinIdx = FWindowsIndex) then
+        Txt := GetEditorText
+      else if WinIdx >= 0 then
+        Txt := WinText(WinIdx)
+      else if not FifReadFile(Files[FileIdx], Txt) then
+        Continue;
+      Grp := Length(FMatchRows);
+      HitCount := ScanTextForMatches(Files[FileIdx], WinIdx, Txt, FMatchPattern);
+      if HitCount > 0 then
+      begin
+        Inc(Total, HitCount);
+        Inc(FileCount);
+        FMatchRows[Grp].Collapsed := Files.Objects[FileIdx] <> nil;
+      end;
+    end;
+  finally
+    Files.Free;
+  end;
+  FMatchCur := -1;
+  for RowIdx := 0 to High(FMatchRows) do
+    if (FMatchRows[RowIdx].Kind = mrkHit) and (FMatchRows[RowIdx].LineNo = CurLine) and
+       (FMatchRows[RowIdx].FileName = CurFile) then
+    begin
+      FMatchCur := RowIdx;
+      Break;
+    end;
+  FillMatchGrid;
+  if FileCount <= 1 then
+    FMatchForm.Caption := Format('Match list - %d', [Total])
+  else
+    FMatchForm.Caption := Format('Match list - %d в %d файлах', [Total, FileCount]);
+  if (FMatchCur >= 0) and (FMatchGrid <> nil) and (FMatchCur + 1 < FMatchGrid.RowCount) then
+    FMatchGrid.Row := FMatchCur + 1;
+  StatusBar1.Panels[0].Text := 'Match list обновлён: ' + IntToStr(Total) + ' вхождений';
 end;
 
 // Добавляет заголовок файла и возвращает его индекс: вызывающий потом

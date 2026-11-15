@@ -54,5 +54,15 @@ object DlgMatchList: TDlgMatchList
       ShowHint = True
       TabOrder = 0
     end
+    object btnRefresh: TUiButton
+      Left = 180
+      Top = 2
+      Width = 90
+      Height = 22
+      Hint = 'Найти образец заново в файлах списка (текст изменился)'
+      Caption = 'Обновить'
+      ShowHint = True
+      TabOrder = 1
+    end
   end
 end

@@ -3,7 +3,8 @@ unit DlgMatchList;
 // Match list: результаты поиска по файлу - строка, текст, число
 // вхождений; внизу галка "Disable comments". Поверх главного окна.
 // Сверху - вкладки последних поисков (tabHistory, до 5; видны, когда
-// поисков больше одного), их ведёт Unit1 (MatchTab*).
+// поисков больше одного), их ведёт Unit1 (MatchTab*); у ярлычка крестик
+// 'x' справа - закрыть вкладку. Внизу кнопка "Обновить" (MatchRefreshClick).
 //
 // Окно описано в DlgMatchList.dfm и правится в конструкторе форм.
 // Окно создаётся один раз (TForm1.EnsureMatchForm, Unit1), дальше только
@@ -20,6 +21,7 @@ uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
   StdCtrls, ExtCtrls, Grids, ComCtrls,
   UiStdCtrls,   // TUiCheckBox
+  UiButton,     // TUiButton
   UiComCtrls;   // TUiTabControl
 
 type
@@ -28,6 +30,7 @@ type
     grdMatches: TStringGrid;
     pnlBottom: TPanel;
     chkDisableRem: TUiCheckBox;
+    btnRefresh: TUiButton;
   private
     // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
