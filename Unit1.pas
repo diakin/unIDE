@@ -2147,6 +2147,8 @@ type
     FArdMenuNear: string;
     FArdMenuX, FArdMenuY: Integer;
     FArdClipName, FArdClipDecl: string;
+    // Страница палитры Arduino (кнопка TLabel); 0 - ещё не добавлена
+    FArdPalPage: Integer;
     // Надписи, вставленные после сборки (ArdSyncPhantoms): имя ->
     // TArdPhantomInfo (сосед на экране, время вставки)
     FArdPhantoms: TStringList;
@@ -3258,6 +3260,10 @@ type
     function  ArdLabelCopy: Boolean;
     function  ArdLabelDelete: Boolean;
     procedure ArdLabelPaste;
+    procedure ArdLabelInsert(const AClipName, AClipDecl: string);
+    function  ArdLabelNew: Boolean;
+    procedure ArdSimPlace(Sender: TObject; AX, AY: Integer);
+    procedure ArdPalApply;
     procedure ArdPhantomAdd(const AName, AAnchor: string);
     procedure ArdSyncPhantoms;
     procedure ArdPhantomsSimStarted;
@@ -3338,6 +3344,8 @@ type
     procedure DsgAddRqCompPages;
     procedure RqDsgAddCompInclude(ALines: TStrings; ABefore: Integer);
     function  RqPalSelected: string;
+    function  ArdPalSelected: Boolean;
+    procedure DsgAddArduinoPage;
     procedure RqDsgPlace(const AParent: string; PosX, PosY, AFormX, AFormY: Integer;
                          var AHandled: Boolean);
     procedure WMRqDsgPlace(var Msg: TMessage); message WM_USER + 323;
@@ -30110,6 +30118,8 @@ begin
   FArdSim.OnCtlMoved := ArdSimCtlMoved;
   FArdSim.OnCtlMenu := ArdSimCtlMenu;
   FArdSim.OnCtlSelect := ArdSimCtlSelect;
+  FArdSim.OnPlace := ArdSimPlace;
+  FArdSim.PlaceMode := ArdPalSelected;
   FArdSim.OnViewFiles := ArdSimViewFiles;
   FArdSimWin.OnPlaced := ArdSimPlaced;
   FArdSimWin.OnHidden := ArdSimHidden;
@@ -36158,10 +36168,12 @@ begin
             Copy(Result, NumEnd, MaxInt);
 end;
 
-// Значение после ATag (/*Left*/ 10) - AValue: до запятой или '}'
-function ArdSetProp(const ABlock, ATag: string; AValue: Integer): string;
+// Значение после ATag (/*Caption*/ "Text") - текст AValue: до запятой или
+// '}' вне кавычек и скобок
+function ArdSetPropText(const ABlock, ATag, AValue: string): string;
 var
-  TagPos, ValStart, ValEnd: Integer;
+  TagPos, ValStart, ValEnd, Depth: Integer;
+  InQuote: Boolean;
 begin
   Result := ABlock;
   TagPos := Pos(ATag, Result);
@@ -36171,11 +36183,36 @@ begin
   while (ValStart <= Length(Result)) and (Result[ValStart] in [' ', #9]) do
     Inc(ValStart);
   ValEnd := ValStart;
-  while (ValEnd <= Length(Result)) and not (Result[ValEnd] in [',', '}', #13, #10]) do
+  Depth := 0;
+  InQuote := False;
+  while ValEnd <= Length(Result) do
+  begin
+    if InQuote then
+    begin
+      if Result[ValEnd] = '\' then
+        Inc(ValEnd)
+      else if Result[ValEnd] = '"' then
+        InQuote := False;
+    end
+    else if Result[ValEnd] = '"' then
+      InQuote := True
+    else if Result[ValEnd] = '(' then
+      Inc(Depth)
+    else if (Result[ValEnd] = ')') and (Depth > 0) then
+      Dec(Depth)
+    else if (Depth = 0) and (Result[ValEnd] in [',', '}', #13, #10]) then
+      Break;
     Inc(ValEnd);
+  end;
   while (ValEnd > ValStart) and (Result[ValEnd - 1] in [' ', #9]) do
     Dec(ValEnd);
-  Result := Copy(Result, 1, ValStart - 1) + IntToStr(AValue) + Copy(Result, ValEnd, MaxInt);
+  Result := Copy(Result, 1, ValStart - 1) + AValue + Copy(Result, ValEnd, MaxInt);
+end;
+
+// Значение после ATag (/*Left*/ 10) - число AValue
+function ArdSetProp(const ABlock, ATag: string; AValue: Integer): string;
+begin
+  Result := ArdSetPropText(ABlock, ATag, IntToStr(AValue));
 end;
 
 // Строка скетча - один оператор вывода надписи: lblX.....;
@@ -36450,6 +36487,146 @@ end;
 // надписи уже нет (Cut, потом Paste - перенос), иначе Имя_2, Имя_3...
 // и Left, Top на 8 больше
 procedure TForm1.ArdLabelPaste;
+begin
+  ArdLabelInsert(FArdClipName, FArdClipDecl);
+end;
+
+// Палитра: новая надпись в точке щелчка (FArdMenuX, FArdMenuY). Объявление -
+// по образцу ближайшей надписи экрана FArdMenuNear (тот же файл форм и
+// набор полей, её шрифт и цвета): имя lblLabelN, Caption "LabelN", Width 0
+// (по тексту), без рамки и заливки. Объявление и вывод - после её
+// объявления и вывода (ArdLabelInsert)
+function TForm1.ArdLabelNew: Boolean;
+var
+  Sketch: TArdSketch;
+  Target: TArdLabel;
+  Lines: TStringList;
+  Fmt, EndLine, LineIdx, NameNum, CutPos, BracePos, LineEnd: Integer;
+  FileName, Block, NewName, EdText, FileText: string;
+
+  function NameFree(const AName: string): Boolean;
+  begin
+    Result := (ArdLabelByName(AName) = nil) and (ArdWordPos(AName, EdText, 1) = 0) and
+              (ArdWordPos(AName, FileText, 1) = 0);
+  end;
+
+begin
+  Result := False;
+  Sketch := TArdSketch(FArdSketch);
+  Target := TArdLabel(ArdLabelByName(FArdMenuNear));
+  if (Sketch = nil) or (Target = nil) then
+    Exit;
+  if (Target.FileIdx < 1) or (Target.FileIdx > Sketch.IncludeFiles.Count) then
+  begin
+    ShowMessage(Target.Name + ': объявление не в подключённом файле форм - ' +
+                'новая надпись рядом с ней не ставится');
+    Exit;
+  end;
+  FileName := Sketch.IncludeFiles[Target.FileIdx - 1];
+  Lines := TStringList.Create;
+  try
+    if not ArdFileLoad(FileName, Lines, Fmt, False) then
+      Exit;
+    EndLine := ArdDeclEndLine(Lines, Target.Line);
+    if (EndLine < 0) or (ArdWordPos(Target.Name, Lines[Target.Line], 1) = 0) then
+    begin
+      ShowMessage(ExtractFileName(FileName) + ' изменился после разбора: нет ' +
+                  'объявления ' + Target.Name + ' на строке ' + IntToStr(Target.Line + 1));
+      Exit;
+    end;
+    Block := '';
+    for LineIdx := Target.Line to EndLine do
+      Block := Block + Lines[LineIdx] + #13#10;
+    FileText := Lines.Text;
+  finally
+    Lines.Free;
+  end;
+  EdText := GetEditorTextCR;
+  NameNum := 1;
+  while not NameFree('lblLabel' + IntToStr(NameNum)) do
+    Inc(NameNum);
+  NewName := 'lblLabel' + IntToStr(NameNum);
+  CutPos := ArdWordPos(Target.Name, Block, 1);
+  if CutPos = 0 then
+    Exit;
+  Block := Copy(Block, 1, CutPos - 1) + NewName +
+           Copy(Block, CutPos + Length(Target.Name), MaxInt);
+  // комментарий образца после '{' (changed at the call: ...) - не про неё
+  BracePos := Pos('{', Block);
+  if BracePos > 0 then
+  begin
+    LineEnd := BracePos;
+    while (LineEnd <= Length(Block)) and not (Block[LineEnd] in [#13, #10]) do
+      Inc(LineEnd);
+    Block := Copy(Block, 1, BracePos) + ' // unIDE palette' + Copy(Block, LineEnd, MaxInt);
+  end;
+  Block := ArdSetProp(Block, '/*Left*/', FArdMenuX);
+  Block := ArdSetProp(Block, '/*Top*/', FArdMenuY);
+  Block := ArdSetProp(Block, '/*Width*/', 0);
+  Block := ArdSetPropText(Block, '/*Caption*/', '"Label' + IntToStr(NameNum) + '"');
+  Block := ArdSetProp(Block, '/*Filled*/', 0);
+  Block := ArdSetProp(Block, '/*Rounded*/', 0);
+  Block := ArdSetProp(Block, '/*LineWidth*/', 0);
+  Block := ArdSetProp(Block, '/*Rect*/', 0);
+  Block := ArdSetProp(Block, '/*Visible*/', 1);
+  FArdMenuLabel := '';
+  ArdLabelInsert(NewName, Block);
+  Result := True;
+end;
+
+// Щелчок по экрану эмулятора при кнопке TLabel палитры
+procedure TForm1.ArdSimPlace(Sender: TObject; AX, AY: Integer);
+var
+  Sketch: TArdSketch;
+  LabelIdx: Integer;
+begin
+  if not ArdPalSelected then
+  begin
+    FArdSim.PlaceMode := False;
+    Exit;
+  end;
+  FArdMenuLabel := '';
+  FArdMenuNear := '';
+  FArdMenuX := AX;
+  FArdMenuY := AY;
+  if (FArdSim.SketchFile <> '') and
+     (CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(FArdSim.SketchFile)) <> 0) then
+    OpenNamedFile(FArdSim.SketchFile);
+  if (FCurrentFileName <> '') and IsSketchExt(FCurrentFileName) then
+    ArdRefreshInspector;
+  Sketch := TArdSketch(FArdSketch);
+  if (Sketch <> nil) and (FArdSim.MenuNearHash <> 0) and IsSketchExt(FCurrentFileName) then
+    for LabelIdx := 0 to Sketch.Labels.Count - 1 do
+      if ArdSimNameHash(Sketch.Labels[LabelIdx]) = FArdSim.MenuNearHash then
+      begin
+        FArdMenuNear := Sketch.Labels[LabelIdx];
+        Break;
+      end;
+  if FArdMenuNear = '' then
+  begin
+    LogComp('Палитра: на экране эмулятора нет надписей TLabel этого скетча - ' +
+            'файл форм и функцию вывода новой надписи взять не у кого');
+    Exit;
+  end;
+  if FObjEditing then
+    ObjCancelEdit;
+  ArdLabelNew;
+  FArdTextKey := '';
+  FArdEdKey := '';
+  if (FCurrentFileName <> '') and IsSketchExt(FCurrentFileName) then
+    ArdRefreshInspector;
+  // как в Delphi: одна надпись на выбор кнопки
+  FDsgPalette.ClearSelection;
+end;
+
+// Режим палитры у эмулятора: кнопка TLabel выбрана - щелчок по экрану ставит надпись
+procedure TForm1.ArdPalApply;
+begin
+  if FArdSim <> nil then
+    FArdSim.PlaceMode := ArdPalSelected;
+end;
+
+procedure TForm1.ArdLabelInsert(const AClipName, AClipDecl: string);
 var
   Sketch: TArdSketch;
   Target: TArdLabel;
@@ -36483,9 +36660,9 @@ begin
   begin
     Target := TArdLabel(ArdLabelByName(FArdMenuNear));
     if Target = nil then
-      Target := TArdLabel(ArdLabelByName(FArdClipName));
+      Target := TArdLabel(ArdLabelByName(AClipName));
   end;
-  if (Sketch = nil) or (Target = nil) or (FArdClipDecl = '') or (FArdClipName = '') then
+  if (Sketch = nil) or (Target = nil) or (AClipDecl = '') or (AClipName = '') then
     Exit;
   if (Target.FileIdx < 1) or (Target.FileIdx > Sketch.IncludeFiles.Count) then
   begin
@@ -36524,7 +36701,7 @@ begin
                   'объявления ' + Target.Name + ' на строке ' + IntToStr(Target.Line + 1));
       Exit;
     end;
-    NewName := FArdClipName;
+    NewName := AClipName;
     Renamed := NameUsed(NewName);
     if Renamed then
     begin
@@ -36540,12 +36717,12 @@ begin
         Inc(Suffix);
       until not NameUsed(NewName);
     end;
-    Block := FArdClipDecl;
-    CutPos := ArdWordPos(FArdClipName, Block, 1);
+    Block := AClipDecl;
+    CutPos := ArdWordPos(AClipName, Block, 1);
     if CutPos = 0 then
       Exit;
     Block := Copy(Block, 1, CutPos - 1) + NewName +
-             Copy(Block, CutPos + Length(FArdClipName), MaxInt);
+             Copy(Block, CutPos + Length(AClipName), MaxInt);
     if AtPoint then
     begin
       Block := ArdSetProp(Block, '/*Left*/', FArdMenuX);
@@ -46157,8 +46334,11 @@ procedure TForm1.DsgPaletteSelect(Sender: TObject);
 begin
   if grpPalette = nil then
     Exit;
+  ArdPalApply;
   if RqPalSelected <> '' then
     PalSetCaption('Components - ' + RqPalSelected + ' (RapidQ)')
+  else if ArdPalSelected then
+    PalSetCaption('Components - TLabel (Arduino): щелчок по экрану эмулятора')
   else if FDsgPalette.SelectedForeign <> '' then
     PalSetCaption('Components - ' +
       Copy(FDsgPalette.SelectedForeign,
@@ -47465,6 +47645,7 @@ begin
         AddBtn(TComponentClass(ObjList[I]), Page, True);
   end;
   DsgAddRapidQPages;
+  DsgAddArduinoPage;
   DsgAddForeignPages;
   FDsgPalette.ShowPage;
   ApplyArrayIni('PalBtn', PalBtnCodeProps);
@@ -52524,8 +52705,8 @@ var
   ForeignName, LoadError: string;
   ForeignCls: TBplClass;
 begin
-  // Компонент RapidQ на форму Delphi не ставится - щелчок как обычный
-  if RqPalSelected <> '' then
+  // Компонент RapidQ или Arduino на форму Delphi не ставится - щелчок как обычный
+  if (RqPalSelected <> '') or ArdPalSelected then
     Exit;
   // Сторонний компонент: визуальный он или нет - по предкам его класса
   // из пакета (TControl или только TComponent)
@@ -70658,10 +70839,18 @@ begin
   // Палитра: в Basic - страницы RQ, в Delphi - все, кроме них
   if FDsgPalette <> nil then
   begin
+    // Arduino - только страница Arduino, в Delphi и Basic её нет
     for PageIdx := 0 to FDsgPalette.PageCount - 1 do
-      FDsgPalette.SetPageHidden(PageIdx,
-                                RqMode <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalLast)));
+      if ArdRow then
+        FDsgPalette.SetPageHidden(PageIdx, PageIdx <> FArdPalPage)
+      else if (FArdPalPage > 0) and (PageIdx = FArdPalPage) then
+        FDsgPalette.SetPageHidden(PageIdx, True)
+      else
+        FDsgPalette.SetPageHidden(PageIdx,
+                                  RqMode <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalLast)));
     FDsgPalette.ApplyPages;
+    if not ArdRow and ArdPalSelected then
+      FDsgPalette.ClearSelection;
   end;
   // Проект ReactOS: палитра не нужна - сразу вкладка Git. В остальных
   // случаях вкладку выбирает пользователь (Components | Git на рамке
@@ -70971,6 +71160,23 @@ begin
 end;
 
 // Выбран на палитре компонент RapidQ: его класс, иначе ''
+function TForm1.ArdPalSelected: Boolean;
+begin
+  Result := (FDsgPalette <> nil) and (FDsgPalette.SelectedForeign = 'Arduino.TLabel');
+end;
+
+// Страница Arduino палитры: кнопка TLabel (надпись на экране прибора,
+// объявление в файле форм скетча). Видна только для скетчей .ino
+procedure TForm1.DsgAddArduinoPage;
+var
+  ArdBtn: TSpeedButton;
+begin
+  FArdPalPage := FDsgPalette.AddPage('Arduino');
+  ArdBtn := TSpeedButton.Create(FDsgPalette);
+  FDsgPalette.PlaceKind(ArdBtn, 'Arduino', 'TLabel', 'TLabel',
+    'TLabel (Arduino): надпись на экране эмулятора - выберите и щёлкните по экрану', FArdPalPage);
+end;
+
 function TForm1.RqPalSelected: string;
 begin
   Result := '';

@@ -161,6 +161,10 @@ type
     // строкой "RapidQ.QBUTTON" (SelectedForeign), как у сторонних.
     procedure PlaceRapidQ(ABtn: TSpeedButton; const AClass, AIconClass,
                           AHint: string; APage: Integer);
+    // То же для другой среды: выбор - строкой "AKind.AClass"
+    // (Arduino.TLabel); надпись без значка - AClass как есть
+    procedure PlaceKind(ABtn: TSpeedButton; const AKind, AClass, AIconClass,
+                        AHint: string; APage: Integer);
     // Открыть вкладку APage
     procedure SetPage(APage: Integer);
     // Страница открытой вкладки
@@ -1218,6 +1222,12 @@ end;
 
 procedure TDsgPalette.PlaceRapidQ(ABtn: TSpeedButton; const AClass,
                                   AIconClass, AHint: string; APage: Integer);
+begin
+  PlaceKind(ABtn, 'RapidQ', AClass, AIconClass, AHint, APage);
+end;
+
+procedure TDsgPalette.PlaceKind(ABtn: TSpeedButton; const AKind, AClass,
+                                AIconClass, AHint: string; APage: Integer);
 var
   BtnWidth, PosX: Integer;
 begin
@@ -1244,7 +1254,7 @@ begin
   begin
     // Значка нет - имя класса без Q (QSTRINGLIST - STRINGLIST); класс
     // не на Q (ComPort из RQControls.inc) - как есть
-    if (AClass <> '') and (AClass[1] in ['Q', 'q']) then
+    if (AKind = 'RapidQ') and (AClass <> '') and (AClass[1] in ['Q', 'q']) then
       ABtn.Caption := Copy(AClass, 2, MaxInt)
     else
       ABtn.Caption := AClass;
@@ -1258,7 +1268,7 @@ begin
   Inc(FRow1Count[APage]);
   ABtn.SetBounds(PosX, 1, BtnWidth, BtnSize);
   TList(FPageBtns[APage]).Add(ABtn);
-  FForeign.AddObject('RapidQ.' + AClass, ABtn);
+  FForeign.AddObject(AKind + '.' + AClass, ABtn);
 end;
 
 procedure TDsgPalette.SetPage(APage: Integer);

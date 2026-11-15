@@ -71,6 +71,9 @@ type
   TArdSimCtlMenuEvent = procedure(Sender: TObject; AHash: Cardinal;
     const AScreenPos: TPoint) of object;
   TArdSimCtlHashEvent = procedure(Sender: TObject; AHash: Cardinal) of object;
+  // Щелчок по экрану при выбранной кнопке палитры (PlaceMode): AX, AY - точка
+  // в пикселях экрана прибора
+  TArdSimPlaceEvent = procedure(Sender: TObject; AX, AY: Integer) of object;
   // Надпись TLabel, добавленная после сборки (Paste в меню экрана):
   // эмулятор её не знает, её рисует unIDE поверх экрана, пока скетч не
   // пересобран. Значения - из объявления (Unit1.ArdSyncPhantoms)
@@ -250,6 +253,9 @@ type
     FMenuPos: TPoint;
     FMenuX, FMenuY: Integer;   // точка клика на экране прибора
     FMenuNear: Cardinal;       // клик мимо надписей: ближайшая показанная
+    FMenuPlace: Boolean;       // ожидание - для OnPlace, а не для меню
+    FPlaceMode: Boolean;
+    FOnPlace: TArdSimPlaceEvent;
     procedure FireCtlMenu;
     function CtlShownEntry(AHash: Cardinal): PCardinal;
     function CtlShownBox(AEntry: PCardinal): TRect;
@@ -261,6 +267,7 @@ type
                                 const AText: string): Boolean;
     function CtlMouseDown(AX, AY: Integer): Boolean;
     procedure CtlContextMenu(AX, AY: Integer; const AScreenPos: TPoint);
+    procedure PlaceClick(AX, AY: Integer);
     function CtlSimHashAt(AX, AY: Integer; var AArea: Integer): Cardinal;
     procedure CtlMouseMove(AX, AY: Integer);
     procedure CtlMouseUp;
@@ -444,6 +451,11 @@ type
     property MenuX: Integer read FMenuX;
     property MenuY: Integer read FMenuY;
     property MenuNearHash: Cardinal read FMenuNear;
+    // Выбрана кнопка палитры: левый щелчок по экрану не выделяет надпись,
+    // а вызывает OnPlace (MenuX, MenuY, MenuNearHash - как у меню; курсор -
+    // на вывод ближайшей надписи, OnPlace - после перехода к строке)
+    property PlaceMode: Boolean read FPlaceMode write FPlaceMode;
+    property OnPlace: TArdSimPlaceEvent read FOnPlace write FOnPlace;
     property OnScreenWhere: TNotifyEvent read FOnScreenWhere write FOnScreenWhere;
     // Окно Watch видно: значения обновляются и пока скетч идёт
     property LiveWatch: Boolean read FLiveWatch write FLiveWatch;
@@ -892,6 +904,11 @@ begin
     Exit;
   // экран: где в скетче нарисована надпись под мышью; надпись TLabel -
   // сразу рамка, её можно тащить
+  if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) and FOwnerPanel.PlaceMode then
+  begin
+    FOwnerPanel.PlaceClick(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
+    Exit;
+  end;
   if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) then
   begin
     FOwnerPanel.CtlMouseDown(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
@@ -919,6 +936,8 @@ begin
     Exit;
   if FOwnerPanel.FDragging then
     FOwnerPanel.CtlMouseMove(PosX - FScreenRect.Left, PosY - FScreenRect.Top)
+  else if FOwnerPanel.PlaceMode and PtInRect(FScreenRect, Point(PosX, PosY)) then
+    Cursor := crCross
   else if PtInRect(FScreenRect, Point(PosX, PosY)) and
           FOwnerPanel.CtlOverPoint(PosX - FScreenRect.Left, PosY - FScreenRect.Top) then
     Cursor := crSizeAll
@@ -3530,8 +3549,38 @@ end;
 procedure TArdSimPanel.FireCtlMenu;
 begin
   FMenuPending := False;
-  if Assigned(FOnCtlMenu) then
+  if FMenuPlace then
+  begin
+    FMenuPlace := False;
+    if Assigned(FOnPlace) then
+      FOnPlace(Self, FMenuX, FMenuY);
+  end
+  else if Assigned(FOnCtlMenu) then
     FOnCtlMenu(Self, FMenuHash, FMenuPos);
+end;
+
+// Щелчок по экрану в режиме палитры: ближайшая показанная надпись (под
+// мышью - она же) - по ней Unit1 выбирает файл форм и функцию вывода
+procedure TArdSimPanel.PlaceClick(AX, AY: Integer);
+var
+  NearBox: TRect;
+begin
+  FDragging := False;
+  FMenuHash := 0;
+  FMenuX := AX;
+  FMenuY := AY;
+  FMenuPlace := True;
+  FMenuPending := False;
+  FMenuNear := CtlNearestHash(AX, AY, NearBox);
+  FWhereCtlHash := FMenuNear;
+  if FMenuNear <> 0 then
+  begin
+    FWhereWait := False;
+    ScreenWhere((NearBox.Left + NearBox.Right) div 2, (NearBox.Top + NearBox.Bottom) div 2);
+    FMenuPending := FWhereWait;
+  end;
+  if not FMenuPending then
+    FireCtlMenu;
 end;
 
 // Новые Left, Top - сразу в эмулятор: он перерисовывает надпись
