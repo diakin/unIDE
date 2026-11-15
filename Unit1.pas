@@ -34808,6 +34808,33 @@ begin
             ((ACall.Kind = ackUser) and (ACall.Args.Count > 0));
 end;
 
+// Имена других .ino в папке файла AFile (без пути, по алфавиту), кроме
+// самого AFile - Arduino IDE и ardprep склеивают их с главным файлом
+procedure ArdListOtherIno(const AFile: string; AList: TStrings);
+var
+  Found: TSearchRec;
+  Names: TStringList;
+begin
+  AList.Clear;
+  Names := TStringList.Create;
+  try
+    if FindFirst(ExtractFilePath(AFile) + '*.ino', faAnyFile, Found) = 0 then
+    try
+      repeat
+        if (Found.Attr and faDirectory = 0) and
+           (AnsiCompareText(Found.Name, ExtractFileName(AFile)) <> 0) then
+          Names.Add(Found.Name);
+      until FindNext(Found) <> 0;
+    finally
+      FindClose(Found);
+    end;
+    Names.Sort;
+    AList.Assign(Names);
+  finally
+    Names.Free;
+  end;
+end;
+
 procedure TForm1.ArdRefreshInspector;
 var
   SrcText, Key: string;
@@ -34857,6 +34884,9 @@ begin
   FArdSketch := Sketch;
   // #include "BS10Forms.h" - надписи TLabel из папки скетча
   Sketch.OnInclude := ArdLoadInclude;
+  // Остальные .ino папки (вкладки скетча, ArdControls.ino): их функции
+  // (Label и др.) нужны для разбора вызовов главного файла
+  ArdListOtherIno(FCurrentFileName, Sketch.ExtraFiles);
   Sketch.Parse(SrcText);
 
   // Плоский список: все вызовы вывода по порядку текста, без узлов

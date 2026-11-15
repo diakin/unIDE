@@ -106,6 +106,9 @@ type
     ParamNames, ParamTypes: TStringList;
     Calls: TList;                // TArdCall тела по порядку, и set...
     Draws: Boolean;              // выводит на экран (прямо или через другие)
+    // Функция из другого файла (ExtraFiles, вкладка ArdControls.ino): имя
+    // файла; тела в словах скетча нет (BodyTok -1), Line - строка там
+    SrcFile: string;
     // Номера слов { и } тела
     BodyTok, EndTok: Integer;
     constructor Create;
@@ -160,6 +163,7 @@ type
     function EvalColor(const AExpr: string; ADepth: Integer;
                        var AColor: Integer): Boolean;
     procedure LoadLabels;
+    procedure LoadExtraFuncs;
     procedure AddLabelFile(AFileIdx: Integer; const AText: string);
     function ParseLabelCallAt(ANameIdx: Integer; AFunc: TArdFunc;
                               ALabel: TArdLabel): Integer;
@@ -183,6 +187,11 @@ type
     // Чтение подключённых файлов (задаёт Unit1 до Parse): без него TLabel
     // не ищутся
     OnInclude: TArdIncludeEvent;
+    // Другие файлы скетча (вкладки .ino папки): из них берутся только
+    // функции - имя, параметры, выводит ли на экран. Так вызов Label(...)
+    // разбирается, когда сама Label() - в ArdControls.ino. Читаются через
+    // OnInclude
+    ExtraFiles: TStringList;
     constructor Create;
     destructor Destroy; override;
     procedure Parse(const AText: string);
@@ -533,6 +542,7 @@ begin
   Includes := TStringList.Create;
   IncludeFiles := TStringList.Create;
   Labels := TStringList.Create;
+  ExtraFiles := TStringList.Create;
 end;
 
 destructor TArdSketch.Destroy;
@@ -563,6 +573,7 @@ begin
   end;
   IncludeFiles.Free;
   Includes.Free;
+  ExtraFiles.Free;
   inherited Destroy;
 end;
 
@@ -1254,6 +1265,7 @@ begin
   if ScreenObjs.Count = 0 then
     ScreenObjs.Add('myGLCD');
   LoadLabels;
+  LoadExtraFuncs;
   ScanBodies;
   ResolveDraws;
   LinkSetters;
@@ -1375,6 +1387,51 @@ end;
 // ---------------------------------------------------------------------------
 //  Надписи TLabel (BS10Controls.h / BS10Forms.h)
 // ---------------------------------------------------------------------------
+
+// Функции других файлов скетча (ExtraFiles): разбор файла отдельно, в
+// список - копии без тела. Функция с тем же именем в самом скетче главнее
+procedure TArdSketch.LoadExtraFuncs;
+var
+  FileIdx, FuncIdx: Integer;
+  FilePath, FileText: string;
+  Part: TArdSketch;
+  Source, Copied: TArdFunc;
+begin
+  if not Assigned(OnInclude) then
+    Exit;
+  for FileIdx := 0 to ExtraFiles.Count - 1 do
+  begin
+    FilePath := '';
+    FileText := '';
+    if not OnInclude(ExtraFiles[FileIdx], FilePath, FileText) then
+      Continue;
+    Part := TArdSketch.Create;
+    try
+      Part.ScreenObjs.Assign(ScreenObjs);
+      Part.Parse(FileText);
+      for FuncIdx := 0 to Part.Funcs.Count - 1 do
+      begin
+        Source := TArdFunc(Part.Funcs[FuncIdx]);
+        if FuncByName(Source.Name) <> nil then
+          Continue;
+        Copied := TArdFunc.Create;
+        Copied.Name := Source.Name;
+        Copied.RetType := Source.RetType;
+        Copied.Line := Source.Line;
+        Copied.EndLine := Source.EndLine;
+        Copied.ParamNames.Assign(Source.ParamNames);
+        Copied.ParamTypes.Assign(Source.ParamTypes);
+        Copied.Draws := Source.Draws;
+        Copied.SrcFile := FilePath;
+        Copied.BodyTok := -1;
+        Copied.EndTok := -2;
+        Funcs.Add(Copied);
+      end;
+    finally
+      Part.Free;
+    end;
+  end;
+end;
 
 // Подключённые файлы скетча - через OnInclude; в каждом - объявления TLabel
 procedure TArdSketch.LoadLabels;
