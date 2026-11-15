@@ -2138,6 +2138,11 @@ type
     // Узел записанной правки: выделить его снова, когда дерево
     // перестроится по новому тексту (подпись могла измениться)
     FArdKeepName: string;
+    // Меню правого клика на надписи в эмуляторе (ArdSimCtlMenu): надпись
+    // под мышью; скопированная надпись - имя и текст объявления
+    FArdCtlMenu: TPopupMenu;
+    FArdMenuLabel: string;
+    FArdClipName, FArdClipDecl: string;
     // Текст, по которому разобран скетч, по счётчику правок редактора
     // (EditorTextKey) - без чтения текста; FArdCaretKey - тот же ключ при
     // прошлом движении каретки (ArdSyncFromCaret)
@@ -3228,6 +3233,15 @@ type
     procedure ArdSendOverride(const ANewText: string);
     procedure ArdSendLabelOverride(const ANewText: string);
     procedure ArdSimCtlMoved(Sender: TObject; AHash: Cardinal; ALeft, ATop: Integer);
+    procedure ArdSimCtlMenu(Sender: TObject; AHash: Cardinal; const AScreenPos: TPoint);
+    procedure ArdCtlMenuClick(Sender: TObject);
+    function  ArdLabelByName(const AName: string): TObject;
+    function  ArdFileLoad(const AFile: string; ALines: TStringList; var AFmt: Integer;
+                          ACheckModified: Boolean): Boolean;
+    procedure ArdFileSave(const AFile: string; ALines: TStringList; AFmt: Integer);
+    function  ArdLabelCopy: Boolean;
+    function  ArdLabelDelete: Boolean;
+    procedure ArdLabelPaste;
     procedure ArdSetFontRoots;
     procedure ArdAddFontExtern(const AName: string);
     procedure WMArdPreviewClosed(var Msg: TMessage); message WM_USER + 331;
@@ -29866,6 +29880,7 @@ begin
   FArdSim.OnDbgNeedBreaks := ArdDbgNeedBreaks;
   FArdSim.OnScreenWhere := ArdSimScreenWhere;
   FArdSim.OnCtlMoved := ArdSimCtlMoved;
+  FArdSim.OnCtlMenu := ArdSimCtlMenu;
   FArdSim.OnViewFiles := ArdSimViewFiles;
   FArdSimWin.OnPlaced := ArdSimPlaced;
   FArdSimWin.OnHidden := ArdSimHidden;
@@ -35806,6 +35821,614 @@ begin
   FArdEdKey := '';
   if FObjCurNode <> nil then
     ObjScheduleRelines(FObjCurNode, '');
+end;
+
+// ---- Меню правого клика на надписи TLabel в эмуляторе: Copy, Cut, Paste,
+// Delete. Объявление надписи - в файле форм (BS10Forms.h), правится на
+// диске; строки вывода lblX.Draw(); - в скетче, через редактор (Undo
+// работает). Экран эмулятора показывает изменения после сборки.
+
+const
+  ArdFmtUtf8 = 1;
+  ArdFmtBom = 2;
+  ArdFmtCrLf = 4;
+  ArdFmtNoLastEol = 8;  // в конце файла нет перевода строки
+
+// Позиция слова AWord в AText с AFrom (границы - не буква, цифра, '_'); 0 - нет
+function ArdWordPos(const AWord, AText: string; AFrom: Integer): Integer;
+var
+  CharPos, WordLen, TextLen: Integer;
+begin
+  Result := 0;
+  WordLen := Length(AWord);
+  TextLen := Length(AText);
+  if (WordLen = 0) or (AFrom < 1) then
+    Exit;
+  for CharPos := AFrom to TextLen - WordLen + 1 do
+    if (AText[CharPos] = AWord[1]) and (Copy(AText, CharPos, WordLen) = AWord) and
+       ((CharPos = 1) or not (AText[CharPos - 1] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) and
+       ((CharPos + WordLen > TextLen) or
+        not (AText[CharPos + WordLen] in ['a'..'z', 'A'..'Z', '0'..'9', '_'])) then
+    begin
+      Result := CharPos;
+      Exit;
+    end;
+end;
+
+// Строка без комментария // в конце
+function ArdCodePart(const ALine: string): string;
+var
+  CommentPos: Integer;
+begin
+  Result := ALine;
+  CommentPos := Pos('//', Result);
+  if CommentPos > 0 then
+    Result := Copy(Result, 1, CommentPos - 1);
+end;
+
+// Конец объявления надписи: строка с '};' начиная с AStart; -1 - нет
+function ArdDeclEndLine(ALines: TStringList; AStart: Integer): Integer;
+var
+  LineIdx: Integer;
+begin
+  Result := -1;
+  if (AStart < 0) or (AStart >= ALines.Count) then
+    Exit;
+  for LineIdx := AStart to ALines.Count - 1 do
+  begin
+    if Pos('};', ArdCodePart(ALines[LineIdx])) > 0 then
+    begin
+      Result := LineIdx;
+      Exit;
+    end;
+    if LineIdx - AStart > 100 then
+      Exit;
+  end;
+end;
+
+// Число после ATag (/*Left*/ 10) плюс ADelta; не число - без изменений
+function ArdShiftProp(const ABlock, ATag: string; ADelta: Integer): string;
+var
+  TagPos, NumStart, NumEnd, Value, ErrPos: Integer;
+begin
+  Result := ABlock;
+  TagPos := Pos(ATag, Result);
+  if TagPos = 0 then
+    Exit;
+  NumStart := TagPos + Length(ATag);
+  while (NumStart <= Length(Result)) and (Result[NumStart] in [' ', #9]) do
+    Inc(NumStart);
+  NumEnd := NumStart;
+  if (NumEnd <= Length(Result)) and (Result[NumEnd] = '-') then
+    Inc(NumEnd);
+  while (NumEnd <= Length(Result)) and (Result[NumEnd] in ['0'..'9']) do
+    Inc(NumEnd);
+  Val(Copy(Result, NumStart, NumEnd - NumStart), Value, ErrPos);
+  if ErrPos <> 0 then
+    Exit;
+  Result := Copy(Result, 1, NumStart - 1) + IntToStr(Value + ADelta) +
+            Copy(Result, NumEnd, MaxInt);
+end;
+
+// Строка скетча - один оператор вывода надписи: lblX.....;
+function ArdSimpleLabelLine(const AName, ACode: string): Boolean;
+var
+  CharPos, Semis: Integer;
+begin
+  Result := False;
+  if (Copy(ACode, 1, Length(AName) + 1) <> AName + '.') or
+     (ACode = '') or (ACode[Length(ACode)] <> ';') then
+    Exit;
+  Semis := 0;
+  for CharPos := 1 to Length(ACode) do
+    if ACode[CharPos] = ';' then
+      Inc(Semis)
+    else if ACode[CharPos] in ['{', '}'] then
+      Exit;
+  Result := Semis = 1;
+end;
+
+function TForm1.ArdLabelByName(const AName: string): TObject;
+var
+  Sketch: TArdSketch;
+  LabelIdx: Integer;
+begin
+  Result := nil;
+  Sketch := TArdSketch(FArdSketch);
+  if (Sketch = nil) or (AName = '') then
+    Exit;
+  LabelIdx := Sketch.Labels.IndexOf(AName);
+  if (LabelIdx >= 0) and (Sketch.Labels[LabelIdx] = AName) then
+    Result := Sketch.Labels.Objects[LabelIdx];
+end;
+
+// Файл форм в ALines (текст ANSI); AFmt - кодировка и переводы строк для
+// ArdFileSave. ACheckModified: файл открыт в редакторе с несохранёнными
+// правками - отказ (правим диск, а не окно)
+function TForm1.ArdFileLoad(const AFile: string; ALines: TStringList; var AFmt: Integer;
+  ACheckModified: Boolean): Boolean;
+var
+  Raw: string;
+  EditWin: Integer;
+  WinModified: Boolean;
+begin
+  Result := False;
+  AFmt := 0;
+  if ACheckModified then
+  begin
+    EditWin := IndexOfWindowByFile(AFile);
+    if EditWin >= 0 then
+    begin
+      if EditWin = FWindowsIndex then
+        WinModified := RichEdit1.Modified
+      else
+        WinModified := FWindows[EditWin].Modified;
+      if WinModified then
+      begin
+        ShowMessage(ExtractFileName(AFile) + ' открыт в редакторе, и в нём ' +
+          'есть несохранённые изменения - сохраните файл и повторите.');
+        Exit;
+      end;
+    end;
+  end;
+  if not FileExists(AFile) then
+  begin
+    ShowMessage('Нет файла ' + AFile);
+    Exit;
+  end;
+  Raw := ReadWholeFile(AFile);
+  if (Length(Raw) >= 3) and (Byte(Raw[1]) = $EF) and (Byte(Raw[2]) = $BB) and
+     (Byte(Raw[3]) = $BF) then
+  begin
+    AFmt := AFmt or ArdFmtBom or ArdFmtUtf8;
+    Delete(Raw, 1, 3);
+  end
+  else if LooksLikeUtf8(Raw) then
+    AFmt := AFmt or ArdFmtUtf8;
+  if Pos(#13#10, Raw) > 0 then
+    AFmt := AFmt or ArdFmtCrLf;
+  if (Raw <> '') and not (Raw[Length(Raw)] in [#10, #13]) then
+    AFmt := AFmt or ArdFmtNoLastEol;
+  if (AFmt and ArdFmtUtf8) <> 0 then
+    Raw := Utf8ToAnsiFull(Raw);
+  ALines.Text := Raw;
+  Result := True;
+end;
+
+// Запись файла форм с прежней кодировкой и переводами строк; окно с ним
+// перечитывается
+procedure TForm1.ArdFileSave(const AFile: string; ALines: TStringList; AFmt: Integer);
+var
+  Text: string;
+  Stream: TFileStream;
+  Bom: array[0..2] of Byte;
+  EditWin: Integer;
+begin
+  Text := ALines.Text;
+  if (AFmt and ArdFmtNoLastEol) <> 0 then
+    while (Text <> '') and (Text[Length(Text)] in [#10, #13]) do
+      Delete(Text, Length(Text), 1);
+  Text := StringReplace(Text, #13#10, #10, [rfReplaceAll]);
+  if (AFmt and ArdFmtCrLf) <> 0 then
+    Text := StringReplace(Text, #10, #13#10, [rfReplaceAll]);
+  if (AFmt and ArdFmtUtf8) <> 0 then
+    Text := AnsiToUtf8(Text);
+  Stream := TFileStream.Create(AFile, fmCreate);
+  try
+    if (AFmt and ArdFmtBom) <> 0 then
+    begin
+      Bom[0] := $EF; Bom[1] := $BB; Bom[2] := $BF;
+      Stream.WriteBuffer(Bom, 3);
+    end;
+    if Text <> '' then
+      Stream.WriteBuffer(Text[1], Length(Text));
+  finally
+    Stream.Free;
+  end;
+  EditWin := IndexOfWindowByFile(AFile);
+  if EditWin >= 0 then
+    ReloadWindowFromDisk(EditWin, False);
+end;
+
+// Правый клик на экране эмулятора: надпись под мышью (по хэшу имени) и
+// меню Copy / Cut / Paste / Delete
+procedure TForm1.ArdSimCtlMenu(Sender: TObject; AHash: Cardinal; const AScreenPos: TPoint);
+const
+  MenuCaptions: array[0..3] of string = ('Copy', 'Cut', 'Paste', 'Delete');
+var
+  Sketch: TArdSketch;
+  LabelIdx, ItemIdx: Integer;
+  Item: TMenuItem;
+begin
+  FArdMenuLabel := '';
+  // Разбор - по тексту скетча: его вкладка должна быть активной
+  if (FArdSim <> nil) and (FArdSim.SketchFile <> '') and
+     (CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(FArdSim.SketchFile)) <> 0) then
+    OpenNamedFile(FArdSim.SketchFile);
+  if (FCurrentFileName <> '') and IsSketchExt(FCurrentFileName) then
+    ArdRefreshInspector;
+  Sketch := TArdSketch(FArdSketch);
+  if (Sketch <> nil) and (AHash <> 0) and IsSketchExt(FCurrentFileName) then
+    for LabelIdx := 0 to Sketch.Labels.Count - 1 do
+      if ArdSimNameHash(Sketch.Labels[LabelIdx]) = AHash then
+      begin
+        FArdMenuLabel := Sketch.Labels[LabelIdx];
+        Break;
+      end;
+  if (AHash <> 0) and (FArdMenuLabel = '') then
+    LogComp('Эмулятор: надписи под мышью нет в разобранном скетче (вкладка ' +
+            ExtractFileName(FCurrentFileName) + ')');
+  if FArdCtlMenu = nil then
+  begin
+    FArdCtlMenu := TPopupMenu.Create(Self);
+    for ItemIdx := 0 to High(MenuCaptions) do
+    begin
+      Item := TMenuItem.Create(FArdCtlMenu);
+      Item.Caption := MenuCaptions[ItemIdx];
+      Item.Tag := ItemIdx;
+      Item.OnClick := ArdCtlMenuClick;
+      FArdCtlMenu.Items.Add(Item);
+    end;
+  end;
+  FArdCtlMenu.Items[0].Enabled := FArdMenuLabel <> '';
+  FArdCtlMenu.Items[1].Enabled := FArdMenuLabel <> '';
+  FArdCtlMenu.Items[3].Enabled := FArdMenuLabel <> '';
+  FArdCtlMenu.Items[2].Enabled := (FArdMenuLabel <> '') and (FArdClipDecl <> '');
+  if FArdClipName <> '' then
+    FArdCtlMenu.Items[2].Caption := 'Paste ' + FArdClipName
+  else
+    FArdCtlMenu.Items[2].Caption := 'Paste';
+  FArdCtlMenu.Popup(AScreenPos.X, AScreenPos.Y);
+end;
+
+procedure TForm1.ArdCtlMenuClick(Sender: TObject);
+var
+  Changed: Boolean;
+begin
+  if FArdMenuLabel = '' then
+    Exit;
+  if FObjEditing then
+    ObjCancelEdit;
+  Changed := False;
+  case TMenuItem(Sender).Tag of
+    0: ArdLabelCopy;
+    1: if ArdLabelCopy then
+       begin
+         Changed := ArdLabelDelete;
+         if not Changed then
+           LogComp('Эмулятор: ' + FArdMenuLabel + ' скопирована, но не удалена');
+       end;
+    2: begin
+         ArdLabelPaste;
+         Changed := True;
+       end;
+    3: Changed := ArdLabelDelete;
+  end;
+  if Changed then
+  begin
+    // Разобрать заново: инспектор - по новому тексту
+    FArdTextKey := '';
+    FArdEdKey := '';
+  end;
+end;
+
+// Copy: объявление надписи (строки файла форм до '};') - во внутренний
+// буфер и в буфер обмена
+function TForm1.ArdLabelCopy: Boolean;
+var
+  Sketch: TArdSketch;
+  Decl: TArdLabel;
+  Lines: TStringList;
+  Fmt, EndLine, LineIdx: Integer;
+  FileName, Block: string;
+begin
+  Result := False;
+  Sketch := TArdSketch(FArdSketch);
+  Decl := TArdLabel(ArdLabelByName(FArdMenuLabel));
+  if (Sketch = nil) or (Decl = nil) then
+    Exit;
+  if (Decl.FileIdx < 1) or (Decl.FileIdx > Sketch.IncludeFiles.Count) then
+  begin
+    ShowMessage(Decl.Name + ': объявление не в подключённом файле форм - ' +
+                'копирование не поддерживается');
+    Exit;
+  end;
+  FileName := Sketch.IncludeFiles[Decl.FileIdx - 1];
+  Lines := TStringList.Create;
+  try
+    if not ArdFileLoad(FileName, Lines, Fmt, False) then
+      Exit;
+    EndLine := ArdDeclEndLine(Lines, Decl.Line);
+    if (EndLine < 0) or (ArdWordPos(Decl.Name, Lines[Decl.Line], 1) = 0) then
+    begin
+      ShowMessage(ExtractFileName(FileName) + ' изменился после разбора: нет ' +
+                  'объявления ' + Decl.Name + ' на строке ' + IntToStr(Decl.Line + 1));
+      Exit;
+    end;
+    Block := '';
+    for LineIdx := Decl.Line to EndLine do
+      Block := Block + Lines[LineIdx] + #13#10;
+  finally
+    Lines.Free;
+  end;
+  FArdClipName := Decl.Name;
+  FArdClipDecl := Block;
+  Clipboard.AsText := Block;
+  LogComp('Эмулятор: ' + Decl.Name + ' скопирована (' + ExtractFileName(FileName) +
+          ', строки ' + IntToStr(Decl.Line + 1) + '-' + IntToStr(EndLine + 1) + ')');
+  Result := True;
+end;
+
+// Paste: копия объявления - после объявления надписи под мышью, вывод
+// НовоеИмя.Draw(); - в скетче после её вывода. Имя прежнее, если такой
+// надписи уже нет (Cut, потом Paste - перенос), иначе Имя_2, Имя_3...
+// и Left, Top на 8 больше
+procedure TForm1.ArdLabelPaste;
+var
+  Sketch: TArdSketch;
+  Target: TArdLabel;
+  Call, Anchor: TArdCall;
+  Lines, BlockLines: TStringList;
+  Fmt, EndLine, CallIdx, CaretLine, Suffix, CutPos, LineIdx, InsLine, LineStart: Integer;
+  FileName, NewName, BaseName, Block, EdText, LineText, Indent: string;
+  Renamed: Boolean;
+
+  function NameUsed(const AName: string): Boolean;
+  var
+    UsedIdx: Integer;
+  begin
+    Result := (ArdLabelByName(AName) <> nil) or (ArdWordPos(AName, EdText, 1) > 0);
+    if not Result then
+      for UsedIdx := 0 to Lines.Count - 1 do
+        if ArdWordPos(AName, Lines[UsedIdx], 1) > 0 then
+        begin
+          Result := True;
+          Exit;
+        end;
+  end;
+
+begin
+  Sketch := TArdSketch(FArdSketch);
+  Target := TArdLabel(ArdLabelByName(FArdMenuLabel));
+  if (Sketch = nil) or (Target = nil) or (FArdClipDecl = '') or (FArdClipName = '') then
+    Exit;
+  if (Target.FileIdx < 1) or (Target.FileIdx > Sketch.IncludeFiles.Count) then
+  begin
+    ShowMessage(Target.Name + ': объявление не в подключённом файле форм - ' +
+                'вставка не поддерживается');
+    Exit;
+  end;
+  FileName := Sketch.IncludeFiles[Target.FileIdx - 1];
+  EdText := GetEditorTextCR;
+  // Вывод надписи под мышью: на строке каретки (клик по экрану ставит
+  // каретку на вывод), иначе первый
+  CaretLine := EdApi.LineFromChar(RichEdit1.SelStart);
+  Anchor := nil;
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+  begin
+    Call := TArdCall(Sketch.Calls[CallIdx]);
+    if not Call.IsLabel or (Call.LabelDecl <> Target) or (Call.CloseTok < 0) then
+      Continue;
+    if Anchor = nil then
+      Anchor := Call;
+    if (CaretLine >= Call.Line) and (CaretLine <= Call.CloseLine) then
+    begin
+      Anchor := Call;
+      Break;
+    end;
+  end;
+  Lines := TStringList.Create;
+  BlockLines := TStringList.Create;
+  try
+    if not ArdFileLoad(FileName, Lines, Fmt, True) then
+      Exit;
+    EndLine := ArdDeclEndLine(Lines, Target.Line);
+    if (EndLine < 0) or (ArdWordPos(Target.Name, Lines[Target.Line], 1) = 0) then
+    begin
+      ShowMessage(ExtractFileName(FileName) + ' изменился после разбора: нет ' +
+                  'объявления ' + Target.Name + ' на строке ' + IntToStr(Target.Line + 1));
+      Exit;
+    end;
+    NewName := FArdClipName;
+    Renamed := NameUsed(NewName);
+    if Renamed then
+    begin
+      BaseName := NewName;
+      CutPos := Length(BaseName);
+      while (CutPos > 0) and (BaseName[CutPos] in ['0'..'9']) do
+        Dec(CutPos);
+      if (CutPos > 1) and (CutPos < Length(BaseName)) and (BaseName[CutPos] = '_') then
+        BaseName := Copy(BaseName, 1, CutPos - 1);
+      Suffix := 2;
+      repeat
+        NewName := BaseName + '_' + IntToStr(Suffix);
+        Inc(Suffix);
+      until not NameUsed(NewName);
+    end;
+    Block := FArdClipDecl;
+    CutPos := ArdWordPos(FArdClipName, Block, 1);
+    if CutPos = 0 then
+      Exit;
+    Block := Copy(Block, 1, CutPos - 1) + NewName +
+             Copy(Block, CutPos + Length(FArdClipName), MaxInt);
+    if Renamed then
+    begin
+      Block := ArdShiftProp(Block, '/*Left*/', 8);
+      Block := ArdShiftProp(Block, '/*Top*/', 8);
+    end;
+    BlockLines.Text := Block;
+    for LineIdx := BlockLines.Count - 1 downto 0 do
+      Lines.Insert(EndLine + 1, BlockLines[LineIdx]);
+    ArdFileSave(FileName, Lines, Fmt);
+  finally
+    BlockLines.Free;
+    Lines.Free;
+  end;
+  LogComp('Эмулятор: ' + NewName + ' вставлена в ' + ExtractFileName(FileName) +
+          ' после ' + Target.Name + ' (строка ' + IntToStr(EndLine + 2) + ')');
+  if Anchor = nil then
+  begin
+    LogComp('Эмулятор: у ' + Target.Name + ' нет вывода ' + Target.Name +
+            '.Draw() в скетче - добавьте ' + NewName + '.Draw(); сами');
+    Exit;
+  end;
+  InsLine := Anchor.CloseLine + 1;
+  LineStart := EdApi.LineIndex(Anchor.Line);
+  if LineStart < 0 then
+    Exit;
+  LineText := ReadLineText(Anchor.Line, LineStart, EdApi.LineLength(LineStart));
+  CutPos := 1;
+  while (CutPos <= Length(LineText)) and (LineText[CutPos] in [' ', #9]) do
+    Inc(CutPos);
+  Indent := Copy(LineText, 1, CutPos - 1);
+  Inc(FObjOwnWrite);
+  try
+    EditorFreeze;
+    try
+      LineStart := EdApi.LineIndex(InsLine);
+      if LineStart >= 0 then
+      begin
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := 0;
+        RichEdit1.SelText := Indent + NewName + '.Draw();' + #13#10;
+      end
+      else
+      begin
+        // вывод - последняя строка текста
+        RichEdit1.SelStart := Length(EdText);
+        RichEdit1.SelLength := 0;
+        RichEdit1.SelText := #13#10 + Indent + NewName + '.Draw();';
+      end;
+    finally
+      EditorThaw;
+    end;
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  LogComp('Эмулятор: строка ' + IntToStr(InsLine + 1) + ': ' + NewName +
+          '.Draw();   на экране эмулятора - после сборки (Build)');
+end;
+
+// Delete: строки скетча вида lblX....; и объявление в файле форм. Если имя
+// стоит ещё где-то (аргумент функции, выражение, другой файл) - отказ со
+// списком строк
+function TForm1.ArdLabelDelete: Boolean;
+var
+  Sketch: TArdSketch;
+  Decl: TArdLabel;
+  Lines, OtherLines: TStringList;
+  Fmt, OtherFmt, EndLine, LineIdx, FileIdx, LineTotal, LineStart, NextStart, DelCount: Integer;
+  DelLines: array of Integer;
+  FileName, LineText, CodeText, Problems: string;
+begin
+  Result := False;
+  Sketch := TArdSketch(FArdSketch);
+  Decl := TArdLabel(ArdLabelByName(FArdMenuLabel));
+  if (Sketch = nil) or (Decl = nil) then
+    Exit;
+  if (Decl.FileIdx < 1) or (Decl.FileIdx > Sketch.IncludeFiles.Count) then
+  begin
+    ShowMessage(Decl.Name + ': объявление не в подключённом файле форм - ' +
+                'удаление не поддерживается');
+    Exit;
+  end;
+  FileName := Sketch.IncludeFiles[Decl.FileIdx - 1];
+  Problems := '';
+  DelCount := 0;
+  SetLength(DelLines, 0);
+  Lines := TStringList.Create;
+  OtherLines := TStringList.Create;
+  try
+    if not ArdFileLoad(FileName, Lines, Fmt, True) then
+      Exit;
+    EndLine := ArdDeclEndLine(Lines, Decl.Line);
+    if (EndLine < 0) or (ArdWordPos(Decl.Name, Lines[Decl.Line], 1) = 0) then
+    begin
+      ShowMessage(ExtractFileName(FileName) + ' изменился после разбора: нет ' +
+                  'объявления ' + Decl.Name + ' на строке ' + IntToStr(Decl.Line + 1));
+      Exit;
+    end;
+    // Подключённые файлы: имя вне объявления - отказ
+    for FileIdx := 0 to Sketch.IncludeFiles.Count - 1 do
+    begin
+      if FileIdx = Decl.FileIdx - 1 then
+        OtherLines.Assign(Lines)
+      else if not ArdFileLoad(Sketch.IncludeFiles[FileIdx], OtherLines, OtherFmt, False) then
+        Continue;
+      for LineIdx := 0 to OtherLines.Count - 1 do
+      begin
+        if (FileIdx = Decl.FileIdx - 1) and (LineIdx >= Decl.Line) and (LineIdx <= EndLine) then
+          Continue;
+        if ArdWordPos(Decl.Name, ArdCodePart(OtherLines[LineIdx]), 1) > 0 then
+          Problems := Problems + #13#10 + ExtractFileName(Sketch.IncludeFiles[FileIdx]) +
+                      ':' + IntToStr(LineIdx + 1) + '   ' + Trim(OtherLines[LineIdx]);
+      end;
+    end;
+    // Скетч: строки вывода этой надписи удаляются целиком
+    LineTotal := EdApi.LineCount;
+    for LineIdx := 0 to LineTotal - 1 do
+    begin
+      LineStart := EdApi.LineIndex(LineIdx);
+      if LineStart < 0 then
+        Break;
+      LineText := ReadLineText(LineIdx, LineStart, EdApi.LineLength(LineStart));
+      CodeText := Trim(ArdCodePart(LineText));
+      if ArdWordPos(Decl.Name, CodeText, 1) = 0 then
+        Continue;
+      if ArdSimpleLabelLine(Decl.Name, CodeText) then
+      begin
+        SetLength(DelLines, DelCount + 1);
+        DelLines[DelCount] := LineIdx;
+        Inc(DelCount);
+      end
+      else
+        Problems := Problems + #13#10 + ExtractFileName(FCurrentFileName) + ':' +
+                    IntToStr(LineIdx + 1) + '   ' + Trim(LineText);
+    end;
+    if Problems <> '' then
+    begin
+      ShowMessage(Decl.Name + ' не удалена: имя стоит не только в отдельных ' +
+        'строках вывода (' + Decl.Name + '....;). Измените эти строки сами:' + Problems);
+      Exit;
+    end;
+    for LineIdx := EndLine downto Decl.Line do
+      Lines.Delete(LineIdx);
+    ArdFileSave(FileName, Lines, Fmt);
+  finally
+    OtherLines.Free;
+    Lines.Free;
+  end;
+  // Строки скетча - снизу вверх, номера выше не сдвигаются
+  if DelCount > 0 then
+  begin
+    Inc(FObjOwnWrite);
+    try
+      EditorFreeze;
+      try
+        for LineIdx := DelCount - 1 downto 0 do
+        begin
+          LineStart := EdApi.LineIndex(DelLines[LineIdx]);
+          if LineStart < 0 then
+            Continue;
+          NextStart := EdApi.LineIndex(DelLines[LineIdx] + 1);
+          if NextStart < 0 then
+            NextStart := LineStart + EdApi.LineLength(LineStart);
+          RichEdit1.SelStart := LineStart;
+          RichEdit1.SelLength := NextStart - LineStart;
+          RichEdit1.SelText := '';
+        end;
+      finally
+        EditorThaw;
+      end;
+    finally
+      Dec(FObjOwnWrite);
+    end;
+  end;
+  LogComp('Эмулятор: ' + Decl.Name + ' удалена: объявление (' +
+          ExtractFileName(FileName) + ', строки ' + IntToStr(Decl.Line + 1) + '-' +
+          IntToStr(EndLine + 1) + ') и строк вывода в скетче: ' + IntToStr(DelCount) +
+          '   на экране эмулятора - после сборки (Build)');
+  Result := True;
 end;
 
 // Правка значения TLabel в файле форм (FArdEditFile) прямо на диске: строка

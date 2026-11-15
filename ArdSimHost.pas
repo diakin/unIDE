@@ -66,6 +66,10 @@ type
   // ALeft, ATop - новые Left, Top
   TArdSimCtlMovedEvent = procedure(Sender: TObject; AHash: Cardinal;
     ALeft, ATop: Integer) of object;
+  // Правый клик на экране прибора: AHash - TLabel под мышью (0 - нет),
+  // AScreenPos - точка в координатах экрана для всплывающего меню
+  TArdSimCtlMenuEvent = procedure(Sender: TObject; AHash: Cardinal;
+    const AScreenPos: TPoint) of object;
   TArdSimSaveEvent = function(Sender: TObject): Boolean of object;
   // Строки точек останова: (номер файла shl 20) or строка с 1
   TArdDbgCodes = array of Cardinal;
@@ -218,6 +222,7 @@ type
     FDragLeft, FDragTop: Integer;          // Left, Top в начале
     FDragNewLeft, FDragNewTop: Integer;
     FOnCtlMoved: TArdSimCtlMovedEvent;
+    FOnCtlMenu: TArdSimCtlMenuEvent;
     function CtlShownEntry(AHash: Cardinal): PCardinal;
     function CtlShownBox(AEntry: PCardinal): TRect;
     function CtlHashAt(AX, AY: Integer): Cardinal;
@@ -225,6 +230,7 @@ type
     function SetCtlOverrideHash(AHash: Cardinal; AProp, AKind, ANumber: Integer;
                                 const AText: string): Boolean;
     function CtlMouseDown(AX, AY: Integer): Boolean;
+    procedure CtlContextMenu(AX, AY: Integer; const AScreenPos: TPoint);
     procedure CtlMouseMove(AX, AY: Integer);
     procedure CtlMouseUp;
     function CtlOverPoint(AX, AY: Integer): Boolean;
@@ -374,6 +380,7 @@ type
     // её можно тащить мышью. '' - нет
     property SelectedControl: string write SetSelectedControl;
     property OnCtlMoved: TArdSimCtlMovedEvent read FOnCtlMoved write FOnCtlMoved;
+    property OnCtlMenu: TArdSimCtlMenuEvent read FOnCtlMenu write FOnCtlMenu;
     // Аргумент AArgIdx вызова AName (метод UTFT или функция скетча) в
     // строке ALine (с 1) файла AFileIdx, AOccurrence-го с таким именем в
     // строке: число ANumber или шрифт AFont (имя массива, AFont <> '').
@@ -831,9 +838,17 @@ begin
   inherited;
   if CanFocus then
     SetFocus;
+  HitPoint := Point(PosX, PosY);
+  if Button = mbRight then
+  begin
+    // правый клик на экране: меню Copy / Cut / Paste / Delete для TLabel
+    if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) then
+      FOwnerPanel.CtlContextMenu(PosX - FScreenRect.Left,
+        PosY - FScreenRect.Top, ClientToScreen(HitPoint));
+    Exit;
+  end;
   if Button <> mbLeft then
     Exit;
-  HitPoint := Point(PosX, PosY);
   // экран: где в скетче нарисована надпись под мышью; надпись TLabel -
   // сразу рамка, её можно тащить
   if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) then
@@ -3303,6 +3318,26 @@ begin
   FDragNewTop := FDragTop;
   FDevice.InvalidateScreen;
   Result := True;
+end;
+
+// Правый клик на экране: TLabel под мышью выделяется (без перетаскивания),
+// курсор переводится на строку отрисовки и вызывается OnCtlMenu
+procedure TArdSimPanel.CtlContextMenu(AX, AY: Integer; const AScreenPos: TPoint);
+var
+  Hash: Cardinal;
+begin
+  FDragging := False;
+  Hash := CtlHashAt(AX, AY);
+  FWhereCtlHash := Hash;
+  if (Hash <> 0) and (CtlShownEntry(Hash) <> nil) then
+  begin
+    FSelCtlHash := Hash;
+    FDevice.InvalidateScreen;
+  end;
+  if Hash <> 0 then
+    ScreenWhere(AX, AY);
+  if Assigned(FOnCtlMenu) then
+    FOnCtlMenu(Self, Hash, AScreenPos);
 end;
 
 // Новые Left, Top - сразу в эмулятор: он перерисовывает надпись
