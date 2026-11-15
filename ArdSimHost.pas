@@ -228,10 +228,13 @@ type
     FMenuPending: Boolean;
     FMenuHash: Cardinal;
     FMenuPos: TPoint;
+    FMenuX, FMenuY: Integer;   // точка клика на экране прибора
+    FMenuNear: Cardinal;       // клик мимо надписей: ближайшая показанная
     procedure FireCtlMenu;
     function CtlShownEntry(AHash: Cardinal): PCardinal;
     function CtlShownBox(AEntry: PCardinal): TRect;
     function CtlHashAt(AX, AY: Integer): Cardinal;
+    function CtlNearestHash(AX, AY: Integer; var ABox: TRect): Cardinal;
     procedure DrawCtlMarker;
     function SetCtlOverrideHash(AHash: Cardinal; AProp, AKind, ANumber: Integer;
                                 const AText: string): Boolean;
@@ -401,6 +404,12 @@ type
     property WhereText: string read FWhereText;
     // TLabel под последним щелчком по экрану (ArdSimNameHash имени), 0 - нет
     property WhereCtlHash: Cardinal read FWhereCtlHash;
+    // Последний правый клик на экране (OnCtlMenu): точка в пикселях экрана
+    // прибора; MenuNearHash - ближайшая показанная надпись, если клик был
+    // мимо надписей (по ней Paste выбирает функцию вывода), иначе 0
+    property MenuX: Integer read FMenuX;
+    property MenuY: Integer read FMenuY;
+    property MenuNearHash: Cardinal read FMenuNear;
     property OnScreenWhere: TNotifyEvent read FOnScreenWhere write FOnScreenWhere;
     // Окно Watch видно: значения обновляются и пока скетч идёт
     property LiveWatch: Boolean read FLiveWatch write FLiveWatch;
@@ -3164,6 +3173,57 @@ begin
   {$ENDIF}
 end;
 
+// Показанная сейчас надпись, рамка которой ближе всего к точке AX, AY
+// (расстояние до рамки); 0 - на экране надписей нет
+function TArdSimPanel.CtlNearestHash(AX, AY: Integer; var ABox: TRect): Cardinal;
+{$IFDEF MSWINDOWS}
+var
+  Shown, Entry: PCardinal;
+  Count, EntryIdx, DistX, DistY, Dist, BestDist: Integer;
+  Box: TRect;
+{$ENDIF}
+begin
+  Result := 0;
+  ABox := Rect(0, 0, 0, 0);
+  {$IFDEF MSWINDOWS}
+  if not CtlOverrideAvailable then
+    Exit;
+  Shown := PCardinal(PAnsiChar(FView) + CtlOffset + CtlShownOffset);
+  if PCardinal(PAnsiChar(Shown) + 8)^ <> CtlShownBytes then
+    Exit;
+  Count := Integer(PCardinal(PAnsiChar(Shown) + 4)^);
+  if Count > CtlMaxControls then
+    Count := CtlMaxControls;
+  BestDist := MaxInt;
+  for EntryIdx := 0 to Count - 1 do
+  begin
+    Entry := PCardinal(PAnsiChar(Shown) + 16 + EntryIdx * CtlShownBytes);
+    if PCardinal(PAnsiChar(Entry) + 4)^ <> Shown^ then
+      Continue;
+    Box := CtlShownBox(Entry);
+    if Box.Right <= Box.Left then
+      Continue;
+    DistX := 0;
+    if AX < Box.Left then
+      DistX := Box.Left - AX
+    else if AX >= Box.Right then
+      DistX := AX - Box.Right + 1;
+    DistY := 0;
+    if AY < Box.Top then
+      DistY := Box.Top - AY
+    else if AY >= Box.Bottom then
+      DistY := AY - Box.Bottom + 1;
+    Dist := DistX * DistX + DistY * DistY;
+    if Dist < BestDist then
+    begin
+      BestDist := Dist;
+      Result := Entry^;
+      ABox := Box;
+    end;
+  end;
+  {$ENDIF}
+end;
+
 function TArdSimPanel.CtlShownText(const AName: string; var AX, AY: Integer;
   var AText: string; var AFore, ABack: TColor; var AClear: TRect): Boolean;
 var
@@ -3333,6 +3393,8 @@ end;
 procedure TArdSimPanel.CtlContextMenu(AX, AY: Integer; const AScreenPos: TPoint);
 var
   Hash: Cardinal;
+  NearBox: TRect;
+  WhereX, WhereY: Integer;
 begin
   FDragging := False;
   Hash := CtlHashAt(AX, AY);
@@ -3344,11 +3406,28 @@ begin
   end;
   FMenuHash := Hash;
   FMenuPos := AScreenPos;
+  FMenuX := AX;
+  FMenuY := AY;
+  FMenuNear := 0;
   FMenuPending := False;
-  if Hash <> 0 then
+  WhereX := AX;
+  WhereY := AY;
+  // Мимо надписей: курсор - на вывод ближайшей надписи этого экрана, туда
+  // Paste добавит вывод копии
+  if Hash = 0 then
+  begin
+    FMenuNear := CtlNearestHash(AX, AY, NearBox);
+    if FMenuNear <> 0 then
+    begin
+      FWhereCtlHash := FMenuNear;
+      WhereX := (NearBox.Left + NearBox.Right) div 2;
+      WhereY := (NearBox.Top + NearBox.Bottom) div 2;
+    end;
+  end;
+  if FWhereCtlHash <> 0 then
   begin
     FWhereWait := False;
-    ScreenWhere(AX, AY);
+    ScreenWhere(WhereX, WhereY);
     // ответ придёт в PollWhere: меню - после перехода к строке
     FMenuPending := FWhereWait;
   end;

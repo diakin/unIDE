@@ -2142,6 +2142,10 @@ type
     // под мышью; скопированная надпись - имя и текст объявления
     FArdCtlMenu: TPopupMenu;
     FArdMenuLabel: string;
+    // Клик мимо надписей: точка экрана и ближайшая показанная надпись
+    // (Paste ставит копию в эту точку, вывод - рядом с выводом той надписи)
+    FArdMenuNear: string;
+    FArdMenuX, FArdMenuY: Integer;
     FArdClipName, FArdClipDecl: string;
     // Текст, по которому разобран скетч, по счётчику правок редактора
     // (EditorTextKey) - без чтения текста; FArdCaretKey - тот же ключ при
@@ -36059,6 +36063,26 @@ begin
             Copy(Result, NumEnd, MaxInt);
 end;
 
+// Значение после ATag (/*Left*/ 10) - AValue: до запятой или '}'
+function ArdSetProp(const ABlock, ATag: string; AValue: Integer): string;
+var
+  TagPos, ValStart, ValEnd: Integer;
+begin
+  Result := ABlock;
+  TagPos := Pos(ATag, Result);
+  if TagPos = 0 then
+    Exit;
+  ValStart := TagPos + Length(ATag);
+  while (ValStart <= Length(Result)) and (Result[ValStart] in [' ', #9]) do
+    Inc(ValStart);
+  ValEnd := ValStart;
+  while (ValEnd <= Length(Result)) and not (Result[ValEnd] in [',', '}', #13, #10]) do
+    Inc(ValEnd);
+  while (ValEnd > ValStart) and (Result[ValEnd - 1] in [' ', #9]) do
+    Dec(ValEnd);
+  Result := Copy(Result, 1, ValStart - 1) + IntToStr(AValue) + Copy(Result, ValEnd, MaxInt);
+end;
+
 // Строка скетча - один оператор вывода надписи: lblX.....;
 function ArdSimpleLabelLine(const AName, ACode: string): Boolean;
 var
@@ -36190,6 +36214,9 @@ var
   Item: TMenuItem;
 begin
   FArdMenuLabel := '';
+  FArdMenuNear := '';
+  FArdMenuX := FArdSim.MenuX;
+  FArdMenuY := FArdSim.MenuY;
   // Разбор - по тексту скетча: его вкладка должна быть активной
   if (FArdSim <> nil) and (FArdSim.SketchFile <> '') and
      (CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(FArdSim.SketchFile)) <> 0) then
@@ -36202,6 +36229,14 @@ begin
       if ArdSimNameHash(Sketch.Labels[LabelIdx]) = AHash then
       begin
         FArdMenuLabel := Sketch.Labels[LabelIdx];
+        Break;
+      end;
+  if (Sketch <> nil) and (AHash = 0) and (FArdSim.MenuNearHash <> 0) and
+     IsSketchExt(FCurrentFileName) then
+    for LabelIdx := 0 to Sketch.Labels.Count - 1 do
+      if ArdSimNameHash(Sketch.Labels[LabelIdx]) = FArdSim.MenuNearHash then
+      begin
+        FArdMenuNear := Sketch.Labels[LabelIdx];
         Break;
       end;
   if (AHash <> 0) and (FArdMenuLabel = '') then
@@ -36222,7 +36257,10 @@ begin
   FArdCtlMenu.Items[0].Enabled := FArdMenuLabel <> '';
   FArdCtlMenu.Items[1].Enabled := FArdMenuLabel <> '';
   FArdCtlMenu.Items[3].Enabled := FArdMenuLabel <> '';
-  FArdCtlMenu.Items[2].Enabled := (FArdMenuLabel <> '') and (FArdClipDecl <> '');
+  // Paste: на надпись (копия после неё) или мимо (копия в точку клика)
+  FArdCtlMenu.Items[2].Enabled := (FArdClipDecl <> '') and
+    ((FArdMenuLabel <> '') or (FArdMenuNear <> '') or
+     (ArdLabelByName(FArdClipName) <> nil));
   if FArdClipName <> '' then
     FArdCtlMenu.Items[2].Caption := 'Paste ' + FArdClipName
   else
@@ -36234,7 +36272,7 @@ procedure TForm1.ArdCtlMenuClick(Sender: TObject);
 var
   Changed: Boolean;
 begin
-  if FArdMenuLabel = '' then
+  if (FArdMenuLabel = '') and (TMenuItem(Sender).Tag <> 2) then
     Exit;
   if FObjEditing then
     ObjCancelEdit;
@@ -36320,7 +36358,7 @@ var
   Lines, BlockLines: TStringList;
   Fmt, EndLine, CallIdx, CaretLine, Suffix, CutPos, LineIdx, InsLine, LineStart: Integer;
   FileName, NewName, BaseName, Block, EdText, LineText, Indent: string;
-  Renamed: Boolean;
+  Renamed, AtPoint: Boolean;
 
   function NameUsed(const AName: string): Boolean;
   var
@@ -36339,6 +36377,15 @@ var
 begin
   Sketch := TArdSketch(FArdSketch);
   Target := TArdLabel(ArdLabelByName(FArdMenuLabel));
+  // Клик мимо надписей: копия встаёт в точку клика; объявление и вывод -
+  // после ближайшей надписи этого экрана (нет её - после исходной)
+  AtPoint := Target = nil;
+  if AtPoint then
+  begin
+    Target := TArdLabel(ArdLabelByName(FArdMenuNear));
+    if Target = nil then
+      Target := TArdLabel(ArdLabelByName(FArdClipName));
+  end;
   if (Sketch = nil) or (Target = nil) or (FArdClipDecl = '') or (FArdClipName = '') then
     Exit;
   if (Target.FileIdx < 1) or (Target.FileIdx > Sketch.IncludeFiles.Count) then
@@ -36400,7 +36447,12 @@ begin
       Exit;
     Block := Copy(Block, 1, CutPos - 1) + NewName +
              Copy(Block, CutPos + Length(FArdClipName), MaxInt);
-    if Renamed then
+    if AtPoint then
+    begin
+      Block := ArdSetProp(Block, '/*Left*/', FArdMenuX);
+      Block := ArdSetProp(Block, '/*Top*/', FArdMenuY);
+    end
+    else if Renamed then
     begin
       Block := ArdShiftProp(Block, '/*Left*/', 8);
       Block := ArdShiftProp(Block, '/*Top*/', 8);
