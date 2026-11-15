@@ -348,9 +348,11 @@ type
     // Поверх экрана эмулятора: стереть AClear цветом ABack, нарисовать
     // AText шрифтом AFont с (AX, AY), как UTFT::print. Цвета - TColor.
     // Картинка эмулятора не меняется: это только показ
+    // AProportional - как PrintProp в BS10.ino (TLabel с Proportional 1):
+    // знаки без пустых столбцов, промежуток UtftPropGap, пробел UtftPropSpace
     procedure SetTextPreview(AX, AY: Integer; const AText: AnsiString;
       AFont: TUtftFont; const AClear: TRect; AFore, ABack: TColor;
-      ATransparent: Boolean);
+      ATransparent: Boolean; AProportional: Boolean = False);
     procedure ClearTextPreview;
     function PreviewShown: Boolean;
     // Превью под мышью остаётся на экране (шрифт выбран): до перерисовки
@@ -2833,13 +2835,36 @@ type
     Clear, Area: TRect;
     Fore, Back: Cardinal;   // $RRGGBB
     Transparent: Boolean;
+    Proportional: Boolean;
     Sum: Cardinal;
     SumSet: Boolean;
   end;
 
+// Ширина строки превью: по клеткам или как PropTextWidth в BS10.ino
+function PreviewTextWidth(AFont: TUtftFont; const AText: AnsiString;
+  AProportional: Boolean): Integer;
+var
+  CharIdx, InkW, InkLeft: Integer;
+begin
+  if not AProportional then
+  begin
+    Result := Length(AText) * AFont.SizeX;
+    Exit;
+  end;
+  Result := 0;
+  for CharIdx := 1 to Length(AText) do
+  begin
+    InkW := UtftPropGlyph(AFont, Ord(AText[CharIdx]), InkLeft);
+    if InkW > 0 then
+      Inc(Result, InkW + UtftPropGap)
+    else
+      Inc(Result, UtftPropSpace(AFont));
+  end;
+end;
+
 procedure TArdSimPanel.SetTextPreview(AX, AY: Integer; const AText: AnsiString;
   AFont: TUtftFont; const AClear: TRect; AFore, ABack: TColor;
-  ATransparent: Boolean);
+  ATransparent: Boolean; AProportional: Boolean);
 var
   Item: TArdPreviewItem;
 begin
@@ -2858,6 +2883,7 @@ begin
   Item.Fore := ColorToRgbWord(AFore);
   Item.Back := ColorToRgbWord(ABack);
   Item.Transparent := ATransparent;
+  Item.Proportional := AProportional;
   // Место превью: прежняя надпись и новая
   Item.Area := AClear;
   if Item.Area.Right <= Item.Area.Left then
@@ -2866,8 +2892,8 @@ begin
     Item.Area.Left := AX;
   if AY < Item.Area.Top then
     Item.Area.Top := AY;
-  if AX + Length(AText) * AFont.SizeX > Item.Area.Right then
-    Item.Area.Right := AX + Length(AText) * AFont.SizeX;
+  if AX + PreviewTextWidth(AFont, AText, AProportional) > Item.Area.Right then
+    Item.Area.Right := AX + PreviewTextWidth(AFont, AText, AProportional);
   if AY + AFont.SizeY > Item.Area.Bottom then
     Item.Area.Bottom := AY + AFont.SizeY;
   Item.SumSet := False;
@@ -3424,7 +3450,7 @@ var
   procedure DrawItem(AItem: TArdPreviewItem);
   var
     CharIdx, Code, Offset, RowIdx, PartIdx, BitIdx, PosX, PosY: Integer;
-    BytesPerRow, CellX: Integer;
+    BytesPerRow, CellX, PropX, InkW, InkLeft, TextW: Integer;
     Bits: Byte;
     Font: TUtftFont;
   begin
@@ -3433,10 +3459,30 @@ var
       for PosX := AItem.Clear.Left to AItem.Clear.Right - 1 do
         PutPixel(PosX, PosY, AItem.Back);
     BytesPerRow := Font.SizeX div 8;
+    PropX := AItem.PosX;
+    if AItem.Proportional and not AItem.Transparent then
+    begin
+      // PrintProp: фон под всей строкой, знаки - только точками
+      TextW := PreviewTextWidth(Font, AItem.Text, True);
+      for PosY := AItem.PosY to AItem.PosY + Font.SizeY - 1 do
+        for PosX := AItem.PosX to AItem.PosX + TextW - 1 do
+          PutPixel(PosX, PosY, AItem.Back);
+    end;
     for CharIdx := 1 to Length(AItem.Text) do
     begin
       Code := Ord(AItem.Text[CharIdx]);
       CellX := AItem.PosX + (CharIdx - 1) * Font.SizeX;
+      if AItem.Proportional then
+      begin
+        InkW := UtftPropGlyph(Font, Code, InkLeft);
+        if InkW <= 0 then
+        begin
+          Inc(PropX, UtftPropSpace(Font));
+          Continue;
+        end;
+        CellX := PropX - InkLeft;
+        Inc(PropX, InkW + UtftPropGap);
+      end;
       Offset := Font.GlyphOffset(Code);
       for RowIdx := 0 to Font.SizeY - 1 do
         for PartIdx := 0 to BytesPerRow - 1 do
@@ -3450,7 +3496,7 @@ var
             if (Bits and ($80 shr BitIdx)) <> 0 then
               PutPixel(CellX + PartIdx * 8 + BitIdx, AItem.PosY + RowIdx,
                        AItem.Fore)
-            else if not AItem.Transparent then
+            else if not AItem.Transparent and not AItem.Proportional then
               PutPixel(CellX + PartIdx * 8 + BitIdx, AItem.PosY + RowIdx,
                        AItem.Back);
         end;

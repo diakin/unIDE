@@ -2154,6 +2154,7 @@ type
     FArdPrevText, FArdPrevOldFont: string;
     FArdPrevFore, FArdPrevBack: Integer;
     FArdPrevTransparent: Boolean;
+    FArdPrevProportional: Boolean;  // надпись TLabel с Proportional 1
     // TLabel: что стереть под превью - место текста в прежнем шрифте
     // по эмулятору (FArdPrevOldFont тогда не нужен)
     FArdPrevClear: TRect;
@@ -35232,6 +35233,7 @@ var
   FontAdded: Boolean;
   ShownText: string;
   ShownFore, ShownBack: TColor;
+  PropValue: Integer;
 begin
   Node := TDfmNode(FObjCurNode);
   Sketch := TArdSketch(FArdSketch);
@@ -35379,6 +35381,15 @@ begin
     FArdPrevBack := Preview.Back;
     FArdPrevTransparent := Preview.Transparent;
     FArdPrevHasClear := False;
+    // TLabel: Proportional (по умолчанию 1, как в BS10Controls.h)
+    FArdPrevProportional := False;
+    if Call.IsLabel then
+    begin
+      FArdPrevProportional := True;
+      if (Call.Args.Count > 13) and Sketch.EvalText(Trim(Call.Args[13]),
+                                                    PropValue) then
+        FArdPrevProportional := PropValue <> 0;
+    end;
     // Надпись TLabel: текст, место и цвета - как она сейчас на экране
     // эмулятора (и Caption-выражение, и Top(itop) в выводе)
     if Call.IsLabel and (RowData < ArdRowColor) and
@@ -43243,8 +43254,11 @@ begin
     if SendMessage(FObjCombo.Handle, CB_GETCURSEL, 0, 0) >= 0 then
       ArdFontPreview(FObjCombo.Items[SendMessage(FObjCombo.Handle,
                                                  CB_GETCURSEL, 0, 0)]);
-    // Выбранный остаётся на экране у этой надписи, и когда правят другие
-    if (FArdSim <> nil) and FArdSim.PreviewShown then
+    // Выбранный остаётся на экране у этой надписи, и когда правят другие.
+    // TLabel при правке на лету эмулятор перерисует сам (со своим
+    // Proportional и шириной) - превью поверх него не оставляется
+    if (FArdSim <> nil) and FArdSim.PreviewShown and
+       not ((FArdOvLabel <> '') and FArdSim.CtlOverrideAvailable) then
       FArdSim.KeepTextPreview;
     FArdPreviewName := '';
   end;
@@ -43475,7 +43489,7 @@ begin
   FArdSim.SetTextPreview(FArdPrevX, FArdPrevY,
                          AnsiString(FArdPrevText), NewFont, ClearRect,
                          FArdPrevFore, FArdPrevBack,
-                         FArdPrevTransparent);
+                         FArdPrevTransparent, FArdPrevProportional);
 end;
 
 // Список закрыт или правка кончилась: экран эмулятора - как есть
