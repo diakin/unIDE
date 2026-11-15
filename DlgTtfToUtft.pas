@@ -491,9 +491,70 @@ begin
   end;
 end;
 
+{$IFDEF MSWINDOWS}
+// Без сглаживания и с масштабом: шрифт сразу нужного размера - высота
+// PixelSize * ScaleY, ширина знаков (lfWidth) по ScaleX. Windows растеризует
+// его сама, с хинтингом, и штрихи остаются в точку. Уменьшение крупной
+// картинки (RenderScaledChar) - это то же сглаживание с порогом: тонкий
+// штрих между двумя точками даёт по ~50% в каждой, и символ рвётся.
+procedure ApplyScaledFont(ACanvas: TCanvas; const AParams: TTtfParams);
+var
+  SizeParams: TTtfParams;
+  LogFont: TLogFont;
+  Metrics: TTextMetric;
+  NewWidth: Integer;
+begin
+  SizeParams := AParams;
+  SizeParams.PixelSize := Round(AParams.PixelSize * AParams.ScaleY / 100);
+  if SizeParams.PixelSize < 1 then
+    SizeParams.PixelSize := 1;
+  SizeParams.Smooth := False;
+  ApplyCanvasFont(ACanvas, SizeParams);
+  if AParams.ScaleX = AParams.ScaleY then
+    Exit;
+  ACanvas.TextWidth(' ');   // шрифт выбран в DC
+  if not GetTextMetrics(ACanvas.Handle, Metrics) then
+    Exit;
+  if GetObject(ACanvas.Font.Handle, SizeOf(LogFont), @LogFont) = 0 then
+    Exit;
+  NewWidth := Round(Metrics.tmAveCharWidth * AParams.ScaleX / AParams.ScaleY);
+  if NewWidth < 1 then
+    NewWidth := 1;
+  LogFont.lfWidth := NewWidth;
+  LogFont.lfQuality := NONANTIALIASED_QUALITY;
+  ACanvas.Font.Handle := CreateFontIndirect(LogFont);
+end;
+
+procedure RenderDirectScaled(const AParams: TTtfParams; AUni, AWidth,
+  AHeight, APadX, APadY: Integer; var AMap: TDarkMap);
+var
+  Bmp: TBitmap;
+  PosX: Integer;
+begin
+  Bmp := TBitmap.Create;
+  try
+    Bmp.PixelFormat := pf24bit;
+    Bmp.Width := AWidth;
+    Bmp.Height := AHeight;
+    ApplyScaledFont(Bmp.Canvas, AParams);
+    Bmp.Canvas.Brush.Style := bsSolid;
+    Bmp.Canvas.Brush.Color := clWhite;
+    Bmp.Canvas.FillRect(Rect(0, 0, AWidth, AHeight));
+    PosX := AParams.OffsetX;
+    if AParams.Center then
+      PosX := PosX + (AParams.CellW - CharWidthOn(Bmp.Canvas, AUni)) div 2;
+    CharOutOn(Bmp.Canvas, APadX + PosX, APadY + AParams.OffsetY, AUni);
+    ReadDark(Bmp, 50, AMap);
+  finally
+    Bmp.Free;
+  end;
+end;
+{$ENDIF}
+
 // Символ ACode (CP1251) в картинку AWidth x AHeight: начало клетки - в
 // (APadX, APadY), плюс сдвиг и выравнивание. Своя картинка на символ: он
 // не залезает в соседние клетки. Масштаб не 100% - RenderScaledChar
+// (без сглаживания в Windows - RenderDirectScaled)
 procedure RenderChar(const AParams: TTtfParams; ACode, AWidth, AHeight,
   APadX, APadY: Integer; ABitmap: TBitmap; var AMap: TDarkMap);
 var
@@ -504,6 +565,14 @@ begin
   else
     Threshold := 50;
   Uni := Cp1251ToUnicode(ACode);
+  {$IFDEF MSWINDOWS}
+  if (Uni > 32) and not AParams.Smooth and
+     ((AParams.ScaleX <> 100) or (AParams.ScaleY <> 100)) then
+  begin
+    RenderDirectScaled(AParams, Uni, AWidth, AHeight, APadX, APadY, AMap);
+    Exit;
+  end;
+  {$ENDIF}
   if (Uni > 32) and ((AParams.ScaleX <> 100) or (AParams.ScaleY <> 100)) then
   begin
     RenderScaledChar(AParams, Uni, AWidth, AHeight, APadX, APadY, Threshold,
