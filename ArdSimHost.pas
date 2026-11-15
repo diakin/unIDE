@@ -223,6 +223,12 @@ type
     FDragNewLeft, FDragNewTop: Integer;
     FOnCtlMoved: TArdSimCtlMovedEvent;
     FOnCtlMenu: TArdSimCtlMenuEvent;
+    // Меню правого клика ждёт ответа эмулятора (переход к строке вывода):
+    // открывается после OnScreenWhere, иначе переход его закрывает
+    FMenuPending: Boolean;
+    FMenuHash: Cardinal;
+    FMenuPos: TPoint;
+    procedure FireCtlMenu;
     function CtlShownEntry(AHash: Cardinal): PCardinal;
     function CtlShownBox(AEntry: PCardinal): TRect;
     function CtlHashAt(AX, AY: Integer): Cardinal;
@@ -839,14 +845,6 @@ begin
   if CanFocus then
     SetFocus;
   HitPoint := Point(PosX, PosY);
-  if Button = mbRight then
-  begin
-    // правый клик на экране: меню Copy / Cut / Paste / Delete для TLabel
-    if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) then
-      FOwnerPanel.CtlContextMenu(PosX - FScreenRect.Left,
-        PosY - FScreenRect.Top, ClientToScreen(HitPoint));
-    Exit;
-  end;
   if Button <> mbLeft then
     Exit;
   // экран: где в скетче нарисована надпись под мышью; надпись TLabel -
@@ -885,6 +883,12 @@ begin
   inherited;
   if (Button = mbLeft) and (FOwnerPanel <> nil) and FOwnerPanel.FDragging then
     FOwnerPanel.CtlMouseUp;
+  // Правый клик на экране: меню Copy / Cut / Paste / Delete для TLabel -
+  // после отпускания кнопки, как контекстное меню Windows
+  if (Button = mbRight) and (FOwnerPanel <> nil) and
+     PtInRect(FScreenRect, Point(PosX, PosY)) then
+    FOwnerPanel.CtlContextMenu(PosX - FScreenRect.Left, PosY - FScreenRect.Top,
+      ClientToScreen(Point(PosX, PosY)));
 end;
 
 // Клавиши ПК -> клавиатура прибора (как в окне ArdSim, sim_window.cpp)
@@ -2296,6 +2300,8 @@ begin
       FWhereWait := False;
       Log('Эмулятор не ответил, где нарисована надпись: скетч собран ' +
           'прежней версией ArdSim - соберите его заново');
+      if FMenuPending then
+        FireCtlMenu;
     end;
     Exit;
   end;
@@ -2311,6 +2317,8 @@ begin
   FWhereText := ReadDbgText(DbgWhereText * 4, DbgWhereTextBytes);
   if Assigned(FOnScreenWhere) then
     FOnScreenWhere(Self);
+  if FMenuPending then
+    FireCtlMenu;
 end;
 
 function TArdSimPanel.DbgAvailable: Boolean;
@@ -3334,10 +3342,25 @@ begin
     FSelCtlHash := Hash;
     FDevice.InvalidateScreen;
   end;
+  FMenuHash := Hash;
+  FMenuPos := AScreenPos;
+  FMenuPending := False;
   if Hash <> 0 then
+  begin
+    FWhereWait := False;
     ScreenWhere(AX, AY);
+    // ответ придёт в PollWhere: меню - после перехода к строке
+    FMenuPending := FWhereWait;
+  end;
+  if not FMenuPending then
+    FireCtlMenu;
+end;
+
+procedure TArdSimPanel.FireCtlMenu;
+begin
+  FMenuPending := False;
   if Assigned(FOnCtlMenu) then
-    FOnCtlMenu(Self, Hash, AScreenPos);
+    FOnCtlMenu(Self, FMenuHash, FMenuPos);
 end;
 
 // Новые Left, Top - сразу в эмулятор: он перерисовывает надпись
