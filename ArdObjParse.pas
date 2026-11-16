@@ -55,6 +55,12 @@ type
     Line: Integer;             // строка объявления в том файле, от 0
     Values: TStringList;       // текст значений, без комментариев
     ValLine, ValCol, ValLen: array of Integer;
+    // Пункт меню (TMenuItem) или поле ввода (TNumberEdit), CtlRefs: тип,
+    // номер пункта в массиве (у TNumberEdit - 0), надпись из поля Label
+    // (без &; '' - NULL)
+    CtlType: string;
+    ItemIdx: Integer;
+    LabelName: string;
     constructor Create;
     destructor Destroy; override;
   end;
@@ -181,6 +187,10 @@ type
     // Name=TArdLabel
     IncludeFiles: TStringList;
     Labels: TStringList;
+    // Пункты меню и поля ввода из файлов форм: Strings - имя массива или
+    // поля, Objects - TArdLabel (Values по полям ArdMenuItemProps /
+    // ArdNumberEditProps)
+    CtlRefs: TList;
     // Вызовы-«объявления» для надписей, переданных в функцию скетча
     // (InputNumber(lblInpM1_Win2, ...)): LabelDeclCall
     FDeclCalls: TList;
@@ -196,6 +206,9 @@ type
     destructor Destroy; override;
     procedure Parse(const AText: string);
     function FuncByName(const AName: string): TArdFunc;
+    // Номер строки (от 0) первого слова AWord в тексте скетча с строки
+    // AFromLine; -1 - нет
+    function WordLine(const AWord: string; AFromLine: Integer): Integer;
     // Надпись AName как вывод со всеми значениями из объявления (Args,
     // ArgFile, ArgLine - место значения в файле форм). Line и Func - от
     // AAt (вызов, где надпись передана аргументом). nil - не надпись.
@@ -256,6 +269,10 @@ const
     'FontColor', 'Filled', 'Rounded', 'BorderColor', 'LineWidth', 'Rect',
     'Proportional', 'Alignment', 'Visible');
   ArdLabelPropAlignment = 14;
+  // Поля TMenuItem и TNumberEdit (ArdControls.h) - по порядку в объявлении
+  ArdMenuItemProps: array[0..3] of string = ('Label', 'Key', 'Target', 'Param');
+  ArdNumberEditProps: array[0..5] of string = (
+    'Label', 'Value', 'Decimals', 'StartWithValue', 'EmptyKeeps', 'AllowF1');
   ArdAlignNames: array[0..2] of string = (
     'taLeftJustify', 'taRightJustify', 'taCenter');
 
@@ -542,6 +559,7 @@ begin
   Includes := TStringList.Create;
   IncludeFiles := TStringList.Create;
   Labels := TStringList.Create;
+  CtlRefs := TList.Create;
   ExtraFiles := TStringList.Create;
 end;
 
@@ -565,6 +583,9 @@ begin
   for Idx := 0 to Labels.Count - 1 do
     Labels.Objects[Idx].Free;
   Labels.Free;
+  for Idx := 0 to CtlRefs.Count - 1 do
+    TObject(CtlRefs[Idx]).Free;
+  CtlRefs.Free;
   if FDeclCalls <> nil then
   begin
     for Idx := 0 to FDeclCalls.Count - 1 do
@@ -1014,6 +1035,23 @@ begin
       Continue;
     end;
     Inc(Idx);
+  end;
+end;
+
+function TArdSketch.WordLine(const AWord: string; AFromLine: Integer): Integer;
+var
+  TokIdx: Integer;
+  Tok: TArdTok;
+begin
+  Result := -1;
+  for TokIdx := 0 to FTokens.Count - 1 do
+  begin
+    Tok := TArdTok(FTokens[TokIdx]);
+    if (Tok.Line >= AFromLine) and (Tok.Text = AWord) then
+    begin
+      Result := Tok.Line;
+      Exit;
+    end;
   end;
 end;
 
@@ -1486,6 +1524,57 @@ var
     Decl.ValLen[Slot] := LastTok.EndPos - FirstTok.StartPos + 1;
   end;
 
+  // Значения между { (AOpen) и } (AClose) через запятую верхнего уровня
+  procedure SplitValues(AOpen, AClose: Integer);
+  begin
+    ValStart := AOpen + 1;
+    ValIdx := AOpen + 1;
+    while ValIdx < AClose do
+    begin
+      Tok := TArdTok(Part.FTokens[ValIdx]);
+      if (Tok.Kind = atkPunct) and ((Tok.Text = '(') or (Tok.Text = '[') or
+                                    (Tok.Text = '{')) then
+      begin
+        ValIdx := MatchClose(Part.FTokens, ValIdx) + 1;
+        if ValIdx <= 0 then
+          Break;
+        Continue;
+      end;
+      if (Tok.Kind = atkPunct) and (Tok.Text = ',') then
+      begin
+        AddValue(ValStart, ValIdx - 1);
+        ValStart := ValIdx + 1;
+      end;
+      Inc(ValIdx);
+    end;
+    AddValue(ValStart, AClose - 1);
+  end;
+
+  // Пункт меню или поле ввода: { ... } от AOpen до AClose
+  procedure AddCtlRef(const AType, AName: string; AItem, AOpen, AClose: Integer);
+  var
+    LabelText: string;
+  begin
+    Decl := TArdLabel.Create;
+    Decl.Name := AName;
+    Decl.CtlType := AType;
+    Decl.ItemIdx := AItem;
+    Decl.FileIdx := AFileIdx;
+    Decl.Line := TArdTok(Part.FTokens[AOpen]).Line;
+    SplitValues(AOpen, AClose);
+    LabelText := '';
+    if Decl.Values.Count > 0 then
+      LabelText := Trim(Decl.Values[0]);
+    if Copy(LabelText, 1, 1) = '&' then
+      LabelText := Trim(Copy(LabelText, 2, MaxInt))
+    else
+      LabelText := '';
+    Decl.LabelName := LabelText;
+    CtlRefs.Add(Decl);
+  end;
+
+var
+  ItemOpen, ItemClose, ItemNo: Integer;
 begin
   Part := TArdSketch.Create;
   try
@@ -1494,6 +1583,47 @@ begin
     Idx := 0;
     while Idx + 3 < Part.FTokens.Count do
     begin
+      // const TMenuItem mnuWin0[] = { { &lbl1Balancing, "1", 100 }, ... };
+      if (Part.TokText(Idx) = 'TMenuItem') and (Idx + 5 < Part.FTokens.Count) and
+         (TArdTok(Part.FTokens[Idx + 1]).Kind = atkIdent) and
+         (Part.TokText(Idx + 2) = '[') and (Part.TokText(Idx + 3) = ']') and
+         (Part.TokText(Idx + 4) = '=') and (Part.TokText(Idx + 5) = '{') then
+      begin
+        CloseIdx := MatchClose(Part.FTokens, Idx + 5);
+        if CloseIdx < 0 then
+          Break;
+        ItemOpen := Idx + 6;
+        ItemNo := 0;
+        while ItemOpen < CloseIdx do
+        begin
+          if Part.TokText(ItemOpen) = '{' then
+          begin
+            ItemClose := MatchClose(Part.FTokens, ItemOpen);
+            if (ItemClose < 0) or (ItemClose > CloseIdx) then
+              Break;
+            AddCtlRef('TMenuItem', Part.TokText(Idx + 1), ItemNo, ItemOpen,
+                      ItemClose);
+            Inc(ItemNo);
+            ItemOpen := ItemClose + 1;
+          end
+          else
+            Inc(ItemOpen);
+        end;
+        Idx := CloseIdx + 1;
+        Continue;
+      end;
+      // const TNumberEdit edtM1_Win1 = { &lblInpM1_Win1, &TM1, 2, ... };
+      if (Part.TokText(Idx) = 'TNumberEdit') and
+         (TArdTok(Part.FTokens[Idx + 1]).Kind = atkIdent) and
+         (Part.TokText(Idx + 2) = '=') and (Part.TokText(Idx + 3) = '{') then
+      begin
+        CloseIdx := MatchClose(Part.FTokens, Idx + 3);
+        if CloseIdx < 0 then
+          Break;
+        AddCtlRef('TNumberEdit', Part.TokText(Idx + 1), 0, Idx + 3, CloseIdx);
+        Idx := CloseIdx + 1;
+        Continue;
+      end;
       if (Part.TokText(Idx) = 'TLabel') and
          (TArdTok(Part.FTokens[Idx + 1]).Kind = atkIdent) and
          (Part.TokText(Idx + 2) = '=') and (Part.TokText(Idx + 3) = '{') then
@@ -1505,27 +1635,7 @@ begin
         Decl.Name := Part.TokText(Idx + 1);
         Decl.FileIdx := AFileIdx;
         Decl.Line := TArdTok(Part.FTokens[Idx]).Line;
-        ValStart := Idx + 4;
-        ValIdx := Idx + 4;
-        while ValIdx < CloseIdx do
-        begin
-          Tok := TArdTok(Part.FTokens[ValIdx]);
-          if (Tok.Kind = atkPunct) and ((Tok.Text = '(') or (Tok.Text = '[') or
-                                        (Tok.Text = '{')) then
-          begin
-            ValIdx := MatchClose(Part.FTokens, ValIdx) + 1;
-            if ValIdx <= 0 then
-              Break;
-            Continue;
-          end;
-          if (Tok.Kind = atkPunct) and (Tok.Text = ',') then
-          begin
-            AddValue(ValStart, ValIdx - 1);
-            ValStart := ValIdx + 1;
-          end;
-          Inc(ValIdx);
-        end;
-        AddValue(ValStart, CloseIdx - 1);
+        SplitValues(Idx + 3, CloseIdx);
         if (Decl.Values.Count >= 13) and
            (Decl.Values.Count <= Length(ArdLabelProps)) and
            (Labels.IndexOf(Decl.Name) < 0) then

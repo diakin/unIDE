@@ -3250,6 +3250,11 @@ type
     function ArdGlyphTextRow: TListItem;
     procedure ArdGlyphPick(ACode: Integer);
     procedure ArdBeginEdit(AItem: TListItem);
+    // Поле пункта меню (TMenuItem) или поля ввода (TNumberEdit) в файле форм
+    procedure ArdCtlBeginEdit(AItem: TListItem; ARowData: Integer);
+    // Строка кода, куда ведёт пункт меню / где вводится поле (ARef -
+    // TArdLabel из CtlRefs); -1 - не найдено
+    function ArdCtlJumpLine(ARef: TObject; var ADescr: string): Integer;
     procedure ArdApplyEdit;
     function  ArdApplyFileEdit(const ANewText: string): Boolean;
     function  ArdLoadInclude(const AName: string; var APath, AText: string): Boolean;
@@ -3271,7 +3276,11 @@ type
     function  ArdLabelDelete: Boolean;
     procedure ArdLabelPaste;
     procedure ArdLabelInsert(const AClipName, AClipDecl: string);
-    function  ArdLabelNew: Boolean;
+    function  ArdLabelNew(AMenuItem: Boolean; const ACaption: string;
+                          var ANewName: string): Boolean;
+    // Пункт меню из палитры: новая надпись ALabelName - в массив меню окна
+    // (AArray в файле форм), клавиша AKey, окно ATarget
+    function  ArdMenuItemAppend(const AArray, ALabelName, AKey, ATarget: string): Boolean;
     procedure ArdSimPlace(Sender: TObject; AX, AY: Integer);
     procedure ArdPalApply;
     procedure ArdPhantomAdd(const AName, AAnchor: string);
@@ -3355,6 +3364,9 @@ type
     procedure RqDsgAddCompInclude(ALines: TStrings; ABefore: Integer);
     function  RqPalSelected: string;
     function  ArdPalSelected: Boolean;
+    // Выбрана кнопка TMenuItem палитры Arduino
+    function  ArdPalMenuItem: Boolean;
+    procedure ArdPlaceMenuItem;
     procedure DsgAddArduinoPage;
     procedure RqDsgPlace(const AParent: string; PosX, PosY, AFormX, AFormY: Integer;
                          var AHandled: Boolean);
@@ -34748,6 +34760,12 @@ const
   // упоминает тело функции (FuncLabelRefs: lblInpActive у InputNumber);
   // Data = ArdRowLabel + группа * ArdRowLabelGroup + номер свойства
   ArdRowLabelGroup = 100;
+  // Поля пункта меню / поля ввода, на которые ссылается надпись:
+  // ArdRowCtl + номер в CtlRefs * ArdRowLabelGroup + номер поля
+  ArdRowCtl = 300000;
+  // Строка «Код» пункта меню / поля ввода: ArdRowJump + номер в CtlRefs,
+  // двойной щелчок - переход к коду
+  ArdRowJump = 400000;
   ArdCapColor = 'Цвет (setColor)';
   ArdCapBack = 'Цвет фона (setBackColor)';
   ArdCapFont = 'Шрифт (setFont)';
@@ -35245,8 +35263,9 @@ var
   Func: TArdFunc;
   Item: TListItem;
   Names: TStringList;
-  ArgIdx, FuncTotal, ValueLine, ColorValue, LabelGroup: Integer;
+  ArgIdx, FuncTotal, ValueLine, ColorValue, LabelGroup, RefIdx: Integer;
   ValueText: string;
+  Ref: TArdLabel;
 
   // Колонки (ArdColumns): Свойство | Переменная | Значение | Строка кода.
   // AArgUi, AValueUi - текст интерфейса; текст исходника - через EdUiText.
@@ -35391,6 +35410,45 @@ begin
     finally
       Names.Free;
     end;
+    // Надпись - пункт меню (TMenuItem) или поле ввода (TNumberEdit): ниже
+    // их поля из файла форм и строка перехода к коду
+    if Call.IsLabel then
+      for RefIdx := 0 to Sketch.CtlRefs.Count - 1 do
+      begin
+        Ref := TArdLabel(Sketch.CtlRefs[RefIdx]);
+        if Ref.LabelName <> Call.Name then
+          Continue;
+        if Ref.CtlType = 'TMenuItem' then
+          AddUiRow(Ref.Name + '[' + IntToStr(Ref.ItemIdx) + ']: TMenuItem',
+                   '', '', -1, -1)
+        else
+          AddUiRow(Ref.Name + ': ' + Ref.CtlType, '', '', -1, -1);
+        for ArgIdx := 1 to Ref.Values.Count - 1 do
+        begin
+          if Ref.CtlType = 'TMenuItem' then
+          begin
+            if ArgIdx > High(ArdMenuItemProps) then
+              Break;
+            ValueText := ArdMenuItemProps[ArgIdx];
+          end
+          else
+          begin
+            if ArgIdx > High(ArdNumberEditProps) then
+              Break;
+            ValueText := ArdNumberEditProps[ArgIdx];
+          end;
+          AddUiRow('  ' + ValueText, EdUiText(Trim(Ref.Values[ArgIdx])), '',
+                   -1, ArdRowCtl + RefIdx * ArdRowLabelGroup + ArgIdx);
+          if (Ref.FileIdx > 0) and (Item.SubItems.Count >= 3) then
+            Item.SubItems[2] :=
+              ExtractFileName(Sketch.IncludeFiles[Ref.FileIdx - 1]) + ':' +
+              IntToStr(Ref.Line + 1);
+        end;
+        ValueLine := ArdCtlJumpLine(Ref, ValueText);
+        if ValueLine >= 0 then
+          AddUiRow('  Код (двойной щелчок)', ValueText, '',
+                   ValueLine, ArdRowJump + RefIdx);
+      end;
     // Аргумент - надпись TLabel (поле InputNumber и т.п.): ниже её свойства
     // из объявления, правятся как у вывода самой надписи (в файле форм)
     // Ниже - надписи, которые берёт сама функция (цвета состояний поля
@@ -35779,6 +35837,171 @@ begin
 end;
 
 // Начало правки строки AItem таблицы вызова скетча
+// Куда ведёт пункт меню: Target - номер окна (функция WinN) или действие
+// (actRepeat ...: первое упоминание после строки, где массив передан в
+// RunMenu / MenuFind). Поле ввода - строка InputNumber(edt...)
+function TForm1.ArdCtlJumpLine(ARef: TObject; var ADescr: string): Integer;
+var
+  Sketch: TArdSketch;
+  Ref: TArdLabel;
+  TargetText: string;
+  Func: TArdFunc;
+  UseLine, WinNumber: Integer;
+begin
+  Result := -1;
+  ADescr := '';
+  Sketch := TArdSketch(FArdSketch);
+  Ref := TArdLabel(ARef);
+  if (Sketch = nil) or (Ref = nil) then
+    Exit;
+  UseLine := Sketch.WordLine(Ref.Name, 0);
+  if Ref.CtlType <> 'TMenuItem' then
+  begin
+    Result := UseLine;
+    if Result >= 0 then
+      ADescr := Ref.Name + ': строка ' + IntToStr(Result + 1);
+    Exit;
+  end;
+  if Ref.Values.Count < 3 then
+    Exit;
+  TargetText := Trim(Ref.Values[2]);
+  if TryStrToInt(TargetText, WinNumber) then
+  begin
+    Func := Sketch.FuncByName('Win' + IntToStr(WinNumber));
+    if (Func <> nil) and (Func.SrcFile = '') then
+    begin
+      Result := Func.Line;
+      ADescr := Func.Name + '()';
+    end;
+    Exit;
+  end;
+  if UseLine < 0 then
+    Exit;
+  Result := Sketch.WordLine(TargetText, UseLine);
+  if Result >= 0 then
+    ADescr := TargetText + ': строка ' + IntToStr(Result + 1);
+end;
+
+procedure TForm1.ArdCtlBeginEdit(AItem: TListItem; ARowData: Integer);
+const
+  KeyNames: array[0..19] of string = ('1', '2', '3', '4', '5', '6', '7',
+    '8', '9', '0', 'F1', 'F2', '#', '*', '^', 'v', '<', '>', 'Esc', 'Ent');
+var
+  Sketch: TArdSketch;
+  Ref, Other: TArdLabel;
+  RefIdx, FieldIdx, OtherIdx, ListIdx: Integer;
+  FieldName, OldText: string;
+  Func: TArdFunc;
+  CellRect: TRect;
+begin
+  Sketch := TArdSketch(FArdSketch);
+  RefIdx := (ARowData - ArdRowCtl) div ArdRowLabelGroup;
+  FieldIdx := (ARowData - ArdRowCtl) mod ArdRowLabelGroup;
+  if (Sketch = nil) or (RefIdx >= Sketch.CtlRefs.Count) then
+    Exit;
+  Ref := TArdLabel(Sketch.CtlRefs[RefIdx]);
+  if (FieldIdx >= Ref.Values.Count) or (Ref.FileIdx <= 0) then
+    Exit;
+  if Ref.ValLine[FieldIdx] < 0 then
+  begin
+    ShowMessage(AItem.Caption + ' записан на нескольких строках - ' +
+      'правьте его в файле форм.');
+    Exit;
+  end;
+  if Ref.CtlType = 'TMenuItem' then
+    FieldName := ArdMenuItemProps[FieldIdx]
+  else
+    FieldName := ArdNumberEditProps[FieldIdx];
+  FArdEditFile := Sketch.IncludeFiles[Ref.FileIdx - 1];
+  FArdEditLine := Ref.ValLine[FieldIdx];
+  FArdEditCol := Ref.ValCol[FieldIdx];
+  FArdEditSrc := Ref.Values[FieldIdx];
+  OldText := Trim(FArdEditSrc);
+  // В эмулятор на лету не отправляется - действует после сборки
+  FArdOvName := '';
+  FArdOvLabel := '';
+  FArdOvFont := False;
+  FArdOvArg := -1;
+  FArdPreviewOk := False;
+
+  FObjEditName := Ref.Name + '.' + FieldName;
+  FObjEditIdx := ARowData;
+  FObjEditInsert := False;
+  FObjEditLine := FArdEditLine;
+  FObjEditType := nil;
+  FObjThemeColor := '';
+  FObjEditIsStr := False;
+  FObjEditArray := False;
+  FObjEditCode := False;
+  FObjEditGroup := False;
+  FObjColorRq := False;
+
+  CellRect := AItem.DisplayRect(drBounds);
+  CellRect.Left := CellRect.Left + FObjProps.Columns[0].Width;
+  CellRect.Right := CellRect.Left + FObjProps.Columns[1].Width;
+
+  FObjComboColors := False;
+  FObjCombo.Style := csDropDown;
+  FObjCombo.Items.Clear;
+  if FieldName = 'Key' then
+  begin
+    // Имя клавиши - строка в кавычках, как в KeyNames скетча
+    for ListIdx := 0 to High(KeyNames) do
+      FObjCombo.Items.Add('"' + KeyNames[ListIdx] + '"');
+  end
+  else if FieldName = 'Target' then
+  begin
+    // Окна (функции WinN) и действия, что уже встречаются в меню
+    for ListIdx := 0 to Sketch.Funcs.Count - 1 do
+    begin
+      Func := TArdFunc(Sketch.Funcs[ListIdx]);
+      if (Func.SrcFile = '') and (Copy(Func.Name, 1, 3) = 'Win') and
+         (Length(Func.Name) > 3) and
+         (StrToIntDef(Copy(Func.Name, 4, MaxInt), -1) >= 0) then
+        FObjCombo.Items.Add(Copy(Func.Name, 4, MaxInt));
+    end;
+    for OtherIdx := 0 to Sketch.CtlRefs.Count - 1 do
+    begin
+      Other := TArdLabel(Sketch.CtlRefs[OtherIdx]);
+      if (Other.CtlType = 'TMenuItem') and (Other.Values.Count > 2) and
+         (Copy(Trim(Other.Values[2]), 1, 3) = 'act') and
+         (FObjCombo.Items.IndexOf(Trim(Other.Values[2])) < 0) then
+        FObjCombo.Items.Add(Trim(Other.Values[2]));
+    end;
+  end
+  else if (FieldName = 'StartWithValue') or (FieldName = 'EmptyKeeps') or
+          (FieldName = 'AllowF1') then
+  begin
+    FObjCombo.Items.Add('0');
+    FObjCombo.Items.Add('1');
+  end
+  else if FieldName = 'Decimals' then
+  begin
+    for ListIdx := -1 to 3 do
+      FObjCombo.Items.Add(IntToStr(ListIdx));
+  end;
+  if FObjCombo.Items.Count > 0 then
+  begin
+    FObjCombo.Text := EdUiText(OldText);
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else
+  begin
+    FObjEdit.Text := EdUiText(OldText);
+    FObjEditOld := FObjEdit.Text;
+    FObjActive := FObjEdit;
+  end;
+  FObjActive.SetBounds(CellRect.Left, CellRect.Top,
+                       CellRect.Right - CellRect.Left,
+                       CellRect.Bottom - CellRect.Top + 2);
+  FObjActive.Visible := True;
+  FObjActive.SetFocus;
+  if FObjActive = FObjEdit then
+    FObjEdit.SelectAll;
+  FObjEditing := True;
+end;
+
 procedure TForm1.ArdBeginEdit(AItem: TListItem);
 var
   Node: TDfmNode;
@@ -35814,6 +36037,23 @@ begin
     Exit;
   end;
   Call := TArdCall(Sketch.Calls[Node.Line]);
+  // Строка «Код» пункта меню / поля ввода - переход, поле - правка в файле форм
+  if RowData >= ArdRowJump then
+  begin
+    if RowData - ArdRowJump < Sketch.CtlRefs.Count then
+    begin
+      CallIdx := ArdCtlJumpLine(TObject(Sketch.CtlRefs[RowData - ArdRowJump]),
+                                ShownText);
+      if CallIdx >= 0 then
+        GotoLine(CallIdx);
+    end;
+    Exit;
+  end;
+  if RowData >= ArdRowCtl then
+  begin
+    ArdCtlBeginEdit(AItem, RowData);
+    Exit;
+  end;
   // Свойство надписи-аргумента: правка как у вывода этой надписи
   if RowData >= ArdRowLabel then
   begin
@@ -36785,7 +37025,11 @@ end;
 // набор полей, её шрифт и цвета): имя lblLabelN, Caption "LabelN", Width 0
 // (по тексту), без рамки и заливки. Объявление и вывод - после её
 // объявления и вывода (ArdLabelInsert)
-function TForm1.ArdLabelNew: Boolean;
+// Новая надпись рядом с FArdMenuNear (копия её объявления) в точке щелчка.
+// AMenuItem - пункт меню: вид соседа (рамка, заливка, ширина) остаётся.
+// ACaption - текст в кавычках; '' - "LabelN"
+function TForm1.ArdLabelNew(AMenuItem: Boolean; const ACaption: string;
+                            var ANewName: string): Boolean;
 var
   Sketch: TArdSketch;
   Target: TArdLabel;
@@ -36851,16 +37095,172 @@ begin
   end;
   Block := ArdSetProp(Block, '/*Left*/', FArdMenuX);
   Block := ArdSetProp(Block, '/*Top*/', FArdMenuY);
-  Block := ArdSetProp(Block, '/*Width*/', 0);
-  Block := ArdSetPropText(Block, '/*Caption*/', '"Label' + IntToStr(NameNum) + '"');
-  Block := ArdSetProp(Block, '/*Filled*/', 0);
-  Block := ArdSetProp(Block, '/*Rounded*/', 0);
-  Block := ArdSetProp(Block, '/*LineWidth*/', 0);
-  Block := ArdSetProp(Block, '/*Rect*/', 0);
+  if ACaption <> '' then
+    Block := ArdSetPropText(Block, '/*Caption*/', ACaption)
+  else
+    Block := ArdSetPropText(Block, '/*Caption*/', '"Label' + IntToStr(NameNum) + '"');
+  if not AMenuItem then
+  begin
+    Block := ArdSetProp(Block, '/*Width*/', 0);
+    Block := ArdSetProp(Block, '/*Filled*/', 0);
+    Block := ArdSetProp(Block, '/*Rounded*/', 0);
+    Block := ArdSetProp(Block, '/*LineWidth*/', 0);
+    Block := ArdSetProp(Block, '/*Rect*/', 0);
+  end;
   Block := ArdSetProp(Block, '/*Visible*/', 1);
   FArdMenuLabel := '';
   ArdLabelInsert(NewName, Block);
+  ANewName := NewName;
   Result := True;
+end;
+
+// Пункт меню из палитры: окно - функция, где выводится соседняя надпись
+// (FArdMenuNear); массив меню - тот, где уже есть сосед, иначе mnu + имя
+// окна. Клавиша - первая свободная цифра, переход - в то же окно (меняется
+// в инспекторе: Key, Target)
+procedure TForm1.ArdPlaceMenuItem;
+var
+  Sketch: TArdSketch;
+  Call: TArdCall;
+  Ref: TArdLabel;
+  CallIdx, RefIdx, KeyIdx: Integer;
+  WinName, ArrayName, KeyText, TargetText, NewName: string;
+  UsedKeys: TStringList;
+begin
+  Sketch := TArdSketch(FArdSketch);
+  if Sketch = nil then
+    Exit;
+  WinName := '';
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+  begin
+    Call := TArdCall(Sketch.Calls[CallIdx]);
+    if Call.IsLabel and (Call.Name = FArdMenuNear) and (Call.Func <> nil) then
+    begin
+      WinName := Call.Func.Name;
+      Break;
+    end;
+  end;
+  ArrayName := '';
+  for RefIdx := 0 to Sketch.CtlRefs.Count - 1 do
+  begin
+    Ref := TArdLabel(Sketch.CtlRefs[RefIdx]);
+    if (Ref.CtlType = 'TMenuItem') and (Ref.LabelName = FArdMenuNear) then
+    begin
+      ArrayName := Ref.Name;
+      Break;
+    end;
+  end;
+  if ArrayName = '' then
+    for RefIdx := 0 to Sketch.CtlRefs.Count - 1 do
+    begin
+      Ref := TArdLabel(Sketch.CtlRefs[RefIdx]);
+      if (Ref.CtlType = 'TMenuItem') and (WinName <> '') and
+         (Ref.Name = 'mnu' + WinName) then
+      begin
+        ArrayName := Ref.Name;
+        Break;
+      end;
+    end;
+  if ArrayName = '' then
+  begin
+    ShowMessage('Пункт меню: у окна ' + WinName + '() нет массива меню (mnu' +
+      WinName + ' в файле форм) - добавьте массив и RunMenu/MenuFind в окно, ' +
+      'или поставьте рядом с пунктом существующего меню.');
+    Exit;
+  end;
+  UsedKeys := TStringList.Create;
+  try
+    for RefIdx := 0 to Sketch.CtlRefs.Count - 1 do
+    begin
+      Ref := TArdLabel(Sketch.CtlRefs[RefIdx]);
+      if (Ref.Name = ArrayName) and (Ref.Values.Count > 1) then
+        UsedKeys.Add(Trim(Ref.Values[1]));
+    end;
+    KeyText := '"?"';
+    for KeyIdx := 1 to 10 do
+      if UsedKeys.IndexOf('"' + IntToStr(KeyIdx mod 10) + '"') < 0 then
+      begin
+        KeyText := '"' + IntToStr(KeyIdx mod 10) + '"';
+        Break;
+      end;
+  finally
+    UsedKeys.Free;
+  end;
+  TargetText := '0';
+  if (Copy(WinName, 1, 3) = 'Win') and (StrToIntDef(Copy(WinName, 4, MaxInt), -1) >= 0) then
+    TargetText := Copy(WinName, 4, MaxInt);
+  NewName := '';
+  if not ArdLabelNew(True, '"' + Copy(KeyText, 2, Length(KeyText) - 2) + '-Item"',
+                     NewName) or (NewName = '') then
+    Exit;
+  if ArdMenuItemAppend(ArrayName, NewName, KeyText, TargetText) then
+    LogComp('Палитра: пункт меню ' + NewName + ' в ' + ArrayName + ': клавиша ' +
+            KeyText + ', окно ' + TargetText + ' (правится в инспекторе)');
+end;
+
+function TForm1.ArdMenuItemAppend(const AArray, ALabelName, AKey, ATarget: string): Boolean;
+var
+  Sketch: TArdSketch;
+  Ref: TArdLabel;
+  Lines: TStringList;
+  RefIdx, Fmt, LineIdx, StartLine, ClosePos: Integer;
+  FileName, LineText: string;
+begin
+  Result := False;
+  Sketch := TArdSketch(FArdSketch);
+  if Sketch = nil then
+    Exit;
+  FileName := '';
+  for RefIdx := 0 to Sketch.CtlRefs.Count - 1 do
+  begin
+    Ref := TArdLabel(Sketch.CtlRefs[RefIdx]);
+    if (Ref.Name = AArray) and (Ref.FileIdx > 0) and
+       (Ref.FileIdx <= Sketch.IncludeFiles.Count) then
+    begin
+      FileName := Sketch.IncludeFiles[Ref.FileIdx - 1];
+      Break;
+    end;
+  end;
+  if FileName = '' then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    // файл уже с новой надписью - читается заново
+    if not ArdFileLoad(FileName, Lines, Fmt, True) then
+      Exit;
+    StartLine := -1;
+    for LineIdx := 0 to Lines.Count - 1 do
+      if (Pos('TMenuItem', Lines[LineIdx]) > 0) and
+         (ArdWordPos(AArray, Lines[LineIdx], 1) > 0) then
+      begin
+        StartLine := LineIdx;
+        Break;
+      end;
+    if StartLine < 0 then
+      Exit;
+    // конец массива: строка с '};' (последний пункт: "... } };")
+    for LineIdx := StartLine to Lines.Count - 1 do
+    begin
+      LineText := Lines[LineIdx];
+      ClosePos := Pos('};', LineText);
+      if ClosePos > 0 then
+      begin
+        // "{ ... } };" -> "{ ... },"  и новая строка "{ ... } };"
+        LineText := TrimRight(Copy(LineText, 1, ClosePos - 1));
+        if (LineText <> '') and (LineText[Length(LineText)] = '}') then
+          Lines[LineIdx] := LineText + ','
+        else
+          Lines[LineIdx] := LineText;
+        Lines.Insert(LineIdx + 1, '  { /*Label*/ &' + ALabelName + ', /*Key*/ ' +
+          AKey + ', /*Target*/ ' + ATarget + ' } }; // unIDE palette');
+        ArdFileSave(FileName, Lines, Fmt);
+        Result := True;
+        Exit;
+      end;
+    end;
+  finally
+    Lines.Free;
+  end;
 end;
 
 // Щелчок по экрану эмулятора при кнопке TLabel палитры
@@ -36868,6 +37268,7 @@ procedure TForm1.ArdSimPlace(Sender: TObject; AX, AY: Integer);
 var
   Sketch: TArdSketch;
   LabelIdx: Integer;
+  NewName: string;
 begin
   if not ArdPalSelected then
   begin
@@ -36899,7 +37300,10 @@ begin
   end;
   if FObjEditing then
     ObjCancelEdit;
-  ArdLabelNew;
+  if ArdPalMenuItem then
+    ArdPlaceMenuItem
+  else
+    ArdLabelNew(False, '', NewName);
   FArdTextKey := '';
   FArdEdKey := '';
   if (FCurrentFileName <> '') and IsSketchExt(FCurrentFileName) then
@@ -71451,7 +71855,14 @@ end;
 // Выбран на палитре компонент RapidQ: его класс, иначе ''
 function TForm1.ArdPalSelected: Boolean;
 begin
-  Result := (FDsgPalette <> nil) and (FDsgPalette.SelectedForeign = 'Arduino.TLabel');
+  Result := (FDsgPalette <> nil) and
+            ((FDsgPalette.SelectedForeign = 'Arduino.TLabel') or
+             (FDsgPalette.SelectedForeign = 'Arduino.TMenuItem'));
+end;
+
+function TForm1.ArdPalMenuItem: Boolean;
+begin
+  Result := (FDsgPalette <> nil) and (FDsgPalette.SelectedForeign = 'Arduino.TMenuItem');
 end;
 
 // Страница Arduino палитры: кнопка TLabel (надпись на экране прибора,
@@ -71464,6 +71875,10 @@ begin
   ArdBtn := TSpeedButton.Create(FDsgPalette);
   FDsgPalette.PlaceKind(ArdBtn, 'Arduino', 'TLabel', 'TLabel',
     'TLabel (Arduino): надпись на экране эмулятора - выберите и щёлкните по экрану', FArdPalPage);
+  ArdBtn := TSpeedButton.Create(FDsgPalette);
+  FDsgPalette.PlaceKind(ArdBtn, 'Arduino', 'TMenuItem', 'TMainMenu',
+    'TMenuItem (Arduino): пункт меню окна - щелчок рядом с пунктом того же ' +
+    'меню; клавиша и окно перехода - в инспекторе', FArdPalPage);
 end;
 
 function TForm1.RqPalSelected: string;
