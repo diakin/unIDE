@@ -6,25 +6,34 @@ accept,accesskey,action,align,alt,async,autocomplete,autofocus,autoplay,charset,
 • Keywords2@Dark $0000FF80 $001A1A1A
 • Operators $00D81CDD $00F9F9F9
 !/<=>
+• Operators@Dark $00D81CDD $00191919
 • LineComment clGreen $00F9F9F9
 
+• LineComment@Dark clGreen $00202020
 • BlockComment clGreen $00FFFFEC
 <!-- -->
+• BlockComment@Dark $0088B67E $00404000
 • Strings $00008CFF $00F9F9F9
 "
+• Strings@Dark $00008CFF $001D1D1D
 • Digits clRed $00F9F9F9
 dec
+• Digits@Dark clRed $001D1D1D
 • CUSTOM1 $00FBB8B5 $00EBEBEB
 !
+• CUSTOM1@Dark $00FBB8B5 $00191919
 • CUSTOM2 $00FF80FF $00E6E6FF
 !!
+• CUSTOM2@Dark $00FF80FF $00000035
 • CUSTOM3 $00FF80FF clWhite
 !!!
+• CUSTOM3@Dark $00FF80FF $001E1E1E
 • CUSTOM4 clYellow clRed
 !!!!
 • CUSTOM5 clWhite clMaroon
 !!!!!
 • Text clBlack $00F9F9F9
+• Text@Dark clBlack $001A1A1A
 • LineMark clNone clYellow
 
 • SubStyle
@@ -32,3 +41,5 @@ tags
 • TagVoid
 area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr
 • PairMark clNone $0080FFFF
+• PairMark@Dark clNone $00005E5E
+• CaretChar clNone clNone
