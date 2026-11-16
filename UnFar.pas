@@ -210,7 +210,7 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.75';
+  FarBuild = 'b.76';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -257,7 +257,7 @@ type
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
     fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr,
     fdOverwrite, fdOverRename, fdEditReplace, fdEditReplAsk,
-    fdSelectMask, fdDeselectMask);
+    fdSelectMask, fdDeselectMask, fdFtpAbort);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -278,6 +278,9 @@ type
     UndoText: WideString;    // Ctrl+Z: текст до последней правки
     UndoPos: Integer;
     Typing: Boolean;         // идёт набор: правки - одним шагом отмены
+    IsSep: Boolean;          // разделитель - одинарная линия, без фокуса
+    FieldOfs: Integer;       // поле от начала строки; -1 - FarDlgCaptionW
+    CaptionRight: Boolean;   // подпись прижата вправо, к полю
   end;
   TFarDlgRows = array of TFarDlgRow;
 
@@ -737,6 +740,7 @@ type
     FDlgRowsTop: Integer;         // где нарисована первая (для мыши)
     FDlgRowsLeft: Integer;        // колонка начала полей
     FDlgRowsW: Integer;           // ширина полей (со стрелкой списка)
+    FDlgRowsInner: Integer;       // колонка начала строк (подписей)
     FDlgDrop: Integer;            // строка с открытым списком; -1 - нет
     FDlgDropIndex: Integer;       // выбранное в списке
     FDlgDropTop: Integer;         // первое видимое в списке
@@ -812,6 +816,11 @@ type
     // он делает (заход FFtpSession панели, курсор после чтения, адрес)
     FFtpHosts: TFarFtpHosts;
     FFtpThread: array[0..1] of TFarFtpThread;
+    // Окно «Ожидаю соединения...»: панель, чей поток соединяется (-1 - нет),
+    // время начала, сервер
+    FFtpConnPanel: Integer;
+    FFtpConnTime: WideString;
+    FFtpConnHost: WideString;
     FFtpJobSession: array[0..1] of Integer;
     FFtpJobFocus: array[0..1] of string;
     FFtpJobHost: array[0..1] of TFarFtpHost;
@@ -982,6 +991,9 @@ type
     procedure FtpUploadEdited;
     procedure FtpJobDone;
     procedure FtpEditHost(APanelIndex, AHostIdx: Integer);
+    procedure DrawFtpConnecting;
+    procedure FtpAbortAsk;
+    procedure FtpAbortConfirmed;
     procedure FtpEditConfirm(AConnect: Boolean);
     procedure FtpDeleteHost(APanelIndex: Integer);
     procedure FtpDeleteConfirmed;
@@ -1187,6 +1199,8 @@ type
     procedure DlgRowsMouse(AX, AY: Integer);
     procedure DlgRowsMouseMove(AX: Integer);
     procedure DlgRowsDblClick;
+    procedure DlgAddSep;
+    function DlgRowFieldLeft(ARowIndex: Integer): Integer;
     procedure DlgAddCombo(const ACaption, AText: WideString;
       const AHistory: TFarNames);
     function DlgRowSel(const ARow: TFarDlgRow; out ASelFrom,
@@ -3608,6 +3622,7 @@ begin
   FSingle := -1;
   FFtpThread[0] := nil;
   FFtpThread[1] := nil;
+  FFtpConnPanel := -1;
   FEditor := nil;
   FEditPanel := 1;
   FEditTabSize := 4;
@@ -4450,6 +4465,8 @@ begin
         DrawFind;
       if FMenuKind <> fmNone then
         DrawMenu;
+      if FFtpConnPanel >= 0 then
+        DrawFtpConnecting;
       if FDlgKind <> fdNone then
         DrawDialog;
       if FPickOpen then
@@ -4610,7 +4627,7 @@ begin
       DlgRowsMouse(PosX, PosY);
       // Двойной щелчок по полю - выделить слово
       if (ssDouble in Shift) and DlgRowIsEdit and (FDlgDrop < 0) and
-         (PosX div FCellW >= FDlgRowsLeft) then
+         (PosX div FCellW >= DlgRowFieldLeft(FDlgRow)) then
         DlgRowsDblClick;
     end
     else if (Button = mbLeft) and (PosY div FCellH = FDlgButtonRow) then
@@ -6284,6 +6301,8 @@ begin
       FtpPasswordEntered(EditText);
     fdFtpDelete:
       FtpDeleteConfirmed;
+    fdFtpAbort:
+      FtpAbortConfirmed;
     fdFtpCopy:
       FtpCopyConfirm(EditText);
     fdFtpMkDir:
@@ -6418,6 +6437,7 @@ begin
   FDlgRowsTop := Row;
   FDlgRowsLeft := InnerLeft + FarDlgCaptionW;
   FDlgRowsW := InnerW - FarDlgCaptionW;
+  FDlgRowsInner := InnerLeft;
   for LineIndex := 0 to High(FDlgRows) do
   begin
     DrawDialogRow(LineIndex, Row, InnerLeft, InnerW, Fore, Back);
@@ -8596,8 +8616,13 @@ begin
     Status(FarProduct + ': FTP - ' + string(FarFtpHostUrl(AHost)) +
       ': чтение папки...')
   else
+  begin
     Status(FarProduct + ': FTP - соединение с ' + string(FarFtpHostUrl(AHost)) +
       '... (Esc - прервать)');
+    FFtpConnPanel := APanelIndex;
+    FFtpConnTime := WideString(FormatDateTime('hh:nn:ss', Now));
+    FFtpConnHost := WideString(AHost.Host);
+  end;
   FFtpThread[APanelIndex] := TFarFtpThread.Create(Conn, AHost, ADir,
     AIsHome);
   Invalidate;
@@ -8671,6 +8696,15 @@ begin
       Continue;
     Thread.WaitFor;
     FFtpThread[PanelIndex] := nil;
+    // Соединение кончилось (вышло или нет) - окно ожидания и вопрос
+    // «Прервать соединение?» убрать
+    if FFtpConnPanel = PanelIndex then
+    begin
+      FFtpConnPanel := -1;
+      if FDlgKind = fdFtpAbort then
+        DlgClose;
+      Invalidate;
+    end;
     Panel := FPanels[PanelIndex];
     try
       if (Panel.FFtpSession <> FFtpJobSession[PanelIndex]) or
@@ -9338,36 +9372,74 @@ begin
   Invalidate;
 end;
 
+// Строки окна адреса FTP (как в FAR): адрес одной строкой, разделитель,
+// пользователь, пароль, описание, разделитель, флажки
+const
+  FtpRowUrl = 0;
+  FtpRowUser = 2;
+  FtpRowPass = 3;
+  FtpRowDescr = 4;
+  FtpRowAsk = 6;
+  FtpRowPassive = 7;
+  FtpRowCount = 8;
+  FtpCaptionW = 14;
+
+// Адрес для поля окна: ftp://сервер:порт/папка (пользователь и пароль - в
+// своих полях)
+function FarFtpEditUrl(const AHost: TFarFtpHost): WideString;
+begin
+  Result := '';
+  if AHost.Host = '' then
+    Exit;
+  Result := 'ftp://' + FarFtpHostText(AHost);
+  if AHost.Home <> '' then
+  begin
+    if AHost.Home[1] <> '/' then
+      Result := Result + '/';
+    Result := Result + AHost.Home;
+  end;
+end;
+
 // Окно адреса: AHostIdx - изменить, -1 - новый
 procedure TFarView.FtpEditHost(APanelIndex, AHostIdx: Integer);
 var
   Host: TFarFtpHost;
   Title: WideString;
+
+  procedure AddField(const ACaption: WideString; AMasked: Boolean;
+    const AText: WideString);
+  begin
+    DlgAddRow(ACaption, False, AMasked, AText, [], 0);
+    FDlgRows[High(FDlgRows)].FieldOfs := FtpCaptionW;
+    FDlgRows[High(FDlgRows)].CaptionRight := True;
+  end;
+
 begin
   if (AHostIdx >= 0) and (AHostIdx <= High(FFtpHosts)) then
   begin
     Host := FFtpHosts[AHostIdx];
-    Title := 'Edit FTP address';
+    Title := 'Редактирование адреса FTP';
   end
   else
   begin
     AHostIdx := -1;
     FarFtpHostClear(Host);
-    Title := 'New FTP address';
+    Title := 'Новый адрес FTP';
   end;
   FFtpEditIdx := AHostIdx;
   FFtpEditPanel := APanelIndex;
-  DlgOpen(fdFtpEdit, Title, ['Address: host, host:port or',
-    'ftp://user:password@host:port/dir'], False, False, False, '',
-    ['Save', 'Connect', 'Cancel']);
-  DlgAddRow('Address:', False, False, FarFtpHostText(Host), [], 0);
-  DlgAddRow('Home:', False, False, Host.Home, [], 0);
-  DlgAddRow('User:', False, False, Host.User, [], 0);
-  DlgAddRow('Password:', False, True, Host.Password, [], 0);
-  DlgAddRow('Comment:', False, False, Host.Description, [], 0);
-  DlgAddCheck('Ask for password every time', Host.AskPassword);
-  DlgAddCheck('Passive mode', Host.Passive);
-  FDlgRow := 0;
+  DlgOpen(fdFtpEdit, Title, ['ftp://пользователь:пароль@сервер:порт/папка'],
+    False, False, False, '', ['Сохранить', 'Соединить', 'Отменить']);
+  DlgAddRow('', False, False, FarFtpEditUrl(Host), [], 0);
+  FDlgRows[FtpRowUrl].FieldOfs := 0;
+  DlgAddSep;
+  AddField('Пользователь:', False, Host.User);
+  AddField('Пароль:', True, Host.Password);
+  AddField('Описание:', False, Host.Description);
+  DlgAddSep;
+  DlgAddCheck('Запрос пароля', Host.AskPassword);
+  DlgAddCheck('Пассивный режим', Host.Passive);
+  FDlgRow := FtpRowUrl;
 end;
 
 // Последняя часть пути похожа на имя файла: имя.расш, расширение - 1..4
@@ -9398,10 +9470,10 @@ begin
 end;
 
 // Вставка в окно адреса текста ftp://user:password@host:port/dir/file (в
-// любое поле): части - по полям Address (host:port), Home (папка, имя
-// файла в конце отбрасывается), User, Password. Пользователя в адресе нет
-// - User и Password не меняются. False - текст не ftp://, вставлять как
-// обычно
+// любое поле): адрес (сервер, порт, папка; имя файла в конце
+// отбрасывается) - в первую строку, пользователь и пароль - в свои поля.
+// Пользователя в адресе нет - эти поля не меняются. False - текст не
+// ftp://, вставлять как обычно
 function TFarView.FtpEditPasteUrl(const AText: WideString): Boolean;
 var
   Host: TFarFtpHost;
@@ -9425,7 +9497,7 @@ var
 
 begin
   Result := False;
-  if (FDlgKind <> fdFtpEdit) or (Length(FDlgRows) < 7) then
+  if (FDlgKind <> fdFtpEdit) or (Length(FDlgRows) < FtpRowCount) then
     Exit;
   UrlText := FarTrimW(AText);
   if WideLowerCase(Copy(UrlText, 1, 6)) <> 'ftp://' then
@@ -9447,42 +9519,41 @@ begin
         HomeText := Copy(HomeText, 1, SlashPos - 1);
     end;
   end;
-  SetRow(0, FarFtpHostText(Host));
-  SetRow(1, HomeText);
+  Host.Home := HomeText;
+  SetRow(FtpRowUrl, FarFtpEditUrl(Host));
   if Host.User <> '' then
   begin
-    SetRow(2, Host.User);
-    SetRow(3, Host.Password);
+    SetRow(FtpRowUser, Host.User);
+    SetRow(FtpRowPass, Host.Password);
     // Пароль пришёл с адресом - хранить его, не спрашивать
     if Host.Password <> '' then
-      FDlgRows[5].Index := 0;
+      FDlgRows[FtpRowAsk].Index := 0;
   end;
   Status(FarProduct + ': FTP - адрес разобран по полям');
   Invalidate;
   Result := True;
 end;
 
-// [ Save ] / [ Connect ] в окне адреса
+// [ Сохранить ] / [ Соединить ] в окне адреса
 procedure TFarView.FtpEditConfirm(AConnect: Boolean);
 var
   Host: TFarFtpHost;
   HostIdx, PanelIndex: Integer;
 begin
-  if Length(FDlgRows) < 7 then
+  if Length(FDlgRows) < FtpRowCount then
     Exit;
   FarFtpHostClear(Host);
-  Host.Home := FarTrimW(FDlgRows[1].Text);
-  Host.User := FarTrimW(FDlgRows[2].Text);
-  Host.Password := FDlgRows[3].Text;
-  Host.Description := FarTrimW(FDlgRows[4].Text);
-  Host.AskPassword := FDlgRows[5].Index = 1;
-  Host.Passive := FDlgRows[6].Index = 1;
-  // В адресе может быть всё сразу (ftp://user:password@host:port/dir) -
-  // его части заменяют поля
-  if not FarFtpParseUrl(FDlgRows[0].Text, Host) then
+  Host.User := FarTrimW(FDlgRows[FtpRowUser].Text);
+  Host.Password := FDlgRows[FtpRowPass].Text;
+  Host.Description := FarTrimW(FDlgRows[FtpRowDescr].Text);
+  Host.AskPassword := FDlgRows[FtpRowAsk].Index = 1;
+  Host.Passive := FDlgRows[FtpRowPassive].Index = 1;
+  // Сервер, порт, папка - из адреса; пользователь и пароль в адресе
+  // (ftp://user:password@...) заменяют поля
+  if not FarFtpParseUrl(FDlgRows[FtpRowUrl].Text, Host) then
   begin
     Status(FarProduct + ': FTP - не задан адрес сервера');
-    FDlgRow := 0;
+    FDlgRow := FtpRowUrl;
     Invalidate;
     Exit;
   end;
@@ -9505,6 +9576,57 @@ begin
     FtpFillHosts(FPanels[1 - PanelIndex], -1);
   if AConnect then
     FtpConnect(PanelIndex, HostIdx);
+end;
+
+// Окно «Ожидаю соединения...» (как в FAR): время начала и сервер. Не
+// модальное - панели работают, Esc на панели спрашивает «Прервать?»
+procedure TFarView.DrawFtpConnecting;
+var
+  BoxW, BoxH, BoxLeft, BoxTop, Row: Integer;
+  FirstLine: WideString;
+  Back, Fore: TColor;
+begin
+  if (FFtpConnPanel < 0) or (FFtpThread[FFtpConnPanel] = nil) then
+    Exit;
+  FirstLine := FFtpConnTime + ' "Ожидаю соединения..."';
+  BoxW := Length(FirstLine);
+  if Length(FFtpConnHost) > BoxW then
+    BoxW := Length(FFtpConnHost);
+  Inc(BoxW, 10);
+  if BoxW > FCols - 2 then
+    BoxW := FCols - 2;
+  if BoxW < 20 then
+    Exit;
+  BoxH := 6;
+  BoxLeft := (FCols - BoxW) div 2;
+  BoxTop := (PanelHeight - BoxH) div 2 - 5;
+  if BoxTop < 0 then
+    BoxTop := 0;
+  Back := FPal[fpDlgBack];
+  Fore := FPal[fpDlgText];
+  for Row := BoxTop to BoxTop + BoxH - 1 do
+    FillCells(BoxLeft, Row, BoxW, Back);
+  DrawBox(BoxLeft + 2, BoxTop + 1, BoxLeft + BoxW - 3, BoxTop + BoxH - 2, Fore);
+  PutCentered(BoxLeft, BoxTop + 1, BoxW, ' FTP ', Fore, Back);
+  PutText(BoxLeft + 5, BoxTop + 2, BoxW - 10,
+    FarFitName(FirstLine, BoxW - 10), Fore, Back);
+  PutText(BoxLeft + 5, BoxTop + 3, BoxW - 10,
+    FarFitName(FFtpConnHost, BoxW - 10), Fore, Back);
+end;
+
+// Esc при соединении: «Прервать соединение?» [ Да ] [ Нет ]
+procedure TFarView.FtpAbortAsk;
+begin
+  DlgOpen(fdFtpAbort, 'Внимание...', ['Прервать соединение?'], True, True,
+    False, '', ['Да', 'Нет']);
+end;
+
+procedure TFarView.FtpAbortConfirmed;
+begin
+  if (FFtpConnPanel < 0) or (FFtpThread[FFtpConnPanel] = nil) then
+    Exit;
+  FFtpThread[FFtpConnPanel].Cancel;
+  Status(FarProduct + ': FTP - прерываю...');
 end;
 
 // F8 / Del на адресе - спросить
@@ -10126,6 +10248,13 @@ begin
   begin
     FFtpJob.Cancel;
     Status(FarProduct + ': FTP - прерываю...');
+    Exit;
+  end;
+  // Esc при соединении - сначала спросить (как FAR)
+  if (AKey = VK_ESCAPE) and (FFtpThread[FActive] <> nil) and
+     (FFtpConnPanel = FActive) then
+  begin
+    FtpAbortAsk;
     Exit;
   end;
   // Esc - прервать запрос к серверу
@@ -13533,11 +13662,32 @@ begin
     UndoText := AText;
     UndoPos := Length(AText);
     Typing := False;
+    IsSep := False;
+    FieldOfs := -1;
+    CaptionRight := False;
   end;
   // Фокус - на первой строке
   FDlgRow := 0;
   FDlgFocus := -1;
   Invalidate;
+end;
+
+// Разделитель между группами полей: одинарная линия через всё окно
+procedure TFarView.DlgAddSep;
+begin
+  DlgAddRow('', True, False, '', [''], 0);
+  FDlgRows[High(FDlgRows)].IsSep := True;
+end;
+
+// Колонка начала поля строки (у строки может быть своя ширина подписи)
+function TFarView.DlgRowFieldLeft(ARowIndex: Integer): Integer;
+var
+  FieldOfs: Integer;
+begin
+  FieldOfs := FDlgRows[ARowIndex].FieldOfs;
+  if FieldOfs < 0 then
+    FieldOfs := FarDlgCaptionW;
+  Result := FDlgRowsInner + FieldOfs;
 end;
 
 function TFarView.DlgRowIsEdit: Boolean;
@@ -13565,12 +13715,28 @@ var
   SelFrom, SelTo, VisFrom, VisTo, ArrowX, ArrowY, ArrowHalf, LineIndex: Integer;
   ShownText, ValueText: WideString;
   Focused: Boolean;
+  CaptionW, SepY: Integer;
 begin
-  FieldLeft := AInnerLeft + FarDlgCaptionW;
-  FieldW := AInnerW - FarDlgCaptionW;
+  CaptionW := FDlgRows[ARowIndex].FieldOfs;
+  if CaptionW < 0 then
+    CaptionW := FarDlgCaptionW;
+  FieldLeft := AInnerLeft + CaptionW;
+  FieldW := AInnerW - CaptionW;
   Focused := ARowIndex = FDlgRow;
   with FDlgRows[ARowIndex] do
   begin
+    // Разделитель: одинарная линия от рамки до рамки
+    if IsSep then
+    begin
+      SepY := ARow * FCellH + FCellH div 2;
+      with FBuffer.Canvas do
+      begin
+        Pen.Color := AFore;
+        MoveTo((AInnerLeft - 3) * FCellW + FCellW div 2 + 1, SepY);
+        LineTo((AInnerLeft + AInnerW + 2) * FCellW + FCellW div 2, SepY);
+      end;
+      Exit;
+    end;
     // Флажок: [x] подпись (с фокусом - [x] белым по чёрному)
     if IsCheck then
     begin
@@ -13586,7 +13752,11 @@ begin
       PutText(AInnerLeft + 4, ARow, AInnerW - 4, Caption, AFore, ABack);
       Exit;
     end;
-    PutText(AInnerLeft, ARow, FarDlgCaptionW, Caption, AFore, ABack);
+    if CaptionRight and (Length(Caption) < CaptionW) then
+      PutText(FieldLeft - Length(Caption), ARow, Length(Caption), Caption,
+        AFore, ABack)
+    else if CaptionW > 0 then
+      PutText(AInnerLeft, ARow, CaptionW, Caption, AFore, ABack);
     if IsChoice then
     begin
       for ValueIndex := 0 to High(Values) do
@@ -14295,7 +14465,7 @@ begin
   ClickCol := AX div FCellW;
   with FDlgRows[FDlgRow] do
   begin
-    NewPos := Scroll + ClickCol - FDlgRowsLeft;
+    NewPos := Scroll + ClickCol - DlgRowFieldLeft(FDlgRow);
     if NewPos < 0 then
       NewPos := 0;
     if NewPos > Length(Text) then
@@ -14389,6 +14559,8 @@ begin
       else
         Result := False;  // пробел - символ поля ввода (WM_CHAR)
     VK_TAB, VK_UP, VK_DOWN:
+      // Разделители фокуса не получают - мимо них
+      repeat
       if (AKey = VK_UP) or ((AKey = VK_TAB) and AShift) then
       begin
         if FDlgRow > 0 then
@@ -14423,6 +14595,7 @@ begin
           FDlgFocus := -1;
         end;
       end;
+      until (FDlgRow < 0) or not FDlgRows[FDlgRow].IsSep;
     VK_LEFT, VK_RIGHT:
       if InChoice then
       begin
@@ -14463,14 +14636,16 @@ end;
 // по полю ввода - каретку туда
 procedure TFarView.DlgRowsMouse(AX, AY: Integer);
 var
-  RowIndex, ValueIndex, ClickCol, OldIndex, ValueCol: Integer;
+  RowIndex, ValueIndex, ClickCol, OldIndex, ValueCol, FieldLeft: Integer;
 begin
   RowIndex := AY div FCellH - FDlgRowsTop;
-  if (RowIndex < 0) or (RowIndex > High(FDlgRows)) then
+  if (RowIndex < 0) or (RowIndex > High(FDlgRows)) or
+     FDlgRows[RowIndex].IsSep then
     Exit;
   FDlgRow := RowIndex;
   FDlgFocus := -1;
   ClickCol := AX div FCellW;
+  FieldLeft := DlgRowFieldLeft(RowIndex);
   with FDlgRows[RowIndex] do
     if IsCheck then
       Index := 1 - Index
@@ -14490,7 +14665,7 @@ begin
     else if IsCombo and (ClickCol = FDlgRowsLeft + FDlgRowsW - 1) then
       // Стрелка поля - список прежних значений
       DlgDropOpen
-    else if ClickCol >= FDlgRowsLeft then
+    else if ClickCol >= FieldLeft then
     begin
       // С Shift - выделение от прежнего места каретки
       if GetKeyState(VK_SHIFT) < 0 then
@@ -14504,7 +14679,7 @@ begin
         Anchor := -1;
       Fresh := False;
       Typing := False;
-      Pos := Scroll + ClickCol - FDlgRowsLeft;
+      Pos := Scroll + ClickCol - FieldLeft;
       if Pos > Length(Text) then
         Pos := Length(Text);
       FDlgDragRow := RowIndex;
@@ -18464,7 +18639,7 @@ begin
       fdFind:
         Result := FarHelpFind;
       fdFtpEdit, fdFtpPassword, fdFtpDelete, fdFtpError, fdFtpCopy,
-      fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite:
+      fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdFtpAbort:
         Result := FarHelpFtp;
       fdEditQuit, fdEditSave, fdEditEncode, fdEditFind, fdEditGoto,
       fdEditReplace, fdEditReplAsk,
