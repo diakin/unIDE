@@ -1394,8 +1394,8 @@ end;
 procedure TWmMap.AutoLayout(ACellW, ACellH: Integer; AOnlyUnset: Boolean);
 var
   ColOf, RowOf: array of Integer;
-  NodeIdx, Top: Integer;
-  Node, Shown: TWmNode;
+  NodeIdx, Top, AnchorIdx: Integer;
+  Node, Shown, Anchor: TWmNode;
 
   // Узел в (ACol, ATop), его ветка - ниже и правее; результат - сколько
   // строк заняла ветка
@@ -1477,8 +1477,26 @@ begin
     Node := TWmNode(FNodes[NodeIdx]);
     if (RowOf[NodeIdx] < 0) or (AOnlyUnset and Node.PosSet) then
       Continue;
-    Node.PosX := 16 + ColOf[NodeIdx] * ACellW;
-    Node.PosY := 16 + RowOf[NodeIdx] * ACellH;
+    // от ближайшего предка, поставленного вручную, - со сдвигом, как в
+    // расстановке: раскрытая ветка встаёт рядом с ним
+    Anchor := nil;
+    if AOnlyUnset then
+    begin
+      Anchor := Node.Parent;
+      while (Anchor <> nil) and not Anchor.PosSet do
+        Anchor := Anchor.Parent;
+    end;
+    if (Anchor <> nil) and (RowOf[FNodes.IndexOf(Anchor)] >= 0) then
+    begin
+      AnchorIdx := FNodes.IndexOf(Anchor);
+      Node.PosX := Anchor.PosX + (ColOf[NodeIdx] - ColOf[AnchorIdx]) * ACellW;
+      Node.PosY := Anchor.PosY + (RowOf[NodeIdx] - RowOf[AnchorIdx]) * ACellH;
+    end
+    else
+    begin
+      Node.PosX := 16 + ColOf[NodeIdx] * ACellW;
+      Node.PosY := 16 + RowOf[NodeIdx] * ACellH;
+    end;
   end;
   // скрытые - на месте показанного предка (стрелки к ним идут к нему)
   for NodeIdx := 0 to FNodes.Count - 1 do

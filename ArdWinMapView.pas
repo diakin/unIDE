@@ -97,6 +97,7 @@ type
     function HomeNode: TWmNode;
     procedure SetCurrentState(AValue: Integer);
     procedure ToggleNode(ANodeIdx: Integer);
+    procedure FreezeLayout;
   public
     constructor CreateMap(AOwner: TComponent);
     destructor Destroy; override;
@@ -698,6 +699,7 @@ begin
     FDragNode := -1;
     if FDragged then
     begin
+      FOwnerForm.FreezeLayout;
       FOwnerForm.SavePositions;
       Exit;
     end;
@@ -909,15 +911,27 @@ begin
   FBox.Rebuild;
 end;
 
+// После перетаскивания вся показанная картина - ручная: при следующем
+// открытии карта встаёт так же
+procedure TArdWinMapForm.FreezeLayout;
+var
+  NodeIdx: Integer;
+begin
+  for NodeIdx := 0 to FMap.NodeCount - 1 do
+    if not FMap.Nodes[NodeIdx].Hidden then
+      FMap.Nodes[NodeIdx].PosSet := True;
+end;
+
 procedure TArdWinMapForm.SavePositions;
 begin
   if FMapFile = '' then
     Exit;
   try
     FMap.SavePositions(FMapFile);
+    SetStatus('Расстановка записана: ' + FMapFile);
   except
     on Err: Exception do
-      SetStatus('Места узлов не записаны: ' + Err.Message);
+      SetStatus('Расстановка не записана (' + FMapFile + '): ' + Err.Message);
   end;
 end;
 
