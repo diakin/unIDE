@@ -42,10 +42,12 @@ type
     FEdgeShown: array of Boolean;
     FLabelRects: array of TRect;     // подписи стрелок
     FEdgeFrom, FEdgeTo: array of TPoint;
+    FToggleRects: array of TRect;    // [+] / [-] ветки у узла с детьми
     FDragNode: Integer;
     FDragDX, FDragDY: Integer;
     FDownX, FDownY: Integer;
     FDragged: Boolean;
+    FSkipUp: Boolean;                // нажатие ушло на [+] / [-]
     FHotNode, FHotEdge: Integer;
     FSelNode: Integer;
     procedure CalcRects;
@@ -94,6 +96,7 @@ type
     procedure SavePositions;
     function HomeNode: TWmNode;
     procedure SetCurrentState(AValue: Integer);
+    procedure ToggleNode(ANodeIdx: Integer);
   public
     constructor CreateMap(AOwner: TComponent);
     destructor Destroy; override;
@@ -116,9 +119,10 @@ uses
 
 const
   CellW = 210;
-  CellH = 66;
+  CellH = 78;
   BoxMinW = 120;
-  BoxH = 38;
+  BoxH = 52;      // три строки: имя, подпись, переходы внутри окна
+  ToggleW = 13;
 
   ClrBack = $00FFFFFF;
   ClrWindow = $00FBEFE3;     // голубой (BGR)
@@ -133,6 +137,7 @@ const
   ClrMissLine = $000000C0;
   ClrSelect = $00D77800;
   ClrCurrent = $0000A000;
+  ClrStack = $00F3E2D2;
 
 { TWmBox }
 
@@ -159,6 +164,7 @@ begin
   SetLength(FRects, Map.NodeCount);
   SetLength(FSelfText, Map.NodeCount);
   SetLength(FSelfRects, Map.NodeCount);
+  SetLength(FToggleRects, Map.NodeCount);
   for NodeIdx := 0 to Map.NodeCount - 1 do
     FSelfText[NodeIdx] := '';
   // переходы внутри окна: "< actRepeat, F1 actHelp"
@@ -186,21 +192,28 @@ begin
   for NodeIdx := 0 to Map.NodeCount - 1 do
   begin
     Node := Map.Nodes[NodeIdx];
+    FToggleRects[NodeIdx] := Rect(0, 0, 0, 0);
+    FSelfRects[NodeIdx] := Rect(0, 0, 0, 0);
+    if Node.Hidden then
+    begin
+      FRects[NodeIdx] := Rect(0, 0, 0, 0);
+      Continue;
+    end;
     Canvas.Font.Style := [fsBold];
     TextW := Canvas.TextWidth(Node.Title);
     Canvas.Font.Style := [];
     TextW := Max(TextW, Canvas.TextWidth(Node.Caption));
     TextW := Min(CellW - 30, Max(BoxMinW, TextW + 14));
+    if Node.ChildCount > 0 then
+      TextW := Min(CellW - 30, TextW + ToggleW);
     FRects[NodeIdx] := Rect(Node.PosX, Node.PosY, Node.PosX + TextW, Node.PosY + BoxH);
-    FSelfRects[NodeIdx] := Rect(0, 0, 0, 0);
+    if Node.ChildCount > 0 then
+      FToggleRects[NodeIdx] := Rect(Node.PosX + TextW - ToggleW - 3, Node.PosY + 3,
+                                    Node.PosX + TextW - 3, Node.PosY + 3 + ToggleW);
+    // третья строка узла
     if FSelfText[NodeIdx] <> '' then
-    begin
-      Canvas.Font.Size := 8;
-      FSelfRects[NodeIdx] := Rect(Node.PosX, Node.PosY + BoxH + 1,
-        Node.PosX + Canvas.TextWidth(FSelfText[NodeIdx]) + 4,
-        Node.PosY + BoxH + 1 + Canvas.TextHeight('Wg'));
-      Canvas.Font.Size := 9;
-    end;
+      FSelfRects[NodeIdx] := Rect(Node.PosX + 2, Node.PosY + BoxH - 17,
+                                  Node.PosX + TextW - 2, Node.PosY + BoxH - 2);
     MaxRight := Max(MaxRight, Max(FRects[NodeIdx].Right, FSelfRects[NodeIdx].Right));
     MaxBottom := Max(MaxBottom, FRects[NodeIdx].Bottom + 20);
   end;
@@ -244,7 +257,7 @@ var
   Map: TWmMap;
   EdgeIdx, OtherIdx, FromIdx, ToIdx, ShiftX, ShiftY, TextW, TextH: Integer;
   Edge, Other: TWmEdge;
-  Home: TWmNode;
+  Home, FromNode, ToNode: TWmNode;
   FromPt, ToPt, MidPt: TPoint;
   Len: Double;
   Reverse: Boolean;
@@ -261,17 +274,30 @@ begin
   for EdgeIdx := 0 to Map.EdgeCount - 1 do
   begin
     Edge := Map.Edges[EdgeIdx];
-    FEdgeShown[EdgeIdx] := (Edge.FromNode <> Edge.ToNode) and
+    // стрелка в свёрнутую ветку - к её показанному узлу
+    FromNode := Map.VisibleOf(Edge.FromNode);
+    ToNode := Map.VisibleOf(Edge.ToNode);
+    FEdgeShown[EdgeIdx] := (FromNode <> ToNode) and
       (FOwnerForm.FShowHome.Checked or (Edge.ToNode <> Home) or
        (Edge.FromNode.Kind = wnkSetup));
     FLabelRects[EdgeIdx] := Rect(0, 0, 0, 0);
+    // такая же стрелка между теми же показанными узлами уже есть
+    if FEdgeShown[EdgeIdx] and ((FromNode <> Edge.FromNode) or (ToNode <> Edge.ToNode)) then
+      for OtherIdx := 0 to EdgeIdx - 1 do
+        if FEdgeShown[OtherIdx] and
+           (Map.VisibleOf(Map.Edges[OtherIdx].FromNode) = FromNode) and
+           (Map.VisibleOf(Map.Edges[OtherIdx].ToNode) = ToNode) then
+        begin
+          FEdgeShown[EdgeIdx] := False;
+          Break;
+        end;
     if not FEdgeShown[EdgeIdx] then
       Continue;
     FromIdx := 0;
-    while Map.Nodes[FromIdx] <> Edge.FromNode do
+    while Map.Nodes[FromIdx] <> FromNode do
       Inc(FromIdx);
     ToIdx := 0;
-    while Map.Nodes[ToIdx] <> Edge.ToNode do
+    while Map.Nodes[ToIdx] <> ToNode do
       Inc(ToIdx);
     FromPt := BorderPoint(FRects[FromIdx], RectCenter(FRects[ToIdx]));
     ToPt := BorderPoint(FRects[ToIdx], RectCenter(FRects[FromIdx]));
@@ -280,7 +306,8 @@ begin
     for OtherIdx := 0 to Map.EdgeCount - 1 do
     begin
       Other := Map.Edges[OtherIdx];
-      if (Other.FromNode = Edge.ToNode) and (Other.ToNode = Edge.FromNode) then
+      if (Map.VisibleOf(Other.FromNode) = ToNode) and
+         (Map.VisibleOf(Other.ToNode) = FromNode) then
       begin
         Reverse := True;
         Break;
@@ -305,8 +332,13 @@ begin
       MidPt := Point(FromPt.X + (ToPt.X - FromPt.X) * 2 div 5,
                      FromPt.Y + (ToPt.Y - FromPt.Y) * 2 div 5);
       TextW := Canvas.TextWidth(Edge.Keys);
-      FLabelRects[EdgeIdx] := Rect(MidPt.X - TextW div 2 - 2, MidPt.Y - TextH div 2,
-                                   MidPt.X + TextW div 2 + 2, MidPt.Y + TextH div 2 + 1);
+      if Abs(ToPt.X - FromPt.X) * 3 < Abs(ToPt.Y - FromPt.Y) then
+        // почти вертикальная (шаг цепочки) - подпись справа от линии
+        FLabelRects[EdgeIdx] := Rect(MidPt.X + 3, MidPt.Y - TextH div 2,
+                                     MidPt.X + TextW + 7, MidPt.Y + TextH div 2 + 1)
+      else
+        FLabelRects[EdgeIdx] := Rect(MidPt.X - TextW div 2 - 2, MidPt.Y - TextH div 2,
+                                     MidPt.X + TextW div 2 + 2, MidPt.Y + TextH div 2 + 1);
     end;
   end;
 end;
@@ -337,6 +369,29 @@ begin
   ACanvas.Polygon(Points);
 end;
 
+// [+] свёрнуто, [-] раскрыто
+procedure DrawToggle(ACanvas: TCanvas; const ARect: TRect; ACollapsed: Boolean);
+var
+  MidX, MidY: Integer;
+begin
+  ACanvas.Pen.Style := psSolid;
+  ACanvas.Pen.Width := 1;
+  ACanvas.Pen.Color := ClrWindowEdge;
+  ACanvas.Brush.Style := bsSolid;
+  ACanvas.Brush.Color := ClrBack;
+  ACanvas.Rectangle(ARect.Left, ARect.Top, ARect.Right, ARect.Bottom);
+  MidX := (ARect.Left + ARect.Right) div 2;
+  MidY := (ARect.Top + ARect.Bottom) div 2;
+  ACanvas.Pen.Color := clBlack;
+  ACanvas.MoveTo(ARect.Left + 3, MidY);
+  ACanvas.LineTo(ARect.Right - 3, MidY);
+  if ACollapsed then
+  begin
+    ACanvas.MoveTo(MidX, ARect.Top + 3);
+    ACanvas.LineTo(MidX, ARect.Bottom - 3);
+  end;
+end;
+
 procedure TWmBox.Paint;
 var
   Map: TWmMap;
@@ -345,6 +400,7 @@ var
   Edge: TWmEdge;
   BoxRect: TRect;
   LineColor: TColor;
+  TextRight: Integer;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ClrBack;
@@ -392,7 +448,21 @@ begin
   for NodeIdx := 0 to Map.NodeCount - 1 do
   begin
     Node := Map.Nodes[NodeIdx];
+    if Node.Hidden then
+      Continue;
     BoxRect := FRects[NodeIdx];
+    // свёрнутая ветка - стопкой
+    if Node.Collapsed then
+    begin
+      Canvas.Pen.Color := ClrWindowEdge;
+      Canvas.Pen.Width := 1;
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := ClrStack;
+      Canvas.RoundRect(BoxRect.Left + 6, BoxRect.Top + 6, BoxRect.Right + 6,
+                       BoxRect.Bottom + 6, 10, 10);
+      Canvas.RoundRect(BoxRect.Left + 3, BoxRect.Top + 3, BoxRect.Right + 3,
+                       BoxRect.Bottom + 3, 10, 10);
+    end;
     case Node.Kind of
       wnkModal:
         Canvas.Brush.Color := ClrModal;
@@ -438,16 +508,22 @@ begin
     else
       Canvas.Font.Color := clBlack;
     TextY := BoxRect.Top + 3;
-    Canvas.TextRect(Rect(BoxRect.Left + 4, TextY, BoxRect.Right - 4, BoxRect.Bottom - 2),
+    TextRight := BoxRect.Right - 4;
+    if Node.ChildCount > 0 then
+      TextRight := FToggleRects[NodeIdx].Left - 2;
+    Canvas.TextRect(Rect(BoxRect.Left + 4, TextY, TextRight, BoxRect.Bottom - 2),
                     BoxRect.Left + 7, TextY, Node.Title);
     Canvas.Font.Style := [];
     Canvas.TextRect(Rect(BoxRect.Left + 4, TextY, BoxRect.Right - 4, BoxRect.Bottom - 2),
                     BoxRect.Left + 7, TextY + Canvas.TextHeight('Wg'), Node.Caption);
+    if Node.ChildCount > 0 then
+      DrawToggle(Canvas, FToggleRects[NodeIdx], Node.Collapsed);
     if FSelfText[NodeIdx] <> '' then
     begin
       Canvas.Font.Size := 8;
-      Canvas.Font.Color := $00505050;
-      Canvas.TextOut(FSelfRects[NodeIdx].Left + 2, FSelfRects[NodeIdx].Top, FSelfText[NodeIdx]);
+      Canvas.Font.Color := $00606060;
+      Canvas.TextRect(FSelfRects[NodeIdx], FSelfRects[NodeIdx].Left + 5,
+                      FSelfRects[NodeIdx].Top + 1, FSelfText[NodeIdx]);
     end;
   end;
   // подписи стрелок - поверх
@@ -545,11 +621,18 @@ begin
   end;
   if Button <> mbLeft then
     Exit;
+  if (NodeIdx >= 0) and PtIn(FToggleRects[NodeIdx], PosX, PosY) then
+  begin
+    FSkipUp := True;
+    FOwnerForm.ToggleNode(NodeIdx);
+    Exit;
+  end;
   FDownX := PosX;
   FDownY := PosY;
   FDragged := False;
   FDragNode := -1;
-  if (NodeIdx >= 0) and PtIn(FRects[NodeIdx], PosX, PosY) then
+  if (NodeIdx >= 0) and PtIn(FRects[NodeIdx], PosX, PosY) and
+     not PtIn(FSelfRects[NodeIdx], PosX, PosY) then
   begin
     FDragNode := NodeIdx;
     FDragDX := PosX - FOwnerForm.FMap.Nodes[NodeIdx].PosX;
@@ -603,6 +686,11 @@ begin
   inherited MouseUp(Button, Shift, PosX, PosY);
   if Button <> mbLeft then
     Exit;
+  if FSkipUp then
+  begin
+    FSkipUp := False;
+    Exit;
+  end;
   MouseCapture := False;
   if FDragNode >= 0 then
   begin
@@ -645,9 +733,13 @@ var
 begin
   inherited CreateNew(AOwner);
   Caption := 'Карта окон';
-  Width := 1100;
-  Height := 700;
-  Position := poScreenCenter;
+  // слева: справа у главного окна - эмулятор
+  Position := poDesigned;
+  Left := Screen.WorkAreaLeft + 8;
+  Top := Screen.WorkAreaTop + 60;
+  Width := Max(700, Min(1100, Screen.WorkAreaWidth - 640));
+  Height := Max(500, Screen.WorkAreaHeight - 120);
+
   FCurrentState := -1;
   FMap := TWmMap.Create;
 
@@ -669,7 +761,7 @@ begin
   Button.Parent := FTop;
   Button.SetBounds(108, 5, 110, 24);
   Button.Caption := 'Расставить';
-  Button.Hint := 'Расставить все узлы заново: столбцы по числу переходов от setup()';
+  Button.Hint := 'Расставить все узлы заново деревом (перемещённые мышью - тоже)';
   Button.ShowHint := True;
   Button.OnClick := BtnLayoutClick;
 
@@ -723,6 +815,25 @@ begin
   inherited Destroy;
 end;
 
+// [+] / [-]: ветка раскрывается или сворачивается, карта расставляется
+// заново (кроме перемещённых мышью узлов)
+procedure TArdWinMapForm.ToggleNode(ANodeIdx: Integer);
+var
+  Node: TWmNode;
+begin
+  Node := FMap.Nodes[ANodeIdx];
+  Node.Collapsed := not Node.Collapsed;
+  FMap.UpdateHidden;
+  FMap.AutoLayout(CellW, CellH, True);
+  FBox.Rebuild;
+  SavePositions;
+  if Node.Collapsed then
+    SetStatus(Node.Title + ': ветка свёрнута (' + IntToStr(FMap.HiddenCount(Node)) +
+              ' узл.)')
+  else
+    SetStatus(Node.Title + ': ветка раскрыта');
+end;
+
 procedure TArdWinMapForm.SetStatus(const AText: string);
 begin
   FStatus.Caption := '  ' + AText;
@@ -754,6 +865,8 @@ begin
   if Assigned(FOnFill) then
     FOnFill(FMap);
   FMap.Parse;
+  // сначала видны setup(), начальное окно и его пункты; ниже - по [+]
+  FMap.CollapseFrom(2);
   if FMapFile <> '' then
     FMap.LoadPositions(FMapFile);
   FMap.AutoLayout(CellW, CellH, True);
@@ -772,7 +885,7 @@ begin
       Inc(WindowTotal);
   SetStatus(IntToStr(WindowTotal) + ' окон, переменная ' + FMap.StateVar +
             '. Щелчок по окну - открыть в эмуляторе, по стрелке - строка ' +
-            'перехода; узлы перетаскиваются');
+            'перехода, [+] - раскрыть ветку; узлы перетаскиваются');
 end;
 
 procedure TArdWinMapForm.BtnRefreshClick(Sender: TObject);
@@ -781,7 +894,11 @@ begin
 end;
 
 procedure TArdWinMapForm.BtnLayoutClick(Sender: TObject);
+var
+  NodeIdx: Integer;
 begin
+  for NodeIdx := 0 to FMap.NodeCount - 1 do
+    FMap.Nodes[NodeIdx].PosSet := False;
   FMap.AutoLayout(CellW, CellH, False);
   FBox.Rebuild;
   SavePositions;
@@ -865,6 +982,8 @@ begin
       Text := Text + '   ' + ExtractFileName(Node.FileName) + ':' + IntToStr(Node.Line + 1);
     if (Node.Kind = wnkWindow) and not Node.Reachable then
       Text := Text + '   (нет перехода от setup)';
+    if Node.Collapsed then
+      Text := Text + '   [+] ещё ' + IntToStr(FMap.HiddenCount(Node)) + ' узл.';
     SetStatus(Text);
   end
   else if AEdgeIdx >= 0 then

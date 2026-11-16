@@ -370,6 +370,17 @@ void stopHere()
 }
 }
 
+// A RunToSet start command waits for its line: delay() then does not wait,
+// the sketch clock jumps instead (setup splash screens pass at once)
+bool simDbgFastForward()
+{
+  if (!DbgHeader)
+    return false;
+  if (StepMode == StepRunToSet)
+    return true;
+  return commandPending() && DbgHeader[SimDbgCmdCode] == SimCmdRunToSet;
+}
+
 void simStepSlow(int code)
 {
   if (!DbgHeader)

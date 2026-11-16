@@ -34867,7 +34867,15 @@ begin
   FWinMapForm.SketchFile := Sketch;
   FWinMapForm.MapFile := WmMapFileOf(Sketch);
   FWinMapForm.RefreshMap;
+  // над главным окном: щелчок по узлу открывает файл в редакторе, и карта
+  // не должна уходить под него
+  {$IFDEF FPC}
+  UtilOwnByMain(FWinMapForm);
+  {$ENDIF}
   FWinMapForm.Show;
+  {$IFNDEF FPC}
+  UtilOwnByMain(FWinMapForm);
+  {$ENDIF}
   FWinMapForm.BringToFront;
 end;
 
@@ -35029,6 +35037,9 @@ begin
   else
     FArdSim.BuildAndRun;
   FWinMapForm.CurrentState := StateNum;
+  // окно эмулятора показано - карта снова сверху
+  if FWinMapForm.Visible then
+    FWinMapForm.BringToFront;
 end;
 
 // Exe эмулятора новее файлов скетча (.ino .h .c .cpp) и исходников ArdSim

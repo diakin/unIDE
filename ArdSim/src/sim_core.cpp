@@ -26,6 +26,8 @@ static LARGE_INTEGER SimFreq, SimStart;
 // Time the debugger held the sketch (QPC ticks): not counted
 static volatile LONGLONG PausedTicks = 0;
 static LONGLONG PauseStart = 0;
+// Microseconds skipped by delay() while a RunToSet start is pending
+static volatile uint64_t SkippedMicros = 0;
 
 static uint64_t simMicros64()
 {
@@ -33,7 +35,8 @@ static uint64_t simMicros64()
   QueryPerformanceCounter(&now);
   LONGLONG ticks = now.QuadPart - SimStart.QuadPart - PausedTicks;
   return (uint64_t)(ticks / SimFreq.QuadPart * 1000000LL +
-                    ticks % SimFreq.QuadPart * 1000000LL / SimFreq.QuadPart);
+                    ticks % SimFreq.QuadPart * 1000000LL / SimFreq.QuadPart) +
+         SkippedMicros;
 }
 
 void simClockPause(bool paused)
@@ -56,6 +59,12 @@ unsigned long millis() { simPoll(); return (unsigned long)(uint32_t)(simMicros64
 
 void delay(unsigned long ms)
 {
+  if (simDbgFastForward())
+  {
+    SkippedMicros = SkippedMicros + (uint64_t)ms * 1000;
+    simPoll();
+    return;
+  }
   uint64_t until = simMicros64() + (uint64_t)ms * 1000;
   simPoll();
   while (simMicros64() < until)

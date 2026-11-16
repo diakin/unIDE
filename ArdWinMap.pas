@@ -54,6 +54,14 @@ type
     CaseFile: string;       // где ветка case этого номера
     CaseLine: Integer;
     Reachable: Boolean;     // есть путь от setup() (или от начального окна)
+    // Дерево карты: Parent - узел, через который идут все пути от setup()
+    // к этому (ближайший доминатор); у setup() и недостижимых - nil
+    Parent: TWmNode;
+    Depth: Integer;         // уровень в дереве, у setup() - 0
+    ChildCount: Integer;
+    Rank: Integer;          // порядок среди братьев: номер стрелки от Parent
+    Collapsed: Boolean;     // ветка свёрнута: потомки не показаны
+    Hidden: Boolean;        // свёрнут кто-то из предков
     // Место на карте (левый верхний угол), задаёт расстановка или файл
     // .winmap; PosSet - место из файла
     PosX, PosY: Integer;
@@ -104,6 +112,8 @@ type
     procedure ScanAssignments;
     procedure ScanCalls;
     procedure MarkReachable;
+    procedure BuildTree;
+    procedure ChildrenOf(ANode: TWmNode; AList: TList);
     function HeaderComment(AFileIdx, ALine: Integer): string;
     function CondAt(AIdx, ABodyStart: Integer; var ACond: string): string;
     function NumberOf(const AText: string; var AValue: Integer): Boolean;
@@ -130,10 +140,21 @@ type
     property StateVar: string read FStateVar;
     property SwitchFile: string read FSwitchFile;
     property SwitchLine: Integer read FSwitchLine;
-    // Расставить узлы без места из файла: столбцы по числу переходов от
-    // setup(); недостижимые - в последнем столбце. ACellW, ACellH - шаг
+    // Расставить показанные узлы деревом: дети - в следующем столбце,
+    // единственное дочернее окно - под родителем (цепочка шагов вниз),
+    // окна help (wnkModal) - справа от родителя. AOnlyUnset - не трогать
+    // узлы, перемещённые мышью (PosSet). ACellW, ACellH - шаг
     procedure AutoLayout(ACellW, ACellH: Integer; AOnlyUnset: Boolean);
-    // Места узлов: файл .winmap (ini, секция [Nodes], Ключ=x,y)
+    // Свернуть ветки с уровня ADepth (setup() - 0)
+    procedure CollapseFrom(ADepth: Integer);
+    // Hidden по Collapsed предков
+    procedure UpdateHidden;
+    // Показанный узел для ANode: он сам или свёрнутый предок
+    function VisibleOf(ANode: TWmNode): TWmNode;
+    // Число скрытых потомков свёрнутого узла
+    function HiddenCount(ANode: TWmNode): Integer;
+    // Файл .winmap (ini): [Moved] Ключ=x,y - узлы, перемещённые мышью;
+    // [Collapsed] Ключ=1/0 - свёрнутые ветки. Нет записи - по CollapseFrom
     procedure LoadPositions(const AIniFile: string);
     procedure SavePositions(const AIniFile: string);
   end;
@@ -144,7 +165,7 @@ function WmMapFileOf(const ASketchFile: string): string;
 implementation
 
 uses
-  IniFiles;
+  IniFiles, Math;
 
 type
   TWmTokKind = (wtkIdent, wtkNumber, wtkString, wtkChar, wtkPunct);
@@ -1167,123 +1188,310 @@ begin
   ScanCalls;
   ScanAssignments;
   MarkReachable;
+  BuildTree;
+end;
+
+// Дерево доминаторов: узел D - предок узла N, если все пути от setup() к N
+// идут через D. Parent - ближайший такой. Наборы - простыми итерациями
+// (узлов несколько десятков)
+procedure TWmMap.BuildTree;
+var
+  Dom: array of array of Boolean;
+  NewSet: array of Boolean;
+  NodeCnt, NodeIdx, OtherIdx, EdgeIdx, RootIdx, FromIdx, BestIdx: Integer;
+  BestSize, SetSize: Integer;
+  Changed, First: Boolean;
+  Node, Walk: TWmNode;
+  Edge: TWmEdge;
+begin
+  NodeCnt := FNodes.Count;
+  for NodeIdx := 0 to NodeCnt - 1 do
+  begin
+    Node := TWmNode(FNodes[NodeIdx]);
+    Node.Parent := nil;
+    Node.Depth := 0;
+    Node.ChildCount := 0;
+    Node.Rank := MaxInt;
+  end;
+  RootIdx := FNodes.IndexOf(NodeOfFunc('setup'));
+  if RootIdx < 0 then
+    RootIdx := FNodes.IndexOf(NodeOfState(FInitialState, False));
+  if RootIdx < 0 then
+    Exit;
+  SetLength(Dom, NodeCnt);
+  SetLength(NewSet, NodeCnt);
+  for NodeIdx := 0 to NodeCnt - 1 do
+  begin
+    SetLength(Dom[NodeIdx], NodeCnt);
+    for OtherIdx := 0 to NodeCnt - 1 do
+      Dom[NodeIdx][OtherIdx] := NodeIdx <> RootIdx;
+  end;
+  Dom[RootIdx][RootIdx] := True;
+  repeat
+    Changed := False;
+    for NodeIdx := 0 to NodeCnt - 1 do
+    begin
+      Node := TWmNode(FNodes[NodeIdx]);
+      if (NodeIdx = RootIdx) or not Node.Reachable then
+        Continue;
+      First := True;
+      for EdgeIdx := 0 to FEdges.Count - 1 do
+      begin
+        Edge := TWmEdge(FEdges[EdgeIdx]);
+        if (Edge.ToNode <> Node) or (Edge.FromNode = Node) or
+           not Edge.FromNode.Reachable then
+          Continue;
+        FromIdx := FNodes.IndexOf(Edge.FromNode);
+        for OtherIdx := 0 to NodeCnt - 1 do
+          if First then
+            NewSet[OtherIdx] := Dom[FromIdx][OtherIdx]
+          else
+            NewSet[OtherIdx] := NewSet[OtherIdx] and Dom[FromIdx][OtherIdx];
+        First := False;
+      end;
+      if First then
+        Continue;
+      NewSet[NodeIdx] := True;
+      for OtherIdx := 0 to NodeCnt - 1 do
+        if NewSet[OtherIdx] <> Dom[NodeIdx][OtherIdx] then
+        begin
+          Dom[NodeIdx][OtherIdx] := NewSet[OtherIdx];
+          Changed := True;
+        end;
+    end;
+  until not Changed;
+  // ближайший - тот из доминаторов, у кого своих доминаторов больше всех
+  for NodeIdx := 0 to NodeCnt - 1 do
+  begin
+    Node := TWmNode(FNodes[NodeIdx]);
+    if (NodeIdx = RootIdx) or not Node.Reachable then
+      Continue;
+    BestIdx := -1;
+    BestSize := -1;
+    for OtherIdx := 0 to NodeCnt - 1 do
+    begin
+      if (OtherIdx = NodeIdx) or not Dom[NodeIdx][OtherIdx] then
+        Continue;
+      SetSize := 0;
+      for FromIdx := 0 to NodeCnt - 1 do
+        if Dom[OtherIdx][FromIdx] then
+          Inc(SetSize);
+      if SetSize > BestSize then
+      begin
+        BestSize := SetSize;
+        BestIdx := OtherIdx;
+      end;
+    end;
+    if BestIdx >= 0 then
+    begin
+      Node.Parent := TWmNode(FNodes[BestIdx]);
+      Inc(Node.Parent.ChildCount);
+    end;
+  end;
+  for NodeIdx := 0 to NodeCnt - 1 do
+  begin
+    Node := TWmNode(FNodes[NodeIdx]);
+    Walk := Node.Parent;
+    while Walk <> nil do
+    begin
+      Inc(Node.Depth);
+      Walk := Walk.Parent;
+    end;
+  end;
+  // порядок братьев - как стрелки родителя (пункты меню по порядку)
+  for EdgeIdx := 0 to FEdges.Count - 1 do
+  begin
+    Edge := TWmEdge(FEdges[EdgeIdx]);
+    if (Edge.ToNode.Parent = Edge.FromNode) and (Edge.ToNode.Rank = MaxInt) then
+      Edge.ToNode.Rank := EdgeIdx;
+  end;
+end;
+
+// Дети ANode по порядку (Rank, затем порядок в списке узлов)
+procedure TWmMap.ChildrenOf(ANode: TWmNode; AList: TList);
+var
+  NodeIdx, SortIdx: Integer;
+  Node: TWmNode;
+begin
+  AList.Clear;
+  for NodeIdx := 0 to FNodes.Count - 1 do
+  begin
+    Node := TWmNode(FNodes[NodeIdx]);
+    if Node.Parent <> ANode then
+      Continue;
+    SortIdx := AList.Count;
+    while (SortIdx > 0) and (TWmNode(AList[SortIdx - 1]).Rank > Node.Rank) do
+      Dec(SortIdx);
+    AList.Insert(SortIdx, Node);
+  end;
+end;
+
+procedure TWmMap.CollapseFrom(ADepth: Integer);
+var
+  NodeIdx: Integer;
+  Node: TWmNode;
+begin
+  for NodeIdx := 0 to FNodes.Count - 1 do
+  begin
+    Node := TWmNode(FNodes[NodeIdx]);
+    Node.Collapsed := (Node.ChildCount > 0) and (Node.Depth >= ADepth);
+  end;
+  UpdateHidden;
+end;
+
+procedure TWmMap.UpdateHidden;
+var
+  NodeIdx: Integer;
+  Node, Walk: TWmNode;
+begin
+  for NodeIdx := 0 to FNodes.Count - 1 do
+  begin
+    Node := TWmNode(FNodes[NodeIdx]);
+    Node.Hidden := False;
+    Walk := Node.Parent;
+    while Walk <> nil do
+    begin
+      if Walk.Collapsed then
+      begin
+        Node.Hidden := True;
+        Break;
+      end;
+      Walk := Walk.Parent;
+    end;
+  end;
+end;
+
+function TWmMap.VisibleOf(ANode: TWmNode): TWmNode;
+begin
+  Result := ANode;
+  while (Result <> nil) and Result.Hidden do
+    Result := Result.Parent;
+  if Result = nil then
+    Result := ANode;
+end;
+
+function TWmMap.HiddenCount(ANode: TWmNode): Integer;
+var
+  NodeIdx: Integer;
+  Walk: TWmNode;
+begin
+  Result := 0;
+  for NodeIdx := 0 to FNodes.Count - 1 do
+  begin
+    Walk := TWmNode(FNodes[NodeIdx]).Parent;
+    while Walk <> nil do
+    begin
+      if Walk = ANode then
+      begin
+        Inc(Result);
+        Break;
+      end;
+      Walk := Walk.Parent;
+    end;
+  end;
 end;
 
 procedure TWmMap.AutoLayout(ACellW, ACellH: Integer; AOnlyUnset: Boolean);
 var
-  Layer, Row: array of Integer;
-  Desired: array of Double;
-  NodeIdx, EdgeIdx, MaxLayer, LayerIdx, StartIdx, FromIdx, ToIdx: Integer;
-  SortIdx, OtherIdx, PrevRow, PredCount, Swap: Integer;
-  Node: TWmNode;
-  Edge: TWmEdge;
-  Changed: Boolean;
-  Order: array of Integer;
-  OrderCount: Integer;
-  PredSum: Double;
-begin
-  SetLength(Layer, FNodes.Count);
-  SetLength(Row, FNodes.Count);
-  SetLength(Desired, FNodes.Count);
-  SetLength(Order, FNodes.Count);
-  for NodeIdx := 0 to FNodes.Count - 1 do
+  ColOf, RowOf: array of Integer;
+  NodeIdx, Top: Integer;
+  Node, Shown: TWmNode;
+
+  // Узел в (ACol, ATop), его ветка - ниже и правее; результат - сколько
+  // строк заняла ветка
+  function Place(ANode: TWmNode; ACol, ATop: Integer): Integer;
+  var
+    Kids, Modals, WinKids: TList;
+    KidIdx, RightRow, ChainTop, NextRow, SelfIdx: Integer;
+    Kid: TWmNode;
   begin
-    Layer[NodeIdx] := -1;
-    Row[NodeIdx] := -1;
-  end;
-  StartIdx := FNodes.IndexOf(NodeOfFunc('setup'));
-  if StartIdx < 0 then
-    StartIdx := FNodes.IndexOf(NodeOfState(FInitialState, False));
-  if StartIdx >= 0 then
-    Layer[StartIdx] := 0;
-  // столбец - кратчайший путь (по числу переходов) от начала
-  repeat
-    Changed := False;
-    for EdgeIdx := 0 to FEdges.Count - 1 do
-    begin
-      Edge := TWmEdge(FEdges[EdgeIdx]);
-      if Edge.FromNode = Edge.ToNode then
-        Continue;
-      FromIdx := FNodes.IndexOf(Edge.FromNode);
-      ToIdx := FNodes.IndexOf(Edge.ToNode);
-      if (Layer[FromIdx] >= 0) and
-         ((Layer[ToIdx] < 0) or (Layer[ToIdx] > Layer[FromIdx] + 1)) then
-      begin
-        Layer[ToIdx] := Layer[FromIdx] + 1;
-        Changed := True;
-      end;
-    end;
-  until not Changed;
-  MaxLayer := 0;
-  for NodeIdx := 0 to FNodes.Count - 1 do
-    if Layer[NodeIdx] > MaxLayer then
-      MaxLayer := Layer[NodeIdx];
-  // недостижимые - столбец после всех
-  for NodeIdx := 0 to FNodes.Count - 1 do
-    if Layer[NodeIdx] < 0 then
-      Layer[NodeIdx] := MaxLayer + 1;
-  // строка - около средней строки окон, откуда в узел ведут переходы
-  for LayerIdx := 0 to MaxLayer + 1 do
-  begin
-    OrderCount := 0;
-    for NodeIdx := 0 to FNodes.Count - 1 do
-      if Layer[NodeIdx] = LayerIdx then
-      begin
-        PredSum := 0;
-        PredCount := 0;
-        for EdgeIdx := 0 to FEdges.Count - 1 do
-        begin
-          Edge := TWmEdge(FEdges[EdgeIdx]);
-          if (Edge.ToNode <> FNodes[NodeIdx]) or (Edge.FromNode = Edge.ToNode) then
-            Continue;
-          FromIdx := FNodes.IndexOf(Edge.FromNode);
-          if (Layer[FromIdx] < LayerIdx) and (Row[FromIdx] >= 0) then
-          begin
-            PredSum := PredSum + Row[FromIdx];
-            Inc(PredCount);
-          end;
-        end;
-        if PredCount > 0 then
-          Desired[NodeIdx] := PredSum / PredCount
+    SelfIdx := FNodes.IndexOf(ANode);
+    ColOf[SelfIdx] := ACol;
+    RowOf[SelfIdx] := ATop;
+    Result := 1;
+    if ANode.Collapsed or (ANode.ChildCount = 0) then
+      Exit;
+    Kids := TList.Create;
+    Modals := TList.Create;
+    WinKids := TList.Create;
+    try
+      ChildrenOf(ANode, Kids);
+      for KidIdx := 0 to Kids.Count - 1 do
+        if TWmNode(Kids[KidIdx]).Kind = wnkModal then
+          Modals.Add(Kids[KidIdx])
         else
-          Desired[NodeIdx] := 1000 + NodeIdx;
-        Order[OrderCount] := NodeIdx;
-        Inc(OrderCount);
-      end;
-    // по Desired, при равных - по порядку в списке (вставками)
-    for SortIdx := 1 to OrderCount - 1 do
-    begin
-      OtherIdx := SortIdx;
-      while (OtherIdx > 0) and (Desired[Order[OtherIdx - 1]] > Desired[Order[OtherIdx]]) do
+          WinKids.Add(Kids[KidIdx]);
+      // help - справа, с той же строки; у меню (окон-детей несколько) -
+      // под пунктами
+      RightRow := ATop;
+      if WinKids.Count <= 1 then
+        for KidIdx := 0 to Modals.Count - 1 do
+          RightRow := RightRow + Place(TWmNode(Modals[KidIdx]), ACol + 1, RightRow);
+      Result := Max(Result, RightRow - ATop);
+      if WinKids.Count = 1 then
       begin
-        Swap := Order[OtherIdx - 1];
-        Order[OtherIdx - 1] := Order[OtherIdx];
-        Order[OtherIdx] := Swap;
-        Dec(OtherIdx);
-      end;
-    end;
-    PrevRow := -1;
-    for SortIdx := 0 to OrderCount - 1 do
-    begin
-      NodeIdx := Order[SortIdx];
-      if Desired[NodeIdx] >= 1000 then
-        Row[NodeIdx] := PrevRow + 1
-      else
+        // следующий шаг - под окном
+        Kid := TWmNode(WinKids[0]);
+        ChainTop := Max(ATop + 1, RightRow);
+        Result := Max(Result, ChainTop - ATop + Place(Kid, ACol, ChainTop));
+      end
+      else if WinKids.Count > 1 then
       begin
-        Row[NodeIdx] := Round(Desired[NodeIdx]);
-        if Row[NodeIdx] <= PrevRow then
-          Row[NodeIdx] := PrevRow + 1;
+        NextRow := RightRow;
+        for KidIdx := 0 to WinKids.Count - 1 do
+          NextRow := NextRow + Place(TWmNode(WinKids[KidIdx]), ACol + 1, NextRow);
+        for KidIdx := 0 to Modals.Count - 1 do
+          NextRow := NextRow + Place(TWmNode(Modals[KidIdx]), ACol + 1, NextRow);
+        Result := Max(Result, NextRow - ATop);
       end;
-      PrevRow := Row[NodeIdx];
+    finally
+      WinKids.Free;
+      Modals.Free;
+      Kids.Free;
     end;
+  end;
+
+begin
+  SetLength(ColOf, FNodes.Count);
+  SetLength(RowOf, FNodes.Count);
+  for NodeIdx := 0 to FNodes.Count - 1 do
+  begin
+    ColOf[NodeIdx] := -1;
+    RowOf[NodeIdx] := -1;
+  end;
+  Top := 0;
+  Node := NodeOfFunc('setup');
+  if Node = nil then
+    Node := NodeOfState(FInitialState, False);
+  if Node <> nil then
+    Top := Place(Node, 0, 0) + 1;
+  // без пути от setup() - отдельными ветками ниже
+  for NodeIdx := 0 to FNodes.Count - 1 do
+  begin
+    Node := TWmNode(FNodes[NodeIdx]);
+    if (Node.Parent = nil) and (RowOf[NodeIdx] < 0) and not Node.Hidden then
+      Top := Top + Place(Node, 1, Top);
   end;
   for NodeIdx := 0 to FNodes.Count - 1 do
   begin
     Node := TWmNode(FNodes[NodeIdx]);
-    if AOnlyUnset and Node.PosSet then
+    if (RowOf[NodeIdx] < 0) or (AOnlyUnset and Node.PosSet) then
       Continue;
-    Node.PosX := 16 + Layer[NodeIdx] * ACellW;
-    Node.PosY := 16 + Row[NodeIdx] * ACellH;
+    Node.PosX := 16 + ColOf[NodeIdx] * ACellW;
+    Node.PosY := 16 + RowOf[NodeIdx] * ACellH;
+  end;
+  // скрытые - на месте показанного предка (стрелки к ним идут к нему)
+  for NodeIdx := 0 to FNodes.Count - 1 do
+  begin
+    Node := TWmNode(FNodes[NodeIdx]);
+    if (RowOf[NodeIdx] >= 0) or (AOnlyUnset and Node.PosSet) then
+      Continue;
+    Shown := VisibleOf(Node);
+    if Shown <> Node then
+    begin
+      Node.PosX := Shown.PosX;
+      Node.PosY := Shown.PosY;
+    end;
   end;
 end;
 
@@ -1301,7 +1509,7 @@ begin
     for NodeIdx := 0 to FNodes.Count - 1 do
     begin
       Node := TWmNode(FNodes[NodeIdx]);
-      Value := Ini.ReadString('Nodes', Node.Key, '');
+      Value := Ini.ReadString('Moved', Node.Key, '');
       CommaPos := Pos(',', Value);
       if (CommaPos > 0) and TryStrToInt(Trim(Copy(Value, 1, CommaPos - 1)), PosX) and
          TryStrToInt(Trim(Copy(Value, CommaPos + 1, MaxInt)), PosY) then
@@ -1310,13 +1518,19 @@ begin
         Node.PosY := PosY;
         Node.PosSet := True;
       end;
+      Value := Ini.ReadString('Collapsed', Node.Key, '');
+      if (Value <> '') and (Node.ChildCount > 0) then
+        Node.Collapsed := Value = '1';
     end;
   finally
     Ini.Free;
   end;
+  UpdateHidden;
 end;
 
 procedure TWmMap.SavePositions(const AIniFile: string);
+const
+  FlagText: array[Boolean] of string = ('0', '1');
 var
   Ini: TIniFile;
   NodeIdx: Integer;
@@ -1324,10 +1538,16 @@ var
 begin
   Ini := TIniFile.Create(AIniFile);
   try
+    // [Nodes] - места всех узлов прежней версии карты
+    Ini.EraseSection('Nodes');
+    Ini.EraseSection('Moved');
     for NodeIdx := 0 to FNodes.Count - 1 do
     begin
       Node := TWmNode(FNodes[NodeIdx]);
-      Ini.WriteString('Nodes', Node.Key, IntToStr(Node.PosX) + ',' + IntToStr(Node.PosY));
+      if Node.PosSet then
+        Ini.WriteString('Moved', Node.Key, IntToStr(Node.PosX) + ',' + IntToStr(Node.PosY));
+      if Node.ChildCount > 0 then
+        Ini.WriteString('Collapsed', Node.Key, FlagText[Node.Collapsed]);
     end;
     Ini.UpdateFile;
   finally

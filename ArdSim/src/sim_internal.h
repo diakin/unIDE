@@ -44,6 +44,8 @@ int simHostRun(const char *name);
 // Clock of the sketch stops while the debugger holds it (sim_core.cpp)
 void simClockPause(bool paused);
 bool simInIsr();
+// RunToSet start pending: delay() skips time (sim_debug.cpp)
+bool simDbgFastForward();
 
 // Debugger (sim_debug.cpp). The debug area follows the Serial ring in
 // the shared memory of host mode; offsets from its start:
