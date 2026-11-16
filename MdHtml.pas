@@ -66,6 +66,14 @@ function MdEscape(const AText: string): string;
 implementation
 
 const
+  // Флажок пункта задачи ('- [ ]'): в IE - только для показа (disabled).
+  // TurboPower IPro (сборка Lazarus) на <input ... disabled> падает с
+  // Access violation при открытии страницы - там флажок без disabled
+{$IFDEF FPC}
+  TaskDisabled = '';
+{$ELSE}
+  TaskDisabled = ' disabled';
+{$ENDIF}
   // Метка подстановки в строке разбора: TokOpen + номер + TokClose.
   // В исходном тексте эти байты заменяются пробелом (MdPrepare).
   TokOpen = #1;
@@ -1274,10 +1282,10 @@ begin
         First := Item[0];
         Body := Copy(First, 1, 4);
         if (Body = '[ ] ') or (First = '[ ]') then
-          Check := '<input type="checkbox" disabled> '
+          Check := '<input type="checkbox"' + TaskDisabled + '> '
         else if (Body = '[x] ') or (Body = '[X] ') or (First = '[x]') or
                 (First = '[X]') then
-          Check := '<input type="checkbox" checked disabled> ';
+          Check := '<input type="checkbox" checked' + TaskDisabled + '> ';
         if Check <> '' then
           Item[0] := Copy(First, 5, MaxInt);
       end;
