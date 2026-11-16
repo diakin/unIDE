@@ -2152,6 +2152,9 @@ type
     // под мышью; скопированная надпись - имя и текст объявления
     FArdCtlMenu: TPopupMenu;
     FArdMenuLabel: string;
+    // Шаг сетки при перетаскивании надписей в эмуляторе (1 - без сетки),
+    // editor.ini [ArdSim] GridStep
+    FArdGridStep: Integer;
     // Клик мимо надписей: точка экрана и ближайшая показанная надпись
     // (Paste ставит копию в эту точку, вывод - рядом с выводом той надписи)
     FArdMenuNear: string;
@@ -3275,6 +3278,7 @@ type
     function  ArdLabelCopy: Boolean;
     function  ArdLabelDelete: Boolean;
     procedure ArdLabelPaste;
+    procedure ArdLabelZOrder(AFront: Boolean);
     procedure ArdLabelInsert(const AClipName, AClipDecl: string);
     function  ArdLabelNew(AMenuItem: Boolean; const ACaption: string;
                           var ANewName: string): Boolean;
@@ -8625,6 +8629,7 @@ begin
   Ini := TIniFile.Create(SettingsFileName);
   try
     FUseHotTab          := Ini.ReadBool('Editor', 'HotTabHighlight', FUseHotTab);
+    FArdGridStep        := Ini.ReadInteger('ArdSim', 'GridStep', 1);
     FUseSyntaxHighlight := Ini.ReadBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
     RestoreFormBounds(Ini);
     FMatchBounds.Left := Ini.ReadInteger('MatchList', 'Left', 0);
@@ -8813,6 +8818,7 @@ begin
         Ini.WriteInteger('MatchList', 'Height', FMatchBounds.Bottom - FMatchBounds.Top);
       end;
       Ini.WriteBool('Editor', 'HotTabHighlight', FUseHotTab);
+      Ini.WriteInteger('ArdSim', 'GridStep', FArdGridStep);
       Ini.WriteBool('Editor', 'DiffIgnoreSpace', FCmpIgnoreSpace);
       Ini.WriteBool('Editor', 'DiffIgnoreComments', FCmpIgnoreComments);
       Ini.WriteBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
@@ -30138,6 +30144,9 @@ begin
   FArdSim.OnDbgNeedBreaks := ArdDbgNeedBreaks;
   FArdSim.OnScreenWhere := ArdSimScreenWhere;
   FArdSim.OnCtlMoved := ArdSimCtlMoved;
+  if FArdGridStep < 1 then
+    FArdGridStep := 1;
+  FArdSim.GridStep := FArdGridStep;
   FArdSim.OnCtlMenu := ArdSimCtlMenu;
   FArdSim.OnCtlSelect := ArdSimCtlSelect;
   FArdSim.OnPlace := ArdSimPlace;
@@ -36868,11 +36877,20 @@ end;
 // меню Copy / Cut / Paste / Delete
 procedure TForm1.ArdSimCtlMenu(Sender: TObject; AHash: Cardinal; const AScreenPos: TPoint);
 const
-  MenuCaptions: array[0..3] of string = ('Copy', 'Cut', 'Paste', 'Delete');
+  // Tag: 0-3 - правка, 10-15 - выравнивание (AlignSelected), 20, 21 -
+  // порядок отрисовки, 30 + шаг - сетка; '-' - разделитель
+  MenuCaptions: array[0..14] of string = ('Copy', 'Cut', 'Paste', 'Delete', '-',
+    'Выровнять по левому краю', 'Выровнять по правому краю',
+    'Выровнять по верху', 'Выровнять по низу',
+    'Равные интервалы по вертикали', 'Равные интервалы по горизонтали', '-',
+    'На передний план', 'На задний план', '-');
+  MenuTags: array[0..14] of Integer = (0, 1, 2, 3, -1, 10, 11, 12, 13, 14, 15,
+    -1, 20, 21, -1);
+  GridSteps: array[0..5] of Integer = (1, 2, 4, 5, 8, 10);
 var
   Sketch: TArdSketch;
-  LabelIdx, ItemIdx: Integer;
-  Item: TMenuItem;
+  LabelIdx, ItemIdx, SelCount: Integer;
+  Item, GridItem: TMenuItem;
 begin
   FArdMenuLabel := '';
   FArdMenuNear := '';
@@ -36912,10 +36930,42 @@ begin
     begin
       Item := TMenuItem.Create(FArdCtlMenu);
       Item.Caption := MenuCaptions[ItemIdx];
-      Item.Tag := ItemIdx;
-      Item.OnClick := ArdCtlMenuClick;
+      Item.Tag := MenuTags[ItemIdx];
+      if MenuTags[ItemIdx] >= 0 then
+        Item.OnClick := ArdCtlMenuClick;
       FArdCtlMenu.Items.Add(Item);
     end;
+    Item := TMenuItem.Create(FArdCtlMenu);
+    Item.Caption := 'Сетка при перетаскивании';
+    Item.Tag := -1;
+    FArdCtlMenu.Items.Add(Item);
+    for ItemIdx := 0 to High(GridSteps) do
+    begin
+      GridItem := TMenuItem.Create(FArdCtlMenu);
+      if GridSteps[ItemIdx] = 1 then
+        GridItem.Caption := 'Без сетки'
+      else
+        GridItem.Caption := IntToStr(GridSteps[ItemIdx]) + ' точ.';
+      GridItem.Tag := 30 + GridSteps[ItemIdx];
+      GridItem.RadioItem := True;
+      GridItem.GroupIndex := 1;
+      GridItem.OnClick := ArdCtlMenuClick;
+      Item.Add(GridItem);
+    end;
+  end;
+  // Выравнивание - выбранных Ctrl+щелчком (на экране рамки с серыми углами)
+  SelCount := FArdSim.SelectedCount;
+  for ItemIdx := 0 to FArdCtlMenu.Items.Count - 1 do
+  begin
+    Item := FArdCtlMenu.Items[ItemIdx];
+    case Item.Tag of
+      10..13: Item.Enabled := SelCount >= 2;
+      14, 15: Item.Enabled := SelCount >= 3;
+      20, 21: Item.Enabled := FArdMenuLabel <> '';
+    end;
+    if Item.Count > 0 then
+      for LabelIdx := 0 to Item.Count - 1 do
+        Item.Items[LabelIdx].Checked := Item.Items[LabelIdx].Tag - 30 = FArdGridStep;
   end;
   FArdCtlMenu.Items[0].Enabled := FArdMenuLabel <> '';
   FArdCtlMenu.Items[1].Enabled := FArdMenuLabel <> '';
@@ -36932,10 +36982,44 @@ begin
 end;
 
 procedure TForm1.ArdCtlMenuClick(Sender: TObject);
+const
+  AlignNames: array[0..5] of string = ('по левому краю', 'по правому краю',
+    'по верху', 'по низу', 'с равными интервалами по вертикали',
+    'с равными интервалами по горизонтали');
 var
   Changed: Boolean;
+  MenuTag, Moved: Integer;
 begin
-  if (FArdMenuLabel = '') and (TMenuItem(Sender).Tag <> 2) then
+  MenuTag := TMenuItem(Sender).Tag;
+  if MenuTag > 30 then
+  begin
+    FArdGridStep := MenuTag - 30;
+    if FArdSim <> nil then
+      FArdSim.GridStep := FArdGridStep;
+    if FArdGridStep = 1 then
+      LogComp('Эмулятор: перетаскивание надписей без сетки')
+    else
+      LogComp('Эмулятор: при перетаскивании Left, Top - кратны ' +
+              IntToStr(FArdGridStep));
+    Exit;
+  end;
+  if (MenuTag >= 10) and (MenuTag <= 15) then
+  begin
+    if FObjEditing then
+      ObjCancelEdit;
+    Moved := FArdSim.AlignSelected(MenuTag - 10);
+    LogComp('Эмулятор: выровнены ' + AlignNames[MenuTag - 10] + ', сдвинуто надписей: ' +
+            IntToStr(Moved) + ' из ' + IntToStr(FArdSim.SelectedCount));
+    Exit;
+  end;
+  if (MenuTag = 20) or (MenuTag = 21) then
+  begin
+    if FObjEditing then
+      ObjCancelEdit;
+    ArdLabelZOrder(MenuTag = 20);
+    Exit;
+  end;
+  if (FArdMenuLabel = '') and (MenuTag <> 2) then
     Exit;
   if FObjEditing then
     ObjCancelEdit;
@@ -36962,6 +37046,206 @@ begin
     if (FCurrentFileName <> '') and IsSketchExt(FCurrentFileName) then
       ArdRefreshInspector;
   end;
+end;
+
+// На передний / задний план: строка вывода надписи (FArdMenuLabel, строка
+// под курсором - меню открыто после перехода к ней) переносится в той же
+// функции после последней (перед первой) строки вывода надписи, которая
+// перекрывается с ней на экране: нарисованная позже - сверху. Перенос - только
+// в том же блоке { } (не в другую ветку if) и только строк из одного
+// оператора lblX....;
+procedure TForm1.ArdLabelZOrder(AFront: Boolean);
+var
+  Sketch: TArdSketch;
+  Call, Other, Dest, OnlyCall: TArdCall;
+  CallIdx, CallCount, SrcLine, DestLine, LineIdx, Depth, CharPos, LineStart,
+  NextStart, InsLine, NewLine, FromLine, ToLine: Integer;
+  MyBox, OtherBox: TRect;
+  SrcText, DestText, CodeText, Indent, Where, CallName, DestName: string;
+
+  function LineAt(ALine: Integer): string;
+  var
+    StartPos: Integer;
+  begin
+    Result := '';
+    StartPos := EdApi.LineIndex(ALine);
+    if StartPos >= 0 then
+      Result := ReadLineText(ALine, StartPos, EdApi.LineLength(StartPos));
+  end;
+
+begin
+  Sketch := TArdSketch(FArdSketch);
+  if (Sketch = nil) or (FArdSim = nil) or (FArdMenuLabel = '') or
+     not IsSketchExt(FCurrentFileName) then
+    Exit;
+  // Вывод надписи: на строке курсора, иначе - если он один
+  Call := nil;
+  OnlyCall := nil;
+  CallCount := 0;
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+  begin
+    Other := TArdCall(Sketch.Calls[CallIdx]);
+    if not Other.IsLabel or (Other.Name <> FArdMenuLabel) or (Other.Func = nil) or
+       (Other.Func.SrcFile <> '') then
+      Continue;
+    Inc(CallCount);
+    OnlyCall := Other;
+    if Other.Line = CurrentLineIndex then
+      Call := Other;
+  end;
+  if (Call = nil) and (CallCount = 1) then
+    Call := OnlyCall;
+  if Call = nil then
+  begin
+    LogComp('Эмулятор: ' + FArdMenuLabel + ' - строк вывода в скетче: ' +
+            IntToStr(CallCount) + ', курсор не на одной из них; порядок не изменён');
+    Exit;
+  end;
+  if not FArdSim.CtlBoxOf(ArdSimNameHash(FArdMenuLabel), MyBox) then
+  begin
+    LogComp('Эмулятор: ' + FArdMenuLabel + ' сейчас не на экране - не с чем сравнить');
+    Exit;
+  end;
+  Dest := nil;
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+  begin
+    Other := TArdCall(Sketch.Calls[CallIdx]);
+    if not Other.IsLabel or (Other.Func <> Call.Func) or (Other.Name = Call.Name) then
+      Continue;
+    if AFront and (Other.Line <= Call.Line) then
+      Continue;
+    if not AFront and (Other.Line >= Call.Line) then
+      Continue;
+    if not FArdSim.CtlBoxOf(ArdSimNameHash(Other.Name), OtherBox) then
+      Continue;
+    if (OtherBox.Left >= MyBox.Right) or (MyBox.Left >= OtherBox.Right) or
+       (OtherBox.Top >= MyBox.Bottom) or (MyBox.Top >= OtherBox.Bottom) then
+      Continue;
+    if (Dest = nil) or (AFront and (Other.Line > Dest.Line)) or
+       (not AFront and (Other.Line < Dest.Line)) then
+      Dest := Other;
+  end;
+  if AFront then
+    Where := 'над'
+  else
+    Where := 'под';
+  if Dest = nil then
+  begin
+    LogComp('Эмулятор: ' + Call.Name + ' уже ' + Where + ' всеми надписями ' +
+            'функции ' + Call.Func.Name + ', с которыми перекрывается');
+    Exit;
+  end;
+  // Правка в редакторе разбирает скетч заново - Call и Dest после неё
+  // уже освобождены
+  CallName := Call.Name;
+  DestName := Dest.Name;
+  SrcLine := Call.Line;
+  DestLine := Dest.Line;
+  SrcText := LineAt(SrcLine);
+  DestText := LineAt(DestLine);
+  if not ArdSimpleLabelLine(Call.Name, Trim(ArdCodePart(SrcText))) or
+     not ArdSimpleLabelLine(Dest.Name, Trim(ArdCodePart(DestText))) then
+  begin
+    ShowMessage('Порядок не изменён: строки ' + IntToStr(SrcLine + 1) + ' и ' +
+      IntToStr(DestLine + 1) + ' должны быть отдельными операторами вывода ' +
+      '(' + Call.Name + '....; и ' + Dest.Name + '....;)');
+    Exit;
+  end;
+  // Между строками скобки { } уравновешены - один блок
+  if SrcLine < DestLine then
+  begin
+    FromLine := SrcLine + 1;
+    ToLine := DestLine - 1;
+  end
+  else
+  begin
+    FromLine := DestLine + 1;
+    ToLine := SrcLine - 1;
+  end;
+  Depth := 0;
+  for LineIdx := FromLine to ToLine do
+  begin
+    CodeText := ArdCodePart(LineAt(LineIdx));
+    for CharPos := 1 to Length(CodeText) do
+      if CodeText[CharPos] = '{' then
+        Inc(Depth)
+      else if CodeText[CharPos] = '}' then
+      begin
+        Dec(Depth);
+        if Depth < 0 then
+          Break;
+      end;
+    if Depth < 0 then
+      Break;
+  end;
+  if Depth <> 0 then
+  begin
+    ShowMessage('Порядок не изменён: вывод ' + Dest.Name + ' (строка ' +
+      IntToStr(DestLine + 1) + ') в другом блоке { }, чем ' + Call.Name +
+      ' (строка ' + IntToStr(SrcLine + 1) + ')');
+    Exit;
+  end;
+  Indent := '';
+  CharPos := 1;
+  while (CharPos <= Length(DestText)) and (DestText[CharPos] in [' ', #9]) do
+    Inc(CharPos);
+  Indent := Copy(DestText, 1, CharPos - 1);
+  SrcText := Indent + TrimLeft(SrcText);
+  while (SrcText <> '') and (SrcText[Length(SrcText)] in [#13, #10]) do
+    Delete(SrcText, Length(SrcText), 1);
+  Inc(FObjOwnWrite);
+  try
+    EditorFreeze;
+    try
+      // Сначала нижняя из двух правок: номер верхней строки не сдвигается
+      if AFront then
+      begin
+        InsLine := DestLine + 1;
+        LineStart := EdApi.LineIndex(InsLine);
+        if LineStart < 0 then
+          Exit;
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := 0;
+        RichEdit1.SelText := SrcText + #13#10;
+      end;
+      LineStart := EdApi.LineIndex(SrcLine);
+      NextStart := EdApi.LineIndex(SrcLine + 1);
+      if (LineStart >= 0) and (NextStart > LineStart) then
+      begin
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := NextStart - LineStart;
+        RichEdit1.SelText := '';
+      end;
+      if not AFront then
+      begin
+        LineStart := EdApi.LineIndex(DestLine);
+        if LineStart >= 0 then
+        begin
+          RichEdit1.SelStart := LineStart;
+          RichEdit1.SelLength := 0;
+          RichEdit1.SelText := SrcText + #13#10;
+        end;
+      end;
+      // и вперёд, и назад перенесённая строка - на месте DestLine
+      NewLine := DestLine;
+      LineStart := EdApi.LineIndex(NewLine);
+      if LineStart >= 0 then
+      begin
+        RichEdit1.SelStart := LineStart + Length(Indent);
+        RichEdit1.SelLength := 0;
+      end;
+    finally
+      EditorThaw;
+    end;
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  LogComp('Эмулятор: ' + CallName + ' - вывод перенесён ' + Where + ' ' + DestName +
+          ' (строка ' + IntToStr(SrcLine + 1) + ' -> ' + IntToStr(NewLine + 1) +
+          '), на экране эмулятора - после сборки (Build)');
+  FArdTextKey := '';
+  FArdEdKey := '';
+  ArdRefreshInspector;
 end;
 
 // Copy: объявление надписи (строки файла форм до '};') - во внутренний

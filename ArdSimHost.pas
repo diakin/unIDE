@@ -93,6 +93,13 @@ type
     Box: TRect;              // занятые точки при последней отрисовке
     Shown: Boolean;          // нарисована при последней отрисовке
   end;
+  // Перетаскиваемая надпись: выбранные (Ctrl+щелчок) тащатся вместе
+  TArdDragItem = record
+    Hash: Cardinal;
+    IsPhantom: Boolean;      // надпись до сборки (TArdSimPhantom)
+    Left, Top: Integer;      // в начале
+    NewLeft, NewTop: Integer;
+  end;
   TArdSimSaveEvent = function(Sender: TObject): Boolean of object;
   // Строки точек останова: (номер файла shl 20) or строка с 1
   TArdDbgCodes = array of Cardinal;
@@ -241,7 +248,6 @@ type
     FPreview: TObject;
     FKept: TList;
     FPhantoms: TList;            // TArdSimPhantom
-    FDragPhantom: TArdSimPhantom;
     FOnCtlSelect: TArdSimCtlHashEvent;
     // Выбранная надпись TLabel (рамка на экране) и её перетаскивание
     FSelCtlHash: Cardinal;        // 0 - нет
@@ -249,8 +255,11 @@ type
     FDragging: Boolean;
     FDragMoved: Boolean;
     FDragFromX, FDragFromY: Integer;
-    FDragLeft, FDragTop: Integer;          // Left, Top в начале
-    FDragNewLeft, FDragNewTop: Integer;
+    // Ещё выбранные надписи (Ctrl+щелчок), кроме FSelCtlHash
+    FSelExtra: array of Cardinal;
+    // Перетаскиваемые: первая - под мышью, по ней - сетка
+    FDragItems: array of TArdDragItem;
+    FGridStep: Integer;          // шаг сетки при перетаскивании, 1 - без сетки
     FOnCtlMoved: TArdSimCtlMovedEvent;
     FOnCtlMenu: TArdSimCtlMenuEvent;
     // Меню правого клика ждёт ответа эмулятора (переход к строке вывода):
@@ -272,7 +281,15 @@ type
     procedure DrawCtlMarker;
     function SetCtlOverrideHash(AHash: Cardinal; AProp, AKind, ANumber: Integer;
                                 const AText: string): Boolean;
-    function CtlMouseDown(AX, AY: Integer): Boolean;
+    function CtlMouseDown(AX, AY: Integer; AToggle: Boolean): Boolean;
+    function CtlSelected(AHash: Cardinal): Boolean;
+    procedure CtlMakePrimary(AHash: Cardinal);
+    procedure CtlSelToggle(AHash: Cardinal);
+    function CtlPlace(AHash: Cardinal; var ALeft, ATop: Integer; var ABox: TRect;
+                      var AIsPhantom: Boolean): Boolean;
+    procedure CtlMoveTo(var AItem: TArdDragItem; ANewLeft, ANewTop: Integer);
+    function CtlDragHas(AHash: Cardinal): Boolean;
+    function SnapGrid(AValue: Integer): Integer;
     procedure CtlContextMenu(AX, AY: Integer; const AScreenPos: TPoint);
     procedure PlaceClick(AX, AY: Integer);
     function CtlSimHashAt(AX, AY: Integer; var AArea: Integer): Cardinal;
@@ -428,6 +445,17 @@ type
     // Надпись TLabel, выбранная в инспекторе: рамка вокруг неё на экране,
     // её можно тащить мышью. '' - нет
     property SelectedControl: string write SetSelectedControl;
+    // Выбранные надписи: 0 - FSelCtlHash (рамка с жёлтыми углами), дальше -
+    // добавленные Ctrl+щелчком
+    function SelectedCount: Integer;
+    function SelectedHash(AIndex: Integer): Cardinal;
+    // Занятые точки показанной надписи (или надписи до сборки)
+    function CtlBoxOf(AHash: Cardinal; var ABox: TRect): Boolean;
+    // Выравнивание выбранных: 0 - по левому краю, 1 - по правому, 2 - по
+    // верху, 3 - по низу, 4 - равные интервалы по вертикали, 5 - по
+    // горизонтали. Результат - сколько надписей сдвинуто (OnCtlMoved)
+    function AlignSelected(AMode: Integer): Integer;
+    property GridStep: Integer read FGridStep write FGridStep;
     property OnCtlMoved: TArdSimCtlMovedEvent read FOnCtlMoved write FOnCtlMoved;
     property OnCtlMenu: TArdSimCtlMenuEvent read FOnCtlMenu write FOnCtlMenu;
     // Надписи, добавленные после сборки (TArdSimPhantom): SetPhantom
@@ -922,7 +950,12 @@ begin
   end;
   if PtInRect(FScreenRect, HitPoint) and (FOwnerPanel <> nil) then
   begin
-    FOwnerPanel.CtlMouseDown(PosX - FScreenRect.Left, PosY - FScreenRect.Top);
+    FOwnerPanel.CtlMouseDown(PosX - FScreenRect.Left, PosY - FScreenRect.Top,
+                             ssCtrl in Shift);
+    // Ctrl+щелчок снял выбор - к строке вывода не переходить
+    if (FOwnerPanel.WhereCtlHash <> 0) and
+       not FOwnerPanel.CtlSelected(FOwnerPanel.WhereCtlHash) then
+      Exit;
     if FOwnerPanel.PhantomByHash(FOwnerPanel.WhereCtlHash) <> nil then
     begin
       if Assigned(FOwnerPanel.OnCtlSelect) then
@@ -1197,6 +1230,7 @@ constructor TArdSimPanel.Create(AOwner: TComponent);
 
 begin
   inherited Create(AOwner);
+  FGridStep := 1;
   BevelOuter := bvNone;
   Caption := '';
   {$IFDEF MSWINDOWS}
@@ -3435,9 +3469,322 @@ begin
     Hash := 0
   else
     Hash := ArgNameHash(AName);
-  if FDragging or (Hash = FSelCtlHash) then
+  if FDragging then
     Exit;
+  // Уже среди выбранных (Ctrl+щелчок, переход к строке) - она главная,
+  // остальные остаются
+  if (Hash <> 0) and CtlSelected(Hash) then
+  begin
+    if Hash <> FSelCtlHash then
+    begin
+      CtlMakePrimary(Hash);
+      FDevice.InvalidateScreen;
+    end;
+    Exit;
+  end;
+  if (Hash = FSelCtlHash) and (Length(FSelExtra) = 0) then
+    Exit;
+  SetLength(FSelExtra, 0);
   FSelCtlHash := Hash;
+  FDevice.InvalidateScreen;
+end;
+
+function TArdSimPanel.CtlSelected(AHash: Cardinal): Boolean;
+var
+  SelIdx: Integer;
+begin
+  Result := (AHash <> 0) and (AHash = FSelCtlHash);
+  if not Result and (AHash <> 0) then
+    for SelIdx := 0 to High(FSelExtra) do
+      if FSelExtra[SelIdx] = AHash then
+      begin
+        Result := True;
+        Exit;
+      end;
+end;
+
+// Выбранная Ctrl+щелчком становится главной, прежняя главная - на её место
+procedure TArdSimPanel.CtlMakePrimary(AHash: Cardinal);
+var
+  SelIdx: Integer;
+begin
+  for SelIdx := 0 to High(FSelExtra) do
+    if FSelExtra[SelIdx] = AHash then
+    begin
+      FSelExtra[SelIdx] := FSelCtlHash;
+      FSelCtlHash := AHash;
+      Exit;
+    end;
+end;
+
+procedure TArdSimPanel.CtlSelToggle(AHash: Cardinal);
+var
+  SelIdx, Last: Integer;
+begin
+  Last := High(FSelExtra);
+  if AHash = FSelCtlHash then
+  begin
+    if Last >= 0 then
+    begin
+      FSelCtlHash := FSelExtra[Last];
+      SetLength(FSelExtra, Last);
+    end
+    else
+      FSelCtlHash := 0;
+    Exit;
+  end;
+  for SelIdx := 0 to Last do
+    if FSelExtra[SelIdx] = AHash then
+    begin
+      FSelExtra[SelIdx] := FSelExtra[Last];
+      SetLength(FSelExtra, Last);
+      Exit;
+    end;
+  if FSelCtlHash = 0 then
+    FSelCtlHash := AHash
+  else
+  begin
+    SetLength(FSelExtra, Last + 2);
+    FSelExtra[Last + 1] := AHash;
+  end;
+end;
+
+function TArdSimPanel.SelectedCount: Integer;
+begin
+  if FSelCtlHash = 0 then
+    Result := 0
+  else
+    Result := 1 + Length(FSelExtra);
+end;
+
+function TArdSimPanel.SelectedHash(AIndex: Integer): Cardinal;
+begin
+  Result := 0;
+  if AIndex = 0 then
+    Result := FSelCtlHash
+  else if (FSelCtlHash <> 0) and (AIndex >= 1) and (AIndex <= Length(FSelExtra)) then
+    Result := FSelExtra[AIndex - 1];
+end;
+
+// Где надпись сейчас: Left, Top (из таблицы показанных или надписи до
+// сборки) и занятые точки
+function TArdSimPanel.CtlPlace(AHash: Cardinal; var ALeft, ATop: Integer;
+  var ABox: TRect; var AIsPhantom: Boolean): Boolean;
+var
+  Entry: PCardinal;
+  Words: PSmallIntArrayH;
+  Phantom: TArdSimPhantom;
+begin
+  Result := False;
+  AIsPhantom := False;
+  if AHash = 0 then
+    Exit;
+  Entry := CtlShownEntry(AHash);
+  if Entry <> nil then
+  begin
+    Words := PSmallIntArrayH(Entry);
+    ALeft := Words^[4];
+    ATop := Words^[5];
+    ABox := CtlShownBox(Entry);
+    Result := True;
+    Exit;
+  end;
+  Phantom := PhantomByHash(AHash);
+  if (Phantom = nil) or not Phantom.Shown then
+    Exit;
+  ALeft := Phantom.Left;
+  ATop := Phantom.Top;
+  ABox := Phantom.Box;
+  AIsPhantom := True;
+  Result := True;
+end;
+
+function TArdSimPanel.CtlBoxOf(AHash: Cardinal; var ABox: TRect): Boolean;
+var
+  PosLeft, PosTop: Integer;
+  IsPhantom: Boolean;
+begin
+  Result := CtlPlace(AHash, PosLeft, PosTop, ABox, IsPhantom);
+end;
+
+// Новое место - сразу в эмулятор (таблица правок) или надписи до сборки
+procedure TArdSimPanel.CtlMoveTo(var AItem: TArdDragItem; ANewLeft, ANewTop: Integer);
+var
+  Phantom: TArdSimPhantom;
+begin
+  if ANewLeft < 0 then
+    ANewLeft := 0;
+  if ANewTop < 0 then
+    ANewTop := 0;
+  if ANewLeft > ArdSimScreenW - 1 then
+    ANewLeft := ArdSimScreenW - 1;
+  if ANewTop > ArdSimScreenH - 1 then
+    ANewTop := ArdSimScreenH - 1;
+  if AItem.IsPhantom then
+  begin
+    Phantom := PhantomByHash(AItem.Hash);
+    if Phantom <> nil then
+    begin
+      Phantom.Left := ANewLeft;
+      Phantom.Top := ANewTop;
+      FDevice.InvalidateScreen;
+    end;
+  end
+  else
+  begin
+    if ANewLeft <> AItem.NewLeft then
+      SetCtlOverrideHash(AItem.Hash, 0, 1, ANewLeft, '');
+    if ANewTop <> AItem.NewTop then
+      SetCtlOverrideHash(AItem.Hash, 1, 1, ANewTop, '');
+  end;
+  AItem.NewLeft := ANewLeft;
+  AItem.NewTop := ANewTop;
+end;
+
+function TArdSimPanel.CtlDragHas(AHash: Cardinal): Boolean;
+var
+  ItemIdx: Integer;
+begin
+  Result := False;
+  if not FDragging then
+    Exit;
+  for ItemIdx := 0 to High(FDragItems) do
+    if FDragItems[ItemIdx].Hash = AHash then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+function TArdSimPanel.SnapGrid(AValue: Integer): Integer;
+begin
+  Result := AValue;
+  if FGridStep <= 1 then
+    Exit;
+  if AValue < 0 then
+    Result := 0
+  else
+    Result := ((AValue + FGridStep div 2) div FGridStep) * FGridStep;
+end;
+
+function TArdSimPanel.AlignSelected(AMode: Integer): Integer;
+var
+  Items: array of TArdDragItem;
+  Boxes: array of TRect;
+  Order: array of Integer;
+  Count, SelIdx, ItemIdx, OtherIdx, Swap, Target, Span, SizeSum, SizeBefore,
+  FreeSpace, Size, NewPos: Integer;
+  Box: TRect;
+  PosLeft, PosTop: Integer;
+  IsPhantom, Vertical: Boolean;
+begin
+  Result := 0;
+  if FDragging then
+    Exit;
+  SetLength(Items, SelectedCount);
+  SetLength(Boxes, SelectedCount);
+  Count := 0;
+  for SelIdx := 0 to SelectedCount - 1 do
+    if CtlPlace(SelectedHash(SelIdx), PosLeft, PosTop, Box, IsPhantom) then
+    begin
+      Items[Count].Hash := SelectedHash(SelIdx);
+      Items[Count].IsPhantom := IsPhantom;
+      Items[Count].Left := PosLeft;
+      Items[Count].Top := PosTop;
+      Items[Count].NewLeft := PosLeft;
+      Items[Count].NewTop := PosTop;
+      Boxes[Count] := Box;
+      Inc(Count);
+    end;
+  if (Count < 2) or ((AMode >= 4) and (Count < 3)) then
+    Exit;
+  case AMode of
+    0, 1, 2, 3:
+      begin
+        Target := 0;
+        for ItemIdx := 0 to Count - 1 do
+        begin
+          Box := Boxes[ItemIdx];
+          if (ItemIdx = 0) or ((AMode = 0) and (Box.Left < Target)) or
+             ((AMode = 1) and (Box.Right > Target)) or
+             ((AMode = 2) and (Box.Top < Target)) or
+             ((AMode = 3) and (Box.Bottom > Target)) then
+            case AMode of
+              0: Target := Box.Left;
+              1: Target := Box.Right;
+              2: Target := Box.Top;
+              3: Target := Box.Bottom;
+            end;
+        end;
+        for ItemIdx := 0 to Count - 1 do
+        begin
+          Box := Boxes[ItemIdx];
+          case AMode of
+            0: CtlMoveTo(Items[ItemIdx], Items[ItemIdx].Left + Target - Box.Left, Items[ItemIdx].Top);
+            1: CtlMoveTo(Items[ItemIdx], Items[ItemIdx].Left + Target - Box.Right, Items[ItemIdx].Top);
+            2: CtlMoveTo(Items[ItemIdx], Items[ItemIdx].Left, Items[ItemIdx].Top + Target - Box.Top);
+            3: CtlMoveTo(Items[ItemIdx], Items[ItemIdx].Left, Items[ItemIdx].Top + Target - Box.Bottom);
+          end;
+        end;
+      end;
+    4, 5:
+      begin
+        // Крайние на месте, между надписями - равные промежутки
+        Vertical := AMode = 4;
+        SetLength(Order, Count);
+        for ItemIdx := 0 to Count - 1 do
+          Order[ItemIdx] := ItemIdx;
+        for ItemIdx := 0 to Count - 2 do
+          for OtherIdx := ItemIdx + 1 to Count - 1 do
+            if (Vertical and (Boxes[Order[OtherIdx]].Top < Boxes[Order[ItemIdx]].Top)) or
+               (not Vertical and (Boxes[Order[OtherIdx]].Left < Boxes[Order[ItemIdx]].Left)) then
+            begin
+              Swap := Order[ItemIdx];
+              Order[ItemIdx] := Order[OtherIdx];
+              Order[OtherIdx] := Swap;
+            end;
+        SizeSum := 0;
+        for ItemIdx := 0 to Count - 1 do
+          if Vertical then
+            Inc(SizeSum, Boxes[ItemIdx].Bottom - Boxes[ItemIdx].Top)
+          else
+            Inc(SizeSum, Boxes[ItemIdx].Right - Boxes[ItemIdx].Left);
+        if Vertical then
+          Span := Boxes[Order[Count - 1]].Bottom - Boxes[Order[0]].Top
+        else
+          Span := Boxes[Order[Count - 1]].Right - Boxes[Order[0]].Left;
+        FreeSpace := Span - SizeSum;
+        SizeBefore := 0;
+        for ItemIdx := 0 to Count - 1 do
+        begin
+          OtherIdx := Order[ItemIdx];
+          Box := Boxes[OtherIdx];
+          if Vertical then
+          begin
+            Size := Box.Bottom - Box.Top;
+            NewPos := Boxes[Order[0]].Top + SizeBefore + (FreeSpace * ItemIdx) div (Count - 1);
+            CtlMoveTo(Items[OtherIdx], Items[OtherIdx].Left,
+                      Items[OtherIdx].Top + NewPos - Box.Top);
+          end
+          else
+          begin
+            Size := Box.Right - Box.Left;
+            NewPos := Boxes[Order[0]].Left + SizeBefore + (FreeSpace * ItemIdx) div (Count - 1);
+            CtlMoveTo(Items[OtherIdx], Items[OtherIdx].Left + NewPos - Box.Left,
+                      Items[OtherIdx].Top);
+          end;
+          Inc(SizeBefore, Size);
+        end;
+      end;
+  end;
+  for ItemIdx := 0 to Count - 1 do
+    if (Items[ItemIdx].NewLeft <> Items[ItemIdx].Left) or
+       (Items[ItemIdx].NewTop <> Items[ItemIdx].Top) then
+    begin
+      Inc(Result);
+      if Assigned(FOnCtlMoved) then
+        FOnCtlMoved(Self, Items[ItemIdx].Hash, Items[ItemIdx].NewLeft, Items[ItemIdx].NewTop);
+    end;
   FDevice.InvalidateScreen;
 end;
 
@@ -3445,9 +3792,11 @@ end;
 // углам. В FPixels: до следующей перерисовки экрана
 procedure TArdSimPanel.DrawCtlMarker;
 var
-  Entry: PCardinal;
   Box: TRect;
-  PosX, PosY, Step, CornerX, CornerY: Integer;
+  PosX, PosY, Step, CornerX, CornerY, SelIdx: Integer;
+  CornerColor: Cardinal;
+  PosLeft, PosTop: Integer;
+  IsPhantom: Boolean;
 
   procedure PutPixel(APosX, APosY: Integer);
   begin
@@ -3474,20 +3823,22 @@ var
           if (Abs(DeltaX) = 2) or (Abs(DeltaY) = 2) then
             FPixels[(ACenterY + DeltaY) * ArdSimScreenW + ACenterX + DeltaX] := $000000
           else
-            FPixels[(ACenterY + DeltaY) * ArdSimScreenW + ACenterX + DeltaX] := $FFFF00;
+            FPixels[(ACenterY + DeltaY) * ArdSimScreenW + ACenterX + DeltaX] := CornerColor;
         end;
   end;
 
 begin
   if Length(FPixels) < ArdSimScreenW * ArdSimScreenH then
     Exit;
-  Entry := CtlShownEntry(FSelCtlHash);
-  if Entry <> nil then
-    Box := CtlShownBox(Entry)
-  else if (PhantomByHash(FSelCtlHash) <> nil) and PhantomByHash(FSelCtlHash).Shown then
-    Box := PhantomByHash(FSelCtlHash).Box
+  // Главная - жёлтые углы, добавленные Ctrl+щелчком - серые
+  for SelIdx := SelectedCount - 1 downto 0 do
+  begin
+  if not CtlPlace(SelectedHash(SelIdx), PosLeft, PosTop, Box, IsPhantom) then
+    Continue;
+  if SelIdx = 0 then
+    CornerColor := $FFFF00
   else
-    Exit;
+    CornerColor := $A0A0A0;
   // снаружи занятых точек
   Box := Rect(Box.Left - 1, Box.Top - 1, Box.Right, Box.Bottom);
   Step := 0;
@@ -3503,46 +3854,66 @@ begin
     for CornerX := 0 to 1 do
       PutCorner(Box.Left + CornerX * (Box.Right - Box.Left),
                 Box.Top + CornerY * (Box.Bottom - Box.Top));
+  end;
 end;
 
 // Нажатие на экране: надпись TLabel под мышью - выбрана (рамка сразу, не
 // дожидаясь инспектора) и тащится, пока кнопка нажата
-function TArdSimPanel.CtlMouseDown(AX, AY: Integer): Boolean;
+function TArdSimPanel.CtlMouseDown(AX, AY: Integer; AToggle: Boolean): Boolean;
 var
   Hash: Cardinal;
-  Entry: PCardinal;
-  Words: PSmallIntArrayH;
+  SelIdx, Count: Integer;
+  Box: TRect;
 begin
   Result := False;
   FDragging := False;
-  FDragPhantom := nil;
   Hash := CtlHashAt(AX, AY);
   FWhereCtlHash := Hash;
   if Hash = 0 then
-    Exit;
-  Entry := CtlShownEntry(Hash);
-  if Entry <> nil then
   begin
-    Words := PSmallIntArrayH(Entry);
-    FDragLeft := Words^[4];
-    FDragTop := Words^[5];
-  end
+    if not AToggle and (Length(FSelExtra) > 0) then
+    begin
+      SetLength(FSelExtra, 0);
+      FDevice.InvalidateScreen;
+    end;
+    Exit;
+  end;
+  // Ctrl+щелчок: добавить к выбранным или убрать, без перетаскивания
+  if AToggle then
+  begin
+    CtlSelToggle(Hash);
+    FDevice.InvalidateScreen;
+    Result := CtlSelected(Hash);
+    Exit;
+  end;
+  if CtlSelected(Hash) then
+    CtlMakePrimary(Hash)
   else
   begin
-    FDragPhantom := PhantomByHash(Hash);
-    if FDragPhantom = nil then
-      Exit;
-    FDragLeft := FDragPhantom.Left;
-    FDragTop := FDragPhantom.Top;
+    SetLength(FSelExtra, 0);
+    FSelCtlHash := Hash;
   end;
-  FSelCtlHash := Hash;
+  SetLength(FDragItems, SelectedCount);
+  Count := 0;
+  for SelIdx := 0 to SelectedCount - 1 do
+    if CtlPlace(SelectedHash(SelIdx), FDragItems[Count].Left, FDragItems[Count].Top,
+                Box, FDragItems[Count].IsPhantom) then
+    begin
+      FDragItems[Count].Hash := SelectedHash(SelIdx);
+      FDragItems[Count].NewLeft := FDragItems[Count].Left;
+      FDragItems[Count].NewTop := FDragItems[Count].Top;
+      Inc(Count);
+    end
+    else if SelIdx = 0 then
+      Break;
+  SetLength(FDragItems, Count);
+  FDevice.InvalidateScreen;
+  if (Count = 0) or (FDragItems[0].Hash <> Hash) then
+    Exit;
   FDragging := True;
   FDragMoved := False;
   FDragFromX := AX;
   FDragFromY := AY;
-  FDragNewLeft := FDragLeft;
-  FDragNewTop := FDragTop;
-  FDevice.InvalidateScreen;
   Result := True;
 end;
 
@@ -3559,7 +3930,14 @@ begin
   FWhereCtlHash := Hash;
   if (Hash <> 0) and (CtlShownEntry(Hash) <> nil) then
   begin
-    FSelCtlHash := Hash;
+    // на одной из выбранных - выбор остаётся (выравнивание в меню)
+    if CtlSelected(Hash) then
+      CtlMakePrimary(Hash)
+    else
+    begin
+      SetLength(FSelExtra, 0);
+      FSelCtlHash := Hash;
+    end;
     FDevice.InvalidateScreen;
   end;
   FMenuHash := Hash;
@@ -3630,54 +4008,66 @@ begin
     FireCtlMenu;
 end;
 
-// Новые Left, Top - сразу в эмулятор: он перерисовывает надпись
+// Новые Left, Top - сразу в эмулятор: он перерисовывает надпись. Все
+// выбранные - на тот же сдвиг; по сетке - Left, Top надписи под мышью
 procedure TArdSimPanel.CtlMouseMove(AX, AY: Integer);
 var
-  NewLeft, NewTop: Integer;
+  DeltaX, DeltaY, ItemIdx, MinLeft, MinTop, MaxLeft, MaxTop: Integer;
 begin
-  if not FDragging then
+  if not FDragging or (Length(FDragItems) = 0) then
     Exit;
-  NewLeft := FDragLeft + AX - FDragFromX;
-  NewTop := FDragTop + AY - FDragFromY;
-  if NewLeft < 0 then
-    NewLeft := 0;
-  if NewTop < 0 then
-    NewTop := 0;
-  if NewLeft > ArdSimScreenW - 1 then
-    NewLeft := ArdSimScreenW - 1;
-  if NewTop > ArdSimScreenH - 1 then
-    NewTop := ArdSimScreenH - 1;
   // дрожание руки при щелчке - не перенос
   if not FDragMoved and (Abs(AX - FDragFromX) < 3) and (Abs(AY - FDragFromY) < 3) then
     Exit;
-  if (NewLeft = FDragNewLeft) and (NewTop = FDragNewTop) then
+  DeltaX := SnapGrid(FDragItems[0].Left + AX - FDragFromX) - FDragItems[0].Left;
+  DeltaY := SnapGrid(FDragItems[0].Top + AY - FDragFromY) - FDragItems[0].Top;
+  MinLeft := MaxInt;
+  MinTop := MaxInt;
+  MaxLeft := -MaxInt;
+  MaxTop := -MaxInt;
+  for ItemIdx := 0 to High(FDragItems) do
+  begin
+    if FDragItems[ItemIdx].Left < MinLeft then
+      MinLeft := FDragItems[ItemIdx].Left;
+    if FDragItems[ItemIdx].Top < MinTop then
+      MinTop := FDragItems[ItemIdx].Top;
+    if FDragItems[ItemIdx].Left > MaxLeft then
+      MaxLeft := FDragItems[ItemIdx].Left;
+    if FDragItems[ItemIdx].Top > MaxTop then
+      MaxTop := FDragItems[ItemIdx].Top;
+  end;
+  // группа целиком в пределах экрана
+  if MinLeft + DeltaX < 0 then
+    DeltaX := -MinLeft;
+  if MinTop + DeltaY < 0 then
+    DeltaY := -MinTop;
+  if MaxLeft + DeltaX > ArdSimScreenW - 1 then
+    DeltaX := ArdSimScreenW - 1 - MaxLeft;
+  if MaxTop + DeltaY > ArdSimScreenH - 1 then
+    DeltaY := ArdSimScreenH - 1 - MaxTop;
+  if (FDragItems[0].Left + DeltaX = FDragItems[0].NewLeft) and
+     (FDragItems[0].Top + DeltaY = FDragItems[0].NewTop) then
     Exit;
   FDragMoved := True;
-  if FDragPhantom <> nil then
-  begin
-    FDragPhantom.Left := NewLeft;
-    FDragPhantom.Top := NewTop;
-    FDevice.InvalidateScreen;
-  end
-  else
-  begin
-    if NewLeft <> FDragNewLeft then
-      SetCtlOverrideHash(FSelCtlHash, 0, 1, NewLeft, '');
-    if NewTop <> FDragNewTop then
-      SetCtlOverrideHash(FSelCtlHash, 1, 1, NewTop, '');
-  end;
-  FDragNewLeft := NewLeft;
-  FDragNewTop := NewTop;
+  for ItemIdx := 0 to High(FDragItems) do
+    CtlMoveTo(FDragItems[ItemIdx], FDragItems[ItemIdx].Left + DeltaX,
+              FDragItems[ItemIdx].Top + DeltaY);
 end;
 
 procedure TArdSimPanel.CtlMouseUp;
+var
+  ItemIdx: Integer;
 begin
   if not FDragging then
     Exit;
   FDragging := False;
-  FDragPhantom := nil;
   if FDragMoved and Assigned(FOnCtlMoved) then
-    FOnCtlMoved(Self, FSelCtlHash, FDragNewLeft, FDragNewTop);
+    for ItemIdx := 0 to High(FDragItems) do
+      if (FDragItems[ItemIdx].NewLeft <> FDragItems[ItemIdx].Left) or
+         (FDragItems[ItemIdx].NewTop <> FDragItems[ItemIdx].Top) then
+        FOnCtlMoved(Self, FDragItems[ItemIdx].Hash, FDragItems[ItemIdx].NewLeft,
+                    FDragItems[ItemIdx].NewTop);
+  SetLength(FDragItems, 0);
 end;
 
 function TArdSimPanel.SetArgOverride(AFileIdx, ALine: Integer;
@@ -3902,11 +4292,10 @@ begin
     if Old.Hash = APhantom.Hash then
     begin
       // перетаскивание этой надписи идёт - место из мыши не теряем
-      if FDragPhantom = Old then
+      if CtlDragHas(Old.Hash) then
       begin
         APhantom.Left := Old.Left;
         APhantom.Top := Old.Top;
-        FDragPhantom := APhantom;
       end;
       APhantom.Box := Old.Box;
       APhantom.Shown := Old.Shown;
@@ -3931,11 +4320,8 @@ begin
   for PhIdx := FPhantoms.Count - 1 downto 0 do
     if TArdSimPhantom(FPhantoms[PhIdx]).Hash = Hash then
     begin
-      if FDragPhantom = FPhantoms[PhIdx] then
-      begin
-        FDragPhantom := nil;
+      if CtlDragHas(Hash) then
         FDragging := False;
-      end;
       TObject(FPhantoms[PhIdx]).Free;
       FPhantoms.Delete(PhIdx);
     end;
@@ -3951,7 +4337,6 @@ begin
   for PhIdx := 0 to FPhantoms.Count - 1 do
     TObject(FPhantoms[PhIdx]).Free;
   FPhantoms.Clear;
-  FDragPhantom := nil;
   if FDevice <> nil then
     FDevice.InvalidateScreen;
 end;
