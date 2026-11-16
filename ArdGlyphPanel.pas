@@ -48,13 +48,16 @@ type
     procedure UpdateScroll;
     procedure UpdateTitle;
     procedure ViewPaint(Sender: TObject);
-    procedure ViewResize(Sender: TObject);
     procedure ViewMouseMove(Sender: TObject; Shift: TShiftState;
                             PosX, PosY: Integer);
     procedure ViewMouseDown(Sender: TObject; Button: TMouseButton;
                             Shift: TShiftState; PosX, PosY: Integer);
     procedure BarChange(Sender: TObject);
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
+  protected
+    // размер поля глифов меняется вместе с панелью (FView - alClient):
+    // у TPaintBox в Delphi 7 нет OnResize
+    procedure Resize; override;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -114,7 +117,6 @@ begin
   FView.Parent := Self;
   FView.Align := alClient;
   FView.OnPaint := ViewPaint;
-  FView.OnResize := ViewResize;
   FView.OnMouseMove := ViewMouseMove;
   FView.OnMouseDown := ViewMouseDown;
 end;
@@ -379,8 +381,11 @@ begin
   end;
 end;
 
-procedure TArdGlyphPanel.ViewResize(Sender: TObject);
+procedure TArdGlyphPanel.Resize;
 begin
+  inherited Resize;
+  if FView = nil then
+    Exit;
   if FHasFont and ((FSheet = nil) or (FView.Width div CellWidth <> FCols)) then
     BuildSheet
   else
