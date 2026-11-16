@@ -188,6 +188,8 @@ type
 procedure FarFtpHostsLoad(const AIniName: string; var AHosts: TFarFtpHosts);
 procedure FarFtpHostsSave(const AIniName: string; const AHosts: TFarFtpHosts);
 procedure FarFtpHostClear(var AHost: TFarFtpHost);
+// %XX в части адреса - в символы (UTF-8 или кодовая страница Windows)
+function FarFtpUrlDecode(const AText: WideString): WideString;
 // 'ftp://user:password@host:port/dir', 'host:port/dir', 'host'. В AHost -
 // только части, что есть в тексте (остальные не меняются). False - нет
 // имени хоста
@@ -590,6 +592,70 @@ begin
   end;
 end;
 
+// Цифра %XX: 0..15, -1 - не шестнадцатеричная
+function FtpHexDigit(AChar: WideChar): Integer;
+begin
+  case AChar of
+    '0'..'9':
+      Result := Ord(AChar) - Ord('0');
+    'A'..'F':
+      Result := Ord(AChar) - Ord('A') + 10;
+    'a'..'f':
+      Result := Ord(AChar) - Ord('a') + 10;
+  else
+    Result := -1;
+  end;
+end;
+
+// %XX в адресе (ftp://user%40mail:p%3Ass@host/%D0%BF%D0%B0%D0%BF%D0%BA%D0%B0) -
+// в символы. Байты подряд - UTF-8, если это правильный UTF-8, иначе -
+// кодовая страница Windows. '%' без двух цифр остаётся как есть
+function FarFtpUrlDecode(const AText: WideString): WideString;
+var
+  Bytes: string;
+  CharIdx, HighVal, LowVal: Integer;
+
+  procedure FlushBytes;
+  begin
+    if Bytes = '' then
+      Exit;
+    Result := Result + FarFtpDecode(Bytes);
+    Bytes := '';
+  end;
+
+begin
+  if Pos('%', AText) = 0 then
+  begin
+    Result := AText;
+    Exit;
+  end;
+  Result := '';
+  Bytes := '';
+  CharIdx := 1;
+  while CharIdx <= Length(AText) do
+  begin
+    HighVal := -1;
+    LowVal := -1;
+    if (AText[CharIdx] = '%') and (CharIdx + 2 <= Length(AText)) then
+    begin
+      HighVal := FtpHexDigit(AText[CharIdx + 1]);
+      LowVal := FtpHexDigit(AText[CharIdx + 2]);
+    end;
+    if (HighVal >= 0) and (LowVal >= 0) then
+    begin
+      Bytes := Bytes + Chr(HighVal * 16 + LowVal);
+      Inc(CharIdx, 3);
+    end
+    else
+    begin
+      FlushBytes;
+      Result := Result + AText[CharIdx];
+      Inc(CharIdx);
+    end;
+  end;
+  FlushBytes;
+end;
+
 function FarFtpParseUrl(const AText: WideString; var AHost: TFarFtpHost): Boolean;
 var
   Rest, Auth, HostPart, PortText: WideString;
@@ -616,7 +682,7 @@ begin
     end;
   if SepPos > 0 then
   begin
-    AHost.Home := Copy(Rest, SepPos, MaxInt);
+    AHost.Home := FarFtpUrlDecode(Copy(Rest, SepPos, MaxInt));
     Rest := Copy(Rest, 1, SepPos - 1);
   end;
   // user:password@ - до последней '@' (в пароле '@' бывает)
@@ -640,11 +706,11 @@ begin
       end;
     if SepPos > 0 then
     begin
-      AHost.User := Copy(Auth, 1, SepPos - 1);
-      AHost.Password := Copy(Auth, SepPos + 1, MaxInt);
+      AHost.User := FarFtpUrlDecode(Copy(Auth, 1, SepPos - 1));
+      AHost.Password := FarFtpUrlDecode(Copy(Auth, SepPos + 1, MaxInt));
     end
     else
-      AHost.User := Auth;
+      AHost.User := FarFtpUrlDecode(Auth);
   end
   else
     HostPart := Rest;

@@ -210,7 +210,7 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.74';
+  FarBuild = 'b.75';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -988,6 +988,7 @@ type
     procedure FtpImportHosts;
     procedure FtpCopyHosts;
     function FtpPasteHosts: Boolean;
+    function FtpEditPasteUrl(const AText: WideString): Boolean;
     procedure FtpExportHosts;
     function FtpKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     procedure DrawFtpHosts(APanel: TFarPanel; APanelX, APanelW: Integer;
@@ -9369,6 +9370,98 @@ begin
   FDlgRow := 0;
 end;
 
+// Последняя часть пути похожа на имя файла: имя.расш, расширение - 1..4
+// буквы/цифры (FAR копирует адрес вместе с файлом под курсором)
+function FarFtpLooksLikeFile(const AName: WideString): Boolean;
+var
+  DotPos, CharIdx: Integer;
+begin
+  Result := False;
+  DotPos := 0;
+  for CharIdx := Length(AName) downto 1 do
+    if AName[CharIdx] = '.' then
+    begin
+      DotPos := CharIdx;
+      Break;
+    end;
+  if (DotPos <= 1) or (Length(AName) - DotPos < 1) or
+     (Length(AName) - DotPos > 4) then
+    Exit;
+  for CharIdx := DotPos + 1 to Length(AName) do
+    case AName[CharIdx] of
+      '0'..'9', 'A'..'Z', 'a'..'z':
+        ;
+    else
+      Exit;
+    end;
+  Result := True;
+end;
+
+// Вставка в окно адреса текста ftp://user:password@host:port/dir/file (в
+// любое поле): части - по полям Address (host:port), Home (папка, имя
+// файла в конце отбрасывается), User, Password. Пользователя в адресе нет
+// - User и Password не меняются. False - текст не ftp://, вставлять как
+// обычно
+function TFarView.FtpEditPasteUrl(const AText: WideString): Boolean;
+var
+  Host: TFarFtpHost;
+  UrlText, HomeText: WideString;
+  SlashPos: Integer;
+
+  procedure SetRow(ARowIdx: Integer; const AValue: WideString);
+  begin
+    with FDlgRows[ARowIdx] do
+    begin
+      UndoText := Text;
+      UndoPos := Pos;
+      Text := AValue;
+      Pos := Length(AValue);
+      Scroll := 0;
+      Fresh := False;
+      Anchor := -1;
+      Typing := False;
+    end;
+  end;
+
+begin
+  Result := False;
+  if (FDlgKind <> fdFtpEdit) or (Length(FDlgRows) < 7) then
+    Exit;
+  UrlText := FarTrimW(AText);
+  if WideLowerCase(Copy(UrlText, 1, 6)) <> 'ftp://' then
+    Exit;
+  FarFtpHostClear(Host);
+  if not FarFtpParseUrl(UrlText, Host) then
+    Exit;
+  HomeText := Host.Home;
+  if (HomeText <> '') and (HomeText[Length(HomeText)] <> '/') then
+  begin
+    SlashPos := Length(HomeText);
+    while (SlashPos > 0) and (HomeText[SlashPos] <> '/') do
+      Dec(SlashPos);
+    if FarFtpLooksLikeFile(Copy(HomeText, SlashPos + 1, MaxInt)) then
+    begin
+      if SlashPos <= 1 then
+        HomeText := '/'
+      else
+        HomeText := Copy(HomeText, 1, SlashPos - 1);
+    end;
+  end;
+  SetRow(0, FarFtpHostText(Host));
+  SetRow(1, HomeText);
+  if Host.User <> '' then
+  begin
+    SetRow(2, Host.User);
+    SetRow(3, Host.Password);
+    // Пароль пришёл с адресом - хранить его, не спрашивать
+    if Host.Password <> '' then
+      FDlgRows[5].Index := 0;
+  end;
+  Status(FarProduct + ': FTP - адрес разобран по полям');
+  Invalidate;
+  Result := True;
+end;
+
 // [ Save ] / [ Connect ] в окне адреса
 procedure TFarView.FtpEditConfirm(AConnect: Boolean);
 var
@@ -13805,6 +13898,10 @@ var
     if not FarClipboardHasText then
       Exit;
     PasteText := FarFirstLine(FarClipboardText);
+    // Окно адреса FTP: ftp://user:password@host:port/dir в любом поле -
+    // разбирается по полям
+    if FtpEditPasteUrl(PasteText) then
+      Exit;
     DlgRowSaveUndo(False);
     DlgRowInsert(PasteText);
   end;
