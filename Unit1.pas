@@ -73,6 +73,8 @@ uses
   RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
   MingwTool,      // свой MinGW-w64 GCC (tools\mingw): сборка скетча под ПК
   ArdSimHost,     // вкладка Emulator: скетч, собранный ArdSim, в правой панели
+  ArdWinMap,      // карта окон скетча: switch (WinState), меню, переходы
+  ArdWinMapView,  // окно карты окон (Arduino - Window Map)
   ArdGlyphPanel,  // знаки шрифта надписи под таблицей инспектора (.ino)
   GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
   UiCaptionTabs,  // вкладки Components | Git на месте подписи рамки палитры
@@ -776,6 +778,7 @@ type
     // первом Arduino - Emulator; FArdSim - его панель
     FArdSimWin: TArdSimWindow;
     FArdSim: TArdSimPanel;
+    FWinMapForm: TArdWinMapForm;   // Arduino - Window Map (WinXXX)
     FCodeTree: TUiTreeView;
     FObjSource: TLabel;
     FDeclPanel: TPanel;
@@ -1161,6 +1164,13 @@ type
     procedure RightPanelBtnClick(Sender: TObject);
     // Окно Emulator (ArdSimHost)
     procedure ArdSimShowClick(Sender: TObject);
+    // Карта окон скетча (ArdWinMapView)
+    procedure ArdWinMapClick(Sender: TObject);
+    function  ArdWinMapSketch: string;
+    procedure ArdWinMapFill(AMap: TWmMap);
+    procedure ArdWinMapGoto(const AFileName: string; ALine: Integer);
+    procedure ArdWinMapOpen(AMap: TWmMap; ANode: TWmNode);
+    function  ArdSimExeFresh: Boolean;
     procedure ArdFontViewerClick(Sender: TObject);
     procedure ArdTtfToUtftClick(Sender: TObject);
     procedure ArdTtfSaved(const AFileName: string);
@@ -34833,6 +34843,238 @@ begin
   finally
     Names.Free;
   end;
+end;
+
+// Arduino - Window Map (WinXXX)...: карта окон скетча (ArdWinMapView).
+// Скетч - как у сборки (BuildTargetOf); положения узлов - в <скетч>.winmap
+procedure TForm1.ArdWinMapClick(Sender: TObject);
+var
+  Sketch: string;
+begin
+  Sketch := ArdWinMapSketch;
+  if Sketch = '' then
+  begin
+    ShowMessage('Карта окон: откройте скетч .ino или файл из его папки');
+    Exit;
+  end;
+  if FWinMapForm = nil then
+  begin
+    FWinMapForm := TArdWinMapForm.CreateMap(Self);
+    FWinMapForm.OnFill := ArdWinMapFill;
+    FWinMapForm.OnGoto := ArdWinMapGoto;
+    FWinMapForm.OnOpenWindow := ArdWinMapOpen;
+  end;
+  FWinMapForm.SketchFile := Sketch;
+  FWinMapForm.MapFile := WmMapFileOf(Sketch);
+  FWinMapForm.RefreshMap;
+  FWinMapForm.Show;
+  FWinMapForm.BringToFront;
+end;
+
+// Главный .ino скетча текущей вкладки; '' - не скетч
+function TForm1.ArdWinMapSketch: string;
+var
+  Ext: string;
+begin
+  Result := BuildTargetOf(bkArduino);
+  Ext := LowerCase(ExtractFileExt(Result));
+  if (Ext <> '.ino') and (Ext <> '.pde') then
+    Result := '';
+end;
+
+// Файлы для карты - с диска: главный .ino, другие .ino папки и файлы
+// #include "Имя" из папки скетча (текст как ANSI, как у ArdLoadInclude)
+procedure TForm1.ArdWinMapFill(AMap: TWmMap);
+var
+  Sketch, Dir, FilePath, Raw, Text, LineText, IncName: string;
+  Names, Others, Lines: TStringList;
+  NameIdx, LineIdx, QuotePos, QuoteEnd: Integer;
+begin
+  Sketch := '';
+  if FWinMapForm <> nil then
+    Sketch := FWinMapForm.SketchFile;
+  if Sketch = '' then
+    Sketch := ArdWinMapSketch;
+  if Sketch = '' then
+    Exit;
+  Dir := ExtractFilePath(Sketch);
+  Names := TStringList.Create;
+  Others := TStringList.Create;
+  Lines := TStringList.Create;
+  try
+    Names.Add(ExtractFileName(Sketch));
+    ArdListOtherIno(Sketch, Others);
+    Names.AddStrings(Others);
+    NameIdx := 0;
+    while NameIdx < Names.Count do
+    begin
+      FilePath := Dir + Names[NameIdx];
+      Inc(NameIdx);
+      if not FileExists(FilePath) then
+        Continue;
+      Raw := ReadWholeFile(FilePath);
+      if (Length(Raw) >= 3) and (Byte(Raw[1]) = $EF) and (Byte(Raw[2]) = $BB) and
+         (Byte(Raw[3]) = $BF) then
+        Text := Utf8ToAnsiFull(Copy(Raw, 4, MaxInt))
+      else if LooksLikeUtf8(Raw) then
+        Text := Utf8ToAnsiFull(Raw)
+      else
+        Text := Raw;
+      AMap.AddFile(FilePath, Text);
+      Lines.Text := Text;
+      for LineIdx := 0 to Lines.Count - 1 do
+      begin
+        LineText := Trim(Lines[LineIdx]);
+        if (Copy(LineText, 1, 1) <> '#') or
+           (Pos('include', LineText) = 0) then
+          Continue;
+        QuotePos := Pos('"', LineText);
+        if QuotePos = 0 then
+          Continue;
+        QuoteEnd := PosEx('"', LineText, QuotePos + 1);
+        if QuoteEnd = 0 then
+          Continue;
+        IncName := Copy(LineText, QuotePos + 1, QuoteEnd - QuotePos - 1);
+        if (IncName <> '') and (Names.IndexOf(IncName) < 0) and
+           FileExists(Dir + IncName) then
+          Names.Add(IncName);
+      end;
+    end;
+  finally
+    Lines.Free;
+    Others.Free;
+    Names.Free;
+  end;
+end;
+
+// Щелчок по окну или стрелке карты: строка в редакторе (ALine - с 0)
+procedure TForm1.ArdWinMapGoto(const AFileName: string; ALine: Integer);
+begin
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(AFileName)) <> 0 then
+    OpenNamedFile(AFileName);
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(AFileName)) = 0 then
+    GotoLine(ALine);
+end;
+
+// Щелчок по окну карты: эмулятор запускается заново и на строке
+// switch (WinState) ставит WinState = номер окна (команда RunToSet, без
+// остановки) - switch рисует это окно. Exe свежий - только запуск, иначе
+// сборка. Скетч не меняется; данные замера в окне - те, что есть при старте
+procedure TForm1.ArdWinMapOpen(AMap: TWmMap; ANode: TWmNode);
+var
+  Sketch, StateVar, SwitchFile: string;
+  StateNum, SwitchLine, FileIdx: Integer;
+  Fresh: Boolean;
+  Code: Cardinal;
+  FreshMap: TWmMap;
+begin
+  StateNum := ANode.State;
+  Sketch := FWinMapForm.SketchFile;
+  ArdSimEnsure;
+  if FArdSim.Building then
+  begin
+    LogComp('Карта окон: эмулятор собирается - откройте окно после сборки');
+    Exit;
+  end;
+  // эмулятор собирает скетч текущей вкладки
+  if CompareText(ExpandFileName(BuildTargetOf(bkArduino)), ExpandFileName(Sketch)) <> 0 then
+    OpenNamedFile(Sketch);
+  if CompareText(ExpandFileName(BuildTargetOf(bkArduino)), ExpandFileName(Sketch)) <> 0 then
+  begin
+    LogComp('Карта окон: не открылся скетч ' + Sketch);
+    Exit;
+  end;
+  ArdSimShowClick(Self);
+  ArdSimNeedSketch(Self);
+  // правки вкладок - на диск: и сборка, и строка switch - по файлам
+  if not ArdSimSaveFiles(FArdSim) then
+    Exit;
+  FreshMap := TWmMap.Create;
+  try
+    ArdWinMapFill(FreshMap);
+    FreshMap.Parse;
+    StateVar := FreshMap.StateVar;
+    SwitchFile := FreshMap.SwitchFile;
+    SwitchLine := FreshMap.SwitchLine;
+  finally
+    FreshMap.Free;
+  end;
+  if StateVar = '' then
+  begin
+    LogComp('Карта окон: в скетче нет switch с окнами');
+    Exit;
+  end;
+  Fresh := ArdSimExeFresh;
+  if Fresh then
+    // номер строки - как в собранном exe
+    Code := ArdDbgCodeAt(SwitchFile, SwitchLine)
+  else
+  begin
+    // соберётся из нынешних файлов
+    FileIdx := FArdSim.DbgFileIndex(SwitchFile);
+    if FileIdx < 0 then
+      Code := 0
+    else
+      Code := (Cardinal(FileIdx) shl 20) or Cardinal(SwitchLine + 1);
+  end;
+  if Code = 0 then
+  begin
+    LogComp('Карта окон: строка switch (' + StateVar + ') не найдена в ' +
+            'сборке эмулятора - соберите его заново');
+    Exit;
+  end;
+  FArdSim.SetStartAssign(Code, StateVar + '=' + IntToStr(StateNum));
+  if Fresh then
+    FArdSim.RunSim
+  else
+    FArdSim.BuildAndRun;
+  FWinMapForm.CurrentState := StateNum;
+end;
+
+// Exe эмулятора новее файлов скетча (.ino .h .c .cpp) и исходников ArdSim
+// (src, include): тогда сборка не нужна
+function TForm1.ArdSimExeFresh: Boolean;
+var
+  ExeFile, SketchDir, SimDir: string;
+  ExeAge: Integer;
+
+  function NewerIn(const ADir, AMask: string): Boolean;
+  var
+    Found: TSearchRec;
+  begin
+    Result := False;
+    if FindFirst(ADir + AMask, faAnyFile, Found) = 0 then
+    try
+      repeat
+        if (Found.Attr and faDirectory = 0) and (Found.Time > ExeAge) then
+        begin
+          Result := True;
+          Break;
+        end;
+      until FindNext(Found) <> 0;
+    finally
+      FindClose(Found);
+    end;
+  end;
+
+begin
+  Result := False;
+  if FArdSim = nil then
+    Exit;
+  ExeFile := FArdSim.SimExeFile;
+  if (ExeFile = '') or not FileExists(ExeFile) then
+    Exit;
+  ExeAge := FileAge(ExeFile);
+  SketchDir := ExtractFilePath(FArdSim.SketchFile);
+  if NewerIn(SketchDir, '*.ino') or NewerIn(SketchDir, '*.h') or
+     NewerIn(SketchDir, '*.c') or NewerIn(SketchDir, '*.cpp') then
+    Exit;
+  SimDir := ArdSimFindDir;
+  if SimDir <> '' then
+    if NewerIn(SimDir + 'src' + PathDelim, '*.*') or
+       NewerIn(SimDir + 'include' + PathDelim, '*.*') then
+      Exit;
+  Result := True;
 end;
 
 procedure TForm1.ArdRefreshInspector;
@@ -77173,6 +77415,9 @@ begin
   NewItem('Emulator (ArdSim)', ArdSimShowClick, False).Hint :=
     'Окно эмулятора: скетч, собранный под ПК (ArdSim), экран прибора, ' +
     'клавиатура и Serial';
+  NewItem('Window Map (WinXXX)...', ArdWinMapClick, False).Hint :=
+    'Карта окон скетча: ветки switch (WinState), переходы по клавишам; ' +
+    'щелчок по окну открывает его в эмуляторе';
   NewItem('Font Viewer (UTFT)...', ArdFontViewerClick, False).Hint :=
     'Шрифты UTFT (.c из libraries\UTFT): образец, имя, размер символа в ' +
     'точках; окно шириной 480 точек, как экран прибора';

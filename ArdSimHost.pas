@@ -59,6 +59,9 @@ const
   ArdDbgOver = 4;
   ArdDbgOut = 5;
   ArdDbgRunTo = 6;
+  // Только при запуске: дойти до строки и записать переменную (окно скетча
+  // с карты окон: WinState=25 перед switch), без остановки
+  ArdDbgRunToSet = 7;
 
 type
   TArdSimTextEvent = procedure(Sender: TObject; const AText: string) of object;
@@ -186,6 +189,10 @@ type
     FDbgWatch: string;
     FDbgStartCmd: Integer;
     FDbgStartArg: Cardinal;
+    // ArdDbgRunToSet: "Имя=Значение" - строкой "=Имя=Значение" в запросе
+    // Watch. FDbgRunAssign - у идущего запуска (в каждый запрос Watch)
+    FDbgStartAssign: string;
+    FDbgRunAssign: string;
     FLiveWatch: Boolean;
     FLiveTick: Cardinal;
     FBreakTick: Cardinal;
@@ -289,6 +296,7 @@ type
     procedure SetDbgHeader(AIndex: Integer; AValue: Cardinal);
     function DbgArea: PAnsiChar;
     procedure DbgReset;
+    procedure WriteWatchRequest(const AText: string);
     procedure DbgEnd;
     procedure PollDebug;
     function ReadDbgText(AOffset, AMaxBytes: Integer): string;
@@ -359,6 +367,9 @@ type
     procedure DbgCommand(ACode: Integer; AArg: Cardinal);
     // Команда сразу после запуска (F7/F8/F4, когда эмулятор не шёл)
     procedure SetStartCommand(ACode: Integer; AArg: Cardinal);
+    // Следующий запуск: дойти до строки ACode (номер эмулятора) и там
+    // записать переменную: AAssign = 'WinState=25'. Окно карты окон
+    procedure SetStartAssign(ACode: Cardinal; const AAssign: string);
     procedure DbgSetBreakpoints(const ACodes: TArdDbgCodes);
     // Номер .ino скетча, -1 - не файл скетча
     function DbgFileIndex(const AFileName: string): Integer;
@@ -1696,7 +1707,19 @@ begin
   // точки - до запуска: остановка возможна и в setup()
   if Assigned(FOnDbgNeedBreaks) then
     FOnDbgNeedBreaks(Self);
-  if FDbgStartCmd <> 0 then
+  FDbgRunAssign := '';
+  if FDbgStartCmd = ArdDbgRunToSet then
+  begin
+    FDbgRunAssign := FDbgStartAssign;
+    // строка "=Имя=Значение" - до первой команды; Watch её сохраняет
+    WriteWatchRequest('');
+    SetDbgHeader(DbgCmdCode, Cardinal(FDbgStartCmd));
+    SetDbgHeader(DbgCmdArg, FDbgStartArg);
+    SetDbgHeader(DbgCmdSeq, 1);
+    FDbgStartCmd := 0;
+    FDbgStartAssign := '';
+  end
+  else if FDbgStartCmd <> 0 then
   begin
     SetDbgHeader(DbgCmdCode, Cardinal(FDbgStartCmd));
     SetDbgHeader(DbgCmdArg, FDbgStartArg);
@@ -2434,6 +2457,34 @@ procedure TArdSimPanel.SetStartCommand(ACode: Integer; AArg: Cardinal);
 begin
   FDbgStartCmd := ACode;
   FDbgStartArg := AArg;
+  FDbgStartAssign := '';
+end;
+
+procedure TArdSimPanel.SetStartAssign(ACode: Cardinal; const AAssign: string);
+begin
+  FDbgStartCmd := ArdDbgRunToSet;
+  FDbgStartArg := ACode;
+  FDbgStartAssign := AAssign;
+end;
+
+// Запрос Watch в общей памяти: выражения AText (по строке) и строка
+// "=Имя=Значение" запуска с карты окон
+procedure TArdSimPanel.WriteWatchRequest(const AText: string);
+var
+  Text: string;
+  Target: PAnsiChar;
+begin
+  if DbgArea = nil then
+    Exit;
+  Text := AText;
+  if FDbgRunAssign <> '' then
+    Text := Text + '=' + FDbgRunAssign + #10;
+  if Length(Text) >= DbgWatchReqBytes then
+    Text := Copy(Text, 1, DbgWatchReqBytes - 1);
+  Target := DbgArea + DbgWatchReqOffset;
+  if Text <> '' then
+    Move(Text[1], Target^, Length(Text));
+  Target[Length(Text)] := #0;
 end;
 
 procedure TArdSimPanel.DbgSetBreakpoints(const ACodes: TArdDbgCodes);
@@ -2537,7 +2588,6 @@ procedure TArdSimPanel.DbgSetWatch(AExprs: TStrings);
 var
   Text: string;
   ExprIdx: Integer;
-  Target: PAnsiChar;
 begin
   if DbgArea = nil then
     Exit;
@@ -2549,10 +2599,7 @@ begin
   if Text = FDbgWatch then
     Exit;
   FDbgWatch := Text;
-  Target := DbgArea + DbgWatchReqOffset;
-  if Text <> '' then
-    Move(Text[1], Target^, Length(Text));
-  Target[Length(Text)] := #0;
+  WriteWatchRequest(Text);
   SetDbgHeader(DbgWatchSeq, DbgHeader(DbgWatchSeq) + 1);
 end;
 

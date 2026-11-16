@@ -88,6 +88,36 @@ void simFormatThunk(const void *value, std::string &out)
   simFormatValue(*(const ValueType *)value, out);
 }
 
+// Write a value given as text (the host opens a window of the sketch:
+// WinState=25). Numbers, bool and enums; false - not written
+typedef bool (*SimParseFn)(void *value, const char *text);
+bool simParseInt(const char *text, long long &value);
+bool simParseDouble(const char *text, double &value);
+
+template <class ValueType>
+bool simParseThunk(void *value, const char *text)
+{
+  typedef typename std::remove_cv<ValueType>::type Plain;
+  if constexpr (std::is_floating_point<Plain>::value)
+  {
+    double number;
+    if (!simParseDouble(text, number))
+      return false;
+    *(Plain *)value = (Plain)number;
+    return true;
+  }
+  else if constexpr (std::is_integral<Plain>::value || std::is_enum<Plain>::value)
+  {
+    long long number;
+    if (!simParseInt(text, number))
+      return false;
+    *(Plain *)value = (Plain)number;
+    return true;
+  }
+  else
+    return false;
+}
+
 template <class ValueType>
 void simFormatValue(const ValueType &value, std::string &out)
 {
@@ -135,6 +165,7 @@ struct SimVarInfo
   size_t Count;
   size_t ElemSize;
   bool IsText;
+  SimParseFn Parse;   // scalar only, nullptr - not writable
 };
 void simWatchAddGlobal(const SimVarInfo &info);
 void simWatchPushLocal(const SimVarInfo &info);
@@ -150,6 +181,7 @@ SimVarInfo simVarOf(const char *name, const ValueType *ptr, size_t count)
   info.Count = count;
   info.ElemSize = sizeof(ValueType);
   info.IsText = count > 0 && std::is_same<typename std::remove_cv<ValueType>::type, char>::value;
+  info.Parse = count == 0 ? &simParseThunk<ValueType> : nullptr;
   return info;
 }
 

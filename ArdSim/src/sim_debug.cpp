@@ -12,6 +12,7 @@
 #include "sim_internal.h"
 #include <algorithm>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <string>
 #include <vector>
@@ -72,11 +73,13 @@ enum StepModes
   StepInto,
   StepOver,
   StepOut,
-  StepRunTo
+  StepRunTo,
+  StepRunToSet
 };
 int StepMode = StepNone;
 int StepDepth = 0;
 uint32_t RunToCode = 0;
+std::string RunToAssign;   // StepRunToSet: "Name=Value"
 bool PausePending = false;
 bool StepFromIsr = false;    // stopped inside an ISR: steps stay in ISRs too
 
@@ -139,6 +142,37 @@ std::string trim(const std::string &text)
     return std::string();
   size_t last = text.find_last_not_of(" \t");
   return text.substr(first, last - first + 1);
+}
+
+// "Name=Value": write a scalar variable (SimCmdRunToSet)
+void applyAssign(const std::string &assign)
+{
+  size_t equal = assign.find('=');
+  if (equal == std::string::npos)
+    return;
+  const SimVarInfo *info = findVar(trim(assign.substr(0, equal)));
+  if (info && info->Count == 0 && info->Parse)
+    info->Parse(const_cast<void *>(info->Ptr), trim(assign.substr(equal + 1)).c_str());
+}
+
+// The "=Name=Value" line of the Watch request (put there by the host
+// with SimCmdRunToSet)
+std::string assignOfRequest()
+{
+  std::string request;
+  for (size_t index = 0; index < SimDbgWatchReqBytes && DbgWatchReq[index]; index++)
+    request += DbgWatchReq[index];
+  size_t lineStart = 0;
+  while (lineStart < request.size())
+  {
+    size_t lineEnd = request.find('\n', lineStart);
+    if (lineEnd == std::string::npos)
+      lineEnd = request.size();
+    if (request[lineStart] == '=')
+      return request.substr(lineStart + 1, lineEnd - lineStart - 1);
+    lineStart = lineEnd + 1;
+  }
+  return std::string();
 }
 
 // Watch expression: name or name[index]. Result "=value", "?" (no such
@@ -216,7 +250,8 @@ void writeInfo(bool stopped)
     if (lineEnd == std::string::npos)
       lineEnd = request.size();
     std::string expr = request.substr(lineStart, lineEnd - lineStart);
-    if (!trim(expr).empty())
+    // "=Name=Value" - not a Watch expression (SimCmdRunToSet)
+    if (!trim(expr).empty() && expr[0] != '=')
       info += "W\t" + std::to_string(exprIndex) + "\t" + evalWatch(expr) + "\n";
     exprIndex++;
     lineStart = lineEnd + 1;
@@ -260,6 +295,12 @@ void takeCommand(bool stopped)
     {
       StepMode = StepRunTo;
       RunToCode = arg;
+    }
+    else if (code == SimCmdRunToSet)
+    {
+      StepMode = StepRunToSet;
+      RunToCode = arg;
+      RunToAssign = assignOfRequest();
     }
     else if (code == SimCmdRun)
     {
@@ -347,6 +388,11 @@ void simStepSlow(int code)
     stop = true;
   if (!stop && StepMode == StepRunTo && (uint32_t)code == RunToCode)
     stop = true;
+  if (!stop && StepMode == StepRunToSet && (uint32_t)code == RunToCode)
+  {
+    applyAssign(RunToAssign);
+    StepMode = StepNone;
+  }
   if (!stop && (!isr || StepFromIsr))
   {
     if (PausePending || StepMode == StepInto)
@@ -417,6 +463,25 @@ SimFileReg::SimFileReg(int index, const char *path)
 
 // ---------------------------------------------------------------- formatting
 void simFmtBool(std::string &out, bool value) { out += value ? "true" : "false"; }
+
+bool simParseInt(const char *text, long long &value)
+{
+  char *endPtr = nullptr;
+  if (strcmp(text, "true") == 0 || strcmp(text, "false") == 0)
+  {
+    value = text[0] == 't' ? 1 : 0;
+    return true;
+  }
+  value = strtoll(text, &endPtr, 0);
+  return endPtr != text && *endPtr == 0;
+}
+
+bool simParseDouble(const char *text, double &value)
+{
+  char *endPtr = nullptr;
+  value = strtod(text, &endPtr);
+  return endPtr != text && *endPtr == 0;
+}
 
 void simFmtChar(std::string &out, char value)
 {

@@ -130,6 +130,8 @@ uses
   ArdGlyphPanel in 'ArdGlyphPanel.pas',
   ArdSimHost in 'ArdSimHost.pas',
   ArdObjParse in 'ArdObjParse.pas',
+  ArdWinMap in 'ArdWinMap.pas',
+  ArdWinMapView in 'ArdWinMapView.pas',
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',

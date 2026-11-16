@@ -85,7 +85,11 @@ enum SimDbgCommand
   SimCmdInto = 3,
   SimCmdOver = 4,
   SimCmdOut = 5,
-  SimCmdRunTo = 6
+  SimCmdRunTo = 6,
+  // start command: run to the line CmdArg, there write the variable given
+  // by a "=Name=Value" line of the Watch request and go on (no stop) -
+  // the host opens a window of the sketch (WinState=25 before switch)
+  SimCmdRunToSet = 7
 };
 const unsigned SimDbgMaxBreakpoints = 1024;
 const size_t SimDbgBreakOffset = 256;
