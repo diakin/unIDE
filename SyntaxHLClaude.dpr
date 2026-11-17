@@ -132,6 +132,7 @@ uses
   ArdObjParse in 'ArdObjParse.pas',
   ArdWinMap in 'ArdWinMap.pas',
   ArdWinMapView in 'ArdWinMapView.pas',
+  ArdWinShots in 'ArdWinShots.pas',
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',

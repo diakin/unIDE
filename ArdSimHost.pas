@@ -41,6 +41,7 @@ uses
   Graphics, StdCtrls, ExtCtrls, Forms, IniFiles, UiStdCtrls, UiButton,
   UiEditCtrls, ProcRun,
   ArdSimFonts,   // шрифты UTFT из libraries для build_sim.cmd
+  ArdWinShots,   // снимок экрана в .bmp (SaveScreenBmp)
   DlgFontViewer; // TUtftFont, UtftParseFile - шрифты для превью надписи
 
 const
@@ -467,6 +468,10 @@ type
     function PhantomCount: Integer;
     // exe эмулятора скетча (время файла - собран ли после Paste)
     function SimExeFile: string;
+    // Счётчик копий экрана из эмулятора (0 после запуска - картинки ещё
+    // нет) и запись экрана в .bmp (ArdWinShots): идёт - из общей памяти
+    function ScreenVersion: Cardinal;
+    function SaveScreenBmp(const AFileName: string): Boolean;
     // Щелчок по надписи-фантому: строки отрисовки у эмулятора нет, Unit1
     // ставит курсор на её вывод сам
     property OnCtlSelect: TArdSimCtlHashEvent read FOnCtlSelect write FOnCtlSelect;
@@ -4339,6 +4344,22 @@ begin
   FPhantoms.Clear;
   if FDevice <> nil then
     FDevice.InvalidateScreen;
+end;
+
+function TArdSimPanel.ScreenVersion: Cardinal;
+begin
+  Result := FScreenVersion;
+end;
+
+function TArdSimPanel.SaveScreenBmp(const AFileName: string): Boolean;
+begin
+  {$IFDEF MSWINDOWS}
+  Result := (FView <> nil) and (FScreenVersion > 0) and
+    SaveRgb565Bmp(AFileName, PWord(PAnsiChar(FView) + HeaderBytes),
+                  ArdSimScreenW, ArdSimScreenH);
+  {$ELSE}
+  Result := False;
+  {$ENDIF}
 end;
 
 function TArdSimPanel.SimExeFile: string;

@@ -75,6 +75,7 @@ uses
   ArdSimHost,     // вкладка Emulator: скетч, собранный ArdSim, в правой панели
   ArdWinMap,      // карта окон скетча: switch (WinState), меню, переходы
   ArdWinMapView,  // окно карты окон (Arduino - Window Map)
+  ArdWinShots,    // снимки окон скетча (.bmp, миниатюры)
   ArdGlyphPanel,  // знаки шрифта надписи под таблицей инспектора (.ino)
   GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
   UiCaptionTabs,  // вкладки Components | Git на месте подписи рамки палитры
@@ -779,6 +780,9 @@ type
     FArdSimWin: TArdSimWindow;
     FArdSim: TArdSimPanel;
     FWinMapForm: TArdWinMapForm;   // Arduino - Window Map (WinXXX)
+    // Снимки окон карты (ArdWinShotsClick): очередь номеров, фаза, время
+    FWinShotTimer: TTimer;
+    FWinShotList: TStringList;
     FCodeTree: TUiTreeView;
     FObjSource: TLabel;
     FDeclPanel: TPanel;
@@ -1170,6 +1174,12 @@ type
     procedure ArdWinMapFill(AMap: TWmMap);
     procedure ArdWinMapGoto(const AFileName: string; ALine: Integer);
     procedure ArdWinMapOpen(AMap: TWmMap; ANode: TWmNode);
+    function  ArdWinMapLaunch(AStateNum: Integer): Boolean;
+    procedure ArdWinShotsClick(Sender: TObject);
+    procedure ArdWinShotNext;
+    procedure ArdWinShotTick(Sender: TObject);
+    procedure ArdWinShotsEnd(const AText: string);
+    function  ArdWinShotDir: string;
     function  ArdSimExeFresh: Boolean;
     procedure ArdFontViewerClick(Sender: TObject);
     procedure ArdTtfToUtftClick(Sender: TObject);
@@ -1473,6 +1483,9 @@ type
     // Свой редактор вместо RichEdit (IDE Options - Preferences, OwnEditor):
     // сообщения RichEdit1 сначала разбирает он, см. DefEditProc. nil - RichEdit
     FEdEmu: TEdRichEmu;
+    // Снимки окон карты: номер в очереди, записано, фаза, время (ArdWinShotTick)
+    FWinShotIdx, FWinShotSaved, FWinShotPhase: Integer;
+    FWinShotStart, FWinShotStable, FWinShotVersion: Cardinal;
     // Меню Started Util: открытые окна утилит (немодальные окна поверх
     // главного); FUtilSig - каким набором окон меню построено
     FUtilSig: string;
@@ -34890,9 +34903,11 @@ begin
     FWinMapForm.OnFill := ArdWinMapFill;
     FWinMapForm.OnGoto := ArdWinMapGoto;
     FWinMapForm.OnOpenWindow := ArdWinMapOpen;
+    FWinMapForm.OnShots := ArdWinShotsClick;
   end;
   FWinMapForm.SketchFile := Sketch;
   FWinMapForm.MapFile := WmMapFileOf(Sketch);
+  FWinMapForm.ShotDir := ArdWinShotDir;
   FWinMapForm.RefreshMap;
   // над главным окном: щелчок по узлу открывает файл в редакторе, и карта
   // не должна уходить под него
@@ -34996,14 +35011,30 @@ end;
 // остановки) - switch рисует это окно. Exe свежий - только запуск, иначе
 // сборка. Скетч не меняется; данные замера в окне - те, что есть при старте
 procedure TForm1.ArdWinMapOpen(AMap: TWmMap; ANode: TWmNode);
+begin
+  if (FWinShotTimer <> nil) and FWinShotTimer.Enabled then
+  begin
+    FWinMapForm.ShowStatus('Идут снимки окон - сначала остановите их');
+    Exit;
+  end;
+  if not ArdWinMapLaunch(ANode.State) then
+    Exit;
+  FWinMapForm.CurrentState := ANode.State;
+  // окно эмулятора показано - карта снова сверху
+  if FWinMapForm.Visible then
+    FWinMapForm.BringToFront;
+end;
+
+// Эмулятор - в окно номер AStateNum скетча карты; False - не запущен
+function TForm1.ArdWinMapLaunch(AStateNum: Integer): Boolean;
 var
   Sketch, StateVar, SwitchFile: string;
-  StateNum, SwitchLine, FileIdx: Integer;
+  SwitchLine, FileIdx: Integer;
   Fresh: Boolean;
   Code: Cardinal;
   FreshMap: TWmMap;
 begin
-  StateNum := ANode.State;
+  Result := False;
   Sketch := FWinMapForm.SketchFile;
   ArdSimEnsure;
   if FArdSim.Building then
@@ -35058,15 +35089,146 @@ begin
             'сборке эмулятора - соберите его заново');
     Exit;
   end;
-  FArdSim.SetStartAssign(Code, StateVar + '=' + IntToStr(StateNum));
+  FArdSim.SetStartAssign(Code, StateVar + '=' + IntToStr(AStateNum));
   if Fresh then
     FArdSim.RunSim
   else
     FArdSim.BuildAndRun;
-  FWinMapForm.CurrentState := StateNum;
-  // окно эмулятора показано - карта снова сверху
-  if FWinMapForm.Visible then
-    FWinMapForm.BringToFront;
+  Result := True;
+end;
+
+// Карта окон, «Снимки окон»: каждое окно switch по очереди открывается в
+// эмуляторе (ArdWinMapLaunch), и когда экран перестал меняться, он
+// записывается в ardsim_build\winshots\WinN.bmp (ArdWinShots). Повторное
+// нажатие останавливает
+procedure TForm1.ArdWinShotsClick(Sender: TObject);
+var
+  NodeIdx: Integer;
+  Node: TWmNode;
+begin
+  if (FWinShotTimer <> nil) and FWinShotTimer.Enabled then
+  begin
+    ArdWinShotsEnd('Снимки остановлены: ' + IntToStr(FWinShotIdx) + ' из ' +
+                   IntToStr(FWinShotList.Count));
+    Exit;
+  end;
+  if FWinShotList = nil then
+    FWinShotList := TStringList.Create;
+  FWinShotList.Clear;
+  for NodeIdx := 0 to FWinMapForm.Map.NodeCount - 1 do
+  begin
+    Node := FWinMapForm.Map.Nodes[NodeIdx];
+    if Node.Kind = wnkWindow then
+      FWinShotList.Add(IntToStr(Node.State));
+  end;
+  if FWinShotList.Count = 0 then
+    Exit;
+  if FWinShotTimer = nil then
+  begin
+    FWinShotTimer := TTimer.Create(Self);
+    FWinShotTimer.Interval := 100;
+    FWinShotTimer.Enabled := False;
+    FWinShotTimer.OnTimer := ArdWinShotTick;
+  end;
+  FWinShotIdx := 0;
+  FWinShotSaved := 0;
+  FWinMapForm.SetShotsBusy(True);
+  ArdWinShotNext;
+end;
+
+// Запуск эмулятора в окно FWinShotList[FWinShotIdx]
+procedure TForm1.ArdWinShotNext;
+begin
+  FWinMapForm.ShowStatus('Снимки окон: ' + IntToStr(FWinShotIdx + 1) + ' из ' +
+    IntToStr(FWinShotList.Count) + ' - Win' + FWinShotList[FWinShotIdx]);
+  if not ArdWinMapLaunch(StrToInt(FWinShotList[FWinShotIdx])) then
+  begin
+    ArdWinShotsEnd('Снимки окон: эмулятор не запустился (см. Compilation log)');
+    Exit;
+  end;
+  FWinMapForm.CurrentState := StrToInt(FWinShotList[FWinShotIdx]);
+  FWinShotPhase := 0;
+  FWinShotStart := GetTickCount;
+  FWinShotTimer.Enabled := True;
+end;
+
+// Фаза 0 - ждём запуска (сборка может идти долго), 1 - ждём, пока экран
+// 0,5 с не меняется (не дольше 5 с: есть окна, которые рисуют всё время)
+procedure TForm1.ArdWinShotTick(Sender: TObject);
+var
+  TickNow, Version: Cardinal;
+begin
+  if (FArdSim = nil) or (FWinMapForm = nil) then
+  begin
+    FWinShotTimer.Enabled := False;
+    Exit;
+  end;
+  TickNow := GetTickCount;
+  if FWinShotPhase = 0 then
+  begin
+    if FArdSim.Building then
+    begin
+      FWinShotStart := TickNow;
+      Exit;
+    end;
+    if not FArdSim.Running then
+    begin
+      if TickNow - FWinShotStart > 5000 then
+        ArdWinShotsEnd('Снимки окон: эмулятор не запустился (см. Compilation log)');
+      Exit;
+    end;
+    FWinShotPhase := 1;
+    FWinShotVersion := FArdSim.ScreenVersion;
+    FWinShotStable := TickNow;
+    FWinShotStart := TickNow;
+    Exit;
+  end;
+  Version := FArdSim.ScreenVersion;
+  if Version <> FWinShotVersion then
+  begin
+    FWinShotVersion := Version;
+    FWinShotStable := TickNow;
+  end;
+  if not (((Version > 0) and (TickNow - FWinShotStable >= 500)) or
+          (TickNow - FWinShotStart >= 5000)) then
+    Exit;
+  FWinShotTimer.Enabled := False;
+  if FArdSim.SaveScreenBmp(WinShotFile(ArdWinShotDir,
+                                       StrToInt(FWinShotList[FWinShotIdx]))) then
+    Inc(FWinShotSaved);
+  Inc(FWinShotIdx);
+  if FWinShotIdx >= FWinShotList.Count then
+    ArdWinShotsEnd('Снимки окон: записано ' + IntToStr(FWinShotSaved) + ' из ' +
+                   IntToStr(FWinShotList.Count) + ' в ' + ArdWinShotDir)
+  else
+    ArdWinShotNext;
+end;
+
+procedure TForm1.ArdWinShotsEnd(const AText: string);
+begin
+  if FWinShotTimer <> nil then
+    FWinShotTimer.Enabled := False;
+  if FArdSim <> nil then
+    FArdSim.StopAll;
+  if FWinMapForm = nil then
+    Exit;
+  FWinMapForm.SetShotsBusy(False);
+  FWinMapForm.CurrentState := -1;
+  FWinMapForm.ShotDir := ArdWinShotDir;
+  FWinMapForm.ReloadShots;
+  FWinMapForm.ShowStatus(AText);
+end;
+
+// Папка снимков: рядом с exe эмулятора скетча
+function TForm1.ArdWinShotDir: string;
+begin
+  Result := '';
+  if FArdSim = nil then
+    ArdSimEnsure;
+  if FArdSim.SketchFile = '' then
+    FArdSim.SketchFile := FWinMapForm.SketchFile;
+  if FArdSim.SimExeFile <> '' then
+    Result := ExtractFilePath(FArdSim.SimExeFile) + 'winshots' + PathDelim;
 end;
 
 // Exe эмулятора новее файлов скетча (.ino .h .c .cpp) и исходников ArdSim

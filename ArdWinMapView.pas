@@ -23,7 +23,7 @@ interface
 
 uses
   Classes, SysUtils, Controls, Forms, Graphics, ExtCtrls, StdCtrls, Menus,
-  ArdWinMap;
+  ArdWinMap, ArdWinShots;
 
 type
   TWmGotoEvent = procedure(const AFileName: string; ALine: Integer) of object;
@@ -48,6 +48,7 @@ type
     FDownX, FDownY: Integer;
     FDragged: Boolean;
     FSkipUp: Boolean;                // нажатие ушло на [+] / [-]
+    FThumbRects: array of TRect;     // место снимка в узле (режим миниатюр)
     FHotNode, FHotEdge: Integer;
     FSelNode: Integer;
     procedure CalcRects;
@@ -82,6 +83,16 @@ type
     FOnOpenWindow: TWmOpenEvent;
     FOnFill: TWmFillEvent;
     FCurrentState: Integer;
+    FShowThumbs: TCheckBox;
+    FBtnShots: TButton;
+    FThumbs: TList;                  // TBitmap по номерам узлов, nil - нет снимка
+    FShotDir: string;
+    FOnShots: TNotifyEvent;
+    procedure BtnShotsClick(Sender: TObject);
+    procedure ShowThumbsClick(Sender: TObject);
+    procedure FreeThumbs;
+    function ThumbMode: Boolean;
+    function ScaleY: Double;
     procedure BtnRefreshClick(Sender: TObject);
     procedure BtnLayoutClick(Sender: TObject);
     procedure ShowHomeClick(Sender: TObject);
@@ -109,6 +120,14 @@ type
     property OnGoto: TWmGotoEvent read FOnGoto write FOnGoto;
     property OnOpenWindow: TWmOpenEvent read FOnOpenWindow write FOnOpenWindow;
     property OnFill: TWmFillEvent read FOnFill write FOnFill;
+    // Папка снимков окон (WinN.bmp); ReloadShots - прочитать заново
+    property ShotDir: string read FShotDir write FShotDir;
+    procedure ReloadShots;
+    // Кнопка «Снимки окон»: снять все окна (делает владелец)
+    property OnShots: TNotifyEvent read FOnShots write FOnShots;
+    // Снимки идут: кнопка - «Остановить снимки»
+    procedure SetShotsBusy(ABusy: Boolean);
+    procedure ShowStatus(const AText: string);
     // Номер окна, открытого в эмуляторе (рамка узла), -1 - нет
     property CurrentState: Integer read FCurrentState write SetCurrentState;
   end;
@@ -116,7 +135,7 @@ type
 implementation
 
 uses
-  Math;
+  Math, IniFiles;
 
 const
   CellW = 210;
@@ -124,6 +143,10 @@ const
   BoxMinW = 120;
   BoxH = 52;      // три строки: имя, подпись, переходы внутри окна
   ToggleW = 13;
+  ThumbW = 160;   // миниатюра снимка 480x320 - втрое меньше
+  ThumbH = 107;
+  ThumbBoxH = BoxH + ThumbH + 4;
+  ThumbCellH = ThumbBoxH + 28;
 
   ClrBack = $00FFFFFF;
   ClrWindow = $00FBEFE3;     // голубой (BGR)
@@ -156,7 +179,7 @@ end;
 procedure TWmBox.CalcRects;
 var
   Map: TWmMap;
-  NodeIdx, EdgeIdx, TextW, MaxRight, MaxBottom: Integer;
+  NodeIdx, EdgeIdx, TextW, MaxRight, MaxBottom, NodeTop, NodeH: Integer;
   Node: TWmNode;
   Edge: TWmEdge;
   Part: string;
@@ -166,6 +189,7 @@ begin
   SetLength(FSelfText, Map.NodeCount);
   SetLength(FSelfRects, Map.NodeCount);
   SetLength(FToggleRects, Map.NodeCount);
+  SetLength(FThumbRects, Map.NodeCount);
   for NodeIdx := 0 to Map.NodeCount - 1 do
     FSelfText[NodeIdx] := '';
   // переходы внутри окна: "< actRepeat, F1 actHelp"
@@ -195,6 +219,7 @@ begin
     Node := Map.Nodes[NodeIdx];
     FToggleRects[NodeIdx] := Rect(0, 0, 0, 0);
     FSelfRects[NodeIdx] := Rect(0, 0, 0, 0);
+    FThumbRects[NodeIdx] := Rect(0, 0, 0, 0);
     if Node.Hidden then
     begin
       FRects[NodeIdx] := Rect(0, 0, 0, 0);
@@ -207,14 +232,24 @@ begin
     TextW := Min(CellW - 30, Max(BoxMinW, TextW + 14));
     if Node.ChildCount > 0 then
       TextW := Min(CellW - 30, TextW + ToggleW);
-    FRects[NodeIdx] := Rect(Node.PosX, Node.PosY, Node.PosX + TextW, Node.PosY + BoxH);
+    // режим миниатюр: места по вертикали шире (ScaleY), у окна - снимок
+    NodeTop := Round(Node.PosY * FOwnerForm.ScaleY);
+    NodeH := BoxH;
+    if FOwnerForm.ThumbMode and (Node.Kind = wnkWindow) then
+    begin
+      TextW := Max(TextW, ThumbW + 10);
+      NodeH := ThumbBoxH;
+      FThumbRects[NodeIdx] := Rect(Node.PosX + (TextW - ThumbW) div 2, NodeTop + 36,
+        Node.PosX + (TextW - ThumbW) div 2 + ThumbW, NodeTop + 36 + ThumbH);
+    end;
+    FRects[NodeIdx] := Rect(Node.PosX, NodeTop, Node.PosX + TextW, NodeTop + NodeH);
     if Node.ChildCount > 0 then
-      FToggleRects[NodeIdx] := Rect(Node.PosX + TextW - ToggleW - 3, Node.PosY + 3,
-                                    Node.PosX + TextW - 3, Node.PosY + 3 + ToggleW);
-    // третья строка узла
+      FToggleRects[NodeIdx] := Rect(Node.PosX + TextW - ToggleW - 3, NodeTop + 3,
+                                    Node.PosX + TextW - 3, NodeTop + 3 + ToggleW);
+    // нижняя строка узла
     if FSelfText[NodeIdx] <> '' then
-      FSelfRects[NodeIdx] := Rect(Node.PosX + 2, Node.PosY + BoxH - 17,
-                                  Node.PosX + TextW - 2, Node.PosY + BoxH - 2);
+      FSelfRects[NodeIdx] := Rect(Node.PosX + 2, NodeTop + NodeH - 17,
+                                  Node.PosX + TextW - 2, NodeTop + NodeH - 2);
     MaxRight := Max(MaxRight, Max(FRects[NodeIdx].Right, FSelfRects[NodeIdx].Right));
     MaxBottom := Max(MaxBottom, FRects[NodeIdx].Bottom + 20);
   end;
@@ -402,6 +437,7 @@ var
   BoxRect: TRect;
   LineColor: TColor;
   TextRight: Integer;
+  Thumb: TBitmap;
 begin
   Canvas.Brush.Style := bsSolid;
   Canvas.Brush.Color := ClrBack;
@@ -499,6 +535,25 @@ begin
       Canvas.Pen.Width := Canvas.Pen.Width + 1;
     Canvas.RoundRect(BoxRect.Left, BoxRect.Top, BoxRect.Right, BoxRect.Bottom, 10, 10);
     Canvas.Pen.Width := 1;
+    if FThumbRects[NodeIdx].Right > 0 then
+    begin
+      Thumb := nil;
+      if NodeIdx < FOwnerForm.FThumbs.Count then
+        Thumb := TBitmap(FOwnerForm.FThumbs[NodeIdx]);
+      if Thumb <> nil then
+        Canvas.Draw(FThumbRects[NodeIdx].Left, FThumbRects[NodeIdx].Top, Thumb)
+      else
+      begin
+        Canvas.Brush.Style := bsSolid;
+        Canvas.Brush.Color := $00303030;
+        Canvas.FillRect(FThumbRects[NodeIdx]);
+        Canvas.Font.Size := 8;
+        Canvas.Font.Style := [];
+        Canvas.Font.Color := $00C0C0C0;
+        Canvas.TextOut(FThumbRects[NodeIdx].Left + 6, FThumbRects[NodeIdx].Top + 6,
+                       'нет снимка');
+      end;
+    end;
     Canvas.Brush.Style := bsClear;
     Canvas.Font.Size := 9;
     Canvas.Font.Style := [fsBold];
@@ -637,7 +692,7 @@ begin
   begin
     FDragNode := NodeIdx;
     FDragDX := PosX - FOwnerForm.FMap.Nodes[NodeIdx].PosX;
-    FDragDY := PosY - FOwnerForm.FMap.Nodes[NodeIdx].PosY;
+    FDragDY := PosY - FRects[NodeIdx].Top;
     MouseCapture := True;
   end;
 end;
@@ -655,7 +710,7 @@ begin
     FDragged := True;
     Node := FOwnerForm.FMap.Nodes[FDragNode];
     Node.PosX := Max(0, PosX - FDragDX);
-    Node.PosY := Max(0, PosY - FDragDY);
+    Node.PosY := Max(0, Round((PosY - FDragDY) / FOwnerForm.ScaleY));
     Node.PosSet := True;
     CalcRects;
     CalcEdges;
@@ -776,6 +831,24 @@ begin
   FShowHome.Checked := False;
   FShowHome.OnClick := ShowHomeClick;
 
+  FShowThumbs := TCheckBox.Create(Self);
+  FShowThumbs.Parent := FTop;
+  FShowThumbs.SetBounds(470, 8, 110, 20);
+  FShowThumbs.Caption := 'Миниатюры';
+  FShowThumbs.Hint := 'Снимки экранов окон в узлах карты';
+  FShowThumbs.ShowHint := True;
+  FShowThumbs.OnClick := ShowThumbsClick;
+
+  FBtnShots := TButton.Create(Self);
+  FBtnShots.Parent := FTop;
+  FBtnShots.SetBounds(590, 5, 150, 24);
+  FBtnShots.Caption := 'Снимки окон';
+  FBtnShots.Hint := 'Открыть каждое окно в эмуляторе и сохранить снимок его ' +
+    'экрана (ardsim_build\winshots). Около секунды на окно';
+  FBtnShots.ShowHint := True;
+  FBtnShots.OnClick := BtnShotsClick;
+  FThumbs := TList.Create;
+
   FStatus := TLabel.Create(Self);
   FStatus.Parent := Self;
   FStatus.Align := alBottom;
@@ -813,6 +886,8 @@ end;
 
 destructor TArdWinMapForm.Destroy;
 begin
+  FreeThumbs;
+  FThumbs.Free;
   FMap.Free;
   inherited Destroy;
 end;
@@ -834,6 +909,89 @@ begin
               ' узл.)')
   else
     SetStatus(Node.Title + ': ветка раскрыта');
+end;
+
+procedure TArdWinMapForm.FreeThumbs;
+var
+  ThumbIdx: Integer;
+begin
+  for ThumbIdx := 0 to FThumbs.Count - 1 do
+    TObject(FThumbs[ThumbIdx]).Free;
+  FThumbs.Clear;
+end;
+
+// Миниатюры узлов-окон из FShotDir (только в режиме миниатюр)
+procedure TArdWinMapForm.ReloadShots;
+var
+  NodeIdx: Integer;
+  Node: TWmNode;
+begin
+  FreeThumbs;
+  for NodeIdx := 0 to FMap.NodeCount - 1 do
+  begin
+    Node := FMap.Nodes[NodeIdx];
+    if ThumbMode and (FShotDir <> '') and (Node.Kind = wnkWindow) then
+      FThumbs.Add(LoadShotThumb(WinShotFile(FShotDir, Node.State), ThumbW, ThumbH))
+    else
+      FThumbs.Add(nil);
+  end;
+  FBox.Rebuild;
+end;
+
+function TArdWinMapForm.ThumbMode: Boolean;
+begin
+  Result := (FShowThumbs <> nil) and FShowThumbs.Checked;
+end;
+
+// Места узлов хранятся в обычном шаге; в режиме миниатюр строки выше -
+// вертикаль растягивается
+function TArdWinMapForm.ScaleY: Double;
+begin
+  if ThumbMode then
+    Result := ThumbCellH / CellH
+  else
+    Result := 1;
+end;
+
+// Режим миниатюр помнит файл карты: [View] Thumbs
+procedure TArdWinMapForm.ShowThumbsClick(Sender: TObject);
+var
+  Ini: TIniFile;
+begin
+  ReloadShots;
+  if FMapFile = '' then
+    Exit;
+  try
+    Ini := TIniFile.Create(FMapFile);
+    try
+      Ini.WriteBool('View', 'Thumbs', FShowThumbs.Checked);
+      Ini.UpdateFile;
+    finally
+      Ini.Free;
+    end;
+  except
+    on Err: Exception do
+      SetStatus('Не записано в ' + FMapFile + ': ' + Err.Message);
+  end;
+end;
+
+procedure TArdWinMapForm.BtnShotsClick(Sender: TObject);
+begin
+  if Assigned(FOnShots) then
+    FOnShots(Self);
+end;
+
+procedure TArdWinMapForm.SetShotsBusy(ABusy: Boolean);
+begin
+  if ABusy then
+    FBtnShots.Caption := 'Остановить снимки'
+  else
+    FBtnShots.Caption := 'Снимки окон';
+end;
+
+procedure TArdWinMapForm.ShowStatus(const AText: string);
+begin
+  SetStatus(AText);
 end;
 
 procedure TArdWinMapForm.SetStatus(const AText: string);
@@ -860,6 +1018,7 @@ procedure TArdWinMapForm.RefreshMap;
 var
   OldMap: TWmMap;
   WindowTotal, NodeIdx: Integer;
+  Ini: TIniFile;
 begin
   OldMap := FMap;
   FMap := TWmMap.Create;
@@ -872,6 +1031,18 @@ begin
   if FMapFile <> '' then
     FMap.LoadPositions(FMapFile);
   FMap.AutoLayout(CellW, CellH, True);
+  if (FMapFile <> '') and FileExists(FMapFile) then
+  begin
+    Ini := TIniFile.Create(FMapFile);
+    try
+      FShowThumbs.OnClick := nil;
+      FShowThumbs.Checked := Ini.ReadBool('View', 'Thumbs', False);
+      FShowThumbs.OnClick := ShowThumbsClick;
+    finally
+      Ini.Free;
+    end;
+  end;
+  ReloadShots;
   FBox.FSelNode := -1;
   FBox.Rebuild;
   Caption := 'Карта окон - ' + ExtractFileName(FSketchFile);
