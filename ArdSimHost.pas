@@ -471,6 +471,11 @@ type
     // Счётчик копий экрана из эмулятора (0 после запуска - картинки ещё
     // нет) и запись экрана в .bmp (ArdWinShots): идёт - из общей памяти
     function ScreenVersion: Cardinal;
+    // Прибор (экран и клавиатура) - в чужом окне AHost (конструктор окон),
+    // nil - обратно на панель. FitDevice - разложить прибор по размеру
+    // AHost (вызывает AHost при изменении размера)
+    procedure PlaceDevice(AHost: TWinControl);
+    procedure FitDevice;
     function SaveScreenBmp(const AFileName: string): Boolean;
     // Щелчок по надписи-фантому: строки отрисовки у эмулятора нет, Unit1
     // ставит курсор на её вывод сам
@@ -1360,11 +1365,15 @@ begin
   SigH := SigHeadH + Gap;
   if FSigShown then
     Inc(SigH, SigPanelH);
-  DeviceSize := FDevice.Arrange(AreaW,
-                                ClientHeight - PosY - SerialMinH - SigH - 2 * Gap);
-  FDevice.SetBounds(Gap, PosY, DeviceSize.X, DeviceSize.Y);
-  FDevice.Invalidate;
-  Inc(PosY, DeviceSize.Y + Gap);
+  // прибор в конструкторе окон (PlaceDevice) - здесь его нет
+  if FDevice.Parent = Self then
+  begin
+    DeviceSize := FDevice.Arrange(AreaW,
+                                  ClientHeight - PosY - SerialMinH - SigH - 2 * Gap);
+    FDevice.SetBounds(Gap, PosY, DeviceSize.X, DeviceSize.Y);
+    FDevice.Invalidate;
+    Inc(PosY, DeviceSize.Y + Gap);
+  end;
   FSigHead.SetBounds(Gap, PosY, AreaW, SigHeadH);
   Inc(PosY, SigHeadH);
   FSigPanel.Visible := FSigShown;
@@ -4344,6 +4353,38 @@ begin
   FPhantoms.Clear;
   if FDevice <> nil then
     FDevice.InvalidateScreen;
+end;
+
+procedure TArdSimPanel.PlaceDevice(AHost: TWinControl);
+begin
+  if AHost = nil then
+    AHost := Self;
+  if FDevice.Parent <> AHost then
+    FDevice.Parent := AHost;
+  if AHost = Self then
+    LayoutControls
+  else
+  begin
+    LayoutControls;
+    FitDevice;
+  end;
+end;
+
+procedure TArdSimPanel.FitDevice;
+var
+  Host: TWinControl;
+  DeviceSize: TPoint;
+  DeviceLeft: Integer;
+begin
+  Host := FDevice.Parent;
+  if (Host = nil) or (Host = Self) then
+    Exit;
+  DeviceSize := FDevice.Arrange(Host.ClientWidth, Host.ClientHeight);
+  DeviceLeft := (Host.ClientWidth - DeviceSize.X) div 2;
+  if DeviceLeft < 0 then
+    DeviceLeft := 0;
+  FDevice.SetBounds(DeviceLeft, 0, DeviceSize.X, DeviceSize.Y);
+  FDevice.Invalidate;
 end;
 
 function TArdSimPanel.ScreenVersion: Cardinal;

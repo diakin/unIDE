@@ -133,6 +133,7 @@ uses
   ArdWinMap in 'ArdWinMap.pas',
   ArdWinMapView in 'ArdWinMapView.pas',
   ArdWinShots in 'ArdWinShots.pas',
+  ArdWinDesigner in 'ArdWinDesigner.pas',
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',

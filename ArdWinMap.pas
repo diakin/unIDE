@@ -153,6 +153,9 @@ type
     function VisibleOf(ANode: TWmNode): TWmNode;
     // Число скрытых потомков свёрнутого узла
     function HiddenCount(ANode: TWmNode): Integer;
+    // Все узлы в порядке дерева (setup(), его ветка вглубь, затем узлы без
+    // пути от setup())
+    procedure TreeOrder(AList: TList);
     // Файл .winmap (ini): [Moved] Ключ=x,y - узлы, перемещённые мышью;
     // [Collapsed] Ключ=1/0 - свёрнутые ветки. Нет записи - по CollapseFrom
     procedure LoadPositions(const AIniFile: string);
@@ -1324,6 +1327,39 @@ begin
       Dec(SortIdx);
     AList.Insert(SortIdx, Node);
   end;
+end;
+
+procedure TWmMap.TreeOrder(AList: TList);
+var
+  NodeIdx: Integer;
+  Root: TWmNode;
+
+  procedure AddBranch(ANode: TWmNode);
+  var
+    Kids: TList;
+    KidIdx: Integer;
+  begin
+    AList.Add(ANode);
+    Kids := TList.Create;
+    try
+      ChildrenOf(ANode, Kids);
+      for KidIdx := 0 to Kids.Count - 1 do
+        AddBranch(TWmNode(Kids[KidIdx]));
+    finally
+      Kids.Free;
+    end;
+  end;
+
+begin
+  AList.Clear;
+  Root := NodeOfFunc('setup');
+  if Root = nil then
+    Root := NodeOfState(FInitialState, False);
+  if Root <> nil then
+    AddBranch(Root);
+  for NodeIdx := 0 to FNodes.Count - 1 do
+    if AList.IndexOf(FNodes[NodeIdx]) < 0 then
+      AList.Add(FNodes[NodeIdx]);
 end;
 
 procedure TWmMap.CollapseFrom(ADepth: Integer);
