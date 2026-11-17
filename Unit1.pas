@@ -2160,7 +2160,8 @@ type
     FObjRapidQ: Boolean;    // в инспекторе - объекты CREATE файла RapidQ
     // В инспекторе - вывод на экран скетча .ino (ArdRefreshInspector)
     FObjArduino: Boolean;
-    FArdWinTree: Boolean;   // Objects .ino - дерево окон конструктора окон
+    FArdWinTree: Boolean;   // Objects .ino - дерево окон (иначе плоский список)
+    FArdInsMap: TWmMap;     // карта окон текста в редакторе - для дерева Objects
     // Знаки шрифта выбранной надписи под таблицей свойств (.ino): щелчок -
     // знак в поле текста (ArdGlyphPick)
     FArdGlyphs: TArdGlyphPanel;
@@ -3273,6 +3274,7 @@ type
     procedure RefreshRapidQInspector;
     procedure ArdRefreshInspector;
     procedure ArdAddWinNodes(ARoots: TList; var AOutTotal, AWinTotal: Integer);
+    procedure ArdWinMapFillFrom(AMap: TWmMap; const ASketch, AMainText: string);
     procedure ArdInspectorSelectWindow(AState: Integer);
     procedure ArdFillWinProps(ANode: TObject);
     function  ArdCallCaption(ACall: TObject): string;
@@ -34986,16 +34988,24 @@ end;
 // #include "Имя" из папки скетча (текст как ANSI, как у ArdLoadInclude)
 procedure TForm1.ArdWinMapFill(AMap: TWmMap);
 var
+  Sketch: string;
+begin
+  Sketch := FWinSketch;
+  if Sketch = '' then
+    Sketch := ArdWinMapSketch;
+  if Sketch <> '' then
+    ArdWinMapFillFrom(AMap, Sketch, '');
+end;
+
+// Файлы скетча ASketch для карты окон; AMainText <> '' - текст главного
+// файла из редактора (инспектор), иначе он тоже с диска
+procedure TForm1.ArdWinMapFillFrom(AMap: TWmMap; const ASketch, AMainText: string);
+var
   Sketch, Dir, FilePath, Raw, Text, LineText, IncName: string;
   Names, Others, Lines: TStringList;
   NameIdx, LineIdx, QuotePos, QuoteEnd: Integer;
 begin
-  Sketch := '';
-  Sketch := FWinSketch;
-  if Sketch = '' then
-    Sketch := ArdWinMapSketch;
-  if Sketch = '' then
-    Exit;
+  Sketch := ASketch;
   Dir := ExtractFilePath(Sketch);
   Names := TStringList.Create;
   Others := TStringList.Create;
@@ -35009,10 +35019,15 @@ begin
     begin
       FilePath := Dir + Names[NameIdx];
       Inc(NameIdx);
-      if not FileExists(FilePath) then
-        Continue;
-      Raw := ReadWholeFile(FilePath);
-      if (Length(Raw) >= 3) and (Byte(Raw[1]) = $EF) and (Byte(Raw[2]) = $BB) and
+      if (NameIdx = 1) and (AMainText <> '') then
+        Raw := ''
+      else if not FileExists(FilePath) then
+        Continue
+      else
+        Raw := ReadWholeFile(FilePath);
+      if (NameIdx = 1) and (AMainText <> '') then
+        Text := AMainText
+      else if (Length(Raw) >= 3) and (Byte(Raw[1]) = $EF) and (Byte(Raw[2]) = $BB) and
          (Byte(Raw[3]) = $BF) then
         Text := Utf8ToAnsiFull(Copy(Raw, 4, MaxInt))
       else if LooksLikeUtf8(Raw) then
@@ -35636,10 +35651,9 @@ var
   WantTree: Boolean;
 begin
   ArdColumns(True);
-  WantTree := (FWinDesigner <> nil) and FWinDesigner.Visible;
   // Счётчик правок тот же - текст не читаем
   if FObjArduino and (FArdSketch <> nil) and (FObjRoots <> nil) and
-     (FObjRoots.Count > 0) and (FArdWinTree = WantTree) and
+     (FObjRoots.Count > 0) and
      (FArdEdKey = FCurrentFileName + '|' + EditorTextKey) then
     Exit;
   FArdEdKey := FCurrentFileName + '|' + EditorTextKey;
@@ -35648,9 +35662,8 @@ begin
          IntToHex(Crc32Of(SrcText), 8);
   // Тот же текст - дерево остаётся, с выделением и раскрытыми ветками
   if FObjArduino and (Key = FArdTextKey) and (FObjRoots <> nil) and
-     (FObjRoots.Count > 0) and (FArdSketch <> nil) and (FArdWinTree = WantTree) then
+     (FObjRoots.Count > 0) and (FArdSketch <> nil) then
     Exit;
-  FArdWinTree := WantTree;
 
   ObjCancelEdit;
   FObjCurNode := nil;
@@ -35680,6 +35693,14 @@ begin
   // (Label и др.) нужны для разбора вызовов главного файла
   ArdListOtherIno(FCurrentFileName, Sketch.ExtraFiles);
   Sketch.Parse(SrcText);
+  // Окна скетча (switch (WinState) и функции WinN): есть - дерево окон и
+  // их вывода, нет - плоский список
+  FArdInsMap.Free;
+  FArdInsMap := TWmMap.Create;
+  ArdWinMapFillFrom(FArdInsMap, FCurrentFileName, SrcText);
+  FArdInsMap.Parse;
+  WantTree := FArdInsMap.StateVar <> '';
+  FArdWinTree := WantTree;
 
   // Плоский список: все вызовы вывода по порядку текста, без узлов
   // функций. Вызов функции скетча без аргументов (Win0()) - не в списке:
@@ -35725,7 +35746,7 @@ begin
       FObjRoots.Add(Roots[FuncIdx]);
     if WantTree then
       FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
-        ': окон - ' + IntToStr(FuncTotal) + ', вызовов вывода в них - ' +
+        ': окон - ' + IntToStr(FuncTotal) + ', вызовов вывода - ' +
         IntToStr(OutTotal) + '. Щелчок - к строке; свойства надписи правятся ' +
         'в таблице'
     else
@@ -35739,7 +35760,8 @@ begin
   end;
   // Новые значения объявлений - и у надписей, вставленных после сборки
   ArdSyncPhantoms;
-  if WantTree and (FWinDesigner.CurrentState >= 0) and (FArdKeepName = '') then
+  if WantTree and (FWinDesigner <> nil) and FWinDesigner.Visible and
+     (FWinDesigner.CurrentState >= 0) and (FArdKeepName = '') then
     ArdInspectorSelectWindow(FWinDesigner.CurrentState);
 end;
 
@@ -35749,21 +35771,25 @@ procedure TForm1.ArdAddWinNodes(ARoots: TList; var AOutTotal, AWinTotal: Integer
 var
   Sketch: TArdSketch;
   Order: TList;
-  NodeIdx, CallIdx: Integer;
+  NodeIdx, CallIdx, FuncIdx: Integer;
   WinNode: TWmNode;
-  WinDfm, CallNode: TDfmNode;
+  WinDfm, CallNode, OtherDfm, FuncDfm: TDfmNode;
   Call: TArdCall;
+  WinFuncs: TStringList;
 begin
   Sketch := TArdSketch(FArdSketch);
   Order := TList.Create;
+  WinFuncs := TStringList.Create;
+  WinFuncs.CaseSensitive := False;
   try
-    FWinDesigner.Map.TreeOrder(Order);
+    FArdInsMap.TreeOrder(Order);
     for NodeIdx := 0 to Order.Count - 1 do
     begin
       WinNode := TWmNode(Order[NodeIdx]);
       if not (WinNode.Kind in [wnkWindow, wnkModal]) or (WinNode.FuncName = '') then
         Continue;
       Inc(AWinTotal);
+      WinFuncs.Add(WinNode.FuncName);
       WinDfm := TDfmNode.Create;
       FDfmNodes.Add(WinDfm);
       WinDfm.Name := 'w:' + WinNode.FuncName;
@@ -35801,8 +35827,61 @@ begin
         WinDfm.Children.Add(CallNode);
       end;
     end;
+    // вывод вне функций окон (setup, PrintFrame, ...) - «Прочие функции»,
+    // по функциям
+    OtherDfm := nil;
+    FuncDfm := nil;
+    for CallIdx := 0 to Sketch.Calls.Count - 1 do
+    begin
+      Call := TArdCall(Sketch.Calls[CallIdx]);
+      if (Call.Func = nil) or not ArdCallListed(Call) or
+         (WinFuncs.IndexOf(Call.Func.Name) >= 0) then
+        Continue;
+      Inc(AOutTotal);
+      if OtherDfm = nil then
+      begin
+        OtherDfm := TDfmNode.Create;
+        FDfmNodes.Add(OtherDfm);
+        OtherDfm.Name := 'g:other';
+        OtherDfm.ClassNm := 'Прочие функции';
+        OtherDfm.Line := -1;
+        ARoots.Add(OtherDfm);
+      end;
+      if (FuncDfm = nil) or (FuncDfm.VarName <> Call.Func.Name) then
+      begin
+        FuncDfm := nil;
+        for FuncIdx := 0 to OtherDfm.Children.Count - 1 do
+          if TDfmNode(OtherDfm.Children[FuncIdx]).VarName = Call.Func.Name then
+            FuncDfm := TDfmNode(OtherDfm.Children[FuncIdx]);
+        if FuncDfm = nil then
+        begin
+          FuncDfm := TDfmNode.Create;
+          FDfmNodes.Add(FuncDfm);
+          FuncDfm.Name := 'g:' + Call.Func.Name;
+          FuncDfm.VarName := Call.Func.Name;
+          FuncDfm.ClassNm := Call.Func.Name + '()';
+          FuncDfm.Line := -1;
+          if Call.Func.SrcFile = '' then
+            FuncDfm.CreateLine := Call.Func.Line;
+          FuncDfm.Parent := OtherDfm;
+          OtherDfm.Children.Add(FuncDfm);
+        end;
+      end;
+      CallNode := TDfmNode.Create;
+      FDfmNodes.Add(CallNode);
+      CallNode.Name := 'c:' + Call.Name + ':' + IntToStr(Call.Line + 1) +
+                       ':' + IntToStr(Call.Col);
+      CallNode.ClassNm := ArdCallCaption(Call);
+      CallNode.Note := 'стр. ' + IntToStr(Call.Line + 1);
+      CallNode.CreateLine := Call.Line;
+      CallNode.Line := CallIdx;
+      CallNode.EndLine := -1;
+      CallNode.Parent := FuncDfm;
+      FuncDfm.Children.Add(CallNode);
+    end;
   finally
     Order.Free;
+    WinFuncs.Free;
   end;
 end;
 
@@ -35812,11 +35891,11 @@ var
   NodeIdx, TreeIdx: Integer;
   WinNode: TWmNode;
 begin
-  if not FObjArduino or not FArdWinTree or (FWinDesigner = nil) or (FObjTree = nil) then
+  if not FObjArduino or not FArdWinTree or (FArdInsMap = nil) or (FObjTree = nil) then
     Exit;
-  for NodeIdx := 0 to FWinDesigner.Map.NodeCount - 1 do
+  for NodeIdx := 0 to FArdInsMap.NodeCount - 1 do
   begin
-    WinNode := FWinDesigner.Map.Nodes[NodeIdx];
+    WinNode := FArdInsMap.Nodes[NodeIdx];
     if (WinNode.Kind = wnkWindow) and (WinNode.State = AState) then
     begin
       if ObjSelectAnyName('w:' + WinNode.FuncName) then
@@ -35878,9 +35957,9 @@ var
 
 begin
   Sketch := TArdSketch(FArdSketch);
-  if (Sketch = nil) or (FWinDesigner = nil) then
+  if (Sketch = nil) or (FArdInsMap = nil) then
     Exit;
-  Map := FWinDesigner.Map;
+  Map := FArdInsMap;
   FuncName := Copy(TDfmNode(ANode).Name, 3, MaxInt);
   WinNode := nil;
   for NodeIdx := 0 to Map.NodeCount - 1 do
@@ -36106,10 +36185,18 @@ begin
   Sketch := TArdSketch(FArdSketch);
   if (Node = nil) or (Sketch = nil) then
     Exit;
-  // Окно (дерево окон конструктора)
+  // Окно (дерево окон)
   if Copy(Node.Name, 1, 2) = 'w:' then
   begin
     ArdFillWinProps(Node);
+    Exit;
+  end;
+  // «Прочие функции» и функция в ней - свойств нет
+  if Copy(Node.Name, 1, 2) = 'g:' then
+  begin
+    if FArdSim <> nil then
+      FArdSim.SelectedControl := '';
+    FObjHeader.Caption := '  ' + Node.ClassNm;
     Exit;
   end;
 
