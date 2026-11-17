@@ -134,6 +134,7 @@ uses
   ArdWinMapView in 'ArdWinMapView.pas',
   ArdWinShots in 'ArdWinShots.pas',
   ArdWinDesigner in 'ArdWinDesigner.pas',
+  ArdWinNew in 'ArdWinNew.pas',
   GitRun in 'GitRun.pas',
   DlgGitCommit in 'DlgGitCommit.pas',
   DlgGitHistory in 'DlgGitHistory.pas',

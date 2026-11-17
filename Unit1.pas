@@ -77,6 +77,7 @@ uses
   ArdWinMapView,  // окно карты окон (Arduino - Window Map)
   ArdWinShots,    // снимки окон скетча (.bmp, миниатюры)
   ArdWinDesigner, // конструктор окон (Arduino - Window Designer)
+  ArdWinNew,      // новое окно скетча (конструктор окон)
   ArdGlyphPanel,  // знаки шрифта надписи под таблицей инспектора (.ino)
   GitRun,         // запуск консольного git: панель Git, меню Repository, Branch
   UiCaptionTabs,  // вкладки Components | Git на месте подписи рамки палитры
@@ -1185,6 +1186,7 @@ type
     procedure ArdWinDesignerClick(Sender: TObject);
     procedure ArdWinDesignerResize(Sender: TObject);
     procedure ArdWinDesignerClosed(Sender: TObject);
+    procedure ArdWinNewWindow(Sender: TObject);
     procedure ArdWinShotCurrent(Sender: TObject);
     procedure ArdWinStatus(const AText: string);
     procedure ArdWinCurrent(AState: Integer);
@@ -35282,6 +35284,7 @@ begin
     FWinDesigner.OnShowMap := ArdWinMapClick;
     FWinDesigner.OnDeviceResize := ArdWinDesignerResize;
     FWinDesigner.OnClosed := ArdWinDesignerClosed;
+    FWinDesigner.OnNewWindow := ArdWinNewWindow;
   end;
   FWinDesigner.SketchFile := Sketch;
   FWinDesigner.ShotDir := ArdWinShotDir;
@@ -35317,6 +35320,138 @@ procedure TForm1.ArdWinDesignerClosed(Sender: TObject);
 begin
   if FArdSim <> nil then
     FArdSim.PlaceDevice(nil);
+end;
+
+// «Создать новое окно» в конструкторе окон: панель настройки
+// (TArdWinNewForm), правка файла форм и .ino (WnCreateWindow), запись с
+// прежней кодировкой (ArdFileSave перечитывает открытые вкладки), затем
+// пересборка эмулятора и открытие нового окна
+procedure TForm1.ArdWinNewWindow(Sender: TObject);
+var
+  Dlg: TArdWinNewForm;
+  Params: TWnParams;
+  Map: TWmMap;
+  PrevNode, Node: TWmNode;
+  FormsFile, ArrName, InoFile, CaseFile, Report, CodeLines: string;
+  FormsLines, InoLines, CaseLines: TStringList;
+  FormsFmt, InoFmt, CaseFmt, NodeIdx, CurState: Integer;
+  Done: Boolean;
+
+  function SameFile(const AFirst, ASecond: string): Boolean;
+  begin
+    Result := CompareText(ExpandFileName(AFirst), ExpandFileName(ASecond)) = 0;
+  end;
+
+begin
+  if FWinDesigner = nil then
+    Exit;
+  if (FWinShotTimer <> nil) and FWinShotTimer.Enabled then
+  begin
+    ArdWinStatus('Идут снимки окон - сначала остановите их');
+    Exit;
+  end;
+  ArdSimEnsure;
+  if FArdSim.Building then
+  begin
+    ArdWinStatus('Эмулятор собирается - повторите после сборки');
+    Exit;
+  end;
+  // правки вкладок - на диск, карта - по файлам с диска
+  if not ArdSimSaveFiles(FArdSim) then
+    Exit;
+  FWinDesigner.RefreshMap;
+  Map := FWinDesigner.Map;
+  CurState := FWinDesigner.CurrentState;
+  if CurState < 0 then
+    CurState := FWinDesigner.HomeState;
+  Dlg := TArdWinNewForm.CreateFor(Self, Map, CurState);
+  try
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    if not Dlg.GetParams(Params) then
+      Exit;
+  finally
+    Dlg.Free;
+  end;
+  PrevNode := nil;
+  for NodeIdx := 0 to Map.NodeCount - 1 do
+  begin
+    Node := Map.Nodes[NodeIdx];
+    if (Node.Kind = wnkWindow) and (Node.State = Params.PrevState) then
+      PrevNode := Node;
+  end;
+  if PrevNode = nil then
+    Exit;
+  if not WnMenuArray(Map, PrevNode, FormsFile, ArrName, nil) then
+  begin
+    CodeLines := WnCodeLines(Map, PrevNode);
+    ShowMessage('У окна ' + PrevNode.Title + ' нет массива меню (TMenuItem): ' +
+      'переходы написаны кодом, новое окно автоматически не вставляется. ' +
+      'Строки переходов:'#13#10 + CodeLines);
+    ArdWinMapGoto(PrevNode.FileName, PrevNode.Line);
+    Exit;
+  end;
+  InoFile := PrevNode.FileName;
+  CaseFile := PrevNode.CaseFile;
+  if (InoFile = '') or (CaseFile = '') then
+  begin
+    ShowMessage('Не найдены функция или ветка case окна ' + PrevNode.Title);
+    Exit;
+  end;
+  Done := False;
+  FormsLines := TStringList.Create;
+  InoLines := nil;
+  CaseLines := nil;
+  try
+    if not ArdFileLoad(FormsFile, FormsLines, FormsFmt, True) then
+      Exit;
+    InoFmt := FormsFmt;
+    if SameFile(InoFile, FormsFile) then
+      InoLines := FormsLines
+    else
+    begin
+      InoLines := TStringList.Create;
+      if not ArdFileLoad(InoFile, InoLines, InoFmt, True) then
+        Exit;
+    end;
+    CaseFmt := InoFmt;
+    if SameFile(CaseFile, FormsFile) then
+      CaseLines := FormsLines
+    else if SameFile(CaseFile, InoFile) then
+      CaseLines := InoLines
+    else
+    begin
+      CaseLines := TStringList.Create;
+      if not ArdFileLoad(CaseFile, CaseLines, CaseFmt, True) then
+        Exit;
+    end;
+    if not WnCreateWindow(Map, Params, FormsLines, InoLines, CaseLines, Report) then
+    begin
+      ShowMessage('Новое окно не создано: ' + Report);
+      Exit;
+    end;
+    ArdFileSave(FormsFile, FormsLines, FormsFmt);
+    if InoLines <> FormsLines then
+      ArdFileSave(InoFile, InoLines, InoFmt);
+    if (CaseLines <> FormsLines) and (CaseLines <> InoLines) then
+      ArdFileSave(CaseFile, CaseLines, CaseFmt);
+    Done := True;
+  finally
+    if (CaseLines <> nil) and (CaseLines <> FormsLines) and (CaseLines <> InoLines) then
+      CaseLines.Free;
+    if (InoLines <> nil) and (InoLines <> FormsLines) then
+      InoLines.Free;
+    FormsLines.Free;
+  end;
+  if not Done then
+    Exit;
+  LogComp('Конструктор окон: ' + StringReplace(Report, #13#10, '; ', [rfReplaceAll]));
+  FWinDesigner.RefreshMap;
+  ArdWinStatus('Создано окно Win' + IntToStr(Params.NewState) + ' - эмулятор собирается');
+  if ArdWinMapLaunch(Params.NewState) then
+    ArdWinCurrent(Params.NewState);
+  if FWinDesigner.Visible then
+    FWinDesigner.BringToFront;
 end;
 
 // «Снимок текущего»: экран эмулятора - снимком текущего окна конструктора

@@ -76,6 +76,7 @@ type
     FOnShowMap: TNotifyEvent;
     FOnDeviceResize: TNotifyEvent;
     FOnClosed: TNotifyEvent;
+    FOnNewWindow: TNotifyEvent;
     function MakeColumn(AParent: TWinControl; AAlign: TAlign;
       const ACaption: string; var AList: TWdThumbList): TScrollBox;
     function MakeButton(const ACaption, AHint: string; ATop: Integer;
@@ -122,6 +123,8 @@ type
     property OnDeviceResize: TNotifyEvent read FOnDeviceResize write FOnDeviceResize;
     // Окно закрыто: владелец возвращает прибор на панель эмулятора
     property OnClosed: TNotifyEvent read FOnClosed write FOnClosed;
+    // «Создать новое окно»: панель настройки и правку скетча делает владелец
+    property OnNewWindow: TNotifyEvent read FOnNewWindow write FOnNewWindow;
   end;
 
 implementation
@@ -333,7 +336,6 @@ end;
 constructor TArdWinDesignerForm.CreateDesigner(AOwner: TComponent);
 var
   Caption2: TLabel;
-  Button: TButton;
 begin
   inherited CreateNew(AOwner);
   Caption := 'Конструктор окон';
@@ -364,9 +366,8 @@ begin
   FRightPanel.Align := alRight;
   FRightPanel.Width := 200;
   FRightPanel.BevelOuter := bvNone;
-  Button := MakeButton('Создать новое окно', 'Новое пустое окно между двумя ' +
-    'окнами (следующий этап)', 10, BtnNewClick);
-  Button.Enabled := False;
+  MakeButton('Создать новое окно', 'Новое пустое окно: переход в него из ' +
+    'предыдущего окна, выход - в следующее', 10, BtnNewClick);
   MakeButton('Снимок текущего', 'Записать снимок экрана эмулятора для ' +
     'текущего окна (после правки надписей)', 44, BtnShotCurrentClick);
   FBtnShots := MakeButton('Снимки всех окон', 'Открыть каждое окно в ' +
@@ -523,7 +524,8 @@ begin
   Caption := 'Конструктор окон - ' + ExtractFileName(FSketchFile);
   ReloadShots;
   FillWindowList;
-  FillNeighbours;
+  // соседи и выбор в списке «Перейти в окно» - по новой карте
+  SetCurrentState(FCurrentState);
   if FMap.StateVar = '' then
     ShowStatus('В скетче нет switch с окнами')
   else
@@ -740,7 +742,8 @@ end;
 
 procedure TArdWinDesignerForm.BtnNewClick(Sender: TObject);
 begin
-  ShowStatus('Создание окна - следующий этап');
+  if Assigned(FOnNewWindow) then
+    FOnNewWindow(Self);
 end;
 
 procedure TArdWinDesignerForm.ComboSelect(Sender: TObject);
