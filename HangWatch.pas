@@ -68,7 +68,8 @@ uses
   Windows, Messages, SysUtils, Classes;
 
 // AWnd - окно, которое обслуживает главный поток (Application.Handle).
-// ALogFile - журнал; пишется только при зависании. AUiWnd - главное окно
+// ALogFile - журнал; пишется только при зависании, при каждом запуске
+// заново. AUiWnd - главное окно
 // программы: по нему спрашивается IsHungAppWindow (0 - по AWnd).
 // Сбои - в crash.log рядом с ALogFile. ABuild - какая сборка запущена,
 // в заголовок каждой записи.
@@ -360,8 +361,11 @@ begin
     FUiWnd := AWnd;
   FLogFile := ALogFile;
   FCrashFile := ExtractFilePath(ALogFile) + 'crash.log';
-  // Создаётся из главного потока, до Resume - журналы ещё никто не пишет
-  LogFileToUtf8(FLogFile);
+  // Создаётся из главного потока, до Resume - журналы ещё никто не пишет.
+  // Журнал задержек - заново при каждом запуске (прежний удаляется, новый
+  // появится при первой задержке); crash.log копится
+  if FileExists(FLogFile) then
+    DeleteFile(FLogFile);
   LogFileToUtf8(FCrashFile);
   FMapFile := ChangeFileExt(ParamStr(0), '.map');
   FStop := CreateEvent(nil, True, False, nil);

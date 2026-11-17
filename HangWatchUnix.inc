@@ -346,6 +346,9 @@ begin
   FreeOnTerminate := False;
   FLogFile := ALogFile;
   FCrashFile := ExtractFilePath(ALogFile) + 'crash.log';
+  // Журнал задержек - заново при каждом запуске, как в Windows
+  if FileExists(FLogFile) then
+    DeleteFile(FLogFile);
   FBuild := ABuild;
   FLastCpu := -1;
   FLastTick := 0;

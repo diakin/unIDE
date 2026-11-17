@@ -9782,7 +9782,7 @@ begin
         if I = FWindowsIndex then
           FWindows[I].CursorPos := RichEdit1.SelStart; // каретка - на месте
         if ReloadWindowFromDisk(I, False) then
-          LogComp(ExtractFileName(FN) + ': изменён на диске - перечитан в ' +
+          LogComp(FN + ': изменён на диске - перечитан в ' +
           'окно (правок в окне не было)');
                   Continue;
       end;
@@ -28758,14 +28758,17 @@ begin
 
   // editor.ini записан самим редактором (TBufIniFile) - не правка снаружи
   IniBufOnWritten := IniOwnWritten;
-  // Сборка в каждой записи hang.log - то же, что в скобках заголовка окна
+  // Сборка в каждой записи hang.log - то же, что в скобках заголовка окна.
+  // Пробный exe (SyntaxHLClaude_new.exe, ..._laz64NEW.exe) пишет в
+  // hangNew.log, чтобы не стирать журнал рабочего exe
   // Менеджер памяти - FastMM4 (первый модуль .dpr); System.GetHeapStatus
   // его кучу не видит
   {$IFNDEF FPC}
   HangHeapStatus := FastGetHeapStatus;
   {$ENDIF}
   HangWatchStart(Application.Handle,
-                 ExtractFilePath(Application.ExeName) + 'hang.log', Handle,
+                 ExtractFilePath(Application.ExeName) +
+                 IfThen(OwnIsTrial, 'hangNew.log', 'hang.log'), Handle,
                  Copy(AppTitle, Pos('[', AppTitle) + 1,
                       Length(AppTitle) - Pos('[', AppTitle) - 1));
 
