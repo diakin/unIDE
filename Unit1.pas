@@ -3276,6 +3276,8 @@ type
     procedure ArdAddWinNodes(ARoots: TList; var AOutTotal, AWinTotal: Integer);
     procedure ArdWinMapFillFrom(AMap: TWmMap; const ASketch, AMainText: string);
     procedure ArdInspectorSelectWindow(AState: Integer);
+    function ArdInsWindowOf(ANode: TObject): TObject;
+    procedure ArdInspectorOpenWindow(ANode: TObject);
     procedure ArdFillWinProps(ANode: TObject);
     function  ArdCallCaption(ACall: TObject): string;
     procedure ArdFillObjTables(AObj: TObject);
@@ -35898,6 +35900,12 @@ begin
     WinNode := FArdInsMap.Nodes[NodeIdx];
     if (WinNode.Kind = wnkWindow) and (WinNode.State = AState) then
     begin
+      // Выбран компонент этого окна (щелчок в дереве) - выделение не трогаем
+      if (FObjTree.Selected <> nil) and (FObjTree.Selected.Data <> nil) and
+         (ArdInsWindowOf(TObject(FObjTree.Selected.Data)) <> nil) and
+         (TDfmNode(ArdInsWindowOf(TObject(FObjTree.Selected.Data))).Name =
+          'w:' + WinNode.FuncName) then
+        Exit;
       if ObjSelectAnyName('w:' + WinNode.FuncName) then
         for TreeIdx := 0 to FObjTree.Items.Count - 1 do
           if (FObjTree.Items[TreeIdx].Data <> nil) and
@@ -35908,6 +35916,53 @@ begin
           end;
       Exit;
     end;
+  end;
+end;
+
+// Узел окна 'w:Функция', к которому относится узел дерева Objects (сам
+// узел или его предок); nil - узел вне окон
+function TForm1.ArdInsWindowOf(ANode: TObject): TObject;
+var
+  DfmNode: TDfmNode;
+begin
+  DfmNode := TDfmNode(ANode);
+  while (DfmNode <> nil) and (Copy(DfmNode.Name, 1, 2) <> 'w:') do
+    DfmNode := DfmNode.Parent;
+  Result := DfmNode;
+end;
+
+// Щелчок по окну (или его компоненту) в дереве Objects при открытом
+// конструкторе окон: конструктор переходит в это окно, как по миниатюре.
+// Только выбор в самом дереве (фокус у дерева) - выделение по курсору в
+// редакторе или после перехода окна эмулятор не перезапускает
+procedure TForm1.ArdInspectorOpenWindow(ANode: TObject);
+var
+  WinDfm: TDfmNode;
+  WinNode: TWmNode;
+  NodeIdx: Integer;
+  FuncName: string;
+begin
+  if (FWinDesigner = nil) or not FWinDesigner.Visible or (FArdInsMap = nil) or
+     (FObjTree = nil) or not FObjTree.Focused then
+    Exit;
+  WinDfm := TDfmNode(ArdInsWindowOf(ANode));
+  if WinDfm = nil then
+    Exit;
+  FuncName := Copy(WinDfm.Name, 3, MaxInt);
+  for NodeIdx := 0 to FArdInsMap.NodeCount - 1 do
+  begin
+    WinNode := FArdInsMap.Nodes[NodeIdx];
+    if CompareText(WinNode.FuncName, FuncName) <> 0 then
+      Continue;
+    if WinNode.Kind = wnkWindow then
+    begin
+      if WinNode.State <> FWinDesigner.CurrentState then
+        ArdWinMapOpen(FArdInsMap, WinNode);
+    end
+    else if WinNode.Kind = wnkModal then
+      ArdWinStatus(WinNode.FuncName + '() вызывается из окна напрямую - ' +
+                   'откройте окно, которое его вызывает');
+    Exit;
   end;
 end;
 
@@ -36185,6 +36240,7 @@ begin
   Sketch := TArdSketch(FArdSketch);
   if (Node = nil) or (Sketch = nil) then
     Exit;
+  ArdInspectorOpenWindow(Node);
   // Окно (дерево окон)
   if Copy(Node.Name, 1, 2) = 'w:' then
   begin
