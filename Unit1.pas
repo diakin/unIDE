@@ -2160,6 +2160,7 @@ type
     FObjRapidQ: Boolean;    // в инспекторе - объекты CREATE файла RapidQ
     // В инспекторе - вывод на экран скетча .ino (ArdRefreshInspector)
     FObjArduino: Boolean;
+    FArdWinTree: Boolean;   // Objects .ino - дерево окон конструктора окон
     // Знаки шрифта выбранной надписи под таблицей свойств (.ino): щелчок -
     // знак в поле текста (ArdGlyphPick)
     FArdGlyphs: TArdGlyphPanel;
@@ -3271,6 +3272,9 @@ type
     procedure RefreshCodeTree;
     procedure RefreshRapidQInspector;
     procedure ArdRefreshInspector;
+    procedure ArdAddWinNodes(ARoots: TList; var AOutTotal, AWinTotal: Integer);
+    procedure ArdInspectorSelectWindow(AState: Integer);
+    procedure ArdFillWinProps(ANode: TObject);
     function  ArdCallCaption(ACall: TObject): string;
     procedure ArdFillObjTables(AObj: TObject);
     function ArdArgLabelCall(ACall: TObject; AGroup: Integer = 0): TObject; // TArdCall
@@ -35334,6 +35338,8 @@ begin
   UtilOwnByMain(FWinDesigner);
   {$ENDIF}
   FArdSim.PlaceDevice(FWinDesigner.DeviceHost);
+  // Objects - дерево окон конструктора
+  RefreshObjectInspector(False);
   // сразу - окно, открытое в карте, или начальное окно скетча
   StartState := -1;
   if (FWinMapForm <> nil) and (FWinMapForm.CurrentState >= 0) then
@@ -35358,6 +35364,9 @@ begin
     FArdSim.PlaceDevice(nil);
   if (FArdSimWin <> nil) and FArdSimWin.Visible then
     ArdSimPlaced(Self);
+  // Objects - снова плоский список вывода
+  FWinDesigner.Hide;
+  RefreshObjectInspector(False);
 end;
 
 // Ширина конструктора - по столбцам и прибору; правее остаётся инспектор
@@ -35546,7 +35555,10 @@ begin
   if FWinMapForm <> nil then
     FWinMapForm.CurrentState := AState;
   if FWinDesigner <> nil then
+  begin
     FWinDesigner.CurrentState := AState;
+    ArdInspectorSelectWindow(AState);
+  end;
 end;
 
 procedure TForm1.ArdWinShotsReload;
@@ -35621,11 +35633,13 @@ var
   FuncIdx, CallIdx, FuncTotal, OutTotal: Integer;
   Func: TArdFunc;
   Call: TArdCall;
+  WantTree: Boolean;
 begin
   ArdColumns(True);
+  WantTree := (FWinDesigner <> nil) and FWinDesigner.Visible;
   // Счётчик правок тот же - текст не читаем
   if FObjArduino and (FArdSketch <> nil) and (FObjRoots <> nil) and
-     (FObjRoots.Count > 0) and
+     (FObjRoots.Count > 0) and (FArdWinTree = WantTree) and
      (FArdEdKey = FCurrentFileName + '|' + EditorTextKey) then
     Exit;
   FArdEdKey := FCurrentFileName + '|' + EditorTextKey;
@@ -35634,8 +35648,9 @@ begin
          IntToHex(Crc32Of(SrcText), 8);
   // Тот же текст - дерево остаётся, с выделением и раскрытыми ветками
   if FObjArduino and (Key = FArdTextKey) and (FObjRoots <> nil) and
-     (FObjRoots.Count > 0) and (FArdSketch <> nil) then
+     (FObjRoots.Count > 0) and (FArdSketch <> nil) and (FArdWinTree = WantTree) then
     Exit;
+  FArdWinTree := WantTree;
 
   ObjCancelEdit;
   FObjCurNode := nil;
@@ -35674,6 +35689,9 @@ begin
     FuncTotal := 0;
     OutTotal := 0;
     Func := nil;
+    if WantTree then
+      ArdAddWinNodes(Roots, OutTotal, FuncTotal)
+    else
     for CallIdx := 0 to Sketch.Calls.Count - 1 do
     begin
       Call := TArdCall(Sketch.Calls[CallIdx]);
@@ -35705,6 +35723,12 @@ begin
     end;
     for FuncIdx := 0 to Roots.Count - 1 do
       FObjRoots.Add(Roots[FuncIdx]);
+    if WantTree then
+      FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
+        ': окон - ' + IntToStr(FuncTotal) + ', вызовов вывода в них - ' +
+        IntToStr(OutTotal) + '. Щелчок - к строке; свойства надписи правятся ' +
+        'в таблице'
+    else
     FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
       ': вызовов вывода - ' + IntToStr(OutTotal) + ' в ' +
       IntToStr(FuncTotal) + ' функциях. Щелчок в списке - к строке; ' +
@@ -35715,6 +35739,269 @@ begin
   end;
   // Новые значения объявлений - и у надписей, вставленных после сборки
   ArdSyncPhantoms;
+  if WantTree and (FWinDesigner.CurrentState >= 0) and (FArdKeepName = '') then
+    ArdInspectorSelectWindow(FWinDesigner.CurrentState);
+end;
+
+// Конструктор окон открыт: в Objects - дерево окон (порядок - как в его
+// списке), под окном - вывод из его функции (надписи, пункты меню и др.)
+procedure TForm1.ArdAddWinNodes(ARoots: TList; var AOutTotal, AWinTotal: Integer);
+var
+  Sketch: TArdSketch;
+  Order: TList;
+  NodeIdx, CallIdx: Integer;
+  WinNode: TWmNode;
+  WinDfm, CallNode: TDfmNode;
+  Call: TArdCall;
+begin
+  Sketch := TArdSketch(FArdSketch);
+  Order := TList.Create;
+  try
+    FWinDesigner.Map.TreeOrder(Order);
+    for NodeIdx := 0 to Order.Count - 1 do
+    begin
+      WinNode := TWmNode(Order[NodeIdx]);
+      if not (WinNode.Kind in [wnkWindow, wnkModal]) or (WinNode.FuncName = '') then
+        Continue;
+      Inc(AWinTotal);
+      WinDfm := TDfmNode.Create;
+      FDfmNodes.Add(WinDfm);
+      WinDfm.Name := 'w:' + WinNode.FuncName;
+      if WinNode.Kind = wnkWindow then
+        WinDfm.ClassNm := WinNode.FuncName + ' (' + IntToStr(WinNode.State) + ')'
+      else
+        WinDfm.ClassNm := WinNode.FuncName + ' (help)';
+      if WinNode.Caption <> '' then
+        WinDfm.ClassNm := WinDfm.ClassNm + '  ' + WinNode.Caption;
+      WinDfm.Note := '';
+      if CompareText(ExpandFileName(WinNode.FileName), ExpandFileName(FCurrentFileName)) = 0 then
+        WinDfm.CreateLine := WinNode.Line
+      else
+        WinDfm.CreateLine := -1;
+      WinDfm.Line := -1;
+      WinDfm.EndLine := -1;
+      ARoots.Add(WinDfm);
+      for CallIdx := 0 to Sketch.Calls.Count - 1 do
+      begin
+        Call := TArdCall(Sketch.Calls[CallIdx]);
+        if (Call.Func = nil) or (CompareText(Call.Func.Name, WinNode.FuncName) <> 0) or
+           not ArdCallListed(Call) then
+          Continue;
+        Inc(AOutTotal);
+        CallNode := TDfmNode.Create;
+        FDfmNodes.Add(CallNode);
+        CallNode.Name := 'c:' + Call.Name + ':' + IntToStr(Call.Line + 1) +
+                         ':' + IntToStr(Call.Col);
+        CallNode.ClassNm := ArdCallCaption(Call);
+        CallNode.Note := 'стр. ' + IntToStr(Call.Line + 1);
+        CallNode.CreateLine := Call.Line;
+        CallNode.Line := CallIdx;
+        CallNode.EndLine := -1;
+        CallNode.Parent := WinDfm;
+        WinDfm.Children.Add(CallNode);
+      end;
+    end;
+  finally
+    Order.Free;
+  end;
+end;
+
+// Окно в дереве Objects (конструктор окон): выделить и раскрыть
+procedure TForm1.ArdInspectorSelectWindow(AState: Integer);
+var
+  NodeIdx, TreeIdx: Integer;
+  WinNode: TWmNode;
+begin
+  if not FObjArduino or not FArdWinTree or (FWinDesigner = nil) or (FObjTree = nil) then
+    Exit;
+  for NodeIdx := 0 to FWinDesigner.Map.NodeCount - 1 do
+  begin
+    WinNode := FWinDesigner.Map.Nodes[NodeIdx];
+    if (WinNode.Kind = wnkWindow) and (WinNode.State = AState) then
+    begin
+      if ObjSelectAnyName('w:' + WinNode.FuncName) then
+        for TreeIdx := 0 to FObjTree.Items.Count - 1 do
+          if (FObjTree.Items[TreeIdx].Data <> nil) and
+             (TDfmNode(FObjTree.Items[TreeIdx].Data).Name = 'w:' + WinNode.FuncName) then
+          begin
+            FObjTree.Items[TreeIdx].Expanded := True;
+            Break;
+          end;
+      Exit;
+    end;
+  end;
+end;
+
+// Свойства окна (узел 'w:Функция' дерева Objects): номер, функция,
+// заголовок, фон, подвал, меню, help - по карте окон и вызовам функции.
+// Только просмотр; щелчок по строке - к строке кода
+procedure TForm1.ArdFillWinProps(ANode: TObject);
+var
+  Sketch: TArdSketch;
+  Map: TWmMap;
+  WinNode, Other: TWmNode;
+  Edge: TWmEdge;
+  Call, TitleCall, ScreenCall, FooterFirst: TArdCall;
+  NodeIdx, CallIdx, EdgeIdx, TopValue, BestTop, RefIdx, ColorValue: Integer;
+  FuncName, FooterNames, FooterTexts, MenuText, HelpText, ArrName, ValueText: string;
+  CodeTotal: Integer;
+
+  procedure AddWinRow(const ACaption, AVar, AValue: string; ALine: Integer);
+  var
+    Item: TListItem;
+  begin
+    Item := FObjProps.Items.Add;
+    Item.Caption := ACaption;
+    // AVar, AValue - уже текст интерфейса (текст исходника - через EdUiText)
+    Item.SubItems.Add(AVar);
+    Item.SubItems.Add(AValue);
+    if ALine >= 0 then
+      Item.SubItems.Add(IntToStr(ALine + 1))
+    else
+      Item.SubItems.Add('');
+    Item.Data := Pointer(-1);
+  end;
+
+  function LabelTop(ACall: TArdCall): Integer;
+  begin
+    Result := -1;
+    if ACall.IsLabel and (ACall.Args.Count > 1) then
+      Result := StrToIntDef(Trim(ACall.Args[1]), -1);
+  end;
+
+  function LabelText(ACall: TArdCall): string;
+  begin
+    Result := '';
+    if ACall.IsLabel and (ACall.Args.Count > 4) then
+      Result := Trim(ACall.Args[4]);
+  end;
+
+begin
+  Sketch := TArdSketch(FArdSketch);
+  if (Sketch = nil) or (FWinDesigner = nil) then
+    Exit;
+  Map := FWinDesigner.Map;
+  FuncName := Copy(TDfmNode(ANode).Name, 3, MaxInt);
+  WinNode := nil;
+  for NodeIdx := 0 to Map.NodeCount - 1 do
+    if CompareText(Map.Nodes[NodeIdx].FuncName, FuncName) = 0 then
+    begin
+      WinNode := Map.Nodes[NodeIdx];
+      Break;
+    end;
+  if WinNode = nil then
+    Exit;
+  if FArdSim <> nil then
+    FArdSim.SelectedControl := '';
+  FObjHeader.Caption := '  ' + FuncName + ': окно (только просмотр)   строка ' +
+    IntToStr(WinNode.Line + 1) + ' ' + ExtractFileName(WinNode.FileName);
+
+  TitleCall := nil;
+  ScreenCall := nil;
+  FooterFirst := nil;
+  FooterNames := '';
+  FooterTexts := '';
+  BestTop := 60;
+  for CallIdx := 0 to Sketch.Calls.Count - 1 do
+  begin
+    Call := TArdCall(Sketch.Calls[CallIdx]);
+    if (Call.Func = nil) or (CompareText(Call.Func.Name, FuncName) <> 0) then
+      Continue;
+    if (Call.Kind = ackScreen) and (ScreenCall = nil) then
+      ScreenCall := Call;
+    TopValue := LabelTop(Call);
+    if TopValue < 0 then
+      Continue;
+    if TopValue < BestTop then
+    begin
+      BestTop := TopValue;
+      TitleCall := Call;
+    end;
+    if TopValue >= 290 then
+    begin
+      if FooterFirst = nil then
+        FooterFirst := Call;
+      if FooterNames <> '' then
+      begin
+        FooterNames := FooterNames + ', ';
+        FooterTexts := FooterTexts + ', ';
+      end;
+      FooterNames := FooterNames + Call.Name;
+      FooterTexts := FooterTexts + LabelText(Call);
+    end;
+  end;
+
+  if WinNode.Kind = wnkWindow then
+    AddWinRow('Номер', Map.StateVar, IntToStr(WinNode.State), WinNode.CaseLine)
+  else
+    AddWinRow('Номер', '', 'нет (help, вызов из окна)', -1);
+  AddWinRow('Функция', FuncName + '()', '', WinNode.Line);
+  AddWinRow('Заголовок', '// комментарий', EdUiText(WinNode.Caption), WinNode.Line);
+  if TitleCall <> nil then
+    AddWinRow('Верхняя надпись', TitleCall.Name, EdUiText(LabelText(TitleCall)), TitleCall.Line)
+  else
+    AddWinRow('Верхняя надпись', ArdNotSet, '', -1);
+  if ScreenCall = nil then
+    AddWinRow('Фон', ArdNotSet, '', -1)
+  else if CompareText(ScreenCall.Name, 'clrScr') = 0 then
+    AddWinRow('Фон', 'clrScr()', 'чёрный', ScreenCall.Line)
+  else
+  begin
+    ValueText := '';
+    if Sketch.ColorOf(ScreenCall.ArgsText, ColorValue) then
+      ValueText := '#' + IntToHex(((ColorValue and $FF) shl 16) or
+                                  (ColorValue and $FF00) or
+                                  ((ColorValue shr 16) and $FF), 6);
+    AddWinRow('Фон', EdUiText(ScreenCall.Name + '(' + Trim(ScreenCall.ArgsText) + ')'),
+              ValueText, ScreenCall.Line);
+  end;
+  if FooterFirst <> nil then
+    AddWinRow('Подвал', FooterNames, EdUiText(FooterTexts), FooterFirst.Line)
+  else
+    AddWinRow('Подвал', ArdNotSet, '', -1);
+
+  // меню и переходы - по стрелкам карты
+  MenuText := '';
+  HelpText := '';
+  CodeTotal := 0;
+  for EdgeIdx := 0 to Map.EdgeCount - 1 do
+  begin
+    Edge := Map.Edges[EdgeIdx];
+    if Edge.FromNode <> WinNode then
+      Continue;
+    Other := Edge.ToNode;
+    if Other = nil then
+      Continue;
+    if Other.Kind = wnkModal then
+    begin
+      if HelpText <> '' then
+        HelpText := HelpText + ', ';
+      HelpText := HelpText + Other.FuncName;
+    end
+    else if Edge.Kind = wekMenu then
+    begin
+      if MenuText <> '' then
+        MenuText := MenuText + ', ';
+      MenuText := MenuText + Edge.Keys + ' -> ' + Other.FuncName;
+    end
+    else if Edge.Kind = wekCode then
+      Inc(CodeTotal);
+  end;
+  ArrName := '';
+  for RefIdx := 0 to Sketch.CtlRefs.Count - 1 do
+    if CompareText(TArdLabel(Sketch.CtlRefs[RefIdx]).Name, 'mnu' + FuncName) = 0 then
+    begin
+      ArrName := TArdLabel(Sketch.CtlRefs[RefIdx]).Name;
+      Break;
+    end;
+  if (ArrName <> '') or (MenuText <> '') then
+    AddWinRow('Меню', ArrName, EdUiText(MenuText), -1)
+  else
+    AddWinRow('Меню', ArdNotSet, '', -1);
+  if CodeTotal > 0 then
+    AddWinRow('Переходы кодом', '', IntToStr(CodeTotal), -1);
+  if HelpText <> '' then
+    AddWinRow('Help (F1)', '', HelpText, -1);
 end;
 
 // Надпись TLabel среди аргументов вызова функции скетча (первая) - как
@@ -35819,6 +36106,12 @@ begin
   Sketch := TArdSketch(FArdSketch);
   if (Node = nil) or (Sketch = nil) then
     Exit;
+  // Окно (дерево окон конструктора)
+  if Copy(Node.Name, 1, 2) = 'w:' then
+  begin
+    ArdFillWinProps(Node);
+    Exit;
+  end;
 
   // Рамка в эмуляторе - вокруг выбранной надписи TLabel
   if FArdSim <> nil then
