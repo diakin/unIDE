@@ -57,6 +57,7 @@ type
     FDragFrom: Integer;         // точка захвата вдоль полосы
     FMouse: TPoint;             // последняя точка мыши - для повтора
     FTimer: TTimer;
+    FHotTimer: TTimer;          // проверка, что мышь ещё над полосой
     procedure SetKind(Value: TScrollBarKind);
     procedure SetMin(Value: Integer);
     procedure SetMax(Value: Integer);
@@ -71,6 +72,8 @@ type
     function  PartRect(AFrom, ATo: Integer): TRect;
     procedure DoStep(APart: TUiScrollPart);
     procedure TimerTick(Sender: TObject);
+    procedure HotTimerTick(Sender: TObject);
+    procedure SetHot(APart: TUiScrollPart);
     procedure DrawArrow(const RectVal: TRect; ALow: Boolean; APart: TUiScrollPart);
     procedure PaintNative;
     procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
@@ -201,6 +204,10 @@ begin
   FTimer := TTimer.Create(Self);
   FTimer.Enabled := False;
   FTimer.OnTimer := TimerTick;
+  FHotTimer := TTimer.Create(Self);
+  FHotTimer.Enabled := False;
+  FHotTimer.Interval := 100;
+  FHotTimer.OnTimer := HotTimerTick;
   Width := 17;
   Height := 17;
 end;
@@ -450,11 +457,7 @@ begin
   else if FDown = spNone then
   begin
     UiScrollPart := PartAt(PosX, PosY);
-    if UiScrollPart <> FHot then
-    begin
-      FHot := UiScrollPart;
-      Invalidate;
-    end;
+    SetHot(UiScrollPart);
   end;
 end;
 
@@ -464,18 +467,44 @@ begin
   inherited;
   FTimer.Enabled := False;
   FDown := spNone;
-  FHot := PartAt(PosX, PosY);
+  SetHot(PartAt(PosX, PosY));
   Invalidate;
 end;
 
 procedure TUiScrollBar.CMMouseLeave(var Message: TMessage);
 begin
   inherited;
-  if FHot <> spNone then
+  SetHot(spNone);
+end;
+
+// Часть под мышью. Пока она есть, раз в 100 мс проверяется, что мышь ещё
+// над полосой: CM_MOUSELEAVE приходит не всегда - при уходе мыши с полосы
+// в окно редактора ползунок оставался подсвеченным.
+procedure TUiScrollBar.SetHot(APart: TUiScrollPart);
+begin
+  if APart <> FHot then
   begin
-    FHot := spNone;
+    FHot := APart;
     Invalidate;
   end;
+  FHotTimer.Enabled := FHot <> spNone;
+end;
+
+procedure TUiScrollBar.HotTimerTick(Sender: TObject);
+var
+  CursorPt: TPoint;
+begin
+  // Ползунок тянут или стрелку держат - мышь захвачена, подсветка своя
+  if FDown <> spNone then
+    Exit;
+  if not HandleAllocated or not Visible then
+  begin
+    SetHot(spNone);
+    Exit;
+  end;
+  CursorPt := ScreenToClient(Mouse.CursorPos);
+  if not PtInRect(ClientRect, CursorPt) then
+    SetHot(spNone);
 end;
 
 // Фон рисует Paint целиком
