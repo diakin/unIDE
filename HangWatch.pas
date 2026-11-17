@@ -203,6 +203,152 @@ function CrashSetFilter(AFilter: Pointer): Pointer; stdcall;
 
 // ---------------------------------------------------------------------------
 
+// Журналы hang.log и crash.log - в UTF-8. В одну папку Output пишут и
+// сборка Delphi 7 (строки ANSI, CP1251), и сборка Lazarus (UTF-8); раньше
+// каждая писала своё, и в общем файле одна из половин выходила
+// кракозябрами.
+const
+  Utf8CodePage = 65001;   // CP_UTF8
+
+// Строка байтов Bytes - правильный UTF-8 (строка ASCII - тоже)
+function IsUtf8Bytes(const Bytes: AnsiString): Boolean;
+var
+  Idx, Len, Tail: Integer;
+  ByteVal: Byte;
+begin
+  Result := False;
+  Len := Length(Bytes);
+  Idx := 1;
+  while Idx <= Len do
+  begin
+    ByteVal := Byte(Bytes[Idx]);
+    if ByteVal < $80 then
+      Tail := 0
+    else if (ByteVal and $E0) = $C0 then
+      Tail := 1
+    else if (ByteVal and $F0) = $E0 then
+      Tail := 2
+    else if (ByteVal and $F8) = $F0 then
+      Tail := 3
+    else
+      Exit;
+    if Idx + Tail > Len then
+      Exit;
+    Inc(Idx);
+    while Tail > 0 do
+    begin
+      if (Byte(Bytes[Idx]) and $C0) <> $80 then
+        Exit;
+      Inc(Idx);
+      Dec(Tail);
+    end;
+  end;
+  Result := True;
+end;
+
+// Байты в кодировке ANSI системы (CP1251) - те же буквы в UTF-8
+function AnsiBytesToUtf8(const Bytes: AnsiString): AnsiString;
+var
+  Wide: array of WideChar;
+  WideLen, OutLen: Integer;
+begin
+  Result := '';
+  if Bytes = '' then
+    Exit;
+  SetLength(Wide, Length(Bytes));
+  WideLen := MultiByteToWideChar(CP_ACP, 0, PAnsiChar(Bytes), Length(Bytes),
+                                 @Wide[0], Length(Wide));
+  if WideLen <= 0 then
+  begin
+    Result := Bytes;
+    Exit;
+  end;
+  OutLen := WideCharToMultiByte(Utf8CodePage, 0, @Wide[0], WideLen, nil, 0,
+                                nil, nil);
+  SetLength(Result, OutLen);
+  if OutLen > 0 then
+    WideCharToMultiByte(Utf8CodePage, 0, @Wide[0], WideLen, PAnsiChar(Result),
+                        OutLen, nil, nil);
+end;
+
+// Строка журнала - в UTF-8. Lazarus (LCL) и так держит строки в UTF-8;
+// у Delphi 7 строка в ANSI.
+function LogText(const Str: string): string;
+begin
+{$IFDEF FPC}
+  Result := Str;
+{$ELSE}
+  Result := AnsiBytesToUtf8(Str);
+{$ENDIF}
+end;
+
+// Прежние записи сборки Delphi остались в файле в CP1251 - такие строки
+// переписываются в UTF-8 (по строке: правильный UTF-8 не трогается).
+// Файл переписывается, только если такие строки нашлись.
+procedure LogFileToUtf8(const AFileName: string);
+var
+  Stream: TFileStream;
+  Data, Line, Res: AnsiString;
+  Size, LineStart, Idx, ResLen: Integer;
+  Changed: Boolean;
+
+  procedure AddBytes(const Part: AnsiString);
+  begin
+    if Part = '' then
+      Exit;
+    if ResLen + Length(Part) > Length(Res) then
+      SetLength(Res, (ResLen + Length(Part)) * 2);
+    Move(Part[1], Res[ResLen + 1], Length(Part));
+    Inc(ResLen, Length(Part));
+  end;
+
+begin
+  if not FileExists(AFileName) then
+    Exit;
+  try
+    Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyWrite);
+    try
+      Size := Stream.Size;
+      SetLength(Data, Size);
+      if Size > 0 then
+        Stream.ReadBuffer(Data[1], Size);
+    finally
+      Stream.Free;
+    end;
+    if IsUtf8Bytes(Data) then
+      Exit;
+    Changed := False;
+    ResLen := 0;
+    SetLength(Res, Size + Size div 2);
+    LineStart := 1;
+    for Idx := 1 to Size + 1 do
+      if (Idx > Size) or (Data[Idx] = #10) then
+      begin
+        Line := Copy(Data, LineStart, Idx - LineStart);
+        if not IsUtf8Bytes(Line) then
+        begin
+          Line := AnsiBytesToUtf8(Line);
+          Changed := True;
+        end;
+        AddBytes(Line);
+        if Idx <= Size then
+          AddBytes(#10);
+        LineStart := Idx + 1;
+      end;
+    if not Changed then
+      Exit;
+    Stream := TFileStream.Create(AFileName, fmCreate);
+    try
+      if ResLen > 0 then
+        Stream.WriteBuffer(Res[1], ResLen);
+    finally
+      Stream.Free;
+    end;
+  except
+    // не вышло - журнал остаётся как был
+  end;
+end;
+
 constructor THangWatch.Create(AWnd: HWND; const ALogFile: string;
                               AUiWnd: HWND; const ABuild: string);
 begin
@@ -214,6 +360,9 @@ begin
     FUiWnd := AWnd;
   FLogFile := ALogFile;
   FCrashFile := ExtractFilePath(ALogFile) + 'crash.log';
+  // Создаётся из главного потока, до Resume - журналы ещё никто не пишет
+  LogFileToUtf8(FLogFile);
+  LogFileToUtf8(FCrashFile);
   FMapFile := ChangeFileExt(ParamStr(0), '.map');
   FStop := CreateEvent(nil, True, False, nil);
   // Настоящий дескриптор главного потока: GetCurrentThread даёт
@@ -504,7 +653,7 @@ begin
     else
       Rewrite(TxtFile);
     try
-      Writeln(TxtFile, Str);
+      Writeln(TxtFile, LogText(Str));
     finally
       CloseFile(TxtFile);
     end;
@@ -861,7 +1010,7 @@ begin
       Rewrite(TxtFile);
     try
       for LineIdx := 0 to ALines.Count - 1 do
-        Writeln(TxtFile, ALines[LineIdx]);
+        Writeln(TxtFile, LogText(ALines[LineIdx]));
     finally
       CloseFile(TxtFile);
     end;
