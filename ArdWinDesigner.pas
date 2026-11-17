@@ -337,8 +337,6 @@ end;
 { TArdWinDesignerForm }
 
 constructor TArdWinDesignerForm.CreateDesigner(AOwner: TComponent);
-var
-  MenuItem: TMenuItem;
 begin
   inherited CreateNew(AOwner);
   Caption := 'Конструктор окон';
@@ -366,15 +364,14 @@ begin
   // действия - в меню вверху
   FMenu := TMainMenu.Create(Self);
   Menu := FMenu;
-  MenuItem := MakeItem(nil, 'Окно', nil);
-  MakeItem(MenuItem, 'Создать новое окно...', BtnNewClick);
-  MakeItem(MenuItem, '-', nil);
-  MakeItem(MenuItem, 'Снимок текущего', BtnShotCurrentClick);
-  FShotsItem := MakeItem(MenuItem, 'Снимки всех окон', BtnShotsClick);
-  MakeItem(MenuItem, '-', nil);
-  MakeItem(MenuItem, 'Обновить (разобрать скетч заново)', BtnRefreshClick);
-  FGotoMenu := MakeItem(nil, 'Перейти', nil);
+  // все действия - пункты верхнего уровня, один щелчок; вложен только
+  // список окон «Перейти в окно»
+  MakeItem(nil, 'Создать новое окно', BtnNewClick);
+  MakeItem(nil, 'Снимок текущего', BtnShotCurrentClick);
+  FShotsItem := MakeItem(nil, 'Снимки всех окон', BtnShotsClick);
   MakeItem(nil, 'Карта окон', BtnMapClick);
+  MakeItem(nil, 'Обновить', BtnRefreshClick);
+  FGotoMenu := MakeItem(nil, 'Перейти в окно', nil);
 
   FCenter := TPanel.Create(Self);
   FCenter.Parent := Self;
