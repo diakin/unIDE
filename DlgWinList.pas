@@ -106,9 +106,12 @@ var
   NeedW: Integer;
 begin
   // Уже, чем нужно трём кнопкам, окно не сужается. Ширины кнопок задаёт
-  // Unit1 по подписям, поэтому минимум считаем здесь, а не в .dfm.
+  // Unit1 по подписям, поэтому минимум считаем здесь, а не в .dfm. Рамку
+  // берём из pnlRoot, а не из ширины панели кнопок: до выравнивания
+  // (первый вызов из Unit1) её ширина ещё прежняя, из .dfm.
   NeedW := btnAll.Width + btnOk.Width + btnCancel.Width +
-    2 * WinListBtnMargin + 2 * WinListBtnGap + (Width - pnlButtons.ClientWidth);
+    2 * WinListBtnMargin + 2 * WinListBtnGap +
+    2 * (pnlRoot.BorderWidth + pnlRoot.BevelWidth);
   if Constraints.MinWidth <> NeedW then
     Constraints.MinWidth := NeedW;
 

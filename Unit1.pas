@@ -23004,8 +23004,12 @@ var
   BtnOk, BtnCancel, BtnAll: TUiButton;
   Map: array of Integer;
   I, Num, MaxW, WidthPx, HeightPx, MinW, WAll, WOk, WCancel, ItemH: Integer;
+  MaxH: Integer;
   RectVal: TRect;
   Bmp: TBitmap;
+const
+  // Зазор между окном и краем рабочей области (над панелью задач)
+  WinListScreenGap = 24;
 begin
   Num := WindowsInUse;
   if Num = 0 then
@@ -23085,17 +23089,21 @@ begin
       WidthPx := MinW;
     if WidthPx > Screen.WorkAreaRect.Right - Screen.WorkAreaRect.Left - 40 then
       WidthPx := Screen.WorkAreaRect.Right - Screen.WorkAreaRect.Left - 40;
-    Dlg.ClientWidth := WidthPx;
+    // Width, а не ClientWidth: рамки у окна нет (bsNone), и это одно и то
+    // же. Но в LCL до создания окна ClientWidth := X даёт Width = X плюс
+    // разница между ClientWidth из .lfm (700) и начальной шириной формы
+    // LCL (320): окно выходило на 380 пикселей шире и на 220 выше нужного
+    // и по высоте уходило под панель задач.
+    Dlg.Width := WidthPx;
 
     HeightPx := Lst.ItemHeight;
     if HeightPx < ItemH then
       HeightPx := ItemH;
     HeightPx := HeightPx * Lst.Items.Count + Cap.Height + Pnl.Height + 2 * Root.BorderWidth + 6;
-    if HeightPx > Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top - 80 then
-      HeightPx := Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top - 80;
+    // Ограничение по экрану - ниже, когда известно место окна
     if HeightPx < 120 then
       HeightPx := 120;
-    Dlg.ClientHeight := HeightPx;
+    Dlg.Height := HeightPx;
 
     // Кнопки (вверху, над списком): ширины - по тексту. Места кнопок
     // ставит сама форма в LayoutButtons - и здесь, и при каждом изменении
@@ -23119,6 +23127,20 @@ begin
       Dlg.Left := Left + (Width - Dlg.Width) div 2;
       Dlg.Top := Top + (Height - Dlg.Height) div 2;
     end;
+
+    // По высоте - не ниже рабочей области (она без панели задач) с зазором
+    // WinListScreenGap снизу. Если от меню вниз места мало (меньше трети
+    // рабочей области), окно поднимаем, но не выше верха рабочей области.
+    MaxH := Screen.WorkAreaRect.Bottom - WinListScreenGap - Dlg.Top;
+    if MaxH < (Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top) div 3 then
+    begin
+      MaxH := Screen.WorkAreaRect.Bottom - Screen.WorkAreaRect.Top - 2 * WinListScreenGap;
+      if Dlg.Height > MaxH then
+        Dlg.Height := MaxH;
+      Dlg.Top := Screen.WorkAreaRect.Bottom - WinListScreenGap - Dlg.Height;
+    end
+    else if Dlg.Height > MaxH then
+      Dlg.Height := MaxH;
 
     // Не даём окну уйти за пределы рабочей области экрана
     if Dlg.Left + Dlg.Width > Screen.WorkAreaRect.Right then
