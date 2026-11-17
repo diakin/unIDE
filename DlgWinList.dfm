@@ -41,10 +41,10 @@ object DlgWinList: TDlgWinList
     end
     object pnlButtons: TPanel
       Left = 4
-      Top = 416
+      Top = 26
       Width = 692
       Height = 40
-      Align = alBottom
+      Align = alTop
       BevelOuter = bvNone
       TabOrder = 1
       object btnAll: TUiButton
@@ -60,7 +60,6 @@ object DlgWinList: TDlgWinList
         Top = 8
         Width = 140
         Height = 25
-        Anchors = [akTop, akRight]
         Caption = 'Закрыть отмеченные'
         Default = True
         ModalResult = 1
@@ -71,7 +70,6 @@ object DlgWinList: TDlgWinList
         Top = 8
         Width = 78
         Height = 25
-        Anchors = [akTop, akRight]
         Cancel = True
         Caption = 'Отмена'
         ModalResult = 2
@@ -80,7 +78,7 @@ object DlgWinList: TDlgWinList
     end
     object lstWindows: TCheckListBox
       Left = 4
-      Top = 26
+      Top = 66
       Width = 692
       Height = 390
       Align = alClient
