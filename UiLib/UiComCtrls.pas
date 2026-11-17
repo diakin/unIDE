@@ -483,6 +483,20 @@ begin
         Result := 0;
         Exit;
       end;
+    // Выбор вкладки (щелчок, клавиши, TCM_SETCURSEL от LCL) и фокус. У
+    // вкладок лога (TUiTabControl, Lazarus) выделение накапливалось:
+    // прежняя вкладка оставалась выделенной, потом подсветка шла
+    // наоборот. После такого сообщения все ярлычки перерисовываются
+    // своим WM_PAINT по TabIndex - что бы ни обновил или ни нарисовал
+    // при этом сам Windows.
+    WM_LBUTTONDOWN, WM_LBUTTONUP, WM_LBUTTONDBLCLK, WM_KEYDOWN,
+    WM_SETFOCUS, WM_KILLFOCUS, TCM_SETCURSEL, TCM_SETCURFOCUS:
+      begin
+        Result := CallWindowProcW(OldProc, AWnd, AMsg, AWParam, ALParam);
+        if IsWindow(AWnd) then
+          InvalidateRect(AWnd, nil, False);
+        Exit;
+      end;
     WM_NCDESTROY:
       begin
         // Окно уходит (в том числе пересоздание): подмену снять, при
