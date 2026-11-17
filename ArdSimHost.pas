@@ -121,6 +121,7 @@ type
     FPressedKey: Integer;      // подсвеченная клавиша, -1 - нет
     FPressTimer: TTimer;
     FBuffer: TBitmap;
+    FCompact: Boolean;
     procedure PressTimerTick(Sender: TObject);
     procedure ShowPressed(AKeyIdx: Integer);
     procedure DrawKey(ACanvas: TCanvas; AKeyIdx: Integer);
@@ -142,6 +143,8 @@ type
     destructor Destroy; override;
     // Разложить прибор по ширине AWidth; клавиатура - чтобы весь прибор
     // влез в AHeight. Результат - ширина и высота прибора
+    // Compact - прибор в конструкторе окон: зелёное поле и клавиатура меньше
+    property Compact: Boolean read FCompact write FCompact;
     function Arrange(AWidth, AHeight: Integer): TPoint;
     procedure PressKey(AKeyIdx: Integer);
     procedure InvalidateScreen;
@@ -232,6 +235,7 @@ type
     FSigView: TUiButton;  // View files Test.dat: поиск файлов замеров (Unit1)
     FSigData: TUiCheckBox;  // [DataFile] Enabled: A0, A1 и тахометр - из файла замера
     FSigShown: Boolean;
+    FSavedFormH: Integer;      // высота окна до переноса прибора, -1 - нет
     FSigDirty: Boolean;
     FSigLoading: Boolean;
     FSigIniAge: Integer;
@@ -476,6 +480,10 @@ type
     // AHost (вызывает AHost при изменении размера)
     procedure PlaceDevice(AHost: TWinControl);
     procedure FitDevice;
+    property Device: TArdSimDevice read FDevice;
+    // Прибор вне панели: окно эмулятора - по высоте строки состояния,
+    // сигналов и полоски вывода; прибор вернулся - прежняя высота
+    procedure FitFormHeight;
     function SaveScreenBmp(const AFileName: string): Boolean;
     // Щелчок по надписи-фантому: строки отрисовки у эмулятора нет, Unit1
     // ставит курсор на её вывод сам
@@ -674,6 +682,7 @@ const
   // долю, при которой клавиатура влезает по высоте, не больше PadKMax
   // (на 30% меньше, чем по фото)
   PadKMax = 0.7;
+  PadKCompact = 0.5;      // то же в конструкторе окон (Compact)
   PadWidthK = 1.22;       // ширина панели клавиатуры
   PadTopK = 0.14;         // от верха панели до первого ряда
   PadBottomK = 0.07;      // под последним рядом
@@ -799,16 +808,27 @@ var
   BodyW, BodyH, DeviceW, BodyLeft, PadW, PadLeft, PadTop: Integer;
   GridW, GridLeft, GridTop, KeyW, KeyH, PitchX, PitchY: Integer;
   KeyRow, KeyCol, PadUnit, PadFullH: Integer;
-  PadK, PadMinK: Double;
+  PadK, PadMinK, PadKTop: Double;
+  BorderTop: Integer;
 begin
+  if FCompact then
+  begin
+    BorderTop := BodyBorderMin;
+    PadKTop := PadKCompact;
+  end
+  else
+  begin
+    BorderTop := BodyBorder;
+    PadKTop := PadKMax;
+  end;
   FScreenW := ArdSimScreenW;
   // высота клавиатуры при PadK = 1, самая малая доля и доля, при которой
   // клавиатура влезает с полными полями
   PadFullH := Round(ArdSimScreenW * (PadTopK + PadBottomK + 4 * KeyPitchYK +
                                      KeyHeightK));
   PadMinK := MinKeyHeight / (ArdSimScreenW * KeyHeightK);
-  FBorder := BodyBorder;
-  PadK := PadKMax;
+  FBorder := BorderTop;
+  PadK := PadKTop;
   if AHeight > 0 then
   begin
     if ArdSimScreenH + 2 * FBorder + PadK * PadFullH > AHeight then
@@ -817,8 +837,8 @@ begin
     begin
       PadK := PadMinK;
       FBorder := (AHeight - ArdSimScreenH - Round(PadK * PadFullH)) div 2;
-      if FBorder > BodyBorder then
-        FBorder := BodyBorder;
+      if FBorder > BorderTop then
+        FBorder := BorderTop;
       if FBorder < BodyBorderMin then
         FBorder := BodyBorderMin;
     end;
@@ -2028,6 +2048,7 @@ var
 
 begin
   FSigShown := True;
+  FSavedFormH := -1;
   FSigIniAge := -1;
   FSigHead := TUiButton.Create(Self);
   FSigHead.Parent := Self;
@@ -2115,6 +2136,7 @@ begin
   if FSigShown then
     SigLoad;
   LayoutControls;
+  FitFormHeight;
 end;
 
 procedure TArdSimPanel.SigChange(Sender: TObject);
@@ -4361,12 +4383,46 @@ begin
     AHost := Self;
   if FDevice.Parent <> AHost then
     FDevice.Parent := AHost;
-  if AHost = Self then
-    LayoutControls
-  else
-  begin
-    LayoutControls;
+  // в конструкторе окон - зелёное поле и клавиатура меньше
+  FDevice.Compact := AHost <> Self;
+  FitFormHeight;
+  LayoutControls;
+  if AHost <> Self then
     FitDevice;
+end;
+
+procedure TArdSimPanel.FitFormHeight;
+const
+  // как в LayoutControls
+  Gap = 4;
+  BarH = 24;
+  StatusH = 18;
+  SigHeadH = 20;
+  SigPanelH = 210;
+  SerialStripH = 24;
+var
+  Form: TCustomForm;
+  NeedH: Integer;
+begin
+  Form := GetParentForm(Self);
+  if Form = nil then
+    Exit;
+  if FDevice.Parent <> Self then
+  begin
+    if FSavedFormH < 0 then
+      FSavedFormH := Form.Height;
+    NeedH := Gap + StatusH + SigHeadH + Gap + Gap + SerialStripH + Gap;
+    if FBar.Visible then
+      Inc(NeedH, BarH + 2);
+    if FSigShown then
+      Inc(NeedH, SigPanelH);
+    // панель - во всё окно (alClient)
+    Form.ClientHeight := NeedH;
+  end
+  else if FSavedFormH >= 0 then
+  begin
+    Form.Height := FSavedFormH;
+    FSavedFormH := -1;
   end;
 end;
 
@@ -4736,7 +4792,12 @@ begin
     Height := FMainForm.Height;
     Left := FMainForm.Left + FMainForm.Width - Width;
     Top := FMainForm.Top;
+    // прибор уже в конструкторе окон: вернётся - к этой высоте
+    if FPanel.FSavedFormH >= 0 then
+      FPanel.FSavedFormH := Height;
   end;
+  // прибор в конструкторе окон - окно низкое (FitFormHeight)
+  FPanel.FitFormHeight;
   Show;
   BringToFront;
   if Assigned(FOnPlaced) then

@@ -19,7 +19,7 @@ unit ArdWinDesigner;
 interface
 
 uses
-  Classes, SysUtils, Controls, Forms, Graphics, ExtCtrls, StdCtrls,
+  Classes, SysUtils, Controls, Forms, Graphics, ExtCtrls, StdCtrls, Menus,
   ArdWinMap, ArdWinMapView, ArdWinShots;
 
 type
@@ -62,12 +62,13 @@ type
     FThumbKeys: TStringList;     // ключ узла -> TBitmap
     FListBox, FFromBox, FToBox: TScrollBox;
     FList, FFromList, FToList: TWdThumbList;
-    FRightPanel, FCenter: TPanel;
+    FCenter: TPanel;
     FDeviceHost: TPanel;
     FTitle, FStatus: TLabel;
-    FWindowsCombo: TComboBox;
-    FComboNodes: TList;
-    FBtnShots: TButton;
+    FMenu: TMainMenu;
+    FGotoMenu: TMenuItem;        // «Перейти»: окна по порядку дерева
+    FComboNodes: TList;          // узлы пунктов FGotoMenu
+    FShotsItem: TMenuItem;
     FOnFill: TWmFillEvent;
     FOnOpenWindow: TWmOpenEvent;
     FOnGoto: TWmGotoEvent;
@@ -78,9 +79,9 @@ type
     FOnClosed: TNotifyEvent;
     FOnNewWindow: TNotifyEvent;
     function MakeColumn(AParent: TWinControl; AAlign: TAlign;
-      const ACaption: string; var AList: TWdThumbList): TScrollBox;
-    function MakeButton(const ACaption, AHint: string; ATop: Integer;
-      AClick: TNotifyEvent): TButton;
+      const ACaption: string; AIndented: Boolean; var AList: TWdThumbList): TScrollBox;
+    function MakeItem(AParent: TMenuItem; const ACaption: string;
+      AClick: TNotifyEvent): TMenuItem;
     procedure FreeThumbs;
     procedure FillWindowList;
     procedure FillNeighbours;
@@ -93,7 +94,7 @@ type
     procedure BtnMapClick(Sender: TObject);
     procedure BtnRefreshClick(Sender: TObject);
     procedure BtnNewClick(Sender: TObject);
-    procedure ComboSelect(Sender: TObject);
+    procedure GotoItemClick(Sender: TObject);
     procedure SetCurrentState(AValue: Integer);
     function NodeOfState(AState: Integer): TWmNode;
   public
@@ -107,6 +108,8 @@ type
     function HomeState: Integer;
     procedure SetShotsBusy(ABusy: Boolean);
     procedure ShowStatus(const AText: string);
+    // Ширина формы по столбцам и прибору (прибор - по высоте DeviceHost)
+    function NaturalWidth(ADeviceW: Integer): Integer;
     property Map: TWmMap read FMap;
     property SketchFile: string read FSketchFile write FSketchFile;
     property ShotDir: string read FShotDir write FShotDir;
@@ -137,10 +140,10 @@ const
   ThumbH = 107;
   ItemTitleH = 34;               // имя окна и клавиша
   ItemH = ItemTitleH + ThumbH + 10;
-  ItemW = ThumbW + 16;
-  IndentStep = 6;
-  MaxIndent = 4;
-  ColumnW = ItemW + 2 + MaxIndent * IndentStep + 26; // с полосой прокрутки
+  ItemW = ThumbW + 10;
+  IndentStep = 4;
+  MaxIndent = 3;
+  ScrollW = 22;                  // полоса прокрутки и рамка столбца
 
   ClrBack = $00FFFFFF;
   ClrItem = $00FBEFE3;
@@ -335,7 +338,7 @@ end;
 
 constructor TArdWinDesignerForm.CreateDesigner(AOwner: TComponent);
 var
-  Caption2: TLabel;
+  MenuItem: TMenuItem;
 begin
   inherited CreateNew(AOwner);
   Caption := 'Конструктор окон';
@@ -358,41 +361,28 @@ begin
   FStatus.Layout := tlCenter;
   FStatus.Caption := '';
 
-  FListBox := MakeColumn(Self, alLeft, 'Окна', FList);
+  FListBox := MakeColumn(Self, alLeft, 'Окна', True, FList);
 
-  // справа - действия
-  FRightPanel := TPanel.Create(Self);
-  FRightPanel.Parent := Self;
-  FRightPanel.Align := alRight;
-  FRightPanel.Width := 200;
-  FRightPanel.BevelOuter := bvNone;
-  MakeButton('Создать новое окно', 'Новое пустое окно: переход в него из ' +
-    'предыдущего окна, выход - в следующее', 10, BtnNewClick);
-  MakeButton('Снимок текущего', 'Записать снимок экрана эмулятора для ' +
-    'текущего окна (после правки надписей)', 44, BtnShotCurrentClick);
-  FBtnShots := MakeButton('Снимки всех окон', 'Открыть каждое окно в ' +
-    'эмуляторе и записать снимок (около секунды на окно)', 78, BtnShotsClick);
-  MakeButton('Карта окон', 'Открыть карту окон', 112, BtnMapClick);
-  MakeButton('Обновить', 'Разобрать скетч заново (файлы с диска)', 146,
-    BtnRefreshClick);
-  Caption2 := TLabel.Create(Self);
-  Caption2.Parent := FRightPanel;
-  Caption2.SetBounds(10, 190, 180, 18);
-  Caption2.Caption := 'Перейти в окно:';
-  FWindowsCombo := TComboBox.Create(Self);
-  FWindowsCombo.Parent := FRightPanel;
-  FWindowsCombo.SetBounds(10, 210, 180, 24);
-  FWindowsCombo.Style := csDropDownList;
-  FWindowsCombo.DropDownCount := 30;
-  FWindowsCombo.OnChange := ComboSelect;
+  // действия - в меню вверху
+  FMenu := TMainMenu.Create(Self);
+  Menu := FMenu;
+  MenuItem := MakeItem(nil, 'Окно', nil);
+  MakeItem(MenuItem, 'Создать новое окно...', BtnNewClick);
+  MakeItem(MenuItem, '-', nil);
+  MakeItem(MenuItem, 'Снимок текущего', BtnShotCurrentClick);
+  FShotsItem := MakeItem(MenuItem, 'Снимки всех окон', BtnShotsClick);
+  MakeItem(MenuItem, '-', nil);
+  MakeItem(MenuItem, 'Обновить (разобрать скетч заново)', BtnRefreshClick);
+  FGotoMenu := MakeItem(nil, 'Перейти', nil);
+  MakeItem(nil, 'Карта окон', BtnMapClick);
 
   FCenter := TPanel.Create(Self);
   FCenter.Parent := Self;
   FCenter.Align := alClient;
   FCenter.BevelOuter := bvNone;
 
-  FFromBox := MakeColumn(FCenter, alLeft, 'Откуда', FFromList);
-  FToBox := MakeColumn(FCenter, alRight, 'Куда', FToList);
+  FFromBox := MakeColumn(FCenter, alLeft, 'Откуда', False, FFromList);
+  FToBox := MakeColumn(FCenter, alRight, 'Куда', False, FToList);
 
   FTitle := TLabel.Create(Self);
   FTitle.Parent := FCenter;
@@ -423,14 +413,19 @@ begin
 end;
 
 function TArdWinDesignerForm.MakeColumn(AParent: TWinControl; AAlign: TAlign;
-  const ACaption: string; var AList: TWdThumbList): TScrollBox;
+  const ACaption: string; AIndented: Boolean; var AList: TWdThumbList): TScrollBox;
 var
   Head, Holder: TPanel;
+  ListW: Integer;
 begin
+  // столбец - по ширине миниатюр (и отступов дерева в списке окон)
+  ListW := ItemW + 2;
+  if AIndented then
+    Inc(ListW, MaxIndent * IndentStep);
   Holder := TPanel.Create(Self);
   Holder.Parent := AParent;
   Holder.Align := AAlign;
-  Holder.Width := ColumnW;
+  Holder.Width := ListW + ScrollW;
   Holder.BevelOuter := bvNone;
   // заголовок - панель: TLabel с alTop в панели gtk2 не рисует
   Head := TPanel.Create(Self);
@@ -451,21 +446,27 @@ begin
   AList := TWdThumbList.Create(Self);
   AList.FOwnerForm := Self;
   AList.Parent := Result;
-  AList.SetBounds(0, 0, ItemW + 2 + MaxIndent * IndentStep, 40);
+  AList.SetBounds(0, 0, ListW, 40);
   AList.OnPick := PickNode;
   AList.OnGoto := GotoNode;
 end;
 
-function TArdWinDesignerForm.MakeButton(const ACaption, AHint: string; ATop: Integer;
-  AClick: TNotifyEvent): TButton;
+function TArdWinDesignerForm.MakeItem(AParent: TMenuItem; const ACaption: string;
+  AClick: TNotifyEvent): TMenuItem;
 begin
-  Result := TButton.Create(Self);
-  Result.Parent := FRightPanel;
-  Result.SetBounds(10, ATop, 180, 26);
+  Result := TMenuItem.Create(Self);
   Result.Caption := ACaption;
-  Result.Hint := AHint;
-  Result.ShowHint := True;
   Result.OnClick := AClick;
+  if AParent = nil then
+    FMenu.Items.Add(Result)
+  else
+    AParent.Add(Result);
+end;
+
+function TArdWinDesignerForm.NaturalWidth(ADeviceW: Integer): Integer;
+begin
+  Result := Width - ClientWidth + FListBox.Parent.Width + FFromBox.Parent.Width +
+            FToBox.Parent.Width + ADeviceW + 8;
 end;
 
 procedure TArdWinDesignerForm.FreeThumbs;
@@ -538,9 +539,10 @@ var
   Order: TList;
   NodeIdx: Integer;
   Node: TWmNode;
+  MenuItem: TMenuItem;
 begin
   FList.Clear;
-  FWindowsCombo.Items.Clear;
+  FGotoMenu.Clear;
   FComboNodes.Clear;
   Order := TList.Create;
   try
@@ -551,8 +553,9 @@ begin
       if Node.Kind <> wnkWindow then
         Continue;
       FList.AddItem(Node, '', Max(0, Node.Depth - 1));
-      FWindowsCombo.Items.Add(Node.Title + '  ' + Node.Caption);
-      FComboNodes.Add(Node);
+      MenuItem := MakeItem(FGotoMenu, Node.Title + '  ' + Node.Caption, GotoItemClick);
+      MenuItem.Tag := FComboNodes.Add(Node);
+      MenuItem.RadioItem := True;
     end;
   finally
     Order.Free;
@@ -670,12 +673,9 @@ begin
   FCurrentState := AValue;
   FillNeighbours;
   FList.Invalidate;
-  FWindowsCombo.OnChange := nil;
-  FWindowsCombo.ItemIndex := -1;
-  for ComboIdx := 0 to FComboNodes.Count - 1 do
-    if TWmNode(FComboNodes[ComboIdx]).State = AValue then
-      FWindowsCombo.ItemIndex := ComboIdx;
-  FWindowsCombo.OnChange := ComboSelect;
+  for ComboIdx := 0 to FGotoMenu.Count - 1 do
+    FGotoMenu.Items[ComboIdx].Checked :=
+      TWmNode(FComboNodes[FGotoMenu.Items[ComboIdx].Tag]).State = AValue;
 end;
 
 procedure TArdWinDesignerForm.PickNode(ANode: TWmNode);
@@ -746,18 +746,21 @@ begin
     FOnNewWindow(Self);
 end;
 
-procedure TArdWinDesignerForm.ComboSelect(Sender: TObject);
+procedure TArdWinDesignerForm.GotoItemClick(Sender: TObject);
+var
+  NodeIdx: Integer;
 begin
-  if (FWindowsCombo.ItemIndex >= 0) and (FWindowsCombo.ItemIndex < FComboNodes.Count) then
-    PickNode(TWmNode(FComboNodes[FWindowsCombo.ItemIndex]));
+  NodeIdx := (Sender as TMenuItem).Tag;
+  if (NodeIdx >= 0) and (NodeIdx < FComboNodes.Count) then
+    PickNode(TWmNode(FComboNodes[NodeIdx]));
 end;
 
 procedure TArdWinDesignerForm.SetShotsBusy(ABusy: Boolean);
 begin
   if ABusy then
-    FBtnShots.Caption := 'Остановить снимки'
+    FShotsItem.Caption := 'Остановить снимки'
   else
-    FBtnShots.Caption := 'Снимки всех окон';
+    FShotsItem.Caption := 'Снимки всех окон';
 end;
 
 procedure TArdWinDesignerForm.ShowStatus(const AText: string);

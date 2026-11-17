@@ -1187,6 +1187,7 @@ type
     procedure ArdWinDesignerResize(Sender: TObject);
     procedure ArdWinDesignerClosed(Sender: TObject);
     procedure ArdWinNewWindow(Sender: TObject);
+    procedure ArdWinDesignerFit;
     procedure ArdWinShotCurrent(Sender: TObject);
     procedure ArdWinStatus(const AText: string);
     procedure ArdWinCurrent(AState: Integer);
@@ -30268,6 +30269,12 @@ var
 begin
   if (FArdSimWin = nil) or (FRightPanel = nil) then
     Exit;
+  // прибор в конструкторе окон: окно эмулятора маленькое, полосы нет
+  if (FWinDesigner <> nil) and FWinDesigner.Visible then
+  begin
+    ArdSimHidden(Sender);
+    Exit;
+  end;
   EmuLeft := ScreenToClient(Point(FArdSimWin.Left, FArdSimWin.Top)).X;
   GapWidth := ClientWidth - EmuLeft;
   if (EmuLeft <= 0) or (GapWidth <= 0) or
@@ -35292,6 +35299,13 @@ begin
   FWinDesigner.SketchFile := Sketch;
   FWinDesigner.ShotDir := ArdWinShotDir;
   FWinDesigner.RefreshMap;
+  ArdSimEnsure;
+  // инспектор - у правого края окна редактора, без полосы под эмулятор
+  ArdSimHidden(Self);
+  // ширина - до показа: размер показанного окна в Lazarus/gtk2 может не
+  // примениться
+  if not FWinDesigner.Visible then
+    ArdWinDesignerFit;
   {$IFDEF FPC}
   UtilOwnByMain(FWinDesigner);
   {$ENDIF}
@@ -35299,7 +35313,6 @@ begin
   {$IFNDEF FPC}
   UtilOwnByMain(FWinDesigner);
   {$ENDIF}
-  ArdSimEnsure;
   FArdSim.PlaceDevice(FWinDesigner.DeviceHost);
   // сразу - окно, открытое в карте, или начальное окно скетча
   StartState := -1;
@@ -35323,6 +35336,29 @@ procedure TForm1.ArdWinDesignerClosed(Sender: TObject);
 begin
   if FArdSim <> nil then
     FArdSim.PlaceDevice(nil);
+  if (FArdSimWin <> nil) and FArdSimWin.Visible then
+    ArdSimPlaced(Self);
+end;
+
+// Ширина конструктора - по столбцам и прибору; правее остаётся инспектор
+// у правого края окна редактора (конструктор его не закрывает)
+procedure TForm1.ArdWinDesignerFit;
+var
+  NewW, RightEdge: Integer;
+begin
+  if (FWinDesigner = nil) or (FArdSim = nil) then
+    Exit;
+  // прибор - по высоте окна без заголовка, меню и строки состояния
+  FArdSim.Device.Compact := True;
+  NewW := FWinDesigner.NaturalWidth(
+    FArdSim.Device.Arrange(0, FWinDesigner.Height - 110).X + 16);
+  if (FRightPanel <> nil) and FRightPanel.Visible then
+  begin
+    RightEdge := FRightPanel.ClientToScreen(Point(0, 0)).X;
+    if (RightEdge - FWinDesigner.Left > 700) and (FWinDesigner.Left + NewW > RightEdge) then
+      NewW := RightEdge - FWinDesigner.Left;
+  end;
+  FWinDesigner.Width := NewW;
 end;
 
 // «Создать новое окно» в конструкторе окон: панель настройки
