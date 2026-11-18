@@ -48146,7 +48146,7 @@ end;
 procedure TForm1.DesignFormClick(Sender: TObject);
 var
   Ext, Dfm, Txt, Err: string;
-  Prev: Integer;
+  Prev, DfmWin: Integer;
 begin
   // Файл RapidQ - форма из блоков CREATE
   if (FCurrentFileName <> '') and IncludesApply then
@@ -48170,7 +48170,8 @@ begin
 
   // Двоичная форма при открытии во вкладку сама переводится в текст
   // (LoadTextFile), так что конструктор работает и с ней
-  if WindowOfFile(Dfm) < 0 then
+  DfmWin := WindowOfFile(Dfm);
+  if DfmWin < 0 then
   begin
     // Текст формы должен жить во вкладке - открываем, но остаёмся там, где
     // работали
@@ -48178,6 +48179,22 @@ begin
     OpenNamedFile(Dfm);
     if (Prev >= 0) and (Prev <> FWindowsIndex) and FWindows[Prev].Used then
       ActivateWindow(Prev);
+  end
+  else if (FTabs <> nil) and (TabIndexOfWindow(DfmWin) < 0) then
+  begin
+    // .dfm уже открыт, но без вкладки: её закрыли крестиком (CloseTab
+    // убирает только вкладку, окно остаётся в меню Windows) или окно
+    // пришло из списка окон проекта без вкладки. Вкладка - обратно, рядом
+    // с модулем; активной остаётся прежняя.
+    FLockTabs := True;
+    try
+      InsertTabAt(TabInsertPos(DfmWin), DfmWin);
+      if TabIndexOfWindow(FWindowsIndex) >= 0 then
+        FTabs.TabIndex := TabIndexOfWindow(FWindowsIndex);
+    finally
+      FLockTabs := False;
+    end;
+    RefreshAllTabCaptions;
   end;
 
   // Свой снимок снят до того, как у формы изменился состав (окно настроек
