@@ -323,6 +323,11 @@ private
                              var Address: Pointer; var Error: Boolean);
   procedure ReaderError(Reader: TReader; const Message: string;
                         var Handled: Boolean);
+  {$IFDEF FPC}
+  procedure ReaderCreateComponent(Reader: TReader;
+                                  ComponentClass: TComponentClass;
+                                  var Component: TComponent);
+  {$ENDIF}
   procedure AfterLoad(AHidden: Boolean);
   procedure FlushPaint;
   procedure FormClose(Sender: TObject; var Action: TCloseAction);
@@ -683,6 +688,10 @@ var
   uses
     TypInfo, Buttons, Menus, UiScroll,
     UiTheme,  // UiDrawText, UiTextExtent - текст в Delphi и Lazarus
+    {$IFDEF FPC}
+    StdCtrls,
+    DsgVclGroupBox,  // TGroupBox с местом детей как в VCL
+    {$ENDIF}
     Math;   // Min, Max - рамка выделения
 
 const
@@ -2924,6 +2933,32 @@ begin
 end;
 
 {$IFDEF FPC}
+// Класс компонента формы конструктора: в LCL у TGroupBox Left/Top детей
+// считаются от области под подписью (win32: GetLCLClientBoundsOffset), в
+// VCL - от угла рамки. Форма из .dfm в конструкторе получает
+// DsgVclGroupBox.TGroupBox - без этого сдвига, как в программе Delphi.
+function DsgDesignClass(AClass: TPersistentClass): TPersistentClass;
+begin
+  Result := AClass;
+  if AClass = StdCtrls.TGroupBox then
+    Result := DsgVclGroupBox.TGroupBox;
+end;
+
+// Читатель FPC зовёт OnFindComponentClass только для классов, которых нет в
+// GetClass, - подмена известного TGroupBox делается здесь, при создании
+procedure TFormDesigner.ReaderCreateComponent(Reader: TReader;
+                                              ComponentClass: TComponentClass;
+                                              var Component: TComponent);
+var
+  Cls: TPersistentClass;
+begin
+  Cls := DsgDesignClass(ComponentClass);
+  if Cls <> ComponentClass then
+    Component := TComponentClass(Cls).Create(Reader.Owner);
+end;
+{$ENDIF}
+
+{$IFDEF FPC}
 // Текст .dfm приходит из редактора в кодировке Windows (CP_ACP), строки
 // LCL - UTF-8. Без перевода ObjectTextToBinary принимал байты кириллицы за
 // UTF-8, и в подписях формы были '?'
@@ -2985,6 +3020,9 @@ begin
         Reader.OnFindComponentClass := ReaderFindClass;
         Reader.OnFindMethod := ReaderFindMethod;
         Reader.OnError := ReaderError;
+        {$IFDEF FPC}
+        Reader.OnCreateComponent := ReaderCreateComponent;
+        {$ENDIF}
         Reader.ReadRootComponent(FForm);
       finally
         Reader.Free;
@@ -4057,6 +4095,10 @@ begin
   if FForm = nil then
     Exit;
   Cls := GetClass(AClass);
+  {$IFDEF FPC}
+  if Cls <> nil then
+    Cls := DsgDesignClass(Cls);
+  {$ENDIF}
   // Класс неизвестен, но по свойствам это визуальный компонент (у него
   // есть размеры) - ставим заглушку, как для неизвестных классов из .dfm:
   // на ней встанут его дети (палитра - TDsgPalette - и её вкладки)
