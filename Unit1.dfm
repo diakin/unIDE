@@ -2048,7 +2048,7 @@ object Form1: TForm1
           object FGitLblOrigin: TUiLabel
             AutoSize = True
             Left = 310
-            Top = 27
+            Top = 49
             Caption = 'origin:'
             ShowHint = True
             Font.Size = 10
@@ -2060,7 +2060,7 @@ object Form1: TForm1
             AutoSize = False
             Font.Size = 10
             Left = 360
-            Top = 27
+            Top = 49
             Width = 100
             Height = 18
             ShowHint = True
@@ -2079,7 +2079,7 @@ object Form1: TForm1
           object FGitBarLabel1: TUiLabel
             AutoSize = True
             Left = 4
-            Top = 51
+            Top = 73
             Caption = 'Branch:'
             ShowHint = True
             Font.Size = 10
@@ -2088,7 +2088,7 @@ object Form1: TForm1
             Style = csDropDownList
             Font.Size = 10
             Left = 64
-            Top = 47
+            Top = 69
             Width = 220
             Height = 21
             ShowHint = True
@@ -2098,7 +2098,7 @@ object Form1: TForm1
           object FGitLblSync: TUiLabel
             AutoSize = True
             Left = 292
-            Top = 51
+            Top = 73
             Caption = ''
             ShowHint = True
             Font.Size = 10
@@ -2106,7 +2106,7 @@ object Form1: TForm1
           object FGitLblBuild: TUiLabel
             AutoSize = True
             Left = 4
-            Top = 75
+            Top = 97
             Caption = ''
             ShowHint = True
             Font.Size = 10
@@ -2114,7 +2114,7 @@ object Form1: TForm1
           object FGitLblHint: TUiLabel
             AutoSize = True
             Left = 300
-            Top = 75
+            Top = 97
             Caption = ''
             ShowHint = True
             Font.Size = 10
@@ -2122,7 +2122,7 @@ object Form1: TForm1
           object FGitLblStatus: TUiLabel
             AutoSize = True
             Left = 300
-            Top = 75
+            Top = 97
             Caption = ''
             ShowHint = True
             Font.Size = 10
@@ -2139,7 +2139,7 @@ object Form1: TForm1
             Width = 84
             Height = 22
             OnClick = GitConflictsClick
-            Top = 73
+            Top = 95
             TextColor = clRed
             Visible = False
           end
@@ -2152,7 +2152,7 @@ object Form1: TForm1
             Width = 84
             Height = 22
             OnClick = GitAutoResolveClick
-            Top = 73
+            Top = 95
             Visible = False
           end
           object FGitBtnContinue: TUiButton
@@ -2164,7 +2164,7 @@ object Form1: TForm1
             Width = 70
             Height = 22
             OnClick = GitContinueClick
-            Top = 73
+            Top = 95
             Visible = False
           end
           object FGitBtnSkip: TUiButton
@@ -2176,7 +2176,7 @@ object Form1: TForm1
             Width = 46
             Height = 22
             OnClick = GitSkipClick
-            Top = 73
+            Top = 95
             Visible = False
           end
           object FGitBtnAbort: TUiButton
@@ -2188,7 +2188,7 @@ object Form1: TForm1
             Width = 56
             Height = 22
             OnClick = GitAbortClick
-            Top = 73
+            Top = 95
             Visible = False
           end
           object FGitBtnView: TUiButton
@@ -2200,7 +2200,7 @@ object Form1: TForm1
             Width = 50
             Height = 22
             OnClick = GitViewSyncClick
-            Top = 73
+            Top = 95
             Visible = False
           end
         end

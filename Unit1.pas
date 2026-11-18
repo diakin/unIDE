@@ -2321,6 +2321,7 @@ type
     // и её состояние: свёрнута - видны только разделитель и кнопка [];
     // ширина до сворачивания - в FRightPanelWidth (она и пишется в ini)
     FToolbarBaseHeight: Integer;   // тулбар с одним рядом вкладок палитры
+    FGitToolbarGrow: Integer;      // на сколько тулбар выше ради панели Git
     FRightCollapsed: Boolean;
     FRightStartCollapsed: Boolean;   // из editor.ini, ставится в FormCreate
     FTabsOldProc: TWndMethod;
@@ -82047,17 +82048,19 @@ begin
   // .dfm: FGitEdPath.AutoSize := False;
   // .dfm: FGitEdPath.Font.Size := 10;
   // .dfm: FGitEdPath.SetBounds(200, 27, 100, 18);
+  // origin - отдельной строкой под путём: длинный путь и адрес в одну
+  // строку на экран не помещались
   FGitEdPath.Hint := GitEdPathHint;
   // .dfm: FGitEdPath.ShowHint := True;
   // .dfm: FGitEdPath.OnDblClick := GitFieldDblClick;
-  // .dfm: FGitLblOrigin := NewLabel(310, 27, 'origin:');
+  // .dfm: FGitLblOrigin := NewLabel(310, 49, 'origin:');
   // .dfm: FGitEdRemote := TUiEdit.Create(Self);
   // .dfm: FGitEdRemote.Parent := FGitBar;
   // .dfm: FGitEdRemote.BorderStyle := bsNone;
   // .dfm: FGitEdRemote.ReadOnly := True;
   // .dfm: FGitEdRemote.AutoSize := False;
   // .dfm: FGitEdRemote.Font.Size := 10;
-  // .dfm: FGitEdRemote.SetBounds(360, 27, 100, 18);
+  // .dfm: FGitEdRemote.SetBounds(360, 49, 100, 18);
   FGitEdRemote.Hint := 'Адрес remote origin: выделите мышью и Ctrl+C ' +
     '(двойной щелчок - всё)';
   // .dfm: FGitEdRemote.ShowHint := True;
@@ -82086,12 +82089,12 @@ begin
   // .dfm: FGitLblManual.PopupMenu := FGitCopyMenu;
   // .dfm: FGitEdPath.PopupMenu := FGitCopyMenu;
   // .dfm: FGitEdRemote.PopupMenu := FGitCopyMenu;
-  // .dfm: NewLabel(4, 51, 'Branch:');
+  // .dfm: NewLabel(4, 73, 'Branch:');
   // .dfm: FGitCmbBranch := TUiComboBox.Create(Self);
   // .dfm: FGitCmbBranch.Parent := FGitBar;
   // .dfm: FGitCmbBranch.Style := csDropDownList;
   // .dfm: FGitCmbBranch.Font.Size := 10;
-  // .dfm: FGitCmbBranch.SetBounds(64, 47, 220, 21);
+  // .dfm: FGitCmbBranch.SetBounds(64, 69, 220, 21);
   FGitCmbBranch.Hint := 'Текущая ветка; выбор другой - переключиться на неё ' +
     '(git checkout). origin/имя - ветка только на сервере: выбор создаст ' +
     'локальную ветку, следящую за ней';
@@ -82101,12 +82104,12 @@ begin
   // .dfm: FGitCmbBranch.PopupMenu := FGitCopyMenu;
   FGitCmbBranch.Hint := FGitCmbBranch.Hint + '. Ctrl+C или правый щелчок - ' +
     'скопировать имя ветки';
-  // .dfm: FGitLblSync := NewLabel(292, 51, '');
-  // .dfm: FGitLblBuild := NewLabel(4, 75, '');
+  // .dfm: FGitLblSync := NewLabel(292, 73, '');
+  // .dfm: FGitLblBuild := NewLabel(4, 97, '');
   // Что сделала последняя команда - словами (GitSetHint)
-  // .dfm: FGitLblHint := NewLabel(300, 75, '');
+  // .dfm: FGitLblHint := NewLabel(300, 97, '');
   // Git status - итог проверок (GitCollectProblems); щелчок - подробно
-  // .dfm: FGitLblStatus := NewLabel(300, 75, '');
+  // .dfm: FGitLblStatus := NewLabel(300, 97, '');
   // .dfm: FGitLblStatus.Visible := False;
   // .dfm: FGitLblStatus.Cursor := crHandPoint;
   // .dfm: FGitLblStatus.OnClick := GitStatusClick;
@@ -82121,24 +82124,24 @@ begin
     // .dfm: 'там ничего не было): оставить обе вставки - сначала текущей ветки, ' +
     // .dfm: 'потом вливаемую. Остальные - с маркерами, вручную', 4, 84,
     // .dfm: GitAutoResolveClick);
-  // .dfm: FGitBtnAutoResolve.Top := 73;
+  // .dfm: FGitBtnAutoResolve.Top := 95;
   // .dfm: FGitBtnAutoResolve.Visible := False;
   // .dfm: FGitBtnContinue := NewButton('Continue', 'Конфликты исправлены и ' +
     // .dfm: 'сохранены: отметить файлы (git add) и закончить - коммит слияния или ' +
     // .dfm: 'git cherry-pick / revert --continue', 4, 70, GitContinueClick);
   // .dfm: FGitBtnSkip := NewButton('Skip', '', 4, 46, GitSkipClick);
   // .dfm: FGitBtnAbort := NewButton('Abort', '', 4, 56, GitAbortClick);
-  // .dfm: FGitBtnConflicts.Top := 73;
-  // .dfm: FGitBtnContinue.Top := 73;
-  // .dfm: FGitBtnSkip.Top := 73;
-  // .dfm: FGitBtnAbort.Top := 73;
+  // .dfm: FGitBtnConflicts.Top := 95;
+  // .dfm: FGitBtnContinue.Top := 95;
+  // .dfm: FGitBtnSkip.Top := 95;
+  // .dfm: FGitBtnAbort.Top := 95;
   // .dfm: FGitBtnConflicts.TextColor := clRed;
   // .dfm: FGitBtnConflicts.Visible := False;
   // За подсказкой: есть неотправленные или незабранные коммиты (GitPlaceHint)
   // .dfm: FGitBtnView := NewButton('View', 'Коммиты, которые не отправлены на ' +
     // .dfm: 'сервер или не забраны с него: сравнение ветки с её веткой на сервере ' +
     // .dfm: '(файлы и разница)', 4, 50, GitViewSyncClick);
-  // .dfm: FGitBtnView.Top := 73;
+  // .dfm: FGitBtnView.Top := 95;
   // .dfm: FGitBtnView.Visible := False;
   // .dfm: FGitBtnContinue.Visible := False;
   // .dfm: FGitBtnSkip.Visible := False;
@@ -82147,6 +82150,8 @@ end;
 
 // Палитра или панель Git (AShow - режим проекта ReactOS)
 procedure TForm1.GitShowBar(AShow: Boolean);
+var
+  Need: Integer;
 begin
   if AShow then
   begin
@@ -82155,6 +82160,18 @@ begin
     FGitBar.Visible := True;
     if FPalTabs <> nil then
       FPalTabs.TabIndex := 1;
+    // Нижний ряд (Build и кнопки под ним) должен поместиться: не хватает -
+    // тулбар выше, при возврате к палитре - прежний
+    if FGitToolbarGrow = 0 then
+    begin
+      Need := FGitBtnView.Top + FGitBtnView.Height + 2 -
+        pnlPaletteIn.ClientHeight;
+      if Need > 0 then
+      begin
+        FToolbar.Height := FToolbar.Height + Need;
+        FGitToolbarGrow := Need;
+      end;
+    end;
     // Сведения - чуть позже: git status в большом дереве (ReactOS) идёт
     // секунды, смена вкладки не должна их ждать
     GitRefreshLater;
@@ -82164,6 +82181,11 @@ begin
   begin
     if FGitBar <> nil then
       FGitBar.Visible := False;
+    if FGitToolbarGrow > 0 then
+    begin
+      FToolbar.Height := FToolbar.Height - FGitToolbarGrow;
+      FGitToolbarGrow := 0;
+    end;
     if FGitPollTimer <> nil then
       FGitPollTimer.Enabled := False;
     if FPalTabs <> nil then
@@ -84679,14 +84701,15 @@ begin
   FGitLblManual.Visible := AShow;
 end;
 
-// Строка репозитория слева направо: имя, путь, origin:, адрес, (выбран
-// вручную). Ширина полей - по тексту (шрифт полей)
+// Строки репозитория: имя, путь, (выбран вручную); под ними origin: и
+// адрес - начало адреса под началом пути. Ширина полей - по тексту
+// (шрифт полей)
 procedure TForm1.GitLayoutRepoRow;
 const
   FieldGap = 10;
   FieldPad = 8;
 var
-  NextLeft: Integer;
+  NextLeft, RemoteLeft: Integer;
 
   function FieldWidth(AEdit: TUiEdit): Integer;
   begin
@@ -84698,16 +84721,16 @@ begin
   NextLeft := FGitLblRepo.Left + FGitLblRepo.Width + FieldGap;
   FGitEdPath.SetBounds(NextLeft, FGitLblRepo.Top, FieldWidth(FGitEdPath),
     FGitEdPath.Height);
-  NextLeft := FGitEdPath.Left + FGitEdPath.Width + FieldGap;
+  FGitLblManual.Left := FGitEdPath.Left + FGitEdPath.Width + FieldGap;
   if FGitEdRemote.Visible then
   begin
-    FGitLblOrigin.Left := NextLeft;
-    NextLeft := FGitLblOrigin.Left + FGitLblOrigin.Width + 4;
-    FGitEdRemote.SetBounds(NextLeft, FGitLblRepo.Top,
+    RemoteLeft := FGitEdPath.Left;
+    if RemoteLeft < FGitLblRepo.Left + FGitLblOrigin.Width + 4 then
+      RemoteLeft := FGitLblRepo.Left + FGitLblOrigin.Width + 4;
+    FGitLblOrigin.Left := RemoteLeft - FGitLblOrigin.Width - 4;
+    FGitEdRemote.SetBounds(RemoteLeft, FGitLblOrigin.Top,
       FieldWidth(FGitEdRemote), FGitEdRemote.Height);
-    NextLeft := FGitEdRemote.Left + FGitEdRemote.Width + FieldGap;
   end;
-  FGitLblManual.Left := NextLeft;
 end;
 
 procedure TForm1.GitCopyMenuPopup(Sender: TObject);
