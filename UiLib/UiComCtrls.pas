@@ -58,7 +58,9 @@ type
     FHot: Integer;
     {$IFDEF FPC}
     FTabHook: TObject;            // подмена окна ярлычков (UiTabHookAttach)
+    FInFitInner: Boolean;
     procedure HookInner;
+    procedure FitInner;
     {$ENDIF}
     {$IFDEF UNIX}
     // Linux (gtk2): ярлычки рисуются и раскладываются здесь, вложенный
@@ -78,6 +80,9 @@ type
   protected
     procedure MouseMove(Shift: TShiftState; PosX, PosY: Integer); override;
     procedure CreateParams(var Params: TCreateParams); override;
+    {$IFDEF FPC}
+    procedure DoSetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
+    {$ENDIF}
     {$IFDEF UNIX}
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
       PosX, PosY: Integer); override;
@@ -955,6 +960,52 @@ begin
     end;
 end;
 
+// Вкладки в несколько рядов. Высоту вложенного элемента ярлычков LCL
+// ставит сама (TTabControlNoteBookStrings.TabControlBoundsChange): TabHeight
+// или GetMinimumTabHeight, не больше клиентской высоты TTabControl, - и
+// пересчитывает её только при смене размера TTabControl и списка вкладок.
+// От высоты самого TTabControl (Unit1.UpdateTabsHeight - по рядам) она не
+// зависит, и что ниже края вложенного окна, то обрезано. Здесь вложенный
+// элемент тянется на всю клиентскую высоту: после смены размера
+// (DoSetBounds) и при отрисовке (TabControlBoundsChange вызывает Invalidate).
+procedure TUiTabControl.FitInner;
+var
+  CtlIdx: Integer;
+  Inner: TControl;
+begin
+  {$IFDEF UNIX}
+  Exit; // свои ярлычки, вложенный скрыт (OwnHideInner)
+  {$ENDIF}
+  // До HandleAllocated - ещё конструктор (DoSetBounds из TControl.Create):
+  // списка вкладок LCL ещё нет, MultiLine читать нельзя
+  if FInFitInner or not HandleAllocated or
+     (csDestroying in ComponentState) or not MultiLine or
+     (TabPosition <> tpTop) then
+    Exit;
+  for CtlIdx := 0 to ControlCount - 1 do
+    if Controls[CtlIdx] is TCustomTabControl then
+    begin
+      Inner := Controls[CtlIdx];
+      if (Inner.Top = 0) and (Inner.Height <> ClientHeight) and
+         (ClientHeight > 0) then
+      begin
+        FInFitInner := True;
+        try
+          Inner.SetBounds(Inner.Left, 0, Inner.Width, ClientHeight);
+        finally
+          FInFitInner := False;
+        end;
+      end;
+      Exit;
+    end;
+end;
+
+procedure TUiTabControl.DoSetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  inherited DoSetBounds(ALeft, ATop, AWidth, AHeight);
+  FitInner;
+end;
+
 function TUiTabControl.TabRect(Index: Integer): TRect;
 var
   CtlIdx: Integer;
@@ -1015,6 +1066,7 @@ begin
   {$ENDIF}
   {$IFDEF FPC}
   HookInner;
+  FitInner;
   // В LCL ярлычки рисует вложенный элемент вкладок, а сам TTabControl
   // (Paint) - область страницы темой Windows (ttPane): при включённых темах
   // это белая полоса с рамкой под ярлычками, и у вкладок-кнопок тоже. Здесь
