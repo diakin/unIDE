@@ -129,6 +129,8 @@ type
     // Файлы скетча (главный .ino первым, затем подключённые .h и другие
     // .ino папки) - до Parse
     procedure AddFile(const AFileName, AText: string);
+    function FileCount: Integer;
+    function FileNameAt(AIdx: Integer): string;
     procedure Parse;
     function NodeCount: Integer;
     function EdgeCount: Integer;
@@ -275,6 +277,16 @@ procedure TWmMap.AddFile(const AFileName, AText: string);
 begin
   FFiles.Add(AFileName);
   FTexts.Add(AText);
+end;
+
+function TWmMap.FileCount: Integer;
+begin
+  Result := FFiles.Count;
+end;
+
+function TWmMap.FileNameAt(AIdx: Integer): string;
+begin
+  Result := FFiles[AIdx];
 end;
 
 function TWmMap.GetNode(AIdx: Integer): TWmNode;

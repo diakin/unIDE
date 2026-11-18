@@ -78,6 +78,10 @@ type
     FOnDeviceResize: TNotifyEvent;
     FOnClosed: TNotifyEvent;
     FOnNewWindow: TNotifyEvent;
+    FOnCopyWindow: TNotifyEvent;
+    FOnPasteWindow: TNotifyEvent;
+    FOnClearWindow: TNotifyEvent;
+    FPasteItem: TMenuItem;
     function MakeColumn(AParent: TWinControl; AAlign: TAlign;
       const ACaption: string; AIndented: Boolean; var AList: TWdThumbList): TScrollBox;
     function MakeItem(AParent: TMenuItem; const ACaption: string;
@@ -94,6 +98,10 @@ type
     procedure BtnMapClick(Sender: TObject);
     procedure BtnRefreshClick(Sender: TObject);
     procedure BtnNewClick(Sender: TObject);
+    procedure CopyWindowClick(Sender: TObject);
+    procedure PasteWindowClick(Sender: TObject);
+    procedure ClearWindowClick(Sender: TObject);
+    procedure ScrollToCurrent;
     procedure GotoItemClick(Sender: TObject);
     procedure SetCurrentState(AValue: Integer);
     function NodeOfState(AState: Integer): TWmNode;
@@ -128,6 +136,13 @@ type
     property OnClosed: TNotifyEvent read FOnClosed write FOnClosed;
     // «Создать новое окно»: панель настройки и правку скетча делает владелец
     property OnNewWindow: TNotifyEvent read FOnNewWindow write FOnNewWindow;
+    // Edit Window: копировать надписи текущего окна, вставить их в текущее,
+    // очистить текущее (правку делает владелец)
+    property OnCopyWindow: TNotifyEvent read FOnCopyWindow write FOnCopyWindow;
+    property OnPasteWindow: TNotifyEvent read FOnPasteWindow write FOnPasteWindow;
+    property OnClearWindow: TNotifyEvent read FOnClearWindow write FOnClearWindow;
+    // Подпись «Вставить окно»: откуда скопировано ('' - буфер пуст)
+    procedure SetPasteSource(const ASource: string);
   end;
 
 implementation
@@ -337,6 +352,8 @@ end;
 { TArdWinDesignerForm }
 
 constructor TArdWinDesignerForm.CreateDesigner(AOwner: TComponent);
+var
+  EditMenu: TMenuItem;
 begin
   inherited CreateNew(AOwner);
   Caption := 'Конструктор окон';
@@ -359,7 +376,8 @@ begin
   FStatus.Layout := tlCenter;
   FStatus.Caption := '';
 
-  FListBox := MakeColumn(Self, alLeft, 'Окна', True, FList);
+  // миниатюры окон - ровно по левому краю, без отступов дерева
+  FListBox := MakeColumn(Self, alLeft, 'Окна', False, FList);
 
   // действия - в меню вверху
   FMenu := TMainMenu.Create(Self);
@@ -367,6 +385,11 @@ begin
   // все действия - пункты верхнего уровня, один щелчок; вложен только
   // список окон «Перейти в окно»
   MakeItem(nil, 'Создать новое окно', BtnNewClick);
+  EditMenu := MakeItem(nil, 'Edit Window', nil);
+  MakeItem(EditMenu, 'Копировать окно', CopyWindowClick);
+  FPasteItem := MakeItem(EditMenu, 'Вставить окно', PasteWindowClick);
+  FPasteItem.Enabled := False;
+  MakeItem(EditMenu, 'Очистить окно', ClearWindowClick);
   MakeItem(nil, 'Снимок текущего', BtnShotCurrentClick);
   FShotsItem := MakeItem(nil, 'Снимки всех окон', BtnShotsClick);
   MakeItem(nil, 'Карта окон', BtnMapClick);
@@ -549,7 +572,7 @@ begin
       Node := TWmNode(Order[NodeIdx]);
       if Node.Kind <> wnkWindow then
         Continue;
-      FList.AddItem(Node, '', Max(0, Node.Depth - 1));
+      FList.AddItem(Node, '', 0);
       MenuItem := MakeItem(FGotoMenu, Node.Title + '  ' + Node.Caption, GotoItemClick);
       MenuItem.Tag := FComboNodes.Add(Node);
       MenuItem.RadioItem := True;
@@ -673,6 +696,51 @@ begin
   for ComboIdx := 0 to FGotoMenu.Count - 1 do
     FGotoMenu.Items[ComboIdx].Checked :=
       TWmNode(FComboNodes[FGotoMenu.Items[ComboIdx].Tag]).State = AValue;
+  ScrollToCurrent;
+end;
+
+// Миниатюра текущего окна в столбце «Окна» - в видимую часть
+procedure TArdWinDesignerForm.ScrollToCurrent;
+var
+  ItemIdx, TopY, ViewH: Integer;
+begin
+  ItemIdx := FList.FNodes.IndexOf(NodeOfState(FCurrentState));
+  if ItemIdx < 0 then
+    Exit;
+  TopY := 3 + ItemIdx * ItemH;
+  ViewH := FListBox.ClientHeight;
+  with FListBox.VertScrollBar do
+    if TopY < Position then
+      Position := Max(0, TopY - 3)
+    else if TopY + ItemH > Position + ViewH then
+      Position := TopY + ItemH - ViewH;
+end;
+
+procedure TArdWinDesignerForm.SetPasteSource(const ASource: string);
+begin
+  FPasteItem.Enabled := ASource <> '';
+  if ASource <> '' then
+    FPasteItem.Caption := 'Вставить окно (из ' + ASource + ')'
+  else
+    FPasteItem.Caption := 'Вставить окно';
+end;
+
+procedure TArdWinDesignerForm.CopyWindowClick(Sender: TObject);
+begin
+  if Assigned(FOnCopyWindow) then
+    FOnCopyWindow(Self);
+end;
+
+procedure TArdWinDesignerForm.PasteWindowClick(Sender: TObject);
+begin
+  if Assigned(FOnPasteWindow) then
+    FOnPasteWindow(Self);
+end;
+
+procedure TArdWinDesignerForm.ClearWindowClick(Sender: TObject);
+begin
+  if Assigned(FOnClearWindow) then
+    FOnClearWindow(Self);
 end;
 
 procedure TArdWinDesignerForm.PickNode(ANode: TWmNode);

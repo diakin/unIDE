@@ -783,6 +783,7 @@ type
     FArdSim: TArdSimPanel;
     FWinMapForm: TArdWinMapForm;   // Arduino - Window Map (WinXXX)
     FWinDesigner: TArdWinDesignerForm;  // Arduino - Window Designer
+    FWinClip: TWnClip;                  // Edit Window - Копировать окно
     // Снимки окон карты (ArdWinShotsClick): очередь номеров, фаза, время
     FWinShotTimer: TTimer;
     FWinShotList: TStringList;
@@ -1187,6 +1188,10 @@ type
     procedure ArdWinDesignerResize(Sender: TObject);
     procedure ArdWinDesignerClosed(Sender: TObject);
     procedure ArdWinNewWindow(Sender: TObject);
+    procedure ArdWinEditWindow(AAction: Integer);
+    procedure ArdWinCopyWindow(Sender: TObject);
+    procedure ArdWinPasteWindow(Sender: TObject);
+    procedure ArdWinClearWindow(Sender: TObject);
     procedure ArdWinDesignerFit;
     procedure ArdWinShotCurrent(Sender: TObject);
     procedure ArdWinStatus(const AText: string);
@@ -35336,6 +35341,11 @@ begin
     FWinDesigner.OnDeviceResize := ArdWinDesignerResize;
     FWinDesigner.OnClosed := ArdWinDesignerClosed;
     FWinDesigner.OnNewWindow := ArdWinNewWindow;
+    FWinDesigner.OnCopyWindow := ArdWinCopyWindow;
+    FWinDesigner.OnPasteWindow := ArdWinPasteWindow;
+    FWinDesigner.OnClearWindow := ArdWinClearWindow;
+    if FWinClip <> nil then
+      FWinDesigner.SetPasteSource(FWinClip.SourceFunc);
   end;
   FWinDesigner.SketchFile := Sketch;
   FWinDesigner.ShotDir := ArdWinShotDir;
@@ -35537,6 +35547,140 @@ begin
     ArdWinCurrent(Params.NewState);
   if FWinDesigner.Visible then
     FWinDesigner.BringToFront;
+end;
+
+// Edit Window конструктора: 0 - копировать надписи текущего окна в буфер,
+// 1 - вставить буфер в текущее окно, 2 - очистить текущее окно. Правка -
+// по файлам с диска (как «Создать новое окно»), отмена - через git
+procedure TForm1.ArdWinEditWindow(AAction: Integer);
+var
+  Map: TWmMap;
+  Node: TWmNode;
+  Files: TList;
+  FileNames, OldTexts: TStringList;
+  Fmts: array of Integer;
+  FileIdx, NodeIdx, CurState, SavedCount: Integer;
+  Report: string;
+  Done: Boolean;
+begin
+  if FWinDesigner = nil then
+    Exit;
+  if (FWinShotTimer <> nil) and FWinShotTimer.Enabled then
+  begin
+    ArdWinStatus('Идут снимки окон - сначала остановите их');
+    Exit;
+  end;
+  ArdSimEnsure;
+  if (AAction <> 0) and FArdSim.Building then
+  begin
+    ArdWinStatus('Эмулятор собирается - повторите после сборки');
+    Exit;
+  end;
+  if not ArdSimSaveFiles(FArdSim) then
+    Exit;
+  FWinDesigner.RefreshMap;
+  Map := FWinDesigner.Map;
+  CurState := FWinDesigner.CurrentState;
+  Node := nil;
+  for NodeIdx := 0 to Map.NodeCount - 1 do
+    if (Map.Nodes[NodeIdx].Kind = wnkWindow) and (Map.Nodes[NodeIdx].State = CurState) then
+      Node := Map.Nodes[NodeIdx];
+  if Node = nil then
+  begin
+    ArdWinStatus('Нет текущего окна - выберите окно слева');
+    Exit;
+  end;
+  if (AAction = 1) and ((FWinClip = nil) or (FWinClip.Count = 0)) then
+  begin
+    ArdWinStatus('Буфер пуст - сначала «Копировать окно»');
+    Exit;
+  end;
+  if (AAction = 1) and
+     (MessageDlg('Вставить в ' + Node.FuncName + '() надписи из ' + FWinClip.SourceFunc +
+        '() (' + IntToStr(FWinClip.Count) + ')?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
+    Exit;
+  if (AAction = 2) and
+     (MessageDlg('Убрать из ' + Node.FuncName + '() вызовы Draw надписей и их ' +
+        'объявления, на которые больше нет ссылок?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes) then
+    Exit;
+  Files := TList.Create;
+  FileNames := TStringList.Create;
+  OldTexts := TStringList.Create;
+  Done := False;
+  try
+    SetLength(Fmts, Map.FileCount);
+    for FileIdx := 0 to Map.FileCount - 1 do
+    begin
+      Files.Add(TStringList.Create);
+      FileNames.Add(Map.FileNameAt(FileIdx));
+      if not ArdFileLoad(Map.FileNameAt(FileIdx), TStringList(Files[FileIdx]),
+                         Fmts[FileIdx], AAction <> 0) then
+        Exit;
+      OldTexts.Add(TStringList(Files[FileIdx]).Text);
+    end;
+    case AAction of
+      0:
+        begin
+          if FWinClip = nil then
+            FWinClip := TWnClip.Create;
+          Done := WnCopyWindow(Node, Files, FileNames, FWinClip, Report);
+          if Done then
+            FWinDesigner.SetPasteSource(FWinClip.SourceFunc);
+        end;
+      1:
+        Done := WnPasteWindow(Node, Files, FileNames, FWinClip, Report);
+      2:
+        Done := WnClearWindow(Node, Files, FileNames, Report);
+    end;
+    if not Done then
+    begin
+      ShowMessage(Report);
+      Exit;
+    end;
+    SavedCount := 0;
+    if AAction <> 0 then
+      for FileIdx := 0 to Files.Count - 1 do
+        if TStringList(Files[FileIdx]).Text <> OldTexts[FileIdx] then
+        begin
+          ArdFileSave(FileNames[FileIdx], TStringList(Files[FileIdx]), Fmts[FileIdx]);
+          Inc(SavedCount);
+        end;
+  finally
+    for FileIdx := 0 to Files.Count - 1 do
+      TStringList(Files[FileIdx]).Free;
+    Files.Free;
+    FileNames.Free;
+    OldTexts.Free;
+  end;
+  if not Done then
+    Exit;
+  LogComp('Конструктор окон: ' + Report);
+  if AAction = 0 then
+  begin
+    ArdWinStatus(Report);
+    Exit;
+  end;
+  FWinDesigner.RefreshMap;
+  ArdWinStatus(Report + ' - эмулятор собирается');
+  if ArdWinMapLaunch(CurState) then
+    ArdWinCurrent(CurState);
+  if FWinDesigner.Visible then
+    FWinDesigner.BringToFront;
+end;
+
+procedure TForm1.ArdWinCopyWindow(Sender: TObject);
+begin
+  ArdWinEditWindow(0);
+end;
+
+procedure TForm1.ArdWinPasteWindow(Sender: TObject);
+begin
+  ArdWinEditWindow(1);
+end;
+
+procedure TForm1.ArdWinClearWindow(Sender: TObject);
+begin
+  ArdWinEditWindow(2);
 end;
 
 // «Снимок текущего»: экран эмулятора - снимком текущего окна конструктора

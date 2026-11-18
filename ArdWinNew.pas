@@ -62,6 +62,36 @@ function WnMenuArray(AMap: TWmMap; ANode: TWmNode; var AFile, AArray: string;
 function WnCreateWindow(AMap: TWmMap; const AParams: TWnParams;
   AForms, AIno, ACaseLines: TStringList; var AReport: string): Boolean;
 
+// Буфер «Копировать окно»: надписи TLabel, которые окно рисует
+// безусловно (вызов Draw на верхнем уровне тела функции), с объявлениями
+type
+  TWnClip = class
+  public
+    SourceFunc: string;      // Win20
+    Names: TStringList;      // имена надписей
+    Decls: TStringList;      // объявления (строки через #10)
+    Draws: TStringList;      // оператор вызова: lblX.Draw(); с цепочкой
+    Skipped: Integer;        // надписи только в условных ветках - не взяты
+    constructor Create;
+    destructor Destroy; override;
+    procedure Clear;
+    function Count: Integer;
+  end;
+
+// AFiles - тексты всех файлов скетча (TStringList), AFileNames - их имена
+// в том же порядке. Функция окна - в файле ANode.FileName.
+// Копировать: надписи окна ANode в AClip
+function WnCopyWindow(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
+  AClip: TWnClip; var AReport: string): Boolean;
+// Вставить: копии надписей AClip (новые имена _WinN) - объявления рядом
+// с надписями/меню окна, вызовы Draw - после его надписей
+function WnPasteWindow(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
+  AClip: TWnClip; var AReport: string): Boolean;
+// Очистить: убрать безусловные вызовы Draw надписей окна; объявления,
+// на которые больше нет ссылок (меню и др.), - удалить
+function WnClearWindow(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
+  var AReport: string): Boolean;
+
 type
   // Панель настройки нового окна
   TArdWinNewForm = class(TForm)
@@ -1047,6 +1077,542 @@ begin
     Names.Free;
     Keys.Free;
     FuncLabels.Free;
+  end;
+end;
+
+{$IFNDEF FPC}
+type
+  PtrInt = Integer;
+{$ENDIF}
+
+{ Копировать, вставить, очистить окно }
+
+constructor TWnClip.Create;
+begin
+  inherited Create;
+  Names := TStringList.Create;
+  Decls := TStringList.Create;
+  Draws := TStringList.Create;
+end;
+
+destructor TWnClip.Destroy;
+begin
+  Names.Free;
+  Decls.Free;
+  Draws.Free;
+  inherited Destroy;
+end;
+
+procedure TWnClip.Clear;
+begin
+  SourceFunc := '';
+  Names.Clear;
+  Decls.Clear;
+  Draws.Clear;
+  Skipped := 0;
+end;
+
+function TWnClip.Count: Integer;
+begin
+  Result := Names.Count;
+end;
+
+function FileIndexOf(AFileNames: TStrings; const AFileName: string): Integer;
+var
+  FileIdx: Integer;
+begin
+  Result := -1;
+  for FileIdx := 0 to AFileNames.Count - 1 do
+    if CompareText(ExpandFileName(AFileNames[FileIdx]), ExpandFileName(AFileName)) = 0 then
+    begin
+      Result := FileIdx;
+      Exit;
+    end;
+end;
+
+// Глубина скобок {} в начале каждой строки AFrom..ATo (0 - вне функции,
+// 1 - тело функции); комментарии и строки пропускаются
+procedure LineDepths(ALines: TStringList; AFrom, ATo: Integer; var ADepths: array of Integer);
+var
+  LineIdx, CharIdx, Depth: Integer;
+  LineText: string;
+  InBlock, InStr: Boolean;
+  Quote: Char;
+begin
+  Depth := 0;
+  InBlock := False;
+  Quote := '"';
+  for LineIdx := AFrom to ATo do
+  begin
+    ADepths[LineIdx - AFrom] := Depth;
+    LineText := ALines[LineIdx];
+    InStr := False;
+    CharIdx := 1;
+    while CharIdx <= Length(LineText) do
+    begin
+      if InBlock then
+      begin
+        if Copy(LineText, CharIdx, 2) = '*/' then
+        begin
+          InBlock := False;
+          Inc(CharIdx);
+        end;
+      end
+      else if InStr then
+      begin
+        if LineText[CharIdx] = '\' then
+          Inc(CharIdx)
+        else if LineText[CharIdx] = Quote then
+          InStr := False;
+      end
+      else if Copy(LineText, CharIdx, 2) = '//' then
+        Break
+      else if Copy(LineText, CharIdx, 2) = '/*' then
+      begin
+        InBlock := True;
+        Inc(CharIdx);
+      end
+      else if LineText[CharIdx] in ['"', ''''] then
+      begin
+        InStr := True;
+        Quote := LineText[CharIdx];
+      end
+      else if LineText[CharIdx] = '{' then
+        Inc(Depth)
+      else if LineText[CharIdx] = '}' then
+        Dec(Depth);
+      Inc(CharIdx);
+    end;
+  end;
+end;
+
+// Строка начинается с вызова надписи: "lblX.Draw();" или
+// "lblX.Caption(...).Draw();" - имя и оператор до ';' включительно
+function DrawStatement(const ALine: string; var AName, AStmt: string): Boolean;
+var
+  Text: string;
+  EndPos, DrawPos, SemiPos: Integer;
+begin
+  Result := False;
+  Text := TrimLeft(ALine);
+  EndPos := 1;
+  while (EndPos <= Length(Text)) and IsIdentChar(Text[EndPos]) do
+    Inc(EndPos);
+  if (EndPos = 1) or (EndPos > Length(Text)) or (Text[EndPos] <> '.') then
+    Exit;
+  AName := Copy(Text, 1, EndPos - 1);
+  DrawPos := Pos('.Draw', Text);
+  if DrawPos = 0 then
+    Exit;
+  SemiPos := DrawPos;
+  while (SemiPos <= Length(Text)) and (Text[SemiPos] <> ';') do
+    Inc(SemiPos);
+  if SemiPos > Length(Text) then
+    Exit;
+  AStmt := Copy(Text, 1, SemiPos);
+  Result := True;
+end;
+
+// Объявление надписи AName в одном из файлов: номер файла, строки
+function FindLabelAny(AFiles: TList; const AName: string;
+  var AFileIdx, AStart, AEnd: Integer): Boolean;
+var
+  FileIdx: Integer;
+begin
+  Result := False;
+  for FileIdx := 0 to AFiles.Count - 1 do
+    if FindLabelDecl(TStringList(AFiles[FileIdx]), AName, AStart, AEnd) then
+    begin
+      AFileIdx := FileIdx;
+      Result := True;
+      Exit;
+    end;
+end;
+
+function NameUsed(AFiles: TList; const AName: string): Boolean;
+var
+  FileIdx, LineIdx: Integer;
+  Lines: TStringList;
+begin
+  Result := True;
+  for FileIdx := 0 to AFiles.Count - 1 do
+  begin
+    Lines := TStringList(AFiles[FileIdx]);
+    for LineIdx := 0 to Lines.Count - 1 do
+      if WordPos(AName, Lines[LineIdx], 1) > 0 then
+        Exit;
+  end;
+  Result := False;
+end;
+
+// Тело функции окна: файл, строки заголовка и '}'
+function WindowFunc(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
+  var AIno: TStringList; var AHeader, AEnd: Integer; var AReport: string): Boolean;
+var
+  FileIdx: Integer;
+begin
+  Result := False;
+  FileIdx := FileIndexOf(AFileNames, ANode.FileName);
+  if (ANode.Kind <> wnkWindow) or (FileIdx < 0) then
+  begin
+    AReport := 'Не найден файл функции окна ' + ANode.Title + '.';
+    Exit;
+  end;
+  AIno := TStringList(AFiles[FileIdx]);
+  AHeader := FindFuncHeader(AIno, ANode.FuncName);
+  if AHeader < 0 then
+  begin
+    AReport := 'Не найдена функция ' + ANode.FuncName + '().';
+    Exit;
+  end;
+  AEnd := FuncEndLine(AIno, AHeader);
+  if AEnd < 0 then
+  begin
+    AReport := 'Не найден конец функции ' + ANode.FuncName + '().';
+    Exit;
+  end;
+  Result := True;
+end;
+
+// Безусловные вызовы надписей в теле: номера строк (Objects) и имена
+procedure TopDraws(AFiles: TList; AIno: TStringList; AHeader, AEnd: Integer;
+  ALines, ANames, AStmts: TStringList; var ACondCount: Integer);
+var
+  Depths: array of Integer;
+  LineIdx, FileIdx, DeclStart, DeclEnd: Integer;
+  LabelName, Stmt: string;
+  CondNames: TStringList;
+begin
+  ACondCount := 0;
+  SetLength(Depths, AEnd - AHeader + 1);
+  LineDepths(AIno, AHeader, AEnd, Depths);
+  CondNames := TStringList.Create;
+  try
+    for LineIdx := AHeader + 1 to AEnd - 1 do
+    begin
+      if not DrawStatement(AIno[LineIdx], LabelName, Stmt) then
+        Continue;
+      if not FindLabelAny(AFiles, LabelName, FileIdx, DeclStart, DeclEnd) then
+        Continue;
+      if Depths[LineIdx - AHeader] = 1 then
+      begin
+        ALines.AddObject(LabelName, TObject(PtrInt(LineIdx)));
+        if ANames.IndexOf(LabelName) < 0 then
+        begin
+          ANames.Add(LabelName);
+          AStmts.Add(Stmt);
+        end;
+      end
+      else if CondNames.IndexOf(LabelName) < 0 then
+        CondNames.Add(LabelName);
+    end;
+    for LineIdx := 0 to CondNames.Count - 1 do
+      if ANames.IndexOf(CondNames[LineIdx]) < 0 then
+        Inc(ACondCount);
+  finally
+    CondNames.Free;
+  end;
+end;
+
+function WnCopyWindow(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
+  AClip: TWnClip; var AReport: string): Boolean;
+var
+  Ino, DeclLines, Names, Stmts: TStringList;
+  HeaderLine, EndLine, NameIdx, FileIdx, DeclStart, DeclEnd, LineIdx, CondCount: Integer;
+  Block: string;
+begin
+  Result := False;
+  AReport := '';
+  if not WindowFunc(ANode, AFiles, AFileNames, Ino, HeaderLine, EndLine, AReport) then
+    Exit;
+  DeclLines := TStringList.Create;
+  Names := TStringList.Create;
+  Stmts := TStringList.Create;
+  try
+    TopDraws(AFiles, Ino, HeaderLine, EndLine, DeclLines, Names, Stmts, CondCount);
+    if Names.Count = 0 then
+    begin
+      AReport := 'В ' + ANode.FuncName + '() нет вызовов Draw надписей TLabel ' +
+                 'на верхнем уровне - копировать нечего.';
+      Exit;
+    end;
+    AClip.Clear;
+    AClip.SourceFunc := ANode.FuncName;
+    AClip.Skipped := CondCount;
+    for NameIdx := 0 to Names.Count - 1 do
+    begin
+      if not FindLabelAny(AFiles, Names[NameIdx], FileIdx, DeclStart, DeclEnd) then
+        Continue;
+      Block := '';
+      for LineIdx := DeclStart to DeclEnd do
+        Block := Block + TStringList(AFiles[FileIdx])[LineIdx] + #10;
+      AClip.Names.Add(Names[NameIdx]);
+      AClip.Decls.Add(Block);
+      AClip.Draws.Add(Stmts[NameIdx]);
+    end;
+    AReport := 'Скопировано надписей: ' + IntToStr(AClip.Count) + ' из ' +
+               ANode.FuncName + '()';
+    if CondCount > 0 then
+      AReport := AReport + '; ' + IntToStr(CondCount) +
+                 ' только в условных ветках - не взяты';
+    Result := True;
+  finally
+    DeclLines.Free;
+    Names.Free;
+    Stmts.Free;
+  end;
+end;
+
+// Новое имя надписи для окна AFunc: суффикс _WinS -> _WinN, иначе + _WinN;
+// занятое имя - с номером
+function PasteName(AFiles: TList; AReserved: TStringList;
+  const AName, ASourceFunc, AFunc: string): string;
+var
+  Base: string;
+  Number: Integer;
+begin
+  Base := AName;
+  if (Length(Base) > Length(ASourceFunc) + 1) and
+     (CompareText(Copy(Base, Length(Base) - Length(ASourceFunc), MaxInt),
+                  '_' + ASourceFunc) = 0) then
+    Base := Copy(Base, 1, Length(Base) - Length(ASourceFunc) - 1);
+  Base := Base + '_' + AFunc;
+  Result := Base;
+  Number := 2;
+  while NameUsed(AFiles, Result) or (AReserved.IndexOf(Result) >= 0) do
+  begin
+    Result := Base + '_' + IntToStr(Number);
+    Inc(Number);
+  end;
+end;
+
+function WnPasteWindow(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
+  AClip: TWnClip; var AReport: string): Boolean;
+var
+  Ino, Forms, DrawLines, Names, Stmts, NewNames: TStringList;
+  HeaderLine, EndLine, FileIdx, FormsIdx, InsertAt, DeclStart, DeclEnd, LineIdx,
+  NameIdx, CondCount, DrawAt, StopLine, OpenLine, ArrStart, ArrEnd: Integer;
+  Block, Stmt, Indent, MarkText: string;
+  Depths: array of Integer;
+begin
+  Result := False;
+  AReport := '';
+  if (AClip = nil) or (AClip.Count = 0) then
+  begin
+    AReport := 'Буфер пуст: сначала «Копировать окно».';
+    Exit;
+  end;
+  if not WindowFunc(ANode, AFiles, AFileNames, Ino, HeaderLine, EndLine, AReport) then
+    Exit;
+  DrawLines := TStringList.Create;
+  Names := TStringList.Create;
+  Stmts := TStringList.Create;
+  NewNames := TStringList.Create;
+  try
+    TopDraws(AFiles, Ino, HeaderLine, EndLine, DrawLines, Names, Stmts, CondCount);
+    MarkText := ' // unIDE: copied from ' + AClip.SourceFunc;
+    for NameIdx := 0 to AClip.Count - 1 do
+      NewNames.Add(PasteName(AFiles, NewNames, AClip.Names[NameIdx],
+                             AClip.SourceFunc, ANode.FuncName));
+
+    // 1. Файл и место объявлений: после последней надписи окна, иначе
+    // перед массивом меню окна, иначе там, где объявлена исходная надпись
+    FormsIdx := -1;
+    InsertAt := -1;
+    for NameIdx := Names.Count - 1 downto 0 do
+      if FindLabelAny(AFiles, Names[NameIdx], FileIdx, DeclStart, DeclEnd) then
+        if (FormsIdx < 0) or ((FileIdx = FormsIdx) and (DeclEnd + 1 > InsertAt)) then
+        begin
+          FormsIdx := FileIdx;
+          InsertAt := DeclEnd + 1;
+        end;
+    // надписи окна, которые оно сейчас не рисует (меню, после «Очистить»):
+    // имя *_WinN - после последней из них
+    if FormsIdx < 0 then
+      for FileIdx := 0 to AFiles.Count - 1 do
+      begin
+        Forms := TStringList(AFiles[FileIdx]);
+        for LineIdx := 0 to Forms.Count - 1 do
+        begin
+          if (WordPos('TLabel', Forms[LineIdx], 1) = 0) or (Pos('{', Forms[LineIdx]) = 0) then
+            Continue;
+          Stmt := Forms[LineIdx];
+          DeclStart := WordPos('TLabel', Stmt, 1) + Length('TLabel');
+          while (DeclStart <= Length(Stmt)) and (Stmt[DeclStart] = ' ') do
+            Inc(DeclStart);
+          DeclEnd := DeclStart;
+          while (DeclEnd <= Length(Stmt)) and IsIdentChar(Stmt[DeclEnd]) do
+            Inc(DeclEnd);
+          Stmt := Copy(Stmt, DeclStart, DeclEnd - DeclStart);
+          if (Length(Stmt) > Length(ANode.FuncName) + 1) and
+             (CompareText(Copy(Stmt, Length(Stmt) - Length(ANode.FuncName), MaxInt),
+                          '_' + ANode.FuncName) = 0) and
+             FindLabelDecl(Forms, Stmt, DeclStart, DeclEnd) and
+             ((FormsIdx < 0) or (FormsIdx = FileIdx)) then
+          begin
+            FormsIdx := FileIdx;
+            InsertAt := DeclEnd + 1;
+          end;
+        end;
+      end;
+    if FormsIdx < 0 then
+      for FileIdx := 0 to AFiles.Count - 1 do
+        if FindArray(TStringList(AFiles[FileIdx]), 'mnu' + ANode.FuncName,
+                     ArrStart, ArrEnd) then
+        begin
+          FormsIdx := FileIdx;
+          InsertAt := ArrStart;
+          // комментарий над массивом - остаётся над ним
+          while (InsertAt > 0) and
+                (Copy(TrimLeft(TStringList(AFiles[FileIdx])[InsertAt - 1]), 1, 2) = '//') do
+            Dec(InsertAt);
+          Break;
+        end;
+    if FormsIdx < 0 then
+      if FindLabelAny(AFiles, AClip.Names[0], FileIdx, DeclStart, DeclEnd) then
+      begin
+        FormsIdx := FileIdx;
+        InsertAt := DeclEnd + 1;
+      end;
+    if FormsIdx < 0 then
+    begin
+      AReport := 'Не найдено, куда поставить объявления надписей.';
+      Exit;
+    end;
+    Forms := TStringList(AFiles[FormsIdx]);
+    Block := '';
+    for NameIdx := 0 to AClip.Count - 1 do
+    begin
+      Stmt := AClip.Decls[NameIdx];
+      LineIdx := WordPos(AClip.Names[NameIdx], Stmt, 1);
+      if LineIdx > 0 then
+        Stmt := Copy(Stmt, 1, LineIdx - 1) + NewNames[NameIdx] +
+                Copy(Stmt, LineIdx + Length(AClip.Names[NameIdx]), MaxInt);
+      // пометка - в конце первой строки (комментарий образца остаётся)
+      LineIdx := Pos(#10, Stmt);
+      if LineIdx > 0 then
+        Stmt := Copy(Stmt, 1, LineIdx - 1) + MarkText + Copy(Stmt, LineIdx, MaxInt);
+      Block := Block + Stmt;
+    end;
+    InsertBlock(Forms, InsertAt, Block);
+
+    // 2. Вызовы Draw - в функции окна (файл мог быть тем же - места заново)
+    HeaderLine := FindFuncHeader(Ino, ANode.FuncName);
+    EndLine := FuncEndLine(Ino, HeaderLine);
+    if (HeaderLine < 0) or (EndLine < 0) then
+    begin
+      AReport := 'После вставки объявлений не найдена функция ' + ANode.FuncName + '().';
+      Exit;
+    end;
+    SetLength(Depths, EndLine - HeaderLine + 1);
+    LineDepths(Ino, HeaderLine, EndLine, Depths);
+    OpenLine := HeaderLine;
+    while (OpenLine < EndLine) and (Pos('{', Ino[OpenLine]) = 0) do
+      Inc(OpenLine);
+    // до первого ожидания клавиши / цикла
+    StopLine := EndLine;
+    for LineIdx := OpenLine + 1 to EndLine - 1 do
+      if (Depths[LineIdx - HeaderLine] = 1) and
+         ((Pos('RunMenu', Ino[LineIdx]) > 0) or (Pos('InputNumber', Ino[LineIdx]) > 0) or
+          (WordPos('do', Ino[LineIdx], 1) > 0) or (WordPos('while', Ino[LineIdx], 1) > 0) or
+          (WordPos('for', Ino[LineIdx], 1) > 0)) and
+         (Copy(TrimLeft(Ino[LineIdx]), 1, 2) <> '//') then
+      begin
+        StopLine := LineIdx;
+        Break;
+      end;
+    DrawAt := -1;
+    for LineIdx := OpenLine + 1 to StopLine - 1 do
+      if (Depths[LineIdx - HeaderLine] = 1) and DrawStatement(Ino[LineIdx], Block, Stmt) then
+        DrawAt := LineIdx + 1;
+    if DrawAt < 0 then
+      for LineIdx := OpenLine + 1 to StopLine - 1 do
+        if (Depths[LineIdx - HeaderLine] = 1) and (Pos('clrScr', Ino[LineIdx]) > 0) and
+           (Copy(TrimLeft(Ino[LineIdx]), 1, 2) <> '//') then
+          DrawAt := LineIdx + 1;
+    if DrawAt < 0 then
+      DrawAt := OpenLine + 1;
+    Indent := '  ';
+    if (DrawAt - 1 > OpenLine) and (IndentOf(Ino[DrawAt - 1]) <> '') then
+      Indent := IndentOf(Ino[DrawAt - 1]);
+    for NameIdx := AClip.Count - 1 downto 0 do
+    begin
+      Stmt := AClip.Draws[NameIdx];
+      Stmt := NewNames[NameIdx] + Copy(Stmt, Length(AClip.Names[NameIdx]) + 1, MaxInt);
+      Ino.Insert(DrawAt, Indent + Stmt + MarkText);
+    end;
+    AReport := 'Вставлено надписей в ' + ANode.FuncName + '(): ' +
+               IntToStr(AClip.Count) + ' (' + NewNames.CommaText + '), объявления - ' +
+               ExtractFileName(AFileNames[FormsIdx]) + ', строка ' + IntToStr(InsertAt + 1);
+    Result := True;
+  finally
+    DrawLines.Free;
+    Names.Free;
+    Stmts.Free;
+    NewNames.Free;
+  end;
+end;
+
+function WnClearWindow(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
+  var AReport: string): Boolean;
+var
+  Ino, DrawLines, Names, Stmts, Removed, Kept: TStringList;
+  HeaderLine, EndLine, LineIdx, NameIdx, CondCount, FileIdx, DeclStart, DeclEnd: Integer;
+  Block: string;
+begin
+  Result := False;
+  AReport := '';
+  if not WindowFunc(ANode, AFiles, AFileNames, Ino, HeaderLine, EndLine, AReport) then
+    Exit;
+  DrawLines := TStringList.Create;
+  Names := TStringList.Create;
+  Stmts := TStringList.Create;
+  Removed := TStringList.Create;
+  Kept := TStringList.Create;
+  try
+    TopDraws(AFiles, Ino, HeaderLine, EndLine, DrawLines, Names, Stmts, CondCount);
+    if DrawLines.Count = 0 then
+    begin
+      AReport := 'В ' + ANode.FuncName + '() нет вызовов Draw надписей на верхнем уровне.';
+      Exit;
+    end;
+    // снизу вверх - номера строк выше не сдвигаются
+    for LineIdx := DrawLines.Count - 1 downto 0 do
+      Ino.Delete(PtrInt(DrawLines.Objects[LineIdx]));
+    // объявления без других ссылок
+    for NameIdx := 0 to Names.Count - 1 do
+    begin
+      if not FindLabelAny(AFiles, Names[NameIdx], FileIdx, DeclStart, DeclEnd) then
+        Continue;
+      Block := '';
+      for LineIdx := DeclStart to DeclEnd do
+        Block := Block + TStringList(AFiles[FileIdx])[LineIdx] + #10;
+      for LineIdx := DeclEnd downto DeclStart do
+        TStringList(AFiles[FileIdx]).Delete(LineIdx);
+      if NameUsed(AFiles, Names[NameIdx]) then
+      begin
+        // ссылка осталась (меню, другое окно) - объявление вернуть
+        InsertBlock(TStringList(AFiles[FileIdx]), DeclStart, Block);
+        Kept.Add(Names[NameIdx]);
+      end
+      else
+        Removed.Add(Names[NameIdx]);
+    end;
+    AReport := 'Очищено ' + ANode.FuncName + '(): убрано вызовов Draw - ' +
+               IntToStr(DrawLines.Count);
+    if Removed.Count > 0 then
+      AReport := AReport + '; удалены объявления: ' + Removed.CommaText;
+    if Kept.Count > 0 then
+      AReport := AReport + '; оставлены (есть ссылки, напр. в меню): ' + Kept.CommaText;
+    if CondCount > 0 then
+      AReport := AReport + '; в условных ветках не тронуто: ' + IntToStr(CondCount);
+    Result := True;
+  finally
+    DrawLines.Free;
+    Names.Free;
+    Stmts.Free;
+    Removed.Free;
+    Kept.Free;
   end;
 end;
 
