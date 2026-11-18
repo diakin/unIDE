@@ -51,6 +51,92 @@ begin
   Result := StringReplace(Result, '$(BDS)', RestStr, [rfReplaceAll, rfIgnoreCase]);
 end;
 
+// Текст .dpr без комментариев: //, (* *) и { }, кроме имени формы в
+// фигурных скобках сразу за именем файла ('Unit1.pas' {Form1}) - его
+// разбирает ParseDprUnits. Строки в кавычках не трогаются, вырезанный
+// комментарий заменяется пробелом. Без этого комментарий перед модулем
+// попадал в имя модуля (в окне модулей - строка с текстом комментария),
+// а запятая или ';' в нём резали список не там.
+function StripDprComments(const ATxt: string): string;
+var
+  Pos1, TxtLen, Back: Integer;
+  AfterQuote: Boolean;
+begin
+  Result := '';
+  TxtLen := Length(ATxt);
+  Pos1 := 1;
+  while Pos1 <= TxtLen do
+  begin
+    if ATxt[Pos1] = '''' then
+    begin
+      // Строка в кавычках - как есть ('' внутри - две строки подряд)
+      Result := Result + ATxt[Pos1];
+      Inc(Pos1);
+      while (Pos1 <= TxtLen) and (ATxt[Pos1] <> '''') do
+      begin
+        Result := Result + ATxt[Pos1];
+        Inc(Pos1);
+      end;
+      if Pos1 <= TxtLen then
+      begin
+        Result := Result + ATxt[Pos1];
+        Inc(Pos1);
+      end;
+    end
+    else if (ATxt[Pos1] = '/') and (Pos1 < TxtLen) and
+            (ATxt[Pos1 + 1] = '/') then
+    begin
+      while (Pos1 <= TxtLen) and not (ATxt[Pos1] in [#13, #10]) do
+        Inc(Pos1);
+      Result := Result + ' ';
+    end
+    else if (ATxt[Pos1] = '(') and (Pos1 < TxtLen) and
+            (ATxt[Pos1 + 1] = '*') then
+    begin
+      Inc(Pos1, 2);
+      while (Pos1 < TxtLen) and
+            not ((ATxt[Pos1] = '*') and (ATxt[Pos1 + 1] = ')')) do
+        Inc(Pos1);
+      Inc(Pos1, 2);
+      Result := Result + ' ';
+    end
+    else if ATxt[Pos1] = '{' then
+    begin
+      // Имя формы - скобки сразу (через пробелы) за закрывающей кавычкой
+      Back := Length(Result);
+      while (Back > 0) and (Result[Back] in [' ', #9, #13, #10]) do
+        Dec(Back);
+      AfterQuote := (Back > 0) and (Result[Back] = '''') and
+                    (Pos1 < TxtLen) and (ATxt[Pos1 + 1] <> '$');
+      if AfterQuote then
+      begin
+        while (Pos1 <= TxtLen) and (ATxt[Pos1] <> '}') do
+        begin
+          Result := Result + ATxt[Pos1];
+          Inc(Pos1);
+        end;
+        if Pos1 <= TxtLen then
+        begin
+          Result := Result + ATxt[Pos1];
+          Inc(Pos1);
+        end;
+      end
+      else
+      begin
+        while (Pos1 <= TxtLen) and (ATxt[Pos1] <> '}') do
+          Inc(Pos1);
+        Inc(Pos1);
+        Result := Result + ' ';
+      end;
+    end
+    else
+    begin
+      Result := Result + ATxt[Pos1];
+      Inc(Pos1);
+    end;
+  end;
+end;
+
 // Разбор секции uses. Каждая строка списка - UnitName|FileName|Form|Class.
 // Модули без "in 'файл'" (Forms, SysUtils и прочие) пропускаем: они не часть
 // проекта. Возвращает число разобранных модулей.
@@ -68,13 +154,20 @@ begin
   SL := TStringList.Create;
   try
     SL.LoadFromFile(ADpr);
-    Txt := SL.Text;
+    Txt := StripDprComments(SL.Text);
   finally
     SL.Free;
   end;
 
-  Up := AnsiUpperCase(Txt);
+  // Слово uses целиком, не часть другого имени
+  Up := ' ' + AnsiUpperCase(Txt) + ' ';
   CharPos := Pos('USES', Up);
+  while (CharPos > 0) and
+        ((Up[CharPos - 1] in ['A'..'Z', '0'..'9', '_']) or
+         (Up[CharPos + 4] in ['A'..'Z', '0'..'9', '_'])) do
+    CharPos := PosEx('USES', Up, CharPos + 4);
+  if CharPos > 0 then
+    Dec(CharPos);  // позиция в Txt: у Up пробел в начале
   if CharPos <= 0 then
     Exit;
   QuotePos := PosEx(';', Txt, CharPos);

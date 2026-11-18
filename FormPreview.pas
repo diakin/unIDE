@@ -269,6 +269,64 @@ begin
 end;
 
 // Форма из текста .dfm - невидимая, без кода
+{$IFDEF FPC}
+// Текст уже в UTF-8 (.lfm Lazarus, или в нём одни латинские буквы) -
+// переводить не надо
+function PreviewIsUtf8(const AText: string): Boolean;
+var
+  Pos1, TxtLen, Tail: Integer;
+  Code: Byte;
+begin
+  Result := False;
+  TxtLen := Length(AText);
+  Pos1 := 1;
+  while Pos1 <= TxtLen do
+  begin
+    Code := Ord(AText[Pos1]);
+    if Code < $80 then
+      Tail := 0
+    else if (Code and $E0) = $C0 then
+      Tail := 1
+    else if (Code and $F0) = $E0 then
+      Tail := 2
+    else if (Code and $F8) = $F0 then
+      Tail := 3
+    else
+      Exit;
+    Inc(Pos1);
+    while Tail > 0 do
+    begin
+      if (Pos1 > TxtLen) or ((Ord(AText[Pos1]) and $C0) <> $80) then
+        Exit;
+      Inc(Pos1);
+      Dec(Tail);
+    end;
+  end;
+  Result := True;
+end;
+
+// .dfm Delphi записан в кодировке Windows (CP_ACP), строки LCL - UTF-8.
+// Без перевода ObjectTextToBinary принимал байты кириллицы за UTF-8, и в
+// превью заголовок и подписи были '?' (как в конструкторе до
+// DsgAnsiToUtf8, FormDesigner.pas)
+function PreviewAnsiToUtf8(const AText: string): string;
+var
+  WideText: WideString;
+  WideLen: Integer;
+begin
+  Result := AText;
+  if (AText = '') or PreviewIsUtf8(AText) then
+    Exit;
+  WideLen := MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AText), Length(AText),
+    nil, 0);
+  SetLength(WideText, WideLen);
+  if WideLen > 0 then
+    MultiByteToWideChar(CP_ACP, 0, PAnsiChar(AText), Length(AText),
+      PWideChar(WideText), WideLen);
+  Result := UTF8Encode(WideText);
+end;
+{$ENDIF}
+
 function BuildForm(const AText: string; AMap: TFormPreviewMap;
                    ABoxes: TStrings): TForm;
 var
@@ -285,6 +343,9 @@ begin
   Events.Map := AMap;
   try
     DfmSrc := PrepareText(AText, Events.Visual, ABoxes);
+    {$IFDEF FPC}
+    DfmSrc := PreviewAnsiToUtf8(DfmSrc);
+    {$ENDIF}
     Src := TStringStream.Create(DfmSrc);
     Bin := TMemoryStream.Create;
     try
