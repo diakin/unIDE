@@ -81,6 +81,7 @@ type
     FOnCopyWindow: TNotifyEvent;
     FOnPasteWindow: TNotifyEvent;
     FOnClearWindow: TNotifyEvent;
+    FOnCloneWindow: TNotifyEvent;
     FPasteItem: TMenuItem;
     function MakeColumn(AParent: TWinControl; AAlign: TAlign;
       const ACaption: string; AIndented: Boolean; var AList: TWdThumbList): TScrollBox;
@@ -101,6 +102,7 @@ type
     procedure CopyWindowClick(Sender: TObject);
     procedure PasteWindowClick(Sender: TObject);
     procedure ClearWindowClick(Sender: TObject);
+    procedure CloneWindowClick(Sender: TObject);
     procedure ScrollToCurrent;
     procedure GotoItemClick(Sender: TObject);
     procedure SetCurrentState(AValue: Integer);
@@ -141,6 +143,8 @@ type
     property OnCopyWindow: TNotifyEvent read FOnCopyWindow write FOnCopyWindow;
     property OnPasteWindow: TNotifyEvent read FOnPasteWindow write FOnPasteWindow;
     property OnClearWindow: TNotifyEvent read FOnClearWindow write FOnClearWindow;
+    // Клонировать окно: новое окно - копия текущего вместе с кодом
+    property OnCloneWindow: TNotifyEvent read FOnCloneWindow write FOnCloneWindow;
     // Подпись «Вставить окно»: откуда скопировано ('' - буфер пуст)
     procedure SetPasteSource(const ASource: string);
   end;
@@ -386,6 +390,8 @@ begin
   // список окон «Перейти в окно»
   MakeItem(nil, 'Создать новое окно', BtnNewClick);
   EditMenu := MakeItem(nil, 'Edit Window', nil);
+  MakeItem(EditMenu, 'Клонировать окно', CloneWindowClick);
+  MakeItem(EditMenu, '-', nil);
   MakeItem(EditMenu, 'Копировать окно', CopyWindowClick);
   FPasteItem := MakeItem(EditMenu, 'Вставить окно', PasteWindowClick);
   FPasteItem.Enabled := False;
@@ -735,6 +741,12 @@ procedure TArdWinDesignerForm.PasteWindowClick(Sender: TObject);
 begin
   if Assigned(FOnPasteWindow) then
     FOnPasteWindow(Self);
+end;
+
+procedure TArdWinDesignerForm.CloneWindowClick(Sender: TObject);
+begin
+  if Assigned(FOnCloneWindow) then
+    FOnCloneWindow(Self);
 end;
 
 procedure TArdWinDesignerForm.ClearWindowClick(Sender: TObject);

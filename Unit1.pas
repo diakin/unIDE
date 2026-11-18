@@ -1192,6 +1192,7 @@ type
     procedure ArdWinCopyWindow(Sender: TObject);
     procedure ArdWinPasteWindow(Sender: TObject);
     procedure ArdWinClearWindow(Sender: TObject);
+    procedure ArdWinCloneWindow(Sender: TObject);
     procedure ArdWinDesignerFit;
     procedure ArdWinShotCurrent(Sender: TObject);
     procedure ArdWinStatus(const AText: string);
@@ -35344,6 +35345,7 @@ begin
     FWinDesigner.OnCopyWindow := ArdWinCopyWindow;
     FWinDesigner.OnPasteWindow := ArdWinPasteWindow;
     FWinDesigner.OnClearWindow := ArdWinClearWindow;
+    FWinDesigner.OnCloneWindow := ArdWinCloneWindow;
     if FWinClip <> nil then
       FWinDesigner.SetPasteSource(FWinClip.SourceFunc);
   end;
@@ -35664,6 +35666,107 @@ begin
   ArdWinStatus(Report + ' - эмулятор собирается');
   if ArdWinMapLaunch(CurState) then
     ArdWinCurrent(CurState);
+  if FWinDesigner.Visible then
+    FWinDesigner.BringToFront;
+end;
+
+// Edit Window - Клонировать окно: новое окно - копия текущего (функция,
+// надписи *_WinS, меню) с переходом из выбранного окна. Правка - по файлам
+// с диска, как «Создать новое окно»
+procedure TForm1.ArdWinCloneWindow(Sender: TObject);
+var
+  Dlg: TArdWinNewForm;
+  Params: TWnParams;
+  Map: TWmMap;
+  Source: TWmNode;
+  Files: TList;
+  FileNames, OldTexts: TStringList;
+  Fmts: array of Integer;
+  FileIdx, NodeIdx, DefaultPrev: Integer;
+  Report: string;
+  Done: Boolean;
+begin
+  if FWinDesigner = nil then
+    Exit;
+  if (FWinShotTimer <> nil) and FWinShotTimer.Enabled then
+  begin
+    ArdWinStatus('Идут снимки окон - сначала остановите их');
+    Exit;
+  end;
+  ArdSimEnsure;
+  if FArdSim.Building then
+  begin
+    ArdWinStatus('Эмулятор собирается - повторите после сборки');
+    Exit;
+  end;
+  if not ArdSimSaveFiles(FArdSim) then
+    Exit;
+  FWinDesigner.RefreshMap;
+  Map := FWinDesigner.Map;
+  Source := nil;
+  for NodeIdx := 0 to Map.NodeCount - 1 do
+    if (Map.Nodes[NodeIdx].Kind = wnkWindow) and
+       (Map.Nodes[NodeIdx].State = FWinDesigner.CurrentState) then
+      Source := Map.Nodes[NodeIdx];
+  if Source = nil then
+  begin
+    ArdWinStatus('Нет текущего окна - выберите окно слева');
+    Exit;
+  end;
+  // переход в клон по умолчанию - из того же окна, что ведёт в исходное
+  DefaultPrev := Source.State;
+  if (Source.Parent <> nil) and (Source.Parent.Kind = wnkWindow) then
+    DefaultPrev := Source.Parent.State;
+  Dlg := TArdWinNewForm.CreateFor(Self, Map, DefaultPrev);
+  try
+    Dlg.SetCloneSource(Source);
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    if not Dlg.GetParams(Params) then
+      Exit;
+  finally
+    Dlg.Free;
+  end;
+  Params.NextState := Source.State;
+  Params.NextKey := '#';
+  Files := TList.Create;
+  FileNames := TStringList.Create;
+  OldTexts := TStringList.Create;
+  Done := False;
+  try
+    SetLength(Fmts, Map.FileCount);
+    for FileIdx := 0 to Map.FileCount - 1 do
+    begin
+      Files.Add(TStringList.Create);
+      FileNames.Add(Map.FileNameAt(FileIdx));
+      if not ArdFileLoad(Map.FileNameAt(FileIdx), TStringList(Files[FileIdx]),
+                         Fmts[FileIdx], True) then
+        Exit;
+      OldTexts.Add(TStringList(Files[FileIdx]).Text);
+    end;
+    if not WnCloneWindow(Map, Params, Source, Files, FileNames, Report) then
+    begin
+      ShowMessage('Окно не клонировано: ' + Report);
+      Exit;
+    end;
+    for FileIdx := 0 to Files.Count - 1 do
+      if TStringList(Files[FileIdx]).Text <> OldTexts[FileIdx] then
+        ArdFileSave(FileNames[FileIdx], TStringList(Files[FileIdx]), Fmts[FileIdx]);
+    Done := True;
+  finally
+    for FileIdx := 0 to Files.Count - 1 do
+      TStringList(Files[FileIdx]).Free;
+    Files.Free;
+    FileNames.Free;
+    OldTexts.Free;
+  end;
+  if not Done then
+    Exit;
+  LogComp('Конструктор окон: ' + Report);
+  FWinDesigner.RefreshMap;
+  ArdWinStatus(Report + ' - эмулятор собирается');
+  if ArdWinMapLaunch(Params.NewState) then
+    ArdWinCurrent(Params.NewState);
   if FWinDesigner.Visible then
     FWinDesigner.BringToFront;
 end;

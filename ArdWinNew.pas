@@ -91,6 +91,11 @@ function WnPasteWindow(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
 // на которые больше нет ссылок (меню и др.), - удалить
 function WnClearWindow(ANode: TWmNode; AFiles: TList; AFileNames: TStrings;
   var AReport: string): Boolean;
+// Клонировать окно ASource: новое окно AParams.NewState с переходом из
+// AParams.PrevState (как WnCreateWindow), в нём - копия функции (номер окна
+// в StateVar = S заменён), надписей *_WinS (-> *_WinN) и массива mnuWinS
+function WnCloneWindow(AMap: TWmMap; const AParams: TWnParams; ASource: TWmNode;
+  AFiles: TList; AFileNames: TStrings; var AReport: string): Boolean;
 
 type
   // Панель настройки нового окна
@@ -102,6 +107,8 @@ type
     FInsertCheck: TCheckBox;
     FNumberEdit, FTitleEdit: TEdit;
     FInfo: TLabel;
+    FNextLabel, FNextKeyLabel: TLabel;
+    FCloneSource: TWmNode;
     procedure PrevChange(Sender: TObject);
     procedure NextChange(Sender: TObject);
     procedure InsertClick(Sender: TObject);
@@ -114,6 +121,8 @@ type
     constructor CreateFor(AOwner: TComponent; AMap: TWmMap; ACurrent: Integer); reintroduce;
     destructor Destroy; override;
     function GetParams(var AParams: TWnParams): Boolean;
+    // Режим «Клонировать окно»: следующего окна нет, копируется ASource
+    procedure SetCloneSource(ASource: TWmNode);
   end;
 
 implementation
@@ -1616,6 +1625,278 @@ begin
   end;
 end;
 
+{ Клонировать окно }
+
+// Заменить слово AOld на ANew во всей строке (границы - не буква/цифра/_)
+function ReplaceWord(const ALine, AOld, ANew: string): string;
+var
+  WordAt, FromPos: Integer;
+begin
+  Result := ALine;
+  FromPos := 1;
+  repeat
+    WordAt := WordPos(AOld, Result, FromPos);
+    if WordAt > 0 then
+    begin
+      Result := Copy(Result, 1, WordAt - 1) + ANew + Copy(Result, WordAt + Length(AOld), MaxInt);
+      FromPos := WordAt + Length(ANew);
+    end;
+  until WordAt = 0;
+end;
+
+// "StateVar = S", "StateVar == S", "StateVar != S" -> номер ANew
+function ReplaceStateNum(const ALine, AStateVar: string; AOld, ANew: Integer): string;
+var
+  WordAt, CharPos, NumStart, FromPos: Integer;
+begin
+  Result := ALine;
+  FromPos := 1;
+  repeat
+    WordAt := WordPos(AStateVar, Result, FromPos);
+    if WordAt = 0 then
+      Break;
+    FromPos := WordAt + Length(AStateVar);
+    CharPos := FromPos;
+    while (CharPos <= Length(Result)) and (Result[CharPos] in [' ', #9]) do
+      Inc(CharPos);
+    if Copy(Result, CharPos, 2) = '==' then
+      Inc(CharPos, 2)
+    else if Copy(Result, CharPos, 2) = '!=' then
+      Inc(CharPos, 2)
+    else if (CharPos <= Length(Result)) and (Result[CharPos] = '=') then
+      Inc(CharPos)
+    else
+      Continue;
+    while (CharPos <= Length(Result)) and (Result[CharPos] in [' ', #9]) do
+      Inc(CharPos);
+    NumStart := CharPos;
+    while (CharPos <= Length(Result)) and (Result[CharPos] in ['0'..'9']) do
+      Inc(CharPos);
+    if (CharPos > NumStart) and
+       not ((CharPos <= Length(Result)) and IsIdentChar(Result[CharPos])) and
+       (StrToIntDef(Copy(Result, NumStart, CharPos - NumStart), -1) = AOld) then
+      Result := Copy(Result, 1, NumStart - 1) + IntToStr(ANew) + Copy(Result, CharPos, MaxInt);
+  until False;
+end;
+
+// Слова строки ALine, похожие на идентификатор с окончанием ASuffix
+procedure WordsWithSuffix(const ALine, ASuffix: string; AList: TStringList);
+var
+  CharPos, StartPos: Integer;
+  Word: string;
+begin
+  CharPos := 1;
+  while CharPos <= Length(ALine) do
+  begin
+    if IsIdentChar(ALine[CharPos]) then
+    begin
+      StartPos := CharPos;
+      while (CharPos <= Length(ALine)) and IsIdentChar(ALine[CharPos]) do
+        Inc(CharPos);
+      Word := Copy(ALine, StartPos, CharPos - StartPos);
+      if (Length(Word) > Length(ASuffix)) and
+         (CompareText(Copy(Word, Length(Word) - Length(ASuffix) + 1, MaxInt), ASuffix) = 0) and
+         (AList.IndexOf(Word) < 0) then
+        AList.Add(Word);
+    end
+    else
+      Inc(CharPos);
+  end;
+end;
+
+function WnCloneWindow(AMap: TWmMap; const AParams: TWnParams; ASource: TWmNode;
+  AFiles: TList; AFileNames: TStrings; var AReport: string): Boolean;
+var
+  PrevNode: TWmNode;
+  FormsFile, ArrName, SrcName, NewName, Block, MarkText, CreateReport: string;
+  FormsIdx, InoIdx, CaseIdx, SrcIdx, FileIdx, HeaderLine, EndLine, LineIdx,
+  NameIdx, DeclStart, DeclEnd, ArrStart, ArrEnd, InsertAt, SrcArrIdx: Integer;
+  Forms, SrcLines, Lines: TStringList;
+  FuncText, ArrText, Words, OwnLabels, NewLabels, Reserved: TStringList;
+
+  function Renamed(const ALine: string): string;
+  var
+    LabelIdx: Integer;
+  begin
+    Result := ALine;
+    for LabelIdx := 0 to OwnLabels.Count - 1 do
+      Result := ReplaceWord(Result, OwnLabels[LabelIdx], NewLabels[LabelIdx]);
+    Result := ReplaceWord(Result, 'mnu' + SrcName, 'mnu' + NewName);
+  end;
+
+begin
+  Result := False;
+  AReport := '';
+  SrcName := ASource.FuncName;
+  NewName := 'Win' + IntToStr(AParams.NewState);
+  MarkText := ' // unIDE: cloned from ' + SrcName;
+  PrevNode := NodeOfStateIn(AMap, AParams.PrevState);
+  if PrevNode = nil then
+  begin
+    AReport := 'Нет окна ' + IntToStr(AParams.PrevState) + '.';
+    Exit;
+  end;
+  if not WnMenuArray(AMap, PrevNode, FormsFile, ArrName, nil) then
+  begin
+    AReport := 'У окна ' + PrevNode.Title + ' нет массива меню (TMenuItem): ' +
+      'переход в клон не вставить автоматически.';
+    Exit;
+  end;
+  FormsIdx := FileIndexOf(AFileNames, FormsFile);
+  InoIdx := FileIndexOf(AFileNames, PrevNode.FileName);
+  CaseIdx := FileIndexOf(AFileNames, PrevNode.CaseFile);
+  SrcIdx := FileIndexOf(AFileNames, ASource.FileName);
+  if (FormsIdx < 0) or (InoIdx < 0) or (CaseIdx < 0) or (SrcIdx < 0) then
+  begin
+    AReport := 'Не найдены файлы окон ' + PrevNode.Title + ' или ' + ASource.Title + '.';
+    Exit;
+  end;
+
+  FuncText := TStringList.Create;
+  ArrText := TStringList.Create;
+  Words := TStringList.Create;
+  OwnLabels := TStringList.Create;
+  NewLabels := TStringList.Create;
+  Reserved := TStringList.Create;
+  try
+    // 1. Исходное окно: функция, массив меню, его надписи (*_WinS)
+    SrcLines := TStringList(AFiles[SrcIdx]);
+    HeaderLine := FindFuncHeader(SrcLines, SrcName);
+    EndLine := -1;
+    if HeaderLine >= 0 then
+      EndLine := FuncEndLine(SrcLines, HeaderLine);
+    if EndLine < 0 then
+    begin
+      AReport := 'Не найдена функция ' + SrcName + '().';
+      Exit;
+    end;
+    for LineIdx := HeaderLine to EndLine do
+      FuncText.Add(SrcLines[LineIdx]);
+    SrcArrIdx := -1;
+    for FileIdx := 0 to AFiles.Count - 1 do
+      if FindArray(TStringList(AFiles[FileIdx]), 'mnu' + SrcName, ArrStart, ArrEnd) then
+      begin
+        SrcArrIdx := FileIdx;
+        for LineIdx := ArrStart to ArrEnd do
+          ArrText.Add(TStringList(AFiles[FileIdx])[LineIdx]);
+        Break;
+      end;
+    for LineIdx := 0 to FuncText.Count - 1 do
+      WordsWithSuffix(FuncText[LineIdx], '_' + SrcName, Words);
+    for LineIdx := 0 to ArrText.Count - 1 do
+      WordsWithSuffix(ArrText[LineIdx], '_' + SrcName, Words);
+    for NameIdx := 0 to Words.Count - 1 do
+      if FindLabelAny(AFiles, Words[NameIdx], FileIdx, DeclStart, DeclEnd) then
+      begin
+        OwnLabels.Add(Words[NameIdx]);
+        NewLabels.Add(PasteName(AFiles, Reserved, Words[NameIdx], SrcName, NewName));
+        Reserved.Add(NewLabels[NewLabels.Count - 1]);
+      end;
+    // объявления копий - до правки файлов (места потом ищутся заново)
+    Block := '';
+    for NameIdx := 0 to OwnLabels.Count - 1 do
+      if FindLabelAny(AFiles, OwnLabels[NameIdx], FileIdx, DeclStart, DeclEnd) then
+        for LineIdx := DeclStart to DeclEnd do
+        begin
+          Lines := TStringList(AFiles[FileIdx]);
+          if LineIdx = DeclStart then
+            Block := Block + ReplaceWord(Lines[LineIdx], OwnLabels[NameIdx],
+                                         NewLabels[NameIdx]) + MarkText + #10
+          else
+            Block := Block + Lines[LineIdx] + #10;
+        end;
+
+    // 2. Пустое окно с переходом из предыдущего - как «Создать новое окно»
+    if not WnCreateWindow(AMap, AParams, TStringList(AFiles[FormsIdx]),
+         TStringList(AFiles[InoIdx]), TStringList(AFiles[CaseIdx]), CreateReport) then
+    begin
+      AReport := CreateReport;
+      Exit;
+    end;
+
+    // 3. Надписи заготовки -> копии надписей исходного окна
+    Forms := TStringList(AFiles[FormsIdx]);
+    InsertAt := -1;
+    if FindLabelDecl(Forms, 'lblTitle_' + NewName, DeclStart, DeclEnd) then
+    begin
+      InsertAt := DeclStart;
+      for LineIdx := DeclEnd downto DeclStart do
+        Forms.Delete(LineIdx);
+    end;
+    if FindLabelDecl(Forms, 'lblNext_' + NewName, DeclStart, DeclEnd) then
+      for LineIdx := DeclEnd downto DeclStart do
+        Forms.Delete(LineIdx);
+    // 4. Меню: копия массива исходного окна или (нет массива) - убрать
+    if FindArray(Forms, 'mnu' + NewName, ArrStart, ArrEnd) then
+    begin
+      for LineIdx := ArrEnd downto ArrStart do
+        Forms.Delete(LineIdx);
+      if ArrText.Count > 0 then
+      begin
+        for LineIdx := ArrText.Count - 1 downto 0 do
+          if LineIdx = 0 then
+            Forms.Insert(ArrStart, Renamed(ArrText[LineIdx]) + MarkText)
+          else
+            Forms.Insert(ArrStart, Renamed(ArrText[LineIdx]));
+      end
+      else if (ArrStart > 0) and (Copy(TrimLeft(Forms[ArrStart - 1]), 1, 2) = '//') then
+        Forms.Delete(ArrStart - 1);
+    end;
+    if InsertAt < 0 then
+      InsertAt := Forms.Count;
+    if InsertAt > Forms.Count then
+      InsertAt := Forms.Count;
+    InsertBlock(Forms, InsertAt, Block);
+
+    // 5. Функция: тело заготовки -> копия исходной функции
+    Lines := TStringList(AFiles[InoIdx]);
+    HeaderLine := FindFuncHeader(Lines, NewName);
+    EndLine := -1;
+    if HeaderLine >= 0 then
+      EndLine := FuncEndLine(Lines, HeaderLine);
+    if EndLine < 0 then
+    begin
+      AReport := 'Не найдена созданная функция ' + NewName + '().';
+      Exit;
+    end;
+    for LineIdx := EndLine downto HeaderLine do
+      Lines.Delete(LineIdx);
+    for LineIdx := FuncText.Count - 1 downto 0 do
+    begin
+      Block := Renamed(FuncText[LineIdx]);
+      Block := ReplaceStateNum(Block, AMap.StateVar, ASource.State, AParams.NewState);
+      if LineIdx = 0 then
+      begin
+        Block := ReplaceWord(Block, SrcName, NewName);
+        if Pos('//', Block) > 0 then
+          Block := Copy(Block, 1, Pos('//', Block) - 1);
+        Block := TrimRight(Block) + ' // ' + AsciiOnly(AParams.Title, NewName) + ' (cloned from ' +
+                 SrcName + ')';
+      end;
+      Lines.Insert(HeaderLine, Block);
+    end;
+
+    AReport := 'Клон ' + SrcName + ' -> ' + NewName + ': функция ' + NewName + '(), надписей ' +
+      IntToStr(OwnLabels.Count);
+    if ArrText.Count > 0 then
+      AReport := AReport + ', меню mnu' + NewName
+    else
+      AReport := AReport + ', массива меню у ' + SrcName + ' нет';
+    AReport := AReport + '; ' + StringReplace(Trim(Copy(CreateReport, 1,
+      Pos(#13#10, CreateReport + #13#10) - 1)), #13#10, '; ', [rfReplaceAll]);
+    if SrcArrIdx < 0 then
+      SrcArrIdx := 0;
+    Result := True;
+  finally
+    FuncText.Free;
+    ArrText.Free;
+    Words.Free;
+    OwnLabels.Free;
+    NewLabels.Free;
+    Reserved.Free;
+  end;
+end;
+
 { TArdWinNewForm }
 
 constructor TArdWinNewForm.CreateFor(AOwner: TComponent; AMap: TWmMap; ACurrent: Integer);
@@ -1644,9 +1925,9 @@ begin
   FInsertCheck.SetBounds(150, 78, 260, 20);
   FInsertCheck.Caption := 'Вставить в существующий переход';
   FInsertCheck.OnClick := InsertClick;
-  AddLabel('Следующее окно (куда ведёт новое):', 106);
+  FNextLabel := AddLabel('Следующее окно (куда ведёт новое):', 106);
   FNextCombo := AddCombo(124);
-  AddLabel('Клавиша перехода в следующее окно:', 154);
+  FNextKeyLabel := AddLabel('Клавиша перехода в следующее окно:', 154);
   FNextKeyCombo := AddCombo(172);
   FNextKeyCombo.Width := 120;
   FNextKeyCombo.Items.CommaText := 'Ent,#,Esc,1,2,3,4,5,6,7,8,9,0,F1,F2';
@@ -1756,7 +2037,10 @@ var
   PrevNode: TWmNode;
 begin
   PrevNode := NodeOfCombo(FPrevCombo);
-  if PrevNode <> nil then
+  // клон - номер рядом с исходным окном
+  if FCloneSource <> nil then
+    FNumberEdit.Text := IntToStr(WnFreeState(FMap, FCloneSource.State))
+  else if PrevNode <> nil then
     FNumberEdit.Text := IntToStr(WnFreeState(FMap, PrevNode.State));
   NextChange(nil);
 end;
@@ -1771,7 +2055,8 @@ begin
   HasEdge := (PrevNode <> nil) and (NextNode <> nil) and
              (WnMenuEdge(FMap, PrevNode, NextNode, '') <> nil);
   FInsertCheck.Enabled := HasEdge;
-  FInsertCheck.Checked := HasEdge;
+  // клон: по умолчанию - новый пункт, прежний переход в исходное остаётся
+  FInsertCheck.Checked := HasEdge and (FCloneSource = nil);
   FillKeys;
 end;
 
@@ -1827,12 +2112,35 @@ begin
   if not WnMenuArray(FMap, PrevNode, ArrFile, ArrName, nil) then
     FInfo.Caption := 'У окна ' + PrevNode.Title + ' переходы написаны кодом, ' +
       'без массива меню - его надо будет править вручную.'
+  else if (FCloneSource <> nil) and FInsertCheck.Checked and FInsertCheck.Enabled then
+    FInfo.Caption := 'Пункт предыдущего окна будет вести в клон вместо ' +
+      FCloneSource.Title + '.'
+  else if FCloneSource <> nil then
+    FInfo.Caption := 'В предыдущем окне появится новый пункт меню, ведущий в клон.'
   else if FInsertCheck.Checked and FInsertCheck.Enabled then
     FInfo.Caption := 'Пункт предыдущего окна будет вести в новое окно, а новое - ' +
       'в следующее.'
   else
     FInfo.Caption := 'В предыдущем окне появится новый пункт меню, прежние ' +
       'переходы останутся.';
+end;
+
+procedure TArdWinNewForm.SetCloneSource(ASource: TWmNode);
+var
+  NodeIdx: Integer;
+begin
+  FCloneSource := ASource;
+  Caption := 'Клонировать окно ' + ASource.Title + '  ' + ASource.Caption;
+  FNextLabel.Caption := 'Копируется окно (функция, надписи, меню):';
+  FNextKeyLabel.Visible := False;
+  FNextKeyCombo.Visible := False;
+  for NodeIdx := 0 to FWindows.Count - 1 do
+    if FWindows[NodeIdx] = ASource then
+      FNextCombo.ItemIndex := NodeIdx;
+  FNextCombo.Enabled := False;
+  FInsertCheck.Caption := 'Вместо перехода в ' + ASource.Title;
+  FTitleEdit.Text := AsciiOnly(ASource.Caption, ASource.FuncName) + ' (copy)';
+  PrevChange(nil);
 end;
 
 procedure TArdWinNewForm.OkClick(Sender: TObject);
