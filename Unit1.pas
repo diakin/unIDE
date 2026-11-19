@@ -4976,6 +4976,7 @@ var
     DlgGitTracked, // окно Tracked but Ignored (меню Branch, Git status)
     DlgGitClone,  // окно Clone Repository (список GitHub, URL, путь)
     DlgGitRepoSettings, // окно Repository Settings: remote, .gitignore, config
+    DlgSearchProgress, // окно хода поиска потерянных файлов, кнопка Стоп
     GitHubApi,    // GitHubCreateRepo - New Repository на GitHub
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
@@ -18493,10 +18494,9 @@ begin
   end;
 end;
 
-// Во время поиска потерянных файлов, не чаще раза в 100 мс: на панели хода
-// - файл и папка, окно перерисовывается (ObjMovePump: мышь и клавиатура
-// отбрасываются, меню и кнопки во время поиска не работают), Esc -
-// остановить поиск (FRelocateStop)
+// Во время поиска потерянных файлов, не чаще раза в 100 мс: папка - в окно
+// хода (DlgSearchProgress), окна перерисовываются, мышь доходит только до
+// окна хода. Стоп в нём или Esc - FRelocateStop
 procedure TForm1.RelocatePump(const ADir: string);
 var
   TickNow: Cardinal;
@@ -18505,11 +18505,10 @@ begin
   if TickNow - FRelocatePumpTick < 100 then
     Exit;
   FRelocatePumpTick := TickNow;
-  if Application.Active and (GetAsyncKeyState(VK_ESCAPE) < 0) then
+  SearchProgressDir(ADir);
+  SearchProgressPump;
+  if SearchProgressStopped then
     FRelocateStop := True;
-  FBusyStage := 'Поиск ' + FRelocateName + ' (Esc - стоп): ' + ADir;
-  BusyTick;
-  ObjMovePump;
 end;
 
 // Полный поиск потерянного файла: сначала рядом с программой, потом в папке
@@ -18805,7 +18804,7 @@ end;
 // в .prj уже актуальные.
 function TForm1.RelocateBrokenWindows: Integer;
 var
-  I, Cur, Found, Changed: Integer;
+  I, Cur, Found, Changed, FileNum: Integer;
   NewName, OldSample, NewSample: string;
   CurFixed: Boolean;
 begin
@@ -18822,11 +18821,12 @@ begin
   // файл: потерянных бывают десятки
   FRelocateUpEnd := GetTickCount + 2 * RelocateSearchMs;
   FRelocateHotEnd := GetTickCount + 3 * RelocateHotMs;
-  // Панель хода и Esc (RelocatePump); вызывающий видит FRelocateStop
+  // Окно хода со Стоп и Esc (RelocatePump); вызывающий видит FRelocateStop
   FRelocateStop := False;
   FRelocateBusy := True;
   FRelocatePumpTick := 0;
-  BusyBegin('Поиск потерянных файлов (Esc - стоп)');
+  FileNum := 0;
+  SearchProgressBegin('Поиск потерянных файлов', BrokenWindowsCount);
   try
   for I := 0 to WindowsItemCount - 1 do
   begin
@@ -18835,6 +18835,8 @@ begin
     if (not FWindows[I].Used) or (not FWindows[I].Broken) then
       Continue;
 
+    Inc(FileNum);
+    SearchProgressFile(FWindows[I].FileName, FileNum);
     Screen.Cursor := crHourGlass;
     try
       NewName := RelocateFile(FWindows[I].FileName);
@@ -18842,12 +18844,20 @@ begin
       Screen.Cursor := crDefault;
     end;
     if NewName = '' then
+    begin
+      if not FRelocateStop then
+        SearchProgressResult(FWindows[I].FileName, '');
       Continue;
+    end;
 
     // Спрашиваем про каждый файл отдельно: находка могла прийти из копии
     NewName := ConfirmRelocate(FWindows[I].FileName, NewName);
     if NewName = '' then
+    begin
+      SearchProgressResult(FWindows[I].FileName, '');
       Continue; // отказались - окно так и остаётся потерянным
+    end;
+    SearchProgressResult(FWindows[I].FileName, NewName);
 
     // Путь МЕНЯЕТСЯ только если скопировать на прежнее место не вышло.
     // Когда копия легла обратно, в .prj править нечего.
@@ -18875,9 +18885,9 @@ begin
     FRelocateHotEnd := 0;
     FRelocateBusy := False;
     if FRelocateStop then
-      BusyEnd('Поиск остановлен (Esc), найдено ' + IntToStr(Found), False)
+      SearchProgressEnd('Поиск остановлен, найдено ' + IntToStr(Found))
     else
-      BusyEnd('Поиск: найдено ' + IntToStr(Found), Found > 0);
+      SearchProgressEnd('Поиск закончен, найдено ' + IntToStr(Found));
   end;
 
   Result := Found;

@@ -143,6 +143,7 @@ uses
   GitDiffView in 'GitDiffView.pas',
   DlgGitClone in 'DlgGitClone.pas',
   DlgGitRepoSettings in 'DlgGitRepoSettings.pas',
+  DlgSearchProgress in 'DlgSearchProgress.pas',
   UiCaptionTabs in 'UiCaptionTabs.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors},
   DlgFarPalette in 'DlgFarPalette.pas',
