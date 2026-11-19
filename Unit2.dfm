@@ -2336,6 +2336,7 @@ object Form2: TForm2
           OnChange = GitWsChange
           Items.Strings = (
             'do not ignore (git default)'
+            '-Xignore-cr-at-eol: CR at line end (CRLF / LF)'
             '-Xignore-space-at-eol: spaces at line end'
             '-Xignore-space-change: amount of whitespace'
             '-Xignore-all-space: all whitespace')
@@ -2354,7 +2355,7 @@ object Form2: TForm2
         Left = 8
         Top = 140
         Width = 590
-        Height = 104
+        Height = 128
         Caption = ' Diff view '
         TabOrder = 1
         object lblGitDiffWs: TLabel
@@ -2376,13 +2377,26 @@ object Form2: TForm2
           OnChange = GitWsChange
           Items.Strings = (
             'do not ignore (git default)'
+            '--ignore-cr-at-eol: CR at line end (CRLF / LF)'
             '--ignore-space-at-eol: spaces at line end'
             '-b: amount of whitespace'
             '-w: all whitespace')
         end
+        object chkGitDiffBlank: TUiCheckBox
+          Left = 150
+          Top = 50
+          Width = 428
+          Height = 20
+          Caption = '--ignore-blank-lines: blank lines'
+          TabOrder = 1
+          ParentShowHint = False
+          ShowHint = True
+          Hint = 'Добавленные или удалённые пустые строки в разнице не показываются. Можно вместе с любым вариантом пробелов выше'
+          OnClick = GitWsChange
+        end
         object lblGitDiffNote: TLabel
           Left = 12
-          Top = 52
+          Top = 76
           Width = 566
           Height = 44
           AutoSize = False
@@ -2392,7 +2406,7 @@ object Form2: TForm2
       end
       object grpGitAliases: TUiGroupBox
         Left = 8
-        Top = 252
+        Top = 276
         Width = 590
         Height = 196
         Caption = ' Command line aliases (git config --global) '
@@ -2435,7 +2449,7 @@ object Form2: TForm2
       end
       object grpGitFetch: TUiGroupBox
         Left = 8
-        Top = 456
+        Top = 480
         Width = 590
         Height = 48
         Caption = ' Fetch '

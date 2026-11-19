@@ -245,6 +245,7 @@ type
     lblGitDiffWs: TLabel;
     cmbGitDiffWs: TUiComboBox;
     lblGitDiffNote: TLabel;
+    chkGitDiffBlank: TUiCheckBox;
     grpGitAliases: TUiGroupBox;
     lblGitAliasNote: TLabel;
     memGitAliases: TUiMemo;
@@ -485,6 +486,7 @@ type
     procedure ArdNetEnable;
     procedure EnvTabsLoad;
     procedure GitTabLoad;
+    procedure GitWsNotes;
     procedure EnvFillLists;
     function  EnvEditDialog(const ATitle: string; var AName, AValue: string;
                             ANameFixed: Boolean): Boolean;
@@ -5728,12 +5730,14 @@ begin
     chkDsgHints.Checked := Form1.FEnv.DsgShowHints;
     chkDsgExtHints.Checked := Form1.FEnv.DsgExtendedHints;
     chkDsgExtHints.Enabled := chkDsgHints.Checked;
-    cmbGitMergeWs.ItemIndex := GitOpts.MergeWs;
-    cmbGitDiffWs.ItemIndex := GitOpts.DiffWs;
+    cmbGitMergeWs.ItemIndex := GitWsComboIndex(GitOpts.MergeWs);
+    cmbGitDiffWs.ItemIndex := GitWsComboIndex(GitOpts.DiffWs);
+    chkGitDiffBlank.Checked := GitOpts.DiffBlank;
     chkGitFetchShow.Checked := GitOpts.FetchShowNew;
   finally
     FEnvLoading := False;
   end;
+  GitWsNotes;
   EnvFillLists;
 end;
 
@@ -5750,12 +5754,14 @@ begin
     Exit;
   FEnvLoading := True;
   try
-    cmbGitMergeWs.ItemIndex := GitOpts.MergeWs;
-    cmbGitDiffWs.ItemIndex := GitOpts.DiffWs;
+    cmbGitMergeWs.ItemIndex := GitWsComboIndex(GitOpts.MergeWs);
+    cmbGitDiffWs.ItemIndex := GitWsComboIndex(GitOpts.DiffWs);
+    chkGitDiffBlank.Checked := GitOpts.DiffBlank;
     chkGitFetchShow.Checked := GitOpts.FetchShowNew;
   finally
     FEnvLoading := False;
   end;
+  GitWsNotes;
   Screen.Cursor := crHourGlass;
   try
     memGitAliases.Lines.Text := Form1.GitReadAliases;
@@ -5769,11 +5775,64 @@ begin
   if FEnvLoading or not FBuilt or (Form1 = nil) then
     Exit;
   if cmbGitMergeWs.ItemIndex >= 0 then
-    GitOpts.MergeWs := cmbGitMergeWs.ItemIndex;
+    GitOpts.MergeWs := GitWsComboValue(cmbGitMergeWs.ItemIndex);
   if cmbGitDiffWs.ItemIndex >= 0 then
-    GitOpts.DiffWs := cmbGitDiffWs.ItemIndex;
+    GitOpts.DiffWs := GitWsComboValue(cmbGitDiffWs.ItemIndex);
+  GitOpts.DiffBlank := chkGitDiffBlank.Checked;
   GitOpts.FetchShowNew := chkGitFetchShow.Checked;
   GitSaveOptions(Form1.SettingsFileName, GitOpts);
+  GitWsNotes;
+end;
+
+// Что делает выбранный вариант - в пояснение под списком; в подсказке
+// списка - все варианты. Варианты вложены: каждый следующий включает
+// предыдущий, поэтому выбирается один, а не несколько флажков
+procedure TForm2.GitWsNotes;
+const
+  // По строкам списка (GitWsComboOrder)
+  WsText: array[0..4] of string = (
+    'пробелы учитываются: строка, где изменились только пробелы, - тоже правка',
+    'не считается правкой только разница CR в конце строки (CRLF и LF); ' +
+      'остальные пробелы учитываются',
+    'не считаются правкой пробелы, табуляции и CR в конце строки',
+    'не считается правкой другое количество пробелов (два пробела = один = ' +
+      'табуляция) и пробелы в конце строки; пробел там, где его не было, - ' +
+      'правка',
+    'пробелы не учитываются совсем: «a=b» и «a = b» - одна и та же строка');
+  WsShort: array[0..4] of string = (
+    'do not ignore', 'cr-at-eol', 'space-at-eol', 'space-change', 'all-space');
+var
+  HintText: string;
+  Idx: Integer;
+begin
+  HintText := '';
+  for Idx := 0 to 4 do
+    HintText := HintText + WsShort[Idx] + ' - ' + WsText[Idx] + #13#10;
+  HintText := HintText + 'Каждый следующий вариант включает предыдущие.';
+  cmbGitMergeWs.Hint := 'Ключ -X<вариант> к git pull, git merge (Merge..., ' +
+    'слияние веток), cherry-pick и revert из окна History:'#13#10 + HintText;
+  cmbGitDiffWs.Hint := 'Ключ к git diff / git show в окнах Commit, History ' +
+    'и при сравнении веток:'#13#10 + HintText;
+
+  Idx := cmbGitMergeWs.ItemIndex;
+  if (Idx < 0) or (Idx > 4) then
+    Idx := 0;
+  if Idx = 0 then
+    lblGitMergeNote.Caption := 'Сейчас: ' + WsText[Idx] + '. Правка только ' +
+      'в пробелах может дать конфликт. Действует на команды, которые ' +
+      'запускает среда.'
+  else
+    lblGitMergeNote.Caption := 'Сейчас: ' + WsText[Idx] + '. В куске, где ' +
+      'одна сторона изменила только пробелы, а другая - текст, берётся ' +
+      'кусок с правкой текста целиком (пробельные правки другой стороны ' +
+      'теряются). Действует на команды, которые запускает среда.';
+
+  Idx := cmbGitDiffWs.ItemIndex;
+  if (Idx < 0) or (Idx > 4) then
+    Idx := 0;
+  lblGitDiffNote.Caption := 'Сейчас: ' + WsText[Idx] + '. Только просмотр: ' +
+    'такие изменения в коммит всё равно попадают, файл с одними ими ' +
+    'показывается как «разницы нет».';
 end;
 
 procedure TForm2.btnGitAliasesClick(Sender: TObject);

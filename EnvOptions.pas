@@ -126,22 +126,31 @@ const
   GitMergeWsEol = 1;        // -Xignore-space-at-eol
   GitMergeWsChange = 2;     // -Xignore-space-change
   GitMergeWsAll = 3;        // -Xignore-all-space
-  GitMergeWsMax = 3;
-  GitMergeWsArgs: array[0..3] of string = (
-    '', '-Xignore-space-at-eol', '-Xignore-space-change', '-Xignore-all-space');
+  GitMergeWsCr = 4;         // -Xignore-cr-at-eol (номер 4 - добавлен позже,
+                            // в editor.ini прежние номера не меняются)
+  GitMergeWsMax = 4;
+  GitMergeWsArgs: array[0..4] of string = (
+    '', '-Xignore-space-at-eol', '-Xignore-space-change', '-Xignore-all-space',
+    '-Xignore-cr-at-eol');
   // Просмотр разницы: git diff / git show получают ключ
   GitDiffWsNone = 0;
   GitDiffWsEol = 1;         // --ignore-space-at-eol
   GitDiffWsChange = 2;      // -b
   GitDiffWsAll = 3;         // -w
-  GitDiffWsMax = 3;
-  GitDiffWsArgs: array[0..3] of string = (
-    '', '--ignore-space-at-eol', '-b', '-w');
+  GitDiffWsCr = 4;          // --ignore-cr-at-eol
+  GitDiffWsMax = 4;
+  GitDiffWsArgs: array[0..4] of string = (
+    '', '--ignore-space-at-eol', '-b', '-w', '--ignore-cr-at-eol');
+  // Порядок в списках вкладки Git: от «учитывать всё» к «не учитывать
+  // никакие пробелы» - каждый следующий вариант включает предыдущий.
+  // Строка списка -> номер варианта (GitMergeWs* / GitDiffWs*)
+  GitWsComboOrder: array[0..4] of Integer = (0, 4, 1, 2, 3);
 
 type
   TGitOptions = record
     MergeWs: Integer;       // GitMergeWs*
     DiffWs: Integer;        // GitDiffWs*
+    DiffBlank: Boolean;     // diff: --ignore-blank-lines (пустые строки)
     FetchShowNew: Boolean;  // после Fetch - окно с новыми коммитами
   end;
 
@@ -157,6 +166,9 @@ procedure GitSaveOptions(const AIniFile: string; const AOpts: TGitOptions);
 function GitMergeWsArg: string;
 // Ключ для git diff / git show по GitOpts: '-w ' и т.п. или ''
 function GitDiffWsArg: string;
+// Строка списка вкладки Git по номеру варианта и обратно (GitWsComboOrder)
+function GitWsComboIndex(AValue: Integer): Integer;
+function GitWsComboValue(AIndex: Integer): Integer;
 
 implementation
 
@@ -586,6 +598,7 @@ begin
   // Разница только в LF/CRLF в конце строки не показывается
   // (2026-11-19); в Options - Git можно вернуть «учитывать всё»
   AOpts.DiffWs := GitDiffWsEol;
+  AOpts.DiffBlank := False;
   AOpts.FetchShowNew := True;
 end;
 
@@ -602,6 +615,7 @@ begin
       AOpts.MergeWs), GitMergeWsMax);
     AOpts.DiffWs := GitWsValue(Ini.ReadInteger(SecGit, 'DiffWhitespace',
       AOpts.DiffWs), GitDiffWsMax);
+    AOpts.DiffBlank := Ini.ReadBool(SecGit, 'DiffBlankLines', AOpts.DiffBlank);
     AOpts.FetchShowNew := Ini.ReadBool(SecGit, 'FetchShowNewCommits',
       AOpts.FetchShowNew);
   finally
@@ -621,6 +635,7 @@ begin
       GitWsValue(AOpts.MergeWs, GitMergeWsMax));
     Ini.WriteInteger(SecGit, 'DiffWhitespace',
       GitWsValue(AOpts.DiffWs, GitDiffWsMax));
+    Ini.WriteBool(SecGit, 'DiffBlankLines', AOpts.DiffBlank);
     Ini.WriteBool(SecGit, 'FetchShowNewCommits', AOpts.FetchShowNew);
   finally
     Ini.Free;
@@ -639,6 +654,26 @@ begin
   Result := GitDiffWsArgs[GitWsValue(GitOpts.DiffWs, GitDiffWsMax)];
   if Result <> '' then
     Result := Result + ' ';
+  if GitOpts.DiffBlank then
+    Result := Result + '--ignore-blank-lines ';
+end;
+
+function GitWsComboIndex(AValue: Integer): Integer;
+var
+  Idx: Integer;
+begin
+  Result := 0;
+  for Idx := Low(GitWsComboOrder) to High(GitWsComboOrder) do
+    if GitWsComboOrder[Idx] = AValue then
+      Result := Idx;
+end;
+
+function GitWsComboValue(AIndex: Integer): Integer;
+begin
+  if (AIndex >= Low(GitWsComboOrder)) and (AIndex <= High(GitWsComboOrder)) then
+    Result := GitWsComboOrder[AIndex]
+  else
+    Result := 0;
 end;
 
 initialization
