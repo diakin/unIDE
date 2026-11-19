@@ -85338,6 +85338,16 @@ var
   Stream: TFileStream;
   Output: WideString;
 
+  // Текст для сравнения: без CR и без переводов строк в конце. Окно
+  // (Lines.Text) меняет переводы строк и последний перевод; сравнение без
+  // этого записывало файл, даже если его не правили (Открыть в редакторе)
+  function EolFree(const AText: string): string;
+  begin
+    Result := StringReplace(AText, #13, '', [rfReplaceAll]);
+    while (Result <> '') and (Result[Length(Result)] = #10) do
+      SetLength(Result, Length(Result) - 1);
+  end;
+
   // git config --local: значение или снять ключ (пустое значение)
   procedure SetLocal(const AKey, AOld, ANew: string);
   begin
@@ -85398,10 +85408,10 @@ begin
     if Dlg.ShowModal <> mrOk then
       Exit;
 
-    // .gitignore: сравнение с тем, что окно показало (Lines.Text прибавляет
-    // перевод строки в конце и пишет CRLF)
+    // .gitignore: записывается, только если текст правили (EolFree)
     NewText := Dlg.IgnoreText;
-    if NewText <> Dlg.IgnoreShownText then
+    if (EolFree(NewText) <> EolFree(Dlg.IgnoreShownText)) and
+       (EolFree(NewText) <> EolFree(IgnoreText)) then
     begin
       if not IgnoreCrLf then
         NewText := StringReplace(NewText, #13#10, #10, [rfReplaceAll]);
