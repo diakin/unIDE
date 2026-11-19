@@ -174,6 +174,13 @@ unit UnFar;
 //      папок в FAR: в обеих панелях выделяются файлы, которых нет в другой
 //      панели или которые новее одноимённых в другой панели (папки не
 //      сравниваются).
+//    - b.77: поле ввода простых диалогов (F7 - папка, F5 / F6 - куда,
+//      Shift+F4, пароль и др.) - то же поле, что в окнах с несколькими
+//      полями: выделение Shift+стрелки / Shift+Home / Shift+End, мышью и
+//      двойным щелчком, Ctrl+A; Ctrl+C / Ctrl+Ins, Ctrl+X / Shift+Del,
+//      Ctrl+V / Shift+Ins; Del / Backspace удаляют выделенное, ввод
+//      заменяет его; Ctrl+стрелки и Ctrl+Backspace / Ctrl+Del - по словам;
+//      Ctrl+Z - отмена.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -210,7 +217,7 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.76';
+  FarBuild = 'b.77';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -714,11 +721,6 @@ type
     FDlgLines: TFarNames;
     FDlgCentered: Boolean;
     FDlgWarn: Boolean;            // красный, как предупреждения FAR
-    FDlgHasEdit: Boolean;
-    FDlgEdit: WideString;
-    FDlgEditPos: Integer;         // каретка: 0..Length(FDlgEdit)
-    FDlgEditScroll: Integer;
-    FDlgEditFresh: Boolean;       // текст не трогали: ввод заменяет его
     FDlgButtons: TFarNames;
     FDlgFocus: Integer;           // -1 - поле ввода, 0.. - кнопка
     FDlgButtonCol: array of Integer;  // где нарисованы кнопки (для мыши)
@@ -734,7 +736,6 @@ type
     FCopyRemember: Integer;       // запомненный ответ (кнопка); -1 - нет
     FCopyMismatch: Integer;       // файл на месте папки и наоборот
     FDlgPermanent: Boolean;       // удаление мимо корзины
-    FDlgMasked: Boolean;          // поле ввода звёздочками (пароль)
     FDlgRows: TFarDlgRows;        // поля окна Shift+F1 (под строками текста)
     FDlgRow: Integer;             // строка с фокусом; -1 - фокус на кнопках
     FDlgRowsTop: Integer;         // где нарисована первая (для мыши)
@@ -1150,7 +1151,7 @@ type
     function DirCountOf: Integer;
     procedure FindMouse(AX, AY: Integer);
     function DlgKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
-    procedure DlgInsertText(const AText: WideString);
+    function DlgEditText: WideString;
     procedure DrawDialogRow(ARowIndex, ARow, AInnerLeft, AInnerW: Integer;
       AFore, ABack: TColor);
     procedure DlgActivate(AButton: Integer);
@@ -4980,17 +4981,15 @@ begin
       Exit;
     end;
     if (FDlgKind <> fdNone) and (KeyCode >= 32) and
-       ((FDlgHasEdit and (FDlgFocus < 0)) or DlgRowIsEdit) then
+       DlgRowIsEdit then
     begin
       WideCh := KeyChar(AMsg.wParam);
-      if (WideCh <> #0) and DlgRowIsEdit then
+      if WideCh <> #0 then
       begin
         FDlgDrop := -1;
         DlgRowSaveUndo(True);
         DlgRowInsert(WideCh);
-      end
-      else if WideCh <> #0 then
-        DlgInsertText(WideCh);
+      end;
       Invalidate;
       Result := True;
     end
@@ -5930,9 +5929,11 @@ end;
 //  Диалоги в духе FAR: рамка, строки текста, поле ввода, кнопки.
 //  Esc и F10 - отмена, Enter - кнопка в фокусе (из поля ввода - первая),
 //  Tab / стрелки вверх-вниз - следующий элемент, стрелки влево-вправо на
-//  кнопках - соседняя кнопка. В поле ввода: Home/End, стрелки, Backspace,
-//  Del, Ctrl+Y - очистить, Ctrl+V / Shift+Ins - вставить. Пока текст не
-//  трогали, он показан выделенным и первый набранный символ заменяет его.
+//  кнопках - соседняя кнопка. Поле ввода - строка FDlgRows[0] без подписи
+//  (во всю ширину): правка как в полях окон с несколькими полями
+//  (DlgRowEditKey) - выделение Shift+стрелки / Home / End и мышью, Ctrl+A,
+//  буфер обмена, Ctrl+стрелки по словам, Ctrl+Z. Пока текст не трогали, он
+//  показан выделенным и первый набранный символ заменяет его.
 // ---------------------------------------------------------------------------
 
 procedure TFarView.DlgOpen(AKind: TFarDlgKind; const ATitle: WideString;
@@ -5952,20 +5953,17 @@ begin
   SetLength(FDlgButtonCol, Length(AButtons));
   FDlgCentered := ACentered;
   FDlgWarn := AWarn;
-  FDlgHasEdit := AHasEdit;
-  FDlgEdit := AEdit;
-  FDlgEditPos := Length(AEdit);
-  FDlgEditScroll := 0;
-  FDlgEditFresh := AEdit <> '';
-  FDlgMasked := False;
   FDlgRows := nil;
   FDlgRow := -1;
   FDlgDrop := -1;
   FDlgDragRow := -1;
+  FDlgFocus := 0;
+  // поле ввода - строка без подписи во всю ширину; фокус на ней
   if AHasEdit then
-    FDlgFocus := -1
-  else
-    FDlgFocus := 0;
+  begin
+    DlgAddRow('', False, False, AEdit, [], 0);
+    FDlgRows[0].FieldOfs := 0;
+  end;
   FDlgButtonRow := -1;
   Invalidate;
 end;
@@ -5996,124 +5994,43 @@ begin
   Invalidate;
 end;
 
-procedure TFarView.DlgInsertText(const AText: WideString);
+// Текст поля ввода диалога (первая строка-поле); нет поля - ''
+function TFarView.DlgEditText: WideString;
 begin
-  if FDlgEditFresh then
-  begin
-    FDlgEdit := '';
-    FDlgEditPos := 0;
-    FDlgEditFresh := False;
-  end;
-  Insert(AText, FDlgEdit, FDlgEditPos + 1);
-  Inc(FDlgEditPos, Length(AText));
+  Result := '';
+  if (Length(FDlgRows) > 0) and not FDlgRows[0].IsChoice then
+    Result := FDlgRows[0].Text;
 end;
 
 function TFarView.DlgKey(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
 var
-  InEdit: Boolean;
   ButtonCount: Integer;
 begin
   Result := True;
-  // Окно с несколькими полями (Shift+F1) - свои клавиши
+  // Есть поля (ввод, выбор, флажки) - клавиши полей и кнопок
   if Length(FDlgRows) > 0 then
   begin
     Result := DlgRowsKey(AKey, AShift, ACtrl, AAlt);
     Exit;
   end;
-  InEdit := FDlgHasEdit and (FDlgFocus < 0);
   ButtonCount := Length(FDlgButtons);
   case AKey of
     VK_ESCAPE, VK_F10:
       DlgClose;
-    VK_RETURN:
-      if FDlgFocus < 0 then
-        DlgActivate(0)
-      else
-        DlgActivate(FDlgFocus);
-    VK_SPACE:
-      if FDlgFocus >= 0 then
-        DlgActivate(FDlgFocus)
-      else
-        Result := False;  // пробел - символ поля ввода (WM_CHAR)
-    VK_TAB, VK_UP, VK_DOWN:
+    VK_RETURN, VK_SPACE:
+      DlgActivate(FDlgFocus);
+    VK_TAB, VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT:
+      if ButtonCount > 0 then
       begin
-        if (AKey = VK_UP) or ((AKey = VK_TAB) and AShift) then
-          Dec(FDlgFocus)
-        else
-          Inc(FDlgFocus);
-        if FDlgFocus >= ButtonCount then
-        begin
-          if FDlgHasEdit then
-            FDlgFocus := -1
-          else
-            FDlgFocus := 0;
-        end;
-        if (FDlgFocus < -1) or ((FDlgFocus = -1) and not FDlgHasEdit) then
-          FDlgFocus := ButtonCount - 1;
-      end;
-    VK_LEFT, VK_RIGHT:
-      if InEdit then
-      begin
-        FDlgEditFresh := False;
-        if (AKey = VK_LEFT) and (FDlgEditPos > 0) then
-          Dec(FDlgEditPos)
-        else if (AKey = VK_RIGHT) and (FDlgEditPos < Length(FDlgEdit)) then
-          Inc(FDlgEditPos);
-      end
-      else if ButtonCount > 0 then
-      begin
-        if AKey = VK_LEFT then
+        if (AKey = VK_UP) or (AKey = VK_LEFT) or
+           ((AKey = VK_TAB) and AShift) then
           FDlgFocus := (FDlgFocus + ButtonCount - 1) mod ButtonCount
         else
           FDlgFocus := (FDlgFocus + 1) mod ButtonCount;
       end;
-    VK_HOME, VK_END:
-      if InEdit then
-      begin
-        FDlgEditFresh := False;
-        if AKey = VK_HOME then
-          FDlgEditPos := 0
-        else
-          FDlgEditPos := Length(FDlgEdit);
-      end;
-    VK_BACK:
-      if InEdit then
-      begin
-        if FDlgEditFresh then
-          DlgInsertText('')
-        else if FDlgEditPos > 0 then
-        begin
-          Delete(FDlgEdit, FDlgEditPos, 1);
-          Dec(FDlgEditPos);
-        end;
-      end;
-    VK_DELETE:
-      if InEdit then
-      begin
-        if FDlgEditFresh then
-          DlgInsertText('')
-        else if FDlgEditPos < Length(FDlgEdit) then
-          Delete(FDlgEdit, FDlgEditPos + 1, 1);
-      end;
-    VK_INSERT:
-      if InEdit and AShift and FarClipboardHasText then
-        DlgInsertText(FarClipboardText);
   else
-    if InEdit and ACtrl and not AAlt and (AKey = Ord('V')) then
-    begin
-      if FarClipboardHasText then
-        DlgInsertText(FarClipboardText);
-    end
-    else if InEdit and ACtrl and not AAlt and (AKey = Ord('Y')) then
-    begin
-      FDlgEdit := '';
-      FDlgEditPos := 0;
-      FDlgEditFresh := False;
-    end
-    else if ACtrl or AAlt then
-      Result := True   // сочетания в диалоге никуда не отдаём (ярлыки меню)
-    else
-      Result := False; // буквы, цифры - символы поля ввода (WM_CHAR)
+    // окно только с кнопками: прочие клавиши с Ctrl / Alt поглощаются
+    Result := ACtrl or AAlt;
   end;
 end;
 
@@ -6239,7 +6156,7 @@ begin
   // F5 / F6, Rename: новое имя файла
   if FDlgKind = fdOverRename then
   begin
-    EditText := FDlgEdit;
+    EditText := DlgEditText;
     DlgClose;
     CopyRenameAnswer(AButton = 0, EditText);
     Exit;
@@ -6252,7 +6169,7 @@ begin
     Exit;
   end;
   Kind := FDlgKind;
-  EditText := FDlgEdit;
+  EditText := DlgEditText;
   SavedAction := FArcAction;
   SavedTemp := FArcJobTemp;
   DlgClose;
@@ -6349,8 +6266,7 @@ var
   BoxW, BoxH, BoxLeft, BoxTop, InnerLeft, InnerW, Row, LineIndex: Integer;
   ButtonIndex, ButtonsW, ButtonCol, SepY: Integer;
   Back, Fore, ButtonBack, ButtonFore, FocusBack, FocusFore: TColor;
-  ButtonText, ShownText: WideString;
-  CaretX: Integer;
+  ButtonText: WideString;
 begin
   BoxW := 72;
   if BoxW > FCols - 2 then
@@ -6358,8 +6274,6 @@ begin
   if BoxW < 20 then
     Exit;
   BoxH := Length(FDlgLines) + 6 + Length(FDlgRows);
-  if FDlgHasEdit then
-    Inc(BoxH);
   BoxLeft := (FCols - BoxW) div 2;
   BoxTop := (PanelHeight - BoxH) div 2;
   if BoxTop < 0 then
@@ -6400,35 +6314,6 @@ begin
     else
       PutText(InnerLeft, Row, InnerW,
         FarFitName(FDlgLines[LineIndex], InnerW), Fore, Back);
-    Inc(Row);
-  end;
-
-  // Поле ввода: чёрным по бирюзовому, нетронутый текст - выделен
-  if FDlgHasEdit then
-  begin
-    if FDlgEditPos < FDlgEditScroll then
-      FDlgEditScroll := FDlgEditPos;
-    if FDlgEditPos > FDlgEditScroll + InnerW - 1 then
-      FDlgEditScroll := FDlgEditPos - InnerW + 1;
-    ShownText := Copy(FDlgEdit, FDlgEditScroll + 1, InnerW);
-    if FDlgMasked then
-      for LineIndex := 1 to Length(ShownText) do
-        ShownText[LineIndex] := '*';
-    FillCells(InnerLeft, Row, InnerW, FPal[fpDlgEditBack]);
-    if FDlgEditFresh then
-      PutText(InnerLeft, Row, Length(ShownText), ShownText, FPal[fpDlgSelText],
-        FPal[fpDlgSelBack])
-    else
-      PutText(InnerLeft, Row, Length(ShownText), ShownText, FPal[fpDlgEditText],
-        FPal[fpDlgEditBack]);
-    if FDlgFocus < 0 then
-    begin
-      CaretX := (InnerLeft + FDlgEditPos - FDlgEditScroll) * FCellW;
-      FBuffer.Canvas.Brush.Style := bsSolid;
-      FBuffer.Canvas.Brush.Color := FPal[fpDlgEditText];
-      FBuffer.Canvas.FillRect(Rect(CaretX, Row * FCellH + 1, CaretX + 2,
-        (Row + 1) * FCellH - 1));
-    end;
     Inc(Row);
   end;
 
@@ -8643,7 +8528,7 @@ begin
     DlgOpen(fdFtpPassword, 'Password', ['Password for',
       FarFitName(FarFtpHostUrl(Host), 60)], True, False, True, '',
       ['OK', 'Cancel']);
-    FDlgMasked := True;
+    FDlgRows[0].Masked := True;
     Exit;
   end;
   FtpStartList(APanelIndex, Host, AHostIdx, FarFtpEncode(Host.Home), '',
@@ -13289,7 +13174,7 @@ begin
     DlgOpen(fdPassword, 'Password', ['Password for', FarFitName(
       ExtractFileName(string(FArcJobFile)), 60)], True, False, True, '',
       ['OK', 'Cancel']);
-    FDlgMasked := True;
+    FDlgRows[0].Masked := True;
     Status(FarProduct + ': архив защищён паролем');
     Exit;
   end;
