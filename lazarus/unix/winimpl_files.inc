@@ -174,6 +174,22 @@ begin
     Result := DRIVE_NO_ROOT_DIR;
 end;
 
+// uniFAR panel Information (Ctrl+L): memory, computer and user name
+function Impl_GlobalMemoryStatusEx(AStatus: Pointer): BOOL; stdcall; public name 'unidewin_GlobalMemoryStatusEx';
+begin
+  Result := False;
+end;
+
+function Impl_GetComputerNameW(ABuffer: PWideChar; var ASize: DWORD): BOOL; stdcall; public name 'unidewin_GetComputerNameW';
+begin
+  Result := False;
+end;
+
+function Impl_GetUserNameW(ABuffer: PWideChar; var ASize: DWORD): BOOL; stdcall; public name 'unidewin_GetUserNameW';
+begin
+  Result := False;
+end;
+
 function Impl_GetShortPathNameW(ALongPath, AShortPath: PWideChar; ABufferLen: DWORD): DWORD; stdcall; public name 'unidewin_GetShortPathNameW';
 var
   PathLen: DWORD;

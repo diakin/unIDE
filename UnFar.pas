@@ -181,6 +181,13 @@ unit UnFar;
 //      Ctrl+V / Shift+Ins; Del / Backspace удаляют выделенное, ввод
 //      заменяет его; Ctrl+стрелки и Ctrl+Backspace / Ctrl+Del - по словам;
 //      Ctrl+Z - отмена.
+//    - b.78: Ctrl+L - панель Information вместо другой панели (повтор -
+//      убрать), как в FAR: имя компьютера и пользователя, диск папки
+//      активной панели (тип, файловая система, всего и свободно байт, метка,
+//      серийный номер), память (загрузка, установлено, всего / свободно
+//      физической, виртуальной и файла подкачки), файл описания папки
+//      (DirInfo, File_Id.diz, Descript.ion, ReadMe.*, Read.Me) или
+//      'Folder description file is absent'. Tab - в неё и обратно.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -217,7 +224,7 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.77';
+  FarBuild = 'b.78';
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -677,6 +684,23 @@ type
     FOutOpen: Boolean;
     FOutScroll: Integer;
     FPanelsHidden: Boolean;       // Ctrl+O: панели спрятаны, виден вывод
+    // Ctrl+L: панель Information на месте панели FInfoPanel (-1 - нет).
+    // Сведения о диске и файл описания собираются для папки FInfoPath
+    // (папка другой панели) и не перечитываются при каждой перерисовке
+    FInfoPanel: Integer;
+    FInfoValid: Boolean;
+    FInfoPath: WideString;
+    FInfoComputer: WideString;
+    FInfoUser: WideString;
+    FInfoHasDisk: Boolean;        // False - FTP (диска нет)
+    FInfoDiskTitle: WideString;   // 'Fixed disk D: (NTFS)'
+    FInfoSizeKnown: Boolean;
+    FInfoTotalBytes: Int64;
+    FInfoFreeBytes: Int64;
+    FInfoLabel: WideString;
+    FInfoSerial: WideString;
+    FInfoDescName: WideString;    // файл описания папки ('' - нет)
+    FInfoDescLines: TFarNames;
     // Выполняемая команда: процесс cmd.exe (7z.exe) с выводом в канал
     FCmdProc: TProcRun;
     FProcTimer: TTimer;
@@ -909,6 +933,12 @@ type
     procedure PutCentered(ACol, ARow, AWidth: Integer;
       const AText: WideString; AFore, ABack: TColor);
     procedure DrawPanel(AIndex: Integer);
+    // Панель Information (Ctrl+L) на месте панели AIndex
+    procedure DrawInfoPanel(AIndex: Integer);
+    procedure InfoCollect(const APath: WideString; AHasDisk: Boolean);
+    procedure ToggleInfoPanel;
+    // Номер панели под точкой окна (по колонке)
+    function PanelAtX(AX: Integer): Integer;
     // ASecondCol - вторая граница колонок (-1 - нет)
     procedure DrawFrame(AX0, AWidth, AHeight, AFirstCol: Integer;
       ASecondCol: Integer = -1);
@@ -1616,6 +1646,28 @@ function FarGetAncestor(AWnd: HWND; AFlags: UINT): HWND; stdcall;
 // Указатели, а не const: так одинаково в Delphi 7 и Free Pascal
 function FarCompareFileTime(AFirst, ASecond: PFileTime): Longint; stdcall;
   external {$IFDEF UNIX}name 'unidewin_CompareFileTime'{$ELSE}'kernel32.dll' name 'CompareFileTime'{$ENDIF};
+
+// Панель Information (Ctrl+L): память, имя компьютера и пользователя.
+// MEMORYSTATUSEX - своя запись: в Windows.pas Delphi 7 её нет
+type
+  TFarMemoryStatusEx = record
+    dwLength: DWORD;
+    dwMemoryLoad: DWORD;
+    ullTotalPhys: Int64;
+    ullAvailPhys: Int64;
+    ullTotalPageFile: Int64;
+    ullAvailPageFile: Int64;
+    ullTotalVirtual: Int64;
+    ullAvailVirtual: Int64;
+    ullAvailExtendedVirtual: Int64;
+  end;
+
+function FarMemoryStatus(var AStatus: TFarMemoryStatusEx): BOOL; stdcall;
+  external {$IFDEF UNIX}name 'unidewin_GlobalMemoryStatusEx'{$ELSE}'kernel32.dll' name 'GlobalMemoryStatusEx'{$ENDIF};
+function FarGetComputerName(ABuffer: PWideChar; var ASize: DWORD): BOOL;
+  stdcall; external {$IFDEF UNIX}name 'unidewin_GetComputerNameW'{$ELSE}'kernel32.dll' name 'GetComputerNameW'{$ENDIF};
+function FarGetUserName(ABuffer: PWideChar; var ASize: DWORD): BOOL;
+  stdcall; external {$IFDEF UNIX}name 'unidewin_GetUserNameW'{$ELSE}'advapi32.dll' name 'GetUserNameW'{$ENDIF};
 
 // Сравнение времён файлов (-1, 0, 1); параметры - копии, их адреса - для
 // CompareFileTime
@@ -3621,6 +3673,7 @@ begin
   FDlgKind := fdNone;
   FDlgFocus := -1;
   FSingle := -1;
+  FInfoPanel := -1;
   FFtpThread[0] := nil;
   FFtpThread[1] := nil;
   FFtpConnPanel := -1;
@@ -4356,6 +4409,437 @@ begin
   end;
 end;
 
+// ---------------------------------------------------------------------------
+// Панель Information (Ctrl+L), как в FAR
+// ---------------------------------------------------------------------------
+
+function TFarView.PanelAtX(AX: Integer): Integer;
+begin
+  if FSingle >= 0 then
+    Result := FSingle
+  else if AX div FCellW < LeftPanelWidth then
+    Result := 0
+  else
+    Result := 1;
+end;
+
+// Ctrl+L: панель Information на месте другой панели; уже есть - убрать
+procedure TFarView.ToggleInfoPanel;
+begin
+  if FInfoPanel >= 0 then
+    FInfoPanel := -1
+  else if FSingle >= 0 then
+  begin
+    Status(FarProduct + ': Ctrl+L - при двух панелях');
+    Exit;
+  end
+  else
+  begin
+    FInfoPanel := 1 - FActive;
+    FInfoValid := False;
+  end;
+  Invalidate;
+end;
+
+// Тип диска по корню: 'Fixed disk' и т.д., как в FAR
+function FarDriveTypeText(const ARoot: WideString): WideString;
+begin
+  case FarGetDriveType(PWideChar(ARoot)) of
+    DRIVE_REMOVABLE:
+      Result := 'Removable disk';
+    DRIVE_FIXED:
+      Result := 'Fixed disk';
+    DRIVE_REMOTE:
+      Result := 'Network drive';
+    DRIVE_CDROM:
+      Result := 'CD-ROM';
+    DRIVE_RAMDISK:
+      Result := 'RAM disk';
+  else
+    Result := 'Disk';
+  end;
+end;
+
+// Текст файла описания папки: BOM UTF-8 / UTF-16, иначе UTF-8, если байты
+// им читаются, иначе OEM (File_Id.diz, Descript.ion, DirInfo - из DOS) или
+// ANSI. Читается не больше 64 КБ
+function FarReadDescText(const AFileName: WideString;
+  AOem: Boolean): WideString;
+const
+  FarDescMaxBytes = 65536;
+  FarMbErrInvalidChars = 8;
+var
+  FileHandle: THandle;
+  FileSize, ReadCount: DWORD;
+  Bytes: string;
+  WideLen, CodePage: Integer;
+begin
+  Result := '';
+  FileHandle := FarCreateFile(PWideChar(AFileName), GENERIC_READ,
+    FILE_SHARE_READ or FILE_SHARE_WRITE, nil, OPEN_EXISTING, 0, 0);
+  if FileHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    FileSize := GetFileSize(FileHandle, nil);
+    if FileSize = $FFFFFFFF then
+      Exit;
+    if FileSize > FarDescMaxBytes then
+      FileSize := FarDescMaxBytes;
+    SetLength(Bytes, FileSize);
+    ReadCount := 0;
+    if (FileSize > 0) and not ReadFile(FileHandle, Bytes[1], FileSize,
+       ReadCount, nil) then
+      Exit;
+    SetLength(Bytes, ReadCount);
+  finally
+    CloseHandle(FileHandle);
+  end;
+  if Bytes = '' then
+    Exit;
+  // UTF-16 LE с BOM
+  if (Length(Bytes) >= 2) and (Bytes[1] = #$FF) and (Bytes[2] = #$FE) then
+  begin
+    WideLen := (Length(Bytes) - 2) div 2;
+    SetLength(Result, WideLen);
+    if WideLen > 0 then
+      Move(Bytes[3], Result[1], WideLen * 2);
+    Exit;
+  end;
+  // UTF-8 с BOM - BOM убрать
+  if (Length(Bytes) >= 3) and (Bytes[1] = #$EF) and (Bytes[2] = #$BB) and
+     (Bytes[3] = #$BF) then
+  begin
+    Delete(Bytes, 1, 3);
+    CodePage := CP_UTF8;
+  end
+  else
+  begin
+    CodePage := CP_UTF8;
+    if FarMultiToWide(CP_UTF8, FarMbErrInvalidChars, PAnsiChar(Bytes),
+       Length(Bytes), nil, 0) <= 0 then
+      if AOem then
+        CodePage := CP_OEMCP
+      else
+        CodePage := CP_ACP;
+  end;
+  if Bytes = '' then
+    Exit;
+  WideLen := FarMultiToWide(CodePage, 0, PAnsiChar(Bytes), Length(Bytes),
+    nil, 0);
+  if WideLen <= 0 then
+    Exit;
+  SetLength(Result, WideLen);
+  FarMultiToWide(CodePage, 0, PAnsiChar(Bytes), Length(Bytes),
+    PWideChar(Result), WideLen);
+end;
+
+// Сведения для панели Information: имя компьютера и пользователя (один
+// раз), диск папки APath (AHasDisk = False - FTP) и файл описания папки
+procedure TFarView.InfoCollect(const APath: WideString; AHasDisk: Boolean);
+const
+  FarDescMasks: array[0..4] of string = ('DirInfo', 'File_Id.diz',
+    'Descript.ion', 'ReadMe.*', 'Read.Me');
+var
+  NameBuf: array[0..MAX_PATH] of WideChar;
+  FsBuf: array[0..MAX_PATH] of WideChar;
+  NameSize: DWORD;
+  Root, FsName, DiskName, DescText, LineText: WideString;
+  Serial, MaxComponent, FsFlags: DWORD;
+  FreeAvail, TotalBytes, TotalFree: Int64;
+  OldMode: UINT;
+  MaskIndex, CharIndex, LineCount: Integer;
+  FindData: TFarFindData;
+  FindHandle: THandle;
+  LowerName: WideString;
+begin
+  FInfoValid := True;
+  FInfoPath := APath;
+  if FInfoComputer = '' then
+  begin
+    NameSize := MAX_PATH;
+    if FarGetComputerName(NameBuf, NameSize) then
+      FInfoComputer := NameBuf;
+    NameSize := MAX_PATH;
+    if FarGetUserName(NameBuf, NameSize) then
+      FInfoUser := NameBuf;
+  end;
+
+  FInfoHasDisk := AHasDisk and (APath <> '');
+  FInfoDiskTitle := '';
+  FInfoSizeKnown := False;
+  FInfoTotalBytes := 0;
+  FInfoFreeBytes := 0;
+  FInfoLabel := '';
+  FInfoSerial := '';
+  FInfoDescName := '';
+  SetLength(FInfoDescLines, 0);
+  if not FInfoHasDisk then
+    Exit;
+
+  OldMode := FarSetErrorMode(SEM_FAILCRITICALERRORS);
+  try
+    Root := FarRootOf(APath);
+    // 'D:\' -> 'D:'; '\\server\share\' - без '\' на конце
+    DiskName := FarStripSlash(Root);
+    if (Length(DiskName) = 3) and (DiskName[2] = ':') then
+      DiskName := Copy(DiskName, 1, 2);
+    FsName := '';
+    Serial := 0;
+    MaxComponent := 0;
+    FsFlags := 0;
+    NameBuf[0] := #0;
+    FsBuf[0] := #0;
+    if FarGetVolumeInfo(PWideChar(Root), NameBuf, MAX_PATH, @Serial,
+       @MaxComponent, @FsFlags, FsBuf, MAX_PATH) then
+    begin
+      FInfoLabel := NameBuf;
+      FsName := FsBuf;
+      FInfoSerial := WideString(IntToHex(Serial shr 16, 4) + '-' +
+        IntToHex(Serial and $FFFF, 4));
+    end;
+    FInfoDiskTitle := FarDriveTypeText(Root) + ' ' + DiskName;
+    if FsName <> '' then
+      FInfoDiskTitle := FInfoDiskTitle + ' (' + FsName + ')';
+    if FarDiskFree(PWideChar(APath), @FreeAvail, @TotalBytes, @TotalFree) then
+    begin
+      FInfoSizeKnown := True;
+      FInfoTotalBytes := TotalBytes;
+      FInfoFreeBytes := FreeAvail;
+    end;
+
+    // Файл описания папки: первый по списку масок
+    for MaskIndex := Low(FarDescMasks) to High(FarDescMasks) do
+    begin
+      FindHandle := FarFindFirst(PWideChar(FarWithSlash(APath) +
+        WideString(FarDescMasks[MaskIndex])), FindData);
+      if FindHandle = INVALID_HANDLE_VALUE then
+        Continue;
+      repeat
+        if FindData.dwFileAttributes and FILE_ATTRIBUTE_DIRECTORY = 0 then
+        begin
+          FInfoDescName := FindData.cFileName;
+          Break;
+        end;
+      until not FarFindNext(FindHandle, FindData);
+      Windows.FindClose(FindHandle);
+      if FInfoDescName <> '' then
+        Break;
+    end;
+  finally
+    FarSetErrorMode(OldMode);
+  end;
+  if FInfoDescName = '' then
+    Exit;
+
+  LowerName := WideString(LowerCase(string(FInfoDescName)));
+  DescText := FarReadDescText(FarWithSlash(APath) + FInfoDescName,
+    (LowerName = 'file_id.diz') or (LowerName = 'descript.ion') or
+    (LowerName = 'dirinfo'));
+  // На строки: CR LF / LF, табуляция - пробелы
+  LineCount := 0;
+  LineText := '';
+  for CharIndex := 1 to Length(DescText) + 1 do
+  begin
+    if (CharIndex > Length(DescText)) or (DescText[CharIndex] = #10) then
+    begin
+      if (CharIndex <= Length(DescText)) or (LineText <> '') then
+      begin
+        SetLength(FInfoDescLines, LineCount + 1);
+        FInfoDescLines[LineCount] := LineText;
+        Inc(LineCount);
+      end;
+      LineText := '';
+    end
+    else if DescText[CharIndex] = #9 then
+      LineText := LineText + '    '
+    else if DescText[CharIndex] >= ' ' then
+      LineText := LineText + DescText[CharIndex];
+  end;
+end;
+
+procedure TFarView.DrawInfoPanel(AIndex: Integer);
+type
+  TFarInfoSep = record
+    Row: Integer;
+    Title: WideString;
+  end;
+var
+  Source: TFarPanel;
+  PanelX, PanelW, PanelH, InnerW, Row, RowIndex, LineIndex: Integer;
+  Seps: array of TFarInfoSep;
+  SepIndex: Integer;
+  MemStatus: TFarMemoryStatusEx;
+  MemKnown: Boolean;
+  InstalledKb: Int64;
+  InstalledFunc: function(var ATotalKb: Int64): BOOL; stdcall;
+  LeftX, RightX, TopY, BottomY, LineY: Integer;
+  Title: WideString;
+  IsActive: Boolean;
+
+  // Строка 'подпись ..... значение' (значение - прижато вправо)
+  procedure InfoLine(const ACaption, AValue: WideString);
+  var
+    ValueLen: Integer;
+  begin
+    if Row >= PanelH - 1 then
+      Exit;
+    PutText(PanelX + 2, Row, InnerW - 2, ACaption, FPal[fpPanelText],
+      FPal[fpPanelBack]);
+    ValueLen := Length(AValue);
+    if ValueLen > InnerW - 2 then
+      ValueLen := InnerW - 2;
+    if ValueLen > 0 then
+      PutText(PanelX + PanelW - 2 - ValueLen, Row, ValueLen,
+        Copy(AValue, Length(AValue) - ValueLen + 1, ValueLen),
+        FPal[fpPanelSelected], FPal[fpPanelBack]);
+    Inc(Row);
+  end;
+
+  // Разделитель с заголовком посередине (линия рисуется после текста)
+  procedure InfoSep(const ATitle: WideString);
+  begin
+    if Row >= PanelH - 1 then
+      Exit;
+    SetLength(Seps, Length(Seps) + 1);
+    Seps[High(Seps)].Row := Row;
+    Seps[High(Seps)].Title := ATitle;
+    Inc(Row);
+  end;
+
+  function Bytes(AValue: Int64): WideString;
+  begin
+    Result := WideString(FarGroupDigits(AValue));
+  end;
+
+begin
+  PanelBounds(AIndex, PanelX, PanelW);
+  PanelH := PanelHeight;
+  for RowIndex := 0 to PanelH - 1 do
+    FillCells(PanelX, RowIndex, PanelW, FPal[fpPanelBack]);
+  if (PanelW < 8) or (PanelH < 7) then
+    Exit;
+  InnerW := PanelW - 2;
+  IsActive := AIndex = FActive;
+
+  Source := FPanels[1 - AIndex];
+  if not FInfoValid or (FInfoPath <> Source.Path) or
+     (FInfoHasDisk = Source.IsFtp) then
+    InfoCollect(Source.Path, not Source.IsFtp);
+
+  Row := 1;
+  SetLength(Seps, 0);
+  InfoLine('Computer name', FInfoComputer);
+  InfoLine('User name', FInfoUser);
+
+  if FInfoHasDisk then
+  begin
+    InfoSep(FInfoDiskTitle);
+    if FInfoSizeKnown then
+    begin
+      InfoLine('Total bytes', Bytes(FInfoTotalBytes));
+      InfoLine('Free bytes', Bytes(FInfoFreeBytes));
+    end
+    else
+    begin
+      InfoLine('Total bytes', '');
+      InfoLine('Free bytes', '');
+    end;
+    InfoLine('Volume label', FInfoLabel);
+    InfoLine('Serial number', FInfoSerial);
+  end;
+
+  // Память - при каждой перерисовке (вызов дешёвый)
+  FillChar(MemStatus, SizeOf(MemStatus), 0);
+  MemStatus.dwLength := SizeOf(MemStatus);
+  MemKnown := FarMemoryStatus(MemStatus);
+  InstalledKb := 0;
+  {$IFNDEF UNIX}
+  // GetPhysicallyInstalledSystemMemory - с Vista SP1, на XP её нет
+  @InstalledFunc := GetProcAddress(GetModuleHandle('kernel32.dll'),
+    'GetPhysicallyInstalledSystemMemory');
+  if Assigned(InstalledFunc) and not InstalledFunc(InstalledKb) then
+    InstalledKb := 0;
+  {$ELSE}
+  InstalledFunc := nil;
+  {$ENDIF}
+  InfoSep('Memory');
+  if MemKnown then
+  begin
+    InfoLine('Memory load', WideString(IntToStr(MemStatus.dwMemoryLoad)) +
+      '%');
+    if InstalledKb > 0 then
+      InfoLine('Installed memory', Bytes(InstalledKb * 1024));
+    InfoLine('Total memory', Bytes(MemStatus.ullTotalPhys));
+    InfoLine('Free memory', Bytes(MemStatus.ullAvailPhys));
+    InfoLine('Total virtual', Bytes(MemStatus.ullTotalVirtual));
+    InfoLine('Free virtual', Bytes(MemStatus.ullAvailVirtual));
+    InfoLine('Total paging file', Bytes(MemStatus.ullTotalPageFile));
+    InfoLine('Free paging file', Bytes(MemStatus.ullAvailPageFile));
+  end;
+
+  // Файл описания папки
+  if FInfoHasDisk then
+  begin
+    if FInfoDescName <> '' then
+    begin
+      InfoSep(FInfoDescName);
+      for LineIndex := 0 to High(FInfoDescLines) do
+      begin
+        if Row >= PanelH - 1 then
+          Break;
+        PutText(PanelX + 2, Row, InnerW - 2,
+          FarFitName(FInfoDescLines[LineIndex], InnerW - 2),
+          FPal[fpPanelText], FPal[fpPanelBack]);
+        Inc(Row);
+      end;
+    end
+    else
+    begin
+      InfoSep('');
+      if Row < PanelH - 1 then
+        PutText(PanelX + 2, Row, InnerW - 2,
+          'Folder description file is absent', FPal[fpPanelText],
+          FPal[fpPanelBack]);
+    end;
+  end;
+
+  // Рамка и разделители - линиями, как у панели файлов
+  LeftX := PanelX * FCellW + FCellW div 2;
+  RightX := (PanelX + PanelW - 1) * FCellW + FCellW div 2;
+  TopY := FCellH div 2;
+  BottomY := (PanelH - 1) * FCellH + FCellH div 2;
+  with FBuffer.Canvas do
+  begin
+    Pen.Style := psSolid;
+    Pen.Width := 1;
+    Pen.Color := FPal[fpPanelFrame];
+    Brush.Style := bsClear;
+    Rectangle(LeftX - 1, TopY - 1, RightX + 2, BottomY + 2);
+    Rectangle(LeftX + 1, TopY + 1, RightX, BottomY);
+    Brush.Style := bsSolid;
+    for SepIndex := 0 to High(Seps) do
+    begin
+      LineY := Seps[SepIndex].Row * FCellH + FCellH div 2;
+      MoveTo(LeftX + 1, LineY);
+      LineTo(RightX, LineY);
+    end;
+  end;
+  for SepIndex := 0 to High(Seps) do
+    if Seps[SepIndex].Title <> '' then
+      PutCentered(PanelX + 1, Seps[SepIndex].Row, InnerW,
+        ' ' + FarFitName(Seps[SepIndex].Title, InnerW - 4) + ' ',
+        FPal[fpPanelText], FPal[fpPanelBack]);
+
+  // Заголовок; у активной панели - цветом курсора
+  Title := ' Information ';
+  if IsActive then
+    PutCentered(PanelX, 0, PanelW, Title, FPal[fpPanelCursorText],
+      FPal[fpPanelCursorBack])
+  else
+    PutCentered(PanelX, 0, PanelW, Title, FPal[fpPanelText],
+      FPal[fpPanelBack]);
+end;
+
 procedure TFarView.DrawKeyBar;
 var
   KeyIndex, SlotW, SlotCol, LabelW, RowCount, PerRow, KeyRow, SlotIndex: Integer;
@@ -4445,10 +4929,17 @@ begin
       else
       begin
         // Редактор (F4) - вместо своей панели или обеих
+        // Панель Information (Ctrl+L) - вместо своей панели
         if not EditorShown(0) then
-          DrawPanel(0);
+          if FInfoPanel = 0 then
+            DrawInfoPanel(0)
+          else
+            DrawPanel(0);
         if not EditorShown(1) then
-          DrawPanel(1);
+          if FInfoPanel = 1 then
+            DrawInfoPanel(1)
+          else
+            DrawPanel(1);
         // Вывод команд под панелями - до редактора: тот во всю высоту
         // и закрывает вывод в своей части окна
         if PanelHeight <= OutBottom then
@@ -4688,6 +5179,13 @@ begin
     Invalidate;
     Exit;
   end;
+  // Щелчок по панели Information (Ctrl+L) - она активная, и только
+  if (FInfoPanel >= 0) and (PanelAtX(PosX) = FInfoPanel) then
+  begin
+    FActive := FInfoPanel;
+    Invalidate;
+    Exit;
+  end;
   // Щелчок по заголовку панели - её путь в буфер, панель - активная
   if (Button = mbLeft) and TitleClickAt(PosX, PosY, PanelIndex) then
   begin
@@ -4856,6 +5354,12 @@ begin
     if FEditor.TopRow < 0 then
       FEditor.TopRow := 0;
     Invalidate;
+    Exit;
+  end;
+  // Панель Information (Ctrl+L) - прокручивать нечего
+  if FInfoPanel = FActive then
+  begin
+    Message.Result := 1;
     Exit;
   end;
   if Message.WheelDelta > 0 then
@@ -5164,6 +5668,47 @@ begin
     Exit;
   end;
 
+  // Активна панель Information (Ctrl+L): Tab / Ctrl+Tab - в другую панель,
+  // Ctrl+L - убрать её, Ctrl+R - перечитать сведения, F1 и F10 - как
+  // обычно; остальные клавиши панелей здесь ничего не делают (файлов нет)
+  if FInfoPanel = FActive then
+  begin
+    if (AKey = VK_TAB) and not AAlt and not AShift then
+    begin
+      FActive := 1 - FActive;
+      Invalidate;
+      Exit;
+    end;
+    if ACtrl and not AAlt and not AShift and (AKey = Ord('L')) then
+    begin
+      ToggleInfoPanel;
+      Exit;
+    end;
+    if ACtrl and not AAlt and not AShift and (AKey = Ord('R')) then
+    begin
+      FInfoValid := False;
+      Invalidate;
+      Exit;
+    end;
+    if not (((AKey = VK_F10) or (AKey = VK_F1)) and Plain and not AShift) then
+    begin
+      Result := (AKey >= VK_F1) and (AKey <= VK_F12) or (AKey = VK_UP) or
+        (AKey = VK_DOWN) or (AKey = VK_LEFT) or (AKey = VK_RIGHT) or
+        (AKey = VK_PRIOR) or (AKey = VK_NEXT) or (AKey = VK_HOME) or
+        (AKey = VK_END) or (AKey = VK_INSERT) or (AKey = VK_DELETE) or
+        (AKey = VK_RETURN) or ACtrl or AAlt;
+      Exit;
+    end;
+  end;
+
+  // Ctrl+L - панель Information вместо другой панели (повтор - убрать);
+  // раньше FtpKey: на FTP тоже
+  if ACtrl and not AAlt and not AShift and (AKey = Ord('L')) then
+  begin
+    ToggleInfoPanel;
+    Exit;
+  end;
+
   // Панель на FTP: свои Enter, Ctrl+R, F4, F8 и т.д.
   if ActivePanel.IsFtp and FtpKey(AKey, AShift, ACtrl, AAlt) then
     Exit;
@@ -5365,6 +5910,7 @@ begin
         begin
           ActivePanel.Reread;
           EnsureVisible(ActivePanel);
+          FInfoValid := False;
           Invalidate;
         end;
       Ord('A'):             // атрибуты файлов и папок
