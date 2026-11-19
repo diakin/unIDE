@@ -192,6 +192,8 @@ unit UnFar;
 //      заголовок панели) - полный путь в буфере - 1 с не обрабатываются
 //      Ctrl+Ins, Ctrl+C, Shift+Ins, Ctrl+V, Ctrl+X, Shift+Del: Ctrl+Ins
 //      по привычке не заменяет путь в буфере одним именем файла.
+//    - b.80: эта пауза - 3 с по умолчанию, задаётся в F9 - Options -
+//      Panel settings (мс, 0 - выключена), editor.ini [Far] PathCopyPauseMs.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -228,9 +230,11 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.79';
-  // После копирования полного пути копипаста не работает столько мс
-  FarPathCopyGuardMs = 1000;
+  FarBuild = 'b.80';
+  // После копирования полного пути копипаста не работает столько мс (по
+  // умолчанию; задаётся в F9 - Options - Panel settings), предел - 60 с
+  FarPathCopyPauseDefault = 3000;
+  FarPathCopyPauseMax = 60000;
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -277,7 +281,7 @@ type
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
     fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr,
     fdOverwrite, fdOverRename, fdEditReplace, fdEditReplAsk,
-    fdSelectMask, fdDeselectMask, fdFtpAbort);
+    fdSelectMask, fdDeselectMask, fdFtpAbort, fdPanelSettings);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -688,6 +692,8 @@ type
     // пути): GetTickCount; FPathCopyValid - был ли такой момент
     FPathCopyTick: Cardinal;
     FPathCopyValid: Boolean;
+    // Сколько мс после этого копипаста не работает; 0 - всегда работает
+    FPathCopyPauseMs: Integer;
     // Вывод команд: строки (последняя может быть не закончена -
     // FOutOpen), прокрутка колесом (строк экрана от низа)
     FOutLines: TFarNames;
@@ -906,7 +912,7 @@ type
     function KeyChar(ACode: WPARAM): WideChar;
     // Текст в буфер обмена, в строке состояния - что скопировано
     procedure CopyToClipboard(const AText: WideString);
-    // То же для полного пути: следом на FarPathCopyGuardMs копипаста не
+    // То же для полного пути: следом на FPathCopyPauseMs копипаста не
     // работает (PathCopyGuard)
     procedure CopyPathToClipboard(const AText: WideString);
     // True - клавиша копипасты сразу после копирования пути: пропустить
@@ -1300,6 +1306,9 @@ type
     procedure HistoryAdd(const APath: WideString);
     function MenuSkip(AIndex: Integer): Boolean;
     procedure ShowOptionsMenu;
+    // F9 - Options - Panel settings: окно (пока - пауза после пути)
+    procedure ShowPanelSettings;
+    procedure PanelSettingsConfirm;
     procedure SaveSetup;
     function RuleColors(const AName: WideString;
       var AFore, ABack: TColor): Boolean;
@@ -3689,6 +3698,7 @@ begin
   FDlgFocus := -1;
   FSingle := -1;
   FInfoPanel := -1;
+  FPathCopyPauseMs := FarPathCopyPauseDefault;
   FFtpThread[0] := nil;
   FFtpThread[1] := nil;
   FFtpConnPanel := -1;
@@ -6620,6 +6630,12 @@ begin
     AttrConfirm;
     Exit;
   end;
+  // F9 - Options - Panel settings: OK - проверка числа и запись
+  if (FDlgKind = fdPanelSettings) and (AButton = 0) then
+  begin
+    PanelSettingsConfirm;
+    Exit;
+  end;
   // Alt+F7, Find: поиск
   if (FDlgKind = fdFind) and (AButton = 0) then
   begin
@@ -7898,6 +7914,8 @@ begin
             OpenSchemeWindow;
         6:
           CompareFolders;
+        7:
+          ShowPanelSettings;
       end;
     fmPalGroups:
       if Item.Tag >= 0 then
@@ -12430,7 +12448,7 @@ var
   IsClipKey: Boolean;
 begin
   Result := False;
-  if not FPathCopyValid or AAlt then
+  if not FPathCopyValid or AAlt or (FPathCopyPauseMs <= 0) then
     Exit;
   // Ctrl+Ins / Ctrl+C - копировать, Shift+Ins / Ctrl+V - вставить,
   // Ctrl+X / Shift+Del - вырезать (Ctrl+Shift+Ins - тоже)
@@ -12446,14 +12464,14 @@ begin
   Elapsed := Cardinal(GetTickCount - FPathCopyTick);
   {$IFDEF FarGuardR}{$R+}{$UNDEF FarGuardR}{$ENDIF}
   {$IFDEF FarGuardQ}{$Q+}{$UNDEF FarGuardQ}{$ENDIF}
-  if Elapsed >= FarPathCopyGuardMs then
+  if Elapsed >= Cardinal(FPathCopyPauseMs) then
   begin
     FPathCopyValid := False;
     Exit;
   end;
   Result := True;
   Status(FarProduct + ': путь только что скопирован - клавиша пропущена (' +
-    IntToStr(FarPathCopyGuardMs div 1000) + ' с)');
+    IntToStr(FPathCopyPauseMs) + ' мс, F9 - Options - Panel settings)');
 end;
 
 function TFarView.CursorFullName: WideString;
@@ -16823,13 +16841,51 @@ begin
       end;
 end;
 
+// F9 - Options - Panel settings. Пока одно поле: сколько мс после
+// копирования полного пути (Ctrl+F, Ctrl+[, Ctrl+], щелчок по пути) не
+// работают Ctrl+Ins, Ctrl+C, Shift+Ins, Ctrl+V, Ctrl+X, Shift+Del
+procedure TFarView.ShowPanelSettings;
+begin
+  DlgOpen(fdPanelSettings, 'Panel settings',
+    ['Copy/paste keys are ignored after Ctrl+F, Ctrl+[, Ctrl+]',
+     'and a click on a path (milliseconds, 0 - off)'], False, False, False,
+    '', ['OK', 'Cancel']);
+  DlgAddRow('Pause, ms:', False, False,
+    WideString(IntToStr(FPathCopyPauseMs)), [], 0);
+  FDlgRow := 0;
+end;
+
+procedure TFarView.PanelSettingsConfirm;
+var
+  PauseMs: Integer;
+begin
+  if Length(FDlgRows) < 1 then
+    Exit;
+  PauseMs := StrToIntDef(Trim(string(FDlgRows[0].Text)), -1);
+  if (PauseMs < 0) or (PauseMs > FarPathCopyPauseMax) then
+  begin
+    Status(FarProduct + ': пауза - число мс от 0 до ' +
+      IntToStr(FarPathCopyPauseMax));
+    Exit;
+  end;
+  FPathCopyPauseMs := PauseMs;
+  DlgClose;
+  if FIniName <> '' then
+    SaveState(FIniName);
+  if PauseMs = 0 then
+    Status(FarProduct + ': пауза после копирования пути выключена')
+  else
+    Status(FarProduct + ': пауза после копирования пути - ' +
+      IntToStr(PauseMs) + ' мс');
+end;
+
 // F9: меню Options (только оно - решено). Что ещё не сделано - серым
 procedure TFarView.ShowOptionsMenu;
 const
   ItemTexts: array[0..10] of string = ('C&ompare folders', '',
     '&Panel settings', 'Con&firmations', '', '&Themes', '&Colors',
     'Files &highlighting', 'Sche&mes', '', '&Save setup');
-  ItemTags: array[0..10] of Integer = (6, 0, 0, 0, 0, 4, 3, 1, 5, 0, 2);
+  ItemTags: array[0..10] of Integer = (6, 0, 7, 0, 0, 4, 3, 1, 5, 0, 2);
 var
   Items: TFarMenuItems;
   ItemIndex: Integer;
@@ -18913,6 +18969,10 @@ begin
     FFindWhole := Ini.ReadInteger(FarIniSection, 'FindWhole', 0) = 1;
     FFindFolders := Ini.ReadInteger(FarIniSection, 'FindFolders', 1) = 1;
     FFindArea := Ini.ReadInteger(FarIniSection, 'FindArea', 0);
+    FPathCopyPauseMs := Ini.ReadInteger(FarIniSection, 'PathCopyPauseMs',
+      FarPathCopyPauseDefault);
+    if (FPathCopyPauseMs < 0) or (FPathCopyPauseMs > FarPathCopyPauseMax) then
+      FPathCopyPauseMs := FarPathCopyPauseDefault;
     if (FFindArea < 0) or (FFindArea > 2) then
       FFindArea := 0;
     // История командной строки
@@ -19066,6 +19126,7 @@ begin
     Ini.WriteInteger(FarIniSection, 'FindWhole', Ord(FFindWhole));
     Ini.WriteInteger(FarIniSection, 'FindFolders', Ord(FFindFolders));
     Ini.WriteInteger(FarIniSection, 'FindArea', FFindArea);
+    Ini.WriteInteger(FarIniSection, 'PathCopyPauseMs', FPathCopyPauseMs);
     Ini.EraseSection(FarCmdHistorySection);
     Ini.WriteInteger(FarCmdHistorySection, 'Count', Length(FCmdHistory));
     for HistoryIndex := 0 to High(FCmdHistory) do
@@ -19145,6 +19206,8 @@ begin
         Result := FarHelpFiles;
       fdHistClear, fdSelectMask, fdDeselectMask:
         Result := FarHelpPanels;
+      fdPanelSettings:
+        Result := FarHelpOptions;
       fdAttr:
         Result := FarHelpFiles;
     end;
