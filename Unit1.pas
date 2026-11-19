@@ -84535,8 +84535,30 @@ begin
     end;
     LogGit('Git: ' + Dir + ' - уже репозиторий git, git init не нужен');
   end
-  else if GitLongOp(Git, Dir, 'init') <> 0 then
-    Exit;
+  else
+  begin
+    if GitLongOp(Git, Dir, 'init') <> 0 then
+      Exit;
+    // .gitignore и .gitattributes - всегда с LF: смена концов строк
+    // (редактор, окно Repository Settings) не делает их изменёнными
+    if not FileExists(Dir + '.gitattributes') then
+    try
+      with TStringList.Create do
+      try
+        Add('# Line endings of git service files are always LF: a CRLF/LF');
+        Add('# change alone does not make them modified');
+        Add('.gitignore     text eol=lf');
+        Add('.gitattributes text eol=lf');
+        SaveToFile(Dir + '.gitattributes');
+      finally
+        Free;
+      end;
+      LogGit('Git: создан .gitattributes (.gitignore и .gitattributes - LF)');
+    except
+      on E: Exception do
+        LogGit('Git: .gitattributes не создан: ' + E.Message, clRed);
+    end;
+  end;
   GitSetChosenRepo(ExcludeTrailingPathDelimiter(Dir));
   GitPublishNewRepo(Git, Dir, RepoName);
   GitRefreshBar;

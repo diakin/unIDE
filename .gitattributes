@@ -37,3 +37,7 @@
 *.ico  binary
 *.png  binary
 *.chm  binary
+# Line endings of git service files are always LF: a CRLF/LF change alone
+# does not make them modified
+.gitignore     text eol=lf
+.gitattributes text eol=lf

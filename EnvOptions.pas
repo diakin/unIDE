@@ -583,7 +583,9 @@ procedure GitDefaultOptions(var AOpts: TGitOptions);
 begin
   // Как было до вкладки: пробелы учитываются, ключей нет
   AOpts.MergeWs := GitMergeWsNone;
-  AOpts.DiffWs := GitDiffWsNone;
+  // Разница только в LF/CRLF в конце строки не показывается
+  // (2026-11-19); в Options - Git можно вернуть «учитывать всё»
+  AOpts.DiffWs := GitDiffWsEol;
   AOpts.FetchShowNew := True;
 end;
 
