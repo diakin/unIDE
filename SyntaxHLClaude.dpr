@@ -142,6 +142,7 @@ uses
   GitHubApi in 'GitHubApi.pas',
   GitDiffView in 'GitDiffView.pas',
   DlgGitClone in 'DlgGitClone.pas',
+  DlgGitRepoSettings in 'DlgGitRepoSettings.pas',
   UiCaptionTabs in 'UiCaptionTabs.pas',
   DlgFarColors in 'DlgFarColors.pas' {DlgFarColors},
   DlgFarPalette in 'DlgFarPalette.pas',

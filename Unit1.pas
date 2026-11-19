@@ -1060,6 +1060,7 @@ type
     FGitBarButton6: TUiButton;
     FGitBarButton7: TUiButton;
     FGitBarButton8: TUiButton;
+    FGitBarButton9: TUiButton;
     FGitBtnRepo: TUiButton;
     FGitLblRepo: TUiLabel;
     FGitEdPath: TUiEdit;
@@ -1419,6 +1420,8 @@ type
     procedure GitCommitClick(Sender: TObject);
     procedure GitBashClick(Sender: TObject);
     procedure GitRepoSettingsClick(Sender: TObject);
+    procedure GitIgnoreClick(Sender: TObject);
+    procedure GitRepoSettingsShow(ATab: Integer);
     procedure GitDeleteRepoClick(Sender: TObject);
     procedure GitNewBranchClick(Sender: TObject);
     procedure GitSwitchBranchClick(Sender: TObject);
@@ -4965,6 +4968,7 @@ var
     GitDiffView,  // GitDiffTrace - время показа разницы в окне Commit
     DlgGitTracked, // окно Tracked but Ignored (меню Branch, Git status)
     DlgGitClone,  // окно Clone Repository (список GitHub, URL, путь)
+    DlgGitRepoSettings, // окно Repository Settings: remote, .gitignore, config
     GitHubApi,    // GitHubCreateRepo - New Repository на GitHub
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
@@ -82050,7 +82054,9 @@ begin
     // .dfm: GitUnmergedClick);
   // Справка: Tag 0 - раздел о панели (GitHelpClick)
   // .dfm: NewButton('Help', 'Справка: что делают кнопки и строки панели Git, меню ' +
-    // .dfm: 'Repository и Branch (git_ref\help\git.chm)', 778, 50, GitHelpClick);
+    // .dfm: 'Repository и Branch (git_ref\help\git.chm)', 858, 50, GitHelpClick);
+  // .dfm: NewButton('.gitignore...', 'Repository Settings, вкладка Ignored ' +
+    // .dfm: 'files: какие файлы git не отслеживает', 778, 76, GitIgnoreClick);
   // .dfm: FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
     // .dfm: 'недавние, по открытому проекту, Add Local / Clone / New', 4, 92,
     // .dfm: GitRepoBtnClick);
@@ -84344,8 +84350,9 @@ begin
   // .dfm: AddItem(RepoMenu, 'Show in Explorer', 'Папка репозитория в Проводнике',
     // .dfm: GitExplorerClick);
   // .dfm: AddItem(RepoMenu, '-', '', nil);
-  // .dfm: AddItem(RepoMenu, 'Repository Settings...', 'Адрес remote origin ' +
-    // .dfm: '(git remote set-url)', GitRepoSettingsClick);
+  // .dfm: AddItem(RepoMenu, 'Repository Settings...', 'Адрес remote origin, ' +
+    // .dfm: '.gitignore, имя и почта автора коммитов (git config)',
+    // .dfm: GitRepoSettingsClick);
   // .dfm: AddItem(RepoMenu, 'Delete Local Repository...', 'Папку текущего ' +
     // .dfm: 'репозитория - в корзину (на сервере он остаётся)', GitDeleteRepoClick);
   // .dfm: AddItem(RepoMenu, '-', '', nil);
@@ -85243,27 +85250,150 @@ begin
     ShellOpen(Handle, Repo);
 end;
 
-// Адрес remote origin: показать, поменять (set-url) или добавить
+// Repository Settings (как в GitHub Desktop): адрес remote origin,
+// .gitignore, имя и почта автора коммитов. Окно - DlgGitRepoSettings
 procedure TForm1.GitRepoSettingsClick(Sender: TObject);
+begin
+  GitRepoSettingsShow(RepoTabRemote);
+end;
+
+// Кнопка .gitignore... панели Git - то же окно, вкладка Ignored files
+procedure TForm1.GitIgnoreClick(Sender: TObject);
+begin
+  GitRepoSettingsShow(RepoTabIgnore);
+end;
+
+// Окно на вкладке ATab (RepoTab*). После Save применяется только то, что
+// изменилось: origin - remote set-url / remote add; .gitignore - запись
+// файла (переводы строк - как были в файле, новый - LF; у Delphi 7 текст
+// окна в ANSI, файл с UTF-8 пишется снова в UTF-8); имя и почта - git
+// config --local или снятие своих (--unset), тогда действуют общие.
+procedure TForm1.GitRepoSettingsShow(ATab: Integer);
 var
-  Git, Repo, Remote, NewUrl: string;
+  Git, Repo, Remote, NewUrl, IgnorePath, Raw, IgnoreText, NewText: string;
+  GlobalName, GlobalEmail, LocalName, LocalEmail: string;
+  IgnoreExists, IgnoreUtf8, IgnoreCrLf: Boolean;
+  Dlg: TDlgGitRepoSettings;
+  Stream: TFileStream;
+  Output: WideString;
+
+  // git config --local: значение или снять ключ (пустое значение)
+  procedure SetLocal(const AKey, AOld, ANew: string);
+  begin
+    if ANew = AOld then
+      Exit;
+    if ANew = '' then
+      GitRunIn(Git, Repo, 'config --local --unset ' + AKey, True, Output)
+    else
+      GitRunIn(Git, Repo, 'config --local ' + AKey + ' ' +
+        string(GitQuote(WideString(ANew))), True, Output);
+  end;
+
 begin
   if not GitPrepare(Git, Repo) then
     Exit;
   Remote := GitQuery(Git, Repo, 'config --get remote.origin.url');
-  NewUrl := Remote;
-  if not InputQuery('Repository Settings', 'Адрес remote origin (например ' +
-     'https://github.com/владелец/имя.git):', NewUrl) then
-    Exit;
-  NewUrl := Trim(NewUrl);
-  if (NewUrl = '') or (NewUrl = Remote) then
-    Exit;
-  if Remote = '' then
-    GitLongOp(Git, Repo, 'remote add origin ' +
-      string(GitQuote(WideString(NewUrl))))
-  else
-    GitLongOp(Git, Repo, 'remote set-url origin ' +
-      string(GitQuote(WideString(NewUrl))));
+  GlobalName := GitQuery(Git, Repo, 'config --global --get user.name');
+  GlobalEmail := GitQuery(Git, Repo, 'config --global --get user.email');
+  LocalName := GitQuery(Git, Repo, 'config --local --get user.name');
+  LocalEmail := GitQuery(Git, Repo, 'config --local --get user.email');
+
+  IgnorePath := IncludeTrailingPathDelimiter(Repo) + '.gitignore';
+  IgnoreExists := FileExists(IgnorePath);
+  IgnoreUtf8 := True;
+  IgnoreCrLf := False;
+  IgnoreText := '';
+  if IgnoreExists then
+  begin
+    Raw := ReadWholeFile(IgnorePath);
+    IgnoreCrLf := Pos(#13#10, Raw) > 0;
+    IgnoreUtf8 := LooksLikeUtf8(Raw);
+    {$IFDEF FPC}
+    IgnoreText := Raw;
+    {$ELSE}
+    if IgnoreUtf8 then
+      IgnoreText := Utf8ToAnsiFull(Raw)
+    else
+      IgnoreText := Raw;
+    {$ENDIF}
+  end;
+
+  Dlg := TDlgGitRepoSettings.CreateDlg(Self, Repo, ATab, Remote, IgnoreText,
+    IgnoreExists, GlobalName, GlobalEmail, LocalName, LocalEmail);
+  try
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+
+    // .gitignore: сравнение с тем, что окно показало (Lines.Text прибавляет
+    // перевод строки в конце и пишет CRLF)
+    NewText := Dlg.IgnoreText;
+    if NewText <> Dlg.IgnoreShownText then
+    begin
+      if not IgnoreCrLf then
+        NewText := StringReplace(NewText, #13#10, #10, [rfReplaceAll]);
+      {$IFNDEF FPC}
+      if IgnoreUtf8 then
+        NewText := AnsiToUtf8(NewText);
+      {$ENDIF}
+      if IgnoreExists or (Trim(NewText) <> '') then
+      try
+        Stream := TFileStream.Create(IgnorePath, fmCreate);
+        try
+          if NewText <> '' then
+            Stream.WriteBuffer(NewText[1], Length(NewText));
+        finally
+          Stream.Free;
+        end;
+        LogGit('Git: записан ' + IgnorePath);
+      except
+        on E: Exception do
+        begin
+          ShowGitLog;
+          LogGit('Git: .gitignore не записан: ' + E.Message, clRed);
+        end;
+      end;
+    end;
+
+    // Имя и почта автора
+    if Dlg.UseLocalConfig then
+    begin
+      SetLocal('user.name', LocalName, Dlg.UserName);
+      SetLocal('user.email', LocalEmail, Dlg.UserEmail);
+    end
+    else
+    begin
+      SetLocal('user.name', LocalName, '');
+      SetLocal('user.email', LocalEmail, '');
+    end;
+
+    // origin - последним: GitLongOp идёт с журналом и обновляет панель
+    NewUrl := Dlg.RemoteUrl;
+    if (NewUrl <> '') and (NewUrl <> Remote) then
+    begin
+      if Remote = '' then
+        GitLongOp(Git, Repo, 'remote add origin ' +
+          string(GitQuote(WideString(NewUrl))))
+      else
+        GitLongOp(Git, Repo, 'remote set-url origin ' +
+          string(GitQuote(WideString(NewUrl))));
+    end
+    else
+      GitRefreshBar;
+
+    if Dlg.OpenIgnoreInEditor then
+    begin
+      // Файла нет и текст пуст - создать пустой, чтобы открыть
+      if not FileExists(IgnorePath) then
+      try
+        TFileStream.Create(IgnorePath, fmCreate).Free;
+      except
+        // не создался - OpenNamedFile скажет сам
+      end;
+      OpenNamedFile(IgnorePath);
+    end;
+  finally
+    Dlg.Free;
+  end;
 end;
 
 procedure TForm1.GitNewBranchClick(Sender: TObject);

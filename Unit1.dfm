@@ -1031,7 +1031,7 @@ object Form1: TForm1
       end
       object mRepoSettings: TMenuItem
         Caption = 'Repository Settings...'
-        Hint = 'Адрес remote origin (git remote set-url)'
+        Hint = 'Адрес remote origin, .gitignore, имя и почта автора коммитов (git config)'
         OnClick = GitRepoSettingsClick
       end
       object mRepoDelete: TMenuItem
@@ -2006,11 +2006,21 @@ object Form1: TForm1
             Caption = 'Help'
             Hint = 'Справка: что делают кнопки и строки панели Git, меню Repository и Branch (git_ref\help\git.chm)'
             ShowHint = True
-            Left = 778
+            Left = 858
             Top = 1
             Width = 50
             Height = 22
             OnClick = GitHelpClick
+          end
+          object FGitBarButton9: TUiButton
+            Caption = '.gitignore...'
+            Hint = 'Repository Settings, вкладка Ignored files: какие файлы git не отслеживает'
+            ShowHint = True
+            Left = 778
+            Top = 1
+            Width = 76
+            Height = 22
+            OnClick = GitIgnoreClick
           end
           object FGitBtnRepo: TUiButton
             Caption = 'Repository...'
