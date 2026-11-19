@@ -188,6 +188,10 @@ unit UnFar;
 //      физической, виртуальной и файла подкачки), файл описания папки
 //      (DirInfo, File_Id.diz, Descript.ion, ReadMe.*, Read.Me) или
 //      'Folder description file is absent'. Tab - в неё и обратно.
+//    - b.79: после Ctrl+F, Ctrl+[, Ctrl+] и щелчка по пути (приглашение,
+//      заголовок панели) - полный путь в буфере - 1 с не обрабатываются
+//      Ctrl+Ins, Ctrl+C, Shift+Ins, Ctrl+V, Ctrl+X, Shift+Del: Ctrl+Ins
+//      по привычке не заменяет путь в буфере одним именем файла.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -224,7 +228,9 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.78';
+  FarBuild = 'b.79';
+  // После копирования полного пути копипаста не работает столько мс
+  FarPathCopyGuardMs = 1000;
   // Строка о папке под курсором (F3): меньше места под имя - без 'файлов, папок'
   FarMinNameW = 12;
 
@@ -678,6 +684,10 @@ type
     FCmdPos: Integer;
     FCmdHistory: TFarNames;
     FCmdHistPos: Integer;
+    // Когда полный путь попал в буфер (Ctrl+F, Ctrl+[, Ctrl+], щелчок по
+    // пути): GetTickCount; FPathCopyValid - был ли такой момент
+    FPathCopyTick: Cardinal;
+    FPathCopyValid: Boolean;
     // Вывод команд: строки (последняя может быть не закончена -
     // FOutOpen), прокрутка колесом (строк экрана от низа)
     FOutLines: TFarNames;
@@ -896,6 +906,11 @@ type
     function KeyChar(ACode: WPARAM): WideChar;
     // Текст в буфер обмена, в строке состояния - что скопировано
     procedure CopyToClipboard(const AText: WideString);
+    // То же для полного пути: следом на FarPathCopyGuardMs копипаста не
+    // работает (PathCopyGuard)
+    procedure CopyPathToClipboard(const AText: WideString);
+    // True - клавиша копипасты сразу после копирования пути: пропустить
+    function PathCopyGuard(AKey: Word; AShift, ACtrl, AAlt: Boolean): Boolean;
     // Полный путь файла под курсором активной панели ('..' - путь панели;
     // в архиве - путь для показа: архив\папка\имя); пусто - панель пуста
     function CursorFullName: WideString;
@@ -5146,7 +5161,7 @@ begin
   if (Button = mbLeft) and not InDocArea(PosX, PosY) and
      PromptClickAt(PosX, PosY) then
   begin
-    CopyToClipboard(Copy(PromptText, 1, Length(PromptText) - 1));
+    CopyPathToClipboard(Copy(PromptText, 1, Length(PromptText) - 1));
     Invalidate;
     Exit;
   end;
@@ -5190,7 +5205,7 @@ begin
   if (Button = mbLeft) and TitleClickAt(PosX, PosY, PanelIndex) then
   begin
     FActive := PanelIndex;
-    CopyToClipboard(FarStripSlash(FPanels[PanelIndex].DisplayPath));
+    CopyPathToClipboard(FarStripSlash(FPanels[PanelIndex].DisplayPath));
     Invalidate;
     Exit;
   end;
@@ -5632,6 +5647,11 @@ begin
     Status(FarProduct + ': подсчёт размера прерван');
     Exit;
   end;
+
+  // Только что скопирован полный путь (Ctrl+F и т.п.): копипаста 1 с
+  // не работает, чтобы Ctrl+Ins по привычке не заменил путь именем
+  if PathCopyGuard(AKey, AShift, ACtrl, AAlt) then
+    Exit;
 
   // Список адресов FTP: Ctrl+Ins (Ctrl+C) - адреса в буфер обмена,
   // Shift+Ins (Ctrl+V) - адреса из буфера (если там ftp://...; иначе -
@@ -12396,6 +12416,46 @@ begin
     Status(FarProduct + ': буфер обмена занят - не скопировано');
 end;
 
+procedure TFarView.CopyPathToClipboard(const AText: WideString);
+begin
+  CopyToClipboard(AText);
+  FPathCopyTick := GetTickCount;
+  FPathCopyValid := True;
+end;
+
+function TFarView.PathCopyGuard(AKey: Word; AShift, ACtrl,
+  AAlt: Boolean): Boolean;
+var
+  Elapsed: Cardinal;
+  IsClipKey: Boolean;
+begin
+  Result := False;
+  if not FPathCopyValid or AAlt then
+    Exit;
+  // Ctrl+Ins / Ctrl+C - копировать, Shift+Ins / Ctrl+V - вставить,
+  // Ctrl+X / Shift+Del - вырезать (Ctrl+Shift+Ins - тоже)
+  IsClipKey :=
+    (ACtrl and ((AKey = VK_INSERT) or (AKey = Ord('C')) or
+      (AKey = Ord('V')) or (AKey = Ord('X')))) or
+    (AShift and not ACtrl and ((AKey = VK_INSERT) or (AKey = VK_DELETE)));
+  if not IsClipKey then
+    Exit;
+  // Беззнаковая разность - верна и при переходе GetTickCount через 0
+  {$IFOPT Q+}{$DEFINE FarGuardQ}{$Q-}{$ENDIF}
+  {$IFOPT R+}{$DEFINE FarGuardR}{$R-}{$ENDIF}
+  Elapsed := Cardinal(GetTickCount - FPathCopyTick);
+  {$IFDEF FarGuardR}{$R+}{$UNDEF FarGuardR}{$ENDIF}
+  {$IFDEF FarGuardQ}{$Q+}{$UNDEF FarGuardQ}{$ENDIF}
+  if Elapsed >= FarPathCopyGuardMs then
+  begin
+    FPathCopyValid := False;
+    Exit;
+  end;
+  Result := True;
+  Status(FarProduct + ': путь только что скопирован - клавиша пропущена (' +
+    IntToStr(FarPathCopyGuardMs div 1000) + ' с)');
+end;
+
 function TFarView.CursorFullName: WideString;
 var
   Panel: TFarPanel;
@@ -12523,7 +12583,7 @@ begin
           else
             Insertion := FPanels[1].Path;
           CmdInsert(FarQuoteName(Insertion) + ' ');
-          CopyToClipboard(Insertion);
+          CopyPathToClipboard(Insertion);
         end;
       Ord('F'):                       // полный путь файла под курсором
         begin
@@ -12531,7 +12591,7 @@ begin
           if Insertion <> '' then
           begin
             CmdInsert(FarQuoteName(Insertion) + ' ');
-            CopyToClipboard(Insertion);
+            CopyPathToClipboard(Insertion);
           end;
         end;
       VK_INSERT:                      // имя файла под курсором - в буфер
