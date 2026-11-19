@@ -2757,6 +2757,12 @@ type
     FLostAskPending: Boolean;
     FRelocateDeadline: Cardinal;
     FRelocateCut: Boolean;
+    // Поиск потерянных файлов идёт с панелью хода (RelocateBrokenWindows):
+    // окно перерисовывается, Esc - FRelocateStop, поиск прекращается
+    FRelocateBusy: Boolean;
+    FRelocateStop: Boolean;
+    FRelocatePumpTick: Cardinal;
+    FRelocateName: string;       // какой файл ищется - на панель хода
 
     // Контролы диалога горячих папок. Живут только пока он открыт.
     FHfTree: TTreeView;
@@ -3057,6 +3063,7 @@ type
     function  RelocateBrokenWindows: Integer;
     procedure MakeBrokenGlyph;
     function  RelocateFile(const AFile: string): string;
+    procedure RelocatePump(const ADir: string);
     function  ResolveFileName(const AFile: string): string;
     procedure SplitCommonTail(const AOld, ANew: string;
                               var HeadOld, HeadNew: string);
@@ -18346,6 +18353,14 @@ begin
     FRelocateCut := True;
     Exit;
   end;
+  // Окно живёт, Esc - остановить поиск
+  if FRelocateBusy then
+    RelocatePump(ADir);
+  if FRelocateBusy and FRelocateStop then
+  begin
+    FRelocateCut := True;
+    Exit;
+  end;
 
   Base := IncludeTrailingPathDelimiter(ADir);
 
@@ -18478,6 +18493,25 @@ begin
   end;
 end;
 
+// Во время поиска потерянных файлов, не чаще раза в 100 мс: на панели хода
+// - файл и папка, окно перерисовывается (ObjMovePump: мышь и клавиатура
+// отбрасываются, меню и кнопки во время поиска не работают), Esc -
+// остановить поиск (FRelocateStop)
+procedure TForm1.RelocatePump(const ADir: string);
+var
+  TickNow: Cardinal;
+begin
+  TickNow := GetTickCount;
+  if TickNow - FRelocatePumpTick < 100 then
+    Exit;
+  FRelocatePumpTick := TickNow;
+  if Application.Active and (GetAsyncKeyState(VK_ESCAPE) < 0) then
+    FRelocateStop := True;
+  FBusyStage := 'Поиск ' + FRelocateName + ' (Esc - стоп): ' + ADir;
+  BusyTick;
+  ObjMovePump;
+end;
+
 // Полный поиск потерянного файла: сначала рядом с программой, потом в папке
 // уровнем выше, и только в самом конце - по отмеченным горячим папкам.
 //
@@ -18508,6 +18542,7 @@ begin
   FRelocateFromInc := False;
   if AFile = '' then
     Exit;
+  FRelocateName := ExtractFileName(AFile);
 
   // inc RapidQ - сначала в папке Include (RQInc): там старые inc под
   // своими именами, а файлы из inc_sys и incOld переехали туда или
@@ -18556,7 +18591,7 @@ begin
     finally
       FRelocateDeadline := 0;
     end;
-    if FRelocateCut then
+    if FRelocateCut and not FRelocateStop then
       Dbg('8781: ' + ExtractFileName(AFile) + ': поиск в ' + Up +
       ' остановлен по времени (' + IntToStr(RelocateSearchMs) +
       ' мс) - дерево слишком большое. Не найден: ' + AFile, clRed);
@@ -18601,7 +18636,7 @@ begin
     end;
     if Result <> '' then
       Exit;
-    if FRelocateCut and HotTimeLeft then
+    if FRelocateCut and HotTimeLeft and not FRelocateStop then
       Dbg(ExtractFileName(AFile) + ': поиск по горячим папкам остановлен ' +
           'по времени - не найден: ' + AFile + '. Найти можно вручную: ' +
           'Windows - Find lost files...', clRed);
@@ -18787,9 +18822,16 @@ begin
   // файл: потерянных бывают десятки
   FRelocateUpEnd := GetTickCount + 2 * RelocateSearchMs;
   FRelocateHotEnd := GetTickCount + 3 * RelocateHotMs;
+  // Панель хода и Esc (RelocatePump); вызывающий видит FRelocateStop
+  FRelocateStop := False;
+  FRelocateBusy := True;
+  FRelocatePumpTick := 0;
+  BusyBegin('Поиск потерянных файлов (Esc - стоп)');
   try
   for I := 0 to WindowsItemCount - 1 do
   begin
+    if FRelocateStop then
+      Break;
     if (not FWindows[I].Used) or (not FWindows[I].Broken) then
       Continue;
 
@@ -18831,6 +18873,11 @@ begin
   finally
     FRelocateUpEnd := 0;
     FRelocateHotEnd := 0;
+    FRelocateBusy := False;
+    if FRelocateStop then
+      BusyEnd('Поиск остановлен (Esc), найдено ' + IntToStr(Found), False)
+    else
+      BusyEnd('Поиск: найдено ' + IntToStr(Found), Found > 0);
   end;
 
   Result := Found;
@@ -18870,13 +18917,16 @@ begin
 
   if RelocateBrokenWindows > 0 then
     Exit; // нашлись сразу, окно папок не понадобилось
+  // Остановлен по Esc - не продолжать окном папок
+  if FRelocateStop then
+    Exit;
 
   // Папку над программой уже обошли и там пусто - открываем список папок,
   // подставив её же: пользователю останется добавить соседний каталог
   ShowHotFolders(ParentOfExeDir);
 
   Found := RelocateBrokenWindows;
-  if Found = 0 then
+  if (Found = 0) and not FRelocateStop then
     ShowMessage('8081:Потерянные файлы найти не удалось.' + #13#10#13#10 +
     'Добавьте в список папку, внутри которой они лежат,' + #13#10 +
     'и повторите поиск.');
