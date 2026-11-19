@@ -848,6 +848,20 @@ begin
   UpdateRqIncVisible;
 end;
 
+// Значок в рамке TImage: пересоздаётся в размере рамки, чтобы значок без
+// кадра 32x32 (например один кадр 164x164) показывался целиком.
+procedure FitIconToImage(AImage: TImage);
+var
+  ScaledIcon: HICON;
+begin
+  if not (AImage.Picture.Graphic is TIcon) then
+    Exit;
+  ScaledIcon := CopyImage(TIcon(AImage.Picture.Graphic).Handle, IMAGE_ICON,
+                          AImage.Width, AImage.Height, 0);
+  if ScaledIcon <> 0 then
+    AImage.Picture.Icon.Handle := ScaledIcon;
+end;
+
 procedure TDlgNewPrj.SetFbIcon(const AIcon, AProjectDir: string);
 begin
   FFbProjectDir := AProjectDir;
@@ -875,6 +889,7 @@ begin
     Exit;
   try
     imgFbIcon.Picture.LoadFromFile(IconPath);
+    FitIconToImage(imgFbIcon);
   except
     imgFbIcon.Picture := nil;
   end;
@@ -1259,6 +1274,7 @@ begin
     try
       IconStream.Position := 0;
       imgIcon.Picture.Icon.LoadFromStream(IconStream);
+      FitIconToImage(imgIcon);
     except
       // Значок в .res не читается - поле остаётся пустым
       imgIcon.Picture := nil;
@@ -1569,6 +1585,7 @@ begin
       Exit;
     try
       imgIcon.Picture.LoadFromFile(OpenDlg.FileName);
+      FitIconToImage(imgIcon);
     except
       on Err: Exception do
       begin
