@@ -85333,6 +85333,7 @@ var
   Git, Repo, Remote, NewUrl, IgnorePath, Raw, IgnoreText, NewText: string;
   GlobalName, GlobalEmail, LocalName, LocalEmail: string;
   IgnoreExists, IgnoreUtf8, IgnoreCrLf: Boolean;
+  CrLfCount, LfCount, CharIdx: Integer;
   Dlg: TDlgGitRepoSettings;
   Stream: TFileStream;
   Output: WideString;
@@ -85366,7 +85367,20 @@ begin
   if IgnoreExists then
   begin
     Raw := ReadWholeFile(IgnorePath);
-    IgnoreCrLf := Pos(#13#10, Raw) > 0;
+    // Переводы строк - каких в файле больше (бывает смесь: тогда все
+    // строки другого вида при записи сменились бы, и git показал бы весь
+    // файл изменённым)
+    CrLfCount := 0;
+    LfCount := 0;
+    for CharIdx := 1 to Length(Raw) do
+      if Raw[CharIdx] = #10 then
+      begin
+        if (CharIdx > 1) and (Raw[CharIdx - 1] = #13) then
+          Inc(CrLfCount)
+        else
+          Inc(LfCount);
+      end;
+    IgnoreCrLf := CrLfCount > LfCount;
     IgnoreUtf8 := LooksLikeUtf8(Raw);
     {$IFDEF FPC}
     IgnoreText := Raw;
