@@ -4973,6 +4973,7 @@ var
     DsgClassDescW, // запись описания классов по RTTI (шаг 0.8)
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     DelphiUnused, // файлы сборки, которые .dpr не использует (Move Unused Files)
+    DlgUnusedPick, // Move Unused Files: весь список с галками
     DelphiOpts,   // Project options Delphi: номер сборки и версия в .res
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
@@ -19691,13 +19692,15 @@ end;
 // документы - переносятся в
 // <папка .dpr>\unused\<дата_время>\ с теми же подпапками; опустевшие
 // подпапки удаляются. Нужный файл - вернуть вручную; список перенесённого -
-// moved.txt в той же папке
+// moved.txt в той же папке.
+// Перед переносом - окно со всем списком и галками (UnusedFilesDialog):
+// снятые остаются. Без галки по умолчанию - документы и файлы с именем
+// проекта (exe, .exe.manifest, .build.txt, _compile.bat/.log).
 procedure TForm1.MoveUnusedFilesClick(Sender: TObject);
-const
-  PreviewCount = 25;
 var
-  Dpr, DprDir, DestDir, SrcFile, DestFile, Preview, SubDir: string;
-  Unused, Moved, Skipped: TStringList;
+  Dpr, DprDir, DestDir, SrcFile, DestFile, SubDir, DprBase, FileName: string;
+  FileExt: string;
+  Unused, Moved, Skipped, KeepFiles, Picked: TStringList;
   FileIdx: Integer;
 begin
   Dpr := DelphiTargetDpr;
@@ -19725,18 +19728,35 @@ begin
       Exit;
     end;
     Unused.Sort;
-    Preview := '';
-    for FileIdx := 0 to Unused.Count - 1 do
-      if FileIdx < PreviewCount then
-        Preview := Preview + Unused[FileIdx] + #13#10;
-    if Unused.Count > PreviewCount then
-      Preview := Preview + '... и ещё ' + IntToStr(Unused.Count - PreviewCount) +
-        #13#10;
     DestDir := DprDir + 'unused\' + FormatDateTime('yyyymmdd_hhnnss', Now) + '\';
-    if MessageDlg('9703:Файлы, которые не нужны для сборки ' +
-       ExtractFileName(Dpr) + ': ' + IntToStr(Unused.Count) + #13#10#13#10 +
-       Preview + #13#10 + 'Перенести их в ' + DestDir + ' ?',
-       mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    // Без галки по умолчанию: документы и файлы с именем проекта
+    DprBase := AnsiLowerCase(ChangeFileExt(ExtractFileName(Dpr), ''));
+    KeepFiles := TStringList.Create;
+    Picked := TStringList.Create;
+    try
+      for FileIdx := 0 to Unused.Count - 1 do
+      begin
+        FileName := AnsiLowerCase(ExtractFileName(Unused[FileIdx]));
+        FileExt := ExtractFileExt(FileName);
+        if (FileExt = '.doc') or (FileExt = '.docx') or (FileExt = '.pdf') or
+           (FileExt = '.md') or (FileExt = '.rtf') or (FileExt = '.odt') or
+           (FileExt = '.chm') or (FileExt = '.manifest') or
+           (Copy(FileName, 1, Length(DprBase) + 1) = DprBase + '.') or
+           (Copy(FileName, 1, Length(DprBase) + 1) = DprBase + '_') then
+          KeepFiles.Add(Unused[FileIdx]);
+      end;
+      if not UnusedFilesDialog('Move Unused Files - ' + ExtractFileName(Dpr),
+         '9703:Файлы, которые не нужны для сборки ' + ExtractFileName(Dpr) +
+         ': ' + IntToStr(Unused.Count) + '. Отмеченные будут перенесены в ' +
+         DestDir + ', снятые останутся на месте.', Unused, KeepFiles,
+         Picked) then
+        Exit;
+      Unused.Assign(Picked);
+    finally
+      KeepFiles.Free;
+      Picked.Free;
+    end;
+    if Unused.Count = 0 then
       Exit;
 
     for FileIdx := 0 to Unused.Count - 1 do

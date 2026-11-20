@@ -66,6 +66,7 @@ uses
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
   DelphiUnused in 'DelphiUnused.pas',
+  DlgUnusedPick in 'DlgUnusedPick.pas',
   DelphiOpts in 'DelphiOpts.pas',
   ResFile in 'ResFile.pas',
   ClrScheme in 'ClrScheme.pas',
