@@ -1406,6 +1406,7 @@ type
     procedure ModPreviewTick(Sender: TObject);
     procedure GitTimerTick(Sender: TObject);
     procedure GitFetchClick(Sender: TObject);
+    procedure GitAcceptIncomingClick(Sender: TObject);
     procedure GitPullClick(Sender: TObject);
     procedure GitPushClick(Sender: TObject);
     procedure GitHistoryClick(Sender: TObject);
@@ -1554,6 +1555,9 @@ type
     FGitRemoteUrl: string;
     FGitBranchName: string;
     FGitAhead: Integer;
+    // Кнопка Accept PR...: ветки сервера, которые продолжают текущую
+    // (принятые PR); красная, когда Fetch их нашёл
+    FGitBtnAccept: TUiButton;
     // Незакоммиченных изменений по последнему обновлению (-1 - не известно);
     // кнопка Commit... - красная, когда они есть
     FGitChanges: Integer;
@@ -3776,6 +3780,11 @@ type
     procedure GitRemoteRefs(const AGit, ARepo: string; AList: TStringList);
     procedure GitShowFetched(const AGit, ARepo: string;
       ABefore, AAfter: TStringList);
+    // Ветки сервера с коммитами для текущей ветки (PR): строки
+    // 'origin/ветка=описание', см. GitFindIncoming
+    function  GitFindIncoming(const AGit, ARepo, ACurrent: string;
+      AList: TStringList): Integer;
+    procedure GitLogIncoming(const AGit, ARepo: string);
     function  GitOfferLocalChanges(const AGit, ARepo, AArgs: string;
                          const AOutput: WideString; AResult: Integer): Integer;
     function  GitExplain(const AArgs: string; const AOutput: WideString;
@@ -82158,6 +82167,13 @@ begin
   // Справка: Tag 0 - раздел о панели (GitHelpClick)
   // .dfm: NewButton('Help', 'Справка: что делают кнопки и строки панели Git, меню ' +
     // .dfm: 'Repository и Branch (git_ref\help\git.chm)', 858, 50, GitHelpClick);
+  // Принять PR одной кнопкой: ветка сервера, которая продолжает текущую,
+  // вливается в неё (перемотка или слияние) и текущая отправляется на
+  // сервер. Строится кодом, не в .dfm
+  FGitBtnAccept := NewButton('Accept PR...', 'Принять ветку с сервера, ' +
+    'которая продолжает текущую (pull request): влить в текущую ветку и ' +
+    'отправить её на сервер (git merge + git push). Красная - Fetch нашёл ' +
+    'такие ветки (список - в Git log)', 912, 88, GitAcceptIncomingClick);
   // .dfm: NewButton('.gitignore...', 'Repository Settings, вкладка Ignored ' +
     // .dfm: 'files: какие файлы git не отслеживает', 778, 76, GitIgnoreClick);
   // .dfm: FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
@@ -83832,7 +83848,9 @@ begin
   // и после - что пришло, показать окном
   if not GitOpts.FetchShowNew then
   begin
-    GitLongOp(Git, Repo, 'fetch --all --prune');
+    // Вторая проверка после Fetch: ветки с коммитами для текущей (PR)
+    if GitLongOp(Git, Repo, 'fetch --all --prune') = 0 then
+      GitLogIncoming(Git, Repo);
     Exit;
   end;
   RefsBefore := TStringList.Create;
@@ -83842,6 +83860,7 @@ begin
     if GitLongOp(Git, Repo, 'fetch --all --prune') <> 0 then
       Exit;
     GitRemoteRefs(Git, Repo, RefsAfter);
+    GitLogIncoming(Git, Repo);
     GitShowFetched(Git, Repo, RefsBefore, RefsAfter);
   finally
     RefsBefore.Free;
@@ -83953,6 +83972,207 @@ begin
   finally
     Ranges.Free;
   end;
+end;
+
+// Ветки сервера, в которых есть коммиты для текущей ветки ACurrent, - то,
+// что приходит pull request'ами (ветка от mainTest с правками). Своя
+// ветка сервера (origin/<текущая>) не берётся - её забирает Pull.
+//   - текущая ветка целиком входит в ветку сервера - перемотка;
+//   - не входит (ветка от более старого коммита) - слияние, но только если
+//     последний коммит ветки новее последнего коммита текущей: иначе в
+//     списке были бы все старые невлитые ветки.
+// Строки AList: 'origin/ветка=+N, перемотка: заголовок коммита'.
+// Результат - число веток.
+function TForm1.GitFindIncoming(const AGit, ARepo, ACurrent: string;
+  AList: TStringList): Integer;
+var
+  Refs: TStringList;
+  Output: WideString;
+  RefIdx, AheadCount: Integer;
+  RefName, QuotedRef, Upstream, HeadTime, RefTime, HowText, Subject: string;
+  FastForward: Boolean;
+begin
+  AList.Clear;
+  Result := 0;
+  if ACurrent = '' then
+    Exit;
+  Upstream := GitQuery(AGit, ARepo, 'rev-parse --abbrev-ref @{u}');
+  HeadTime := GitQuery(AGit, ARepo, 'log -1 --format=%ct HEAD');
+  Refs := TStringList.Create;
+  try
+    GitRemoteRefs(AGit, ARepo, Refs);
+    for RefIdx := 0 to Refs.Count - 1 do
+    begin
+      RefName := Refs.Names[RefIdx];
+      if (RefName = Upstream) or (RefName = 'origin/' + ACurrent) then
+        Continue;
+      QuotedRef := string(GitQuote(WideString(RefName)));
+      AheadCount := StrToIntDef(GitQuery(AGit, ARepo,
+        'rev-list --count HEAD..' + QuotedRef), 0);
+      if AheadCount <= 0 then
+        Continue;
+      FastForward := GitRunIn(AGit, ARepo, 'merge-base --is-ancestor HEAD ' +
+        QuotedRef, False, Output) = 0;
+      if not FastForward then
+      begin
+        RefTime := GitQuery(AGit, ARepo, 'log -1 --format=%ct ' + QuotedRef);
+        if StrToInt64Def(RefTime, 0) <= StrToInt64Def(HeadTime, 0) then
+          Continue;
+      end;
+      if FastForward then
+        HowText := 'перемотка'
+      else
+        HowText := 'слияние';
+      Subject := GitQuery(AGit, ARepo, 'log -1 --format=%s ' + QuotedRef);
+      AList.Add(RefName + '=+' + IntToStr(AheadCount) + ', ' + HowText +
+        ': ' + Subject);
+    end;
+  finally
+    Refs.Free;
+  end;
+  Result := AList.Count;
+end;
+
+// После Fetch: ветки для текущей - в Git log, кнопка Accept PR... красная
+procedure TForm1.GitLogIncoming(const AGit, ARepo: string);
+var
+  Incoming: TStringList;
+  Current: string;
+  LineIdx: Integer;
+begin
+  Current := GitCurrentBranch(AGit, ARepo);
+  if Current = '' then
+    Exit;
+  Incoming := TStringList.Create;
+  try
+    GitFindIncoming(AGit, ARepo, Current, Incoming);
+    if FGitBtnAccept <> nil then
+    begin
+      if Incoming.Count > 0 then
+        FGitBtnAccept.TextColor := clRed
+      else
+        FGitBtnAccept.TextColor := clNone;
+    end;
+    if Incoming.Count = 0 then
+    begin
+      LogGit('Ветки для ' + Current + ' на сервере (PR): нет');
+      Exit;
+    end;
+    LogGit('Ветки для ' + Current + ' на сервере (PR) - принять: Accept PR...');
+    for LineIdx := 0 to Incoming.Count - 1 do
+      LogGit('  ' + Incoming.Names[LineIdx] + '  (' +
+        Incoming.ValueFromIndex[LineIdx] + ')');
+  finally
+    Incoming.Free;
+  end;
+end;
+
+// Accept PR...: ветка сервера, которая продолжает текущую (GitFindIncoming),
+// вливается в текущую - перемоткой (merge --ff-only) или слиянием - и
+// текущая ветка отправляется на сервер. Одна ветка - только вопрос,
+// несколько - выбор из списка.
+procedure TForm1.GitAcceptIncomingClick(Sender: TObject);
+var
+  Git, Repo, Current, Chosen, Status, QuotedRef, Info: string;
+  Incoming, Choices: TStringList;
+  Output: WideString;
+  LineIdx, Found: Integer;
+  FastForward: Boolean;
+begin
+  if not GitPrepare(Git, Repo) then
+    Exit;
+  Current := GitCurrentBranch(Git, Repo);
+  if Current = '' then
+  begin
+    ShowGitLog;
+    LogGit('Git: HEAD отсоединён - сначала перейдите на ветку, в которую ' +
+            'принимать');
+    Exit;
+  end;
+  // Незакоммиченные изменения мешают слиянию
+  Status := '';
+  if GitRunIn(Git, Repo, 'status --porcelain --untracked-files=no', False,
+     Output) = 0 then
+    Status := Trim(string(GitTrimOut(Output)));
+  if Status <> '' then
+  begin
+    ShowMessage('В ' + Current + ' есть незакоммиченные изменения.'#13#10 +
+      'Сначала Commit... (или Stash), затем Accept PR.');
+    Exit;
+  end;
+  if GitLongOp(Git, Repo, 'fetch --all --prune') <> 0 then
+    Exit;
+
+  Incoming := TStringList.Create;
+  Choices := TStringList.Create;
+  try
+    GitFindIncoming(Git, Repo, Current, Incoming);
+    if Incoming.Count = 0 then
+    begin
+      if FGitBtnAccept <> nil then
+        FGitBtnAccept.TextColor := clNone;
+      LogGit('Ветки для ' + Current + ' на сервере (PR): нет');
+      ShowMessage('На сервере нет веток с новыми коммитами для ' + Current +
+        '.');
+      Exit;
+    end;
+    if Incoming.Count = 1 then
+    begin
+      Chosen := Incoming.Names[0];
+      if MessageDlg('Принять ' + Chosen + ' в ' + Current + '?'#13#10 +
+         Incoming.ValueFromIndex[0] + #13#10#13#10 +
+         'После этого ' + Current + ' будет отправлена на сервер (git push).',
+         mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+        Exit;
+    end
+    else
+    begin
+      for LineIdx := 0 to Incoming.Count - 1 do
+        Choices.Add(Incoming.Names[LineIdx] + '  (' +
+          Incoming.ValueFromIndex[LineIdx] + ')');
+      Chosen := ChooseFromList('Accept PR', 'Принять в ' + Current +
+        ' и отправить на сервер:', Choices);
+      if Chosen = '' then
+        Exit;
+      Found := Choices.IndexOf(Chosen);
+      if Found < 0 then
+        Exit;
+      Chosen := Incoming.Names[Found];
+    end;
+    Info := Incoming.Values[Chosen];
+  finally
+    Choices.Free;
+    Incoming.Free;
+  end;
+
+  QuotedRef := string(GitQuote(WideString(Chosen)));
+  FastForward := GitRunIn(Git, Repo, 'merge-base --is-ancestor HEAD ' +
+    QuotedRef, False, Output) = 0;
+  if FastForward then
+  begin
+    if GitLongOp(Git, Repo, 'merge --ff-only ' + QuotedRef) <> 0 then
+      Exit;
+  end
+  else if GitLongOp(Git, Repo, 'merge ' + GitMergeWsArg + '--no-edit ' +
+          QuotedRef) <> 0 then
+  begin
+    LogGit('Git: ' + Chosen + ' не влита в ' + Current + ' (конфликты?) - ' +
+            'на сервер ничего не отправлено');
+    Exit;
+  end;
+  if GitQuery(Git, Repo, 'rev-parse --abbrev-ref @{u}') <> '' then
+  begin
+    if GitLongOp(Git, Repo, 'push') <> 0 then
+      Exit;
+  end
+  else if GitLongOp(Git, Repo, 'push -u origin ' +
+          string(GitQuote(WideString(Current)))) <> 0 then
+    Exit;
+  if FGitBtnAccept <> nil then
+    FGitBtnAccept.TextColor := clNone;
+  LogGit('Git: ' + Chosen + ' принята в ' + Current + ' (' + Info +
+          '), ' + Current + ' отправлена на сервер');
+  GitRefreshBar;
 end;
 
 // Pull - слиянием (как GitHub Desktop по умолчанию), без окна редактора
