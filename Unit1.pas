@@ -13878,6 +13878,11 @@ end;
 // существующего") - единственный случай, когда файлы проекта меняются:
 // главный .dpr и его спутники получают имя проекта (RenameDelphiMainFiles),
 // Target и открытые вкладки переводятся на новый .dpr.
+//
+// Строка "Цель сборки" - главный файл проекта (Target) явно, с выбором
+// файла. Записанной цели нет на диске - в строке найденная
+// (ProjectTargetFind), под строкой - что было записано. По этой строке
+// показывается вкладка Project options и флажок переименования .dpr.
 procedure TForm1.ProjectPropsClick(Sender: TObject);
 var
   Dlg: TDlgNewPrj;
@@ -13891,6 +13896,8 @@ var
   DirChanged, OptionsChanged, CanRenameDpr, RenameDpr, DprRenamed: Boolean;
   RosCfg: TRosSettings;
   RenamedDpr, OldDprPath: string;
+  StoredTarget, ShownTarget, TargetNote: string;
+  TargetChanged, TargetEdited: Boolean;
 begin
   DprRenamed := False;
   if FCurrentProject = '' then
@@ -13915,6 +13922,22 @@ begin
   OldDir := ProjectDir(OldName);
   OldType := ProjectTypeOf(OldName);
   OldTarget := ProjectTargetOf(OldName);
+  StoredTarget := OldTarget;
+  // В строке цели - файл, который есть на диске: записанный или найденный
+  // вместо него
+  ShownTarget := ProjectTargetFind(OldName);
+  TargetNote := '';
+  if ShownTarget = '' then
+    ShownTarget := StoredTarget
+  else if CompareText(ShownTarget, StoredTarget) <> 0 then
+  begin
+    if StoredTarget = '' then
+      TargetNote := 'Цель не была записана - предложен найденный файл, ' +
+                    'OK запишет его'
+    else
+      TargetNote := 'Записано: ' + StoredTarget + ' - файла нет, предложен ' +
+                    'найденный, OK запишет его';
+  end;
 
   Dlg := TDlgNewPrj.Create(Self);
   try
@@ -13963,15 +13986,9 @@ begin
       Dlg.SetRosSettings(RosCfg);
     end;
 
-    // Проект Delphi с главным .dpr - вкладка Project options
-    if (CompareText(OldType, 'Delphi') = 0) and
-       (CompareText(ExtractFileExt(OldTarget), '.dpr') = 0) and
-       FileExists(OldTarget) then
-      Dlg.LoadDelphiOptions(OldTarget)
-    else if CompareText(OldType, 'Delphi') = 0 then
-      LogRaw('Project Properties: вкладки Project options нет - не задан ' +
-      'главный .dpr проекта (Target). Откройте .dpr и соберите ' +
-      'проект - он запомнится как цель.');
+    // Цель сборки явно; у проекта Delphi с .dpr на диске по ней же
+    // открывается вкладка Project options и флажок переименования
+    Dlg.ShowTarget(ShownTarget, OldDir, TargetNote);
 
       // Кнопка "..." закрывает окно с mrRetry (как в New Project): папка
       // выбирается, и окно показывается снова
@@ -13991,6 +14008,14 @@ begin
     NewName := Trim(Dlg.edName.Text);
     NewDir := Trim(Dlg.edDir.Text);
     NewType := Dlg.cbType.Text;
+    // Цель из строки окна - дальше она главный файл проекта (переименование
+    // .dpr, перенос в новую папку, запись Target)
+    OldTarget := Dlg.TargetFile;
+    TargetEdited := CompareText(OldTarget, ShownTarget) <> 0;
+    TargetChanged := CompareText(OldTarget, StoredTarget) <> 0;
+    CanRenameDpr := (CompareText(OldType, 'Delphi') = 0) and
+      (CompareText(ExtractFileExt(OldTarget), '.dpr') = 0) and
+      FileExists(OldTarget);
     // Только при том же типе: иначе дальше может понадобиться выбор
     // другого главного файла, и отказ от него оставил бы переименование
     // без записи в editor.ini
@@ -14119,7 +14144,7 @@ begin
     // Имя, папка и тип не поменялись - писать в editor.ini нечего. Если
     // .dpr переписан (Title, формы), открытые вкладки перечитываются.
     if (NewName = OldName) and not DirChanged and not DprRenamed and
-       (CompareText(NewType, OldType) = 0) then
+       not TargetChanged and (CompareText(NewType, OldType) = 0) then
     begin
       if OptionsChanged then
         LoadProject(OldName);
@@ -14130,8 +14155,9 @@ begin
 
     // Главный файл: в новой папке, если в неё перенесли проект; другой,
     // если прежний новому типу не подходит
+    // Цель, выбранную в окне, не переводим: её указали явно
     NewTarget := OldTarget;
-    if DirChanged and (OldTarget <> '') and
+    if DirChanged and not TargetEdited and (OldTarget <> '') and
        AnsiStartsText(OldDir, OldTarget) then
       NewTarget := NewDir + Copy(OldTarget, Length(OldDir) + 1, MaxInt);
     if (CompareText(NewType, OldType) <> 0) and
@@ -14210,7 +14236,12 @@ begin
     Prj.WriteString('Project', 'Type', NewType);
     FUtilsPrjDone := False; // тип сменился - меню Utils заново
     if NewTarget <> '' then
-      Prj.WriteString('Project', 'Target', PrjTargetToStore(NewDir, NewTarget));
+      Prj.WriteString('Project', 'Target', PrjTargetToStore(NewDir, NewTarget))
+    else if StoredTarget <> '' then
+      // Строку очистили - цель запомнится при следующей сборке
+      Prj.DeleteKey('Project', 'Target');
+    if TargetChanged then
+      LogRaw('Project Properties: цель сборки ' + NewTarget);
   finally
     Keys.Free;
     Prj.Free;
@@ -64237,12 +64268,24 @@ begin
       Exit;
   end;
 
-  // У проекта Delphi цели ещё нет - запоминается собранный .dpr
-  if (BuildPrj <> '') and (ProjectBuildKind(BuildPrj) = bkDelphi) and
-     (ProjectTargetOf(BuildPrj) = '') then
+  // У проекта Delphi цели ещё нет - запоминается собранный .dpr. Записанной
+  // цели нет на диске (.dpr переименовали) - тоже, если собранный лежит в
+  // папке проекта
+  if (BuildPrj <> '') and (ProjectBuildKind(BuildPrj) = bkDelphi) then
   begin
-    SetProjectTarget(BuildPrj, Dpr);
-    LogComp('Цель сборки проекта: ' + Dpr);
+    if ProjectTargetOf(BuildPrj) = '' then
+    begin
+      SetProjectTarget(BuildPrj, Dpr);
+      LogComp('Цель сборки проекта: ' + Dpr);
+    end
+    else if not FileExists(ProjectTargetOf(BuildPrj)) and
+            (CompareText(ExtractFilePath(ExpandFileName(Dpr)),
+                         ProjectDir(BuildPrj)) = 0) then
+    begin
+      LogComp('Цель сборки проекта: записанной нет на диске (' +
+              ProjectTargetOf(BuildPrj) + '), записан ' + Dpr);
+      SetProjectTarget(BuildPrj, Dpr);
+    end;
   end;
 
   // Полный путь: дальше от него считаются папки exe и .dcu

@@ -26,6 +26,12 @@ unit DlgNewPrj;
 // размера. Где что хранится - см. DelphiOpts: .dof, .dpr и .res проекта.
 // Записывает настройки SaveDelphiOptions - его вызывает Unit1 после OK.
 //
+// Цель сборки (только Project Properties, ShowTarget): строка под типом -
+// главный файл проекта (Target в [Project.<имя>]) с кнопкой выбора. Для
+// проекта Delphi по ней же открывается вкладка Project options: .dpr есть
+// на диске - вкладка видна, нет - скрыта. Строится кодом
+// (BuildTargetControls); записывает TForm1.ProjectPropsClick.
+//
 // Новый проект RapidQ (только New Project, ShowRqKind): справа от типа -
 // список "Вид" (Application, Console Application, CGI Application) и
 // компилятор (rc.exe, FB Smart / FB Compat 32 или 64 бит). Списки строятся
@@ -282,6 +288,14 @@ type
     cbRqKind: TUiComboBox;
     cbRqComp: TUiComboBox;
     FRqKindShown: Boolean;      // списки нужны (New Project, ShowRqKind)
+    // Цель сборки (Project Properties, ShowTarget; BuildTargetControls)
+    lblTarget: TLabel;
+    edTarget: TUiEdit;
+    btnTarget: TUiButton;
+    lblTargetNote: TLabel;
+    FTargetShown: Boolean;      // строка цели видна
+    FTargetDir: string;         // папка проекта - от неё относительный путь
+    FTargetNote: string;        // пояснение от Unit1 (цель взята не записанная)
     FDpr: string;               // .dpr проекта; '' - вкладки Delphi нет
     FDof: TMemIniFile;          // <проект>.dof в памяти
     FDofBefore: string;         // текст .dof после загрузки - для сравнения
@@ -308,6 +322,10 @@ type
     procedure BuildRosControls;
     procedure BuildLazControls;
     procedure BuildRqKindControls;
+    procedure BuildTargetControls;
+    procedure edTargetChange(Sender: TObject);
+    procedure btnTargetClick(Sender: TObject);
+    procedure UpdateTargetState;
     function RosSourceDir: string;
     procedure cbRosBuildDirDropDown(Sender: TObject);
     procedure btnRosBuildDirClick(Sender: TObject);
@@ -379,6 +397,13 @@ type
     // Записать .dof, .dpr и .res. AChanged - было ли что записано. Что
     // сделано и ошибки - строками в ALog.
     function SaveDelphiOptions(ALog: TStrings; out AChanged: Boolean): Boolean;
+    // Project Properties: строка "Цель сборки" с файлом ATarget (полный
+    // путь, может быть пустым). AProjectDir - папка проекта: от неё
+    // считается путь, набранный без диска. ANote - пояснение под строкой.
+    // Для проекта Delphi с .dpr на диске сразу открывает Project options.
+    procedure ShowTarget(const ATarget, AProjectDir, ANote: string);
+    // Цель из строки полным путём; '' - не задана
+    function TargetFile: string;
     property DelphiDpr: string read FDpr;
   end;
 
@@ -395,6 +420,10 @@ const
   CompactFbClientHeight = 306;
   CompactLazClientHeight = 376;
   FullClientHeight = 560;
+  // Строка цели сборки (Project Properties): поле под типом и пояснение
+  // под ним; рамки RapidQ, FreeBASIC, ReactOS, Lazarus ниже на столько же
+  TargetRowTop = 136;
+  TargetRowShift = 52;
   // Design-пакеты Delphi 7
   KnownPackagesKey = 'Software\Borland\Delphi\7.0\Known Packages';
 
@@ -419,6 +448,7 @@ begin
   BuildRosControls;
   BuildLazControls;
   BuildRqKindControls;
+  BuildTargetControls;
   SetOptionsVisible(False);
 end;
 
@@ -465,6 +495,8 @@ begin
     ClientHeight := CompactLazClientHeight
   else
     ClientHeight := CompactClientHeight;
+  if FTargetShown and not tsOptions.TabVisible then
+    ClientHeight := ClientHeight + TargetRowShift;
 end;
 
 function TDlgNewPrj.IsRosType: Boolean;
@@ -846,6 +878,184 @@ end;
 procedure TDlgNewPrj.cbTypeChange(Sender: TObject);
 begin
   UpdateRqIncVisible;
+  // Project options - только у проекта Delphi
+  if FTargetShown then
+    UpdateTargetState;
+end;
+
+// ---------------------------------------------------------------------------
+//  Цель сборки (Project Properties)
+// ---------------------------------------------------------------------------
+
+procedure TDlgNewPrj.BuildTargetControls;
+begin
+  if edTarget <> nil then
+    Exit;
+  lblTarget := TLabel.Create(Self);
+  lblTarget.Parent := tsProject;
+  lblTarget.SetBounds(lblType.Left, TargetRowTop + 4, 96, 13);
+  lblTarget.Caption := 'Цель сборки';
+  lblTarget.Visible := False;
+
+  edTarget := TUiEdit.Create(Self);
+  edTarget.Parent := tsProject;
+  edTarget.SetBounds(edDir.Left, TargetRowTop, edDir.Width, edDir.Height);
+  edTarget.Hint := 'Главный файл проекта (для Delphi - .dpr): его собирает ' +
+                   'Build по описанию проекта, по нему открывается ' +
+                   'вкладка Project options. Без диска - от папки проекта';
+  edTarget.ShowHint := True;
+  edTarget.Visible := False;
+  edTarget.OnChange := edTargetChange;
+  edTarget.TabOrder := cbRqComp.TabOrder + 1;
+
+  btnTarget := TUiButton.Create(Self);
+  btnTarget.Parent := tsProject;
+  btnTarget.SetBounds(btnBrowse.Left, TargetRowTop - 1, btnBrowse.Width,
+                      btnBrowse.Height);
+  btnTarget.Caption := '...';
+  btnTarget.Hint := 'Выбрать главный файл проекта';
+  btnTarget.ShowHint := True;
+  btnTarget.Visible := False;
+  btnTarget.OnClick := btnTargetClick;
+  btnTarget.TabOrder := edTarget.TabOrder + 1;
+
+  lblTargetNote := TLabel.Create(Self);
+  lblTargetNote.Parent := tsProject;
+  lblTargetNote.AutoSize := False;
+  lblTargetNote.SetBounds(edDir.Left, TargetRowTop + 28,
+                          btnBrowse.Left + btnBrowse.Width - edDir.Left, 13);
+  lblTargetNote.Caption := '';
+  lblTargetNote.Visible := False;
+end;
+
+procedure TDlgNewPrj.ShowTarget(const ATarget, AProjectDir, ANote: string);
+begin
+  if not FTargetShown then
+  begin
+    FTargetShown := True;
+    lblTarget.Visible := True;
+    edTarget.Visible := True;
+    btnTarget.Visible := True;
+    lblTargetNote.Visible := True;
+    // Рамки под типом - ниже строки цели
+    grpRqInc.Top := grpRqInc.Top + TargetRowShift;
+    grpFbRes.Top := grpFbRes.Top + TargetRowShift;
+    if grpRos <> nil then
+      grpRos.Top := grpRos.Top + TargetRowShift;
+    if grpLaz <> nil then
+      grpLaz.Top := grpLaz.Top + TargetRowShift;
+  end;
+  if AProjectDir <> '' then
+    FTargetDir := IncludeTrailingPathDelimiter(AProjectDir)
+  else
+    FTargetDir := '';
+  // OnChange (edTargetChange) сбрасывает пояснение - текст ставится до него
+  edTarget.OnChange := nil;
+  try
+    edTarget.Text := ATarget;
+  finally
+    edTarget.OnChange := edTargetChange;
+  end;
+  FTargetNote := ANote;
+  UpdateTargetState;
+  UpdateRqIncVisible;
+end;
+
+function TDlgNewPrj.TargetFile: string;
+begin
+  Result := '';
+  if edTarget = nil then
+    Exit;
+  Result := Trim(edTarget.Text);
+  if Result = '' then
+    Exit;
+  // Без диска и не сетевой - от папки проекта
+  if (ExtractFileDrive(Result) = '') and (FTargetDir <> '') then
+  begin
+    if Result[1] = '\' then
+      Result := FTargetDir + Copy(Result, 2, MaxInt)
+    else
+      Result := FTargetDir + Result;
+  end;
+end;
+
+procedure TDlgNewPrj.edTargetChange(Sender: TObject);
+begin
+  // Пояснение от Unit1 относится к исходному тексту строки
+  FTargetNote := '';
+  UpdateTargetState;
+end;
+
+// Пояснение под строкой цели; для проекта Delphi - вкладка Project options
+// по выбранному .dpr и флажок переименования (он тоже про этот .dpr)
+procedure TDlgNewPrj.UpdateTargetState;
+var
+  TargetPath: string;
+  IsDelphi, IsDelphiDpr: Boolean;
+begin
+  if not FTargetShown then
+    Exit;
+  TargetPath := TargetFile;
+  IsDelphi := CompareText(cbType.Text, 'Delphi') = 0;
+  IsDelphiDpr := IsDelphi and (TargetPath <> '') and
+    (CompareText(ExtractFileExt(TargetPath), '.dpr') = 0) and
+    FileExists(TargetPath);
+
+  if TargetPath = '' then
+    lblTargetNote.Caption := 'Не задана: при первой сборке запомнится ' +
+                             'собранный главный файл'
+  else if not FileExists(TargetPath) then
+    lblTargetNote.Caption := 'Файла нет на диске'
+  else if IsDelphi and not IsDelphiDpr then
+    lblTargetNote.Caption := 'Для проекта Delphi нужен .dpr - вкладки ' +
+                             'Project options нет'
+  else
+    lblTargetNote.Caption := FTargetNote;
+
+  if IsDelphiDpr then
+  begin
+    if CompareText(TargetPath, FDpr) <> 0 then
+      LoadDelphiOptions(TargetPath);
+  end
+  else if FDpr <> '' then
+  begin
+    FDpr := '';
+    FreeAndNil(FDof);
+    SetOptionsVisible(False);
+  end;
+
+  // Переименование .dpr по имени проекта - только когда .dpr есть
+  chkBase.Visible := IsDelphiDpr;
+  if not IsDelphiDpr then
+    chkBase.Checked := False;
+end;
+
+procedure TDlgNewPrj.btnTargetClick(Sender: TObject);
+var
+  OpenDlg: TOpenDialog;
+  StartPath: string;
+begin
+  OpenDlg := TOpenDialog.Create(Self);
+  try
+    if CompareText(cbType.Text, 'Delphi') = 0 then
+      OpenDlg.Filter := 'Delphi project (*.dpr)|*.dpr|Все файлы (*.*)|*.*'
+    else
+      OpenDlg.Filter := 'Все файлы (*.*)|*.*';
+    OpenDlg.Options := OpenDlg.Options + [ofFileMustExist];
+    StartPath := TargetFile;
+    if (StartPath <> '') and DirectoryExists(ExtractFilePath(StartPath)) then
+    begin
+      OpenDlg.InitialDir := ExtractFilePath(StartPath);
+      OpenDlg.FileName := ExtractFileName(StartPath);
+    end
+    else if FTargetDir <> '' then
+      OpenDlg.InitialDir := FTargetDir;
+    if not OpenDlg.Execute then
+      Exit;
+    edTarget.Text := OpenDlg.FileName;
+  finally
+    OpenDlg.Free;
+  end;
 end;
 
 // Значок в рамке TImage: пересоздаётся в размере рамки, чтобы значок без
