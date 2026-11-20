@@ -3163,6 +3163,7 @@ type
     function  CompilerSection(const AType: string): string;
     procedure SetProjectTarget(const AName, ATarget: string);
     function  WriteEmptyRes(const AFileName: string): Boolean;
+    function  EnsureDprRes(const ADpr, AOldPrgName: string): Boolean;
     procedure NewPrjNameChange(Sender: TObject);
     function  PickFolderDialog(const ACaption, AStart: string;
                                var ADir: string): Boolean;
@@ -14300,6 +14301,101 @@ begin
   except
     // Причина не важна: занят, нет прав, нет места - сообщение об этом
     // выводит вызывающая сторона
+  end;
+end;
+
+// Перед сборкой Delphi: в .dpr есть {$R *.res}, а <имя>.res нет (обычно
+// после переименования .dpr) - dcc32 остановится на "File not found:
+// '<имя>.RES'". Как среда Delphi, предлагаем создать файл: копией .res
+// прежнего имени (строка program до исправления) или единственного .res
+// в папке без своего .dpr - в нём значок и версия; иначе пустой.
+// False - пользователь отказался, сборку не запускать.
+function TForm1.EnsureDprRes(const ADpr, AOldPrgName: string): Boolean;
+var
+  ResPath, DprDir, SourceRes, Candidate, Question: string;
+  DprText: TStringList;
+  FoundRec: TSearchRec;
+  OrphanCount: Integer;
+  Created: Boolean;
+begin
+  Result := True;
+  ResPath := ChangeFileExt(ADpr, '.res');
+  if FileExists(ResPath) then
+    Exit;
+
+  DprText := TStringList.Create;
+  try
+    try
+      DprText.LoadFromFile(ADpr);
+    except
+      Exit;
+    end;
+    if Pos('{$R *.RES}', UpperCase(DprText.Text)) = 0 then
+      Exit;
+  finally
+    DprText.Free;
+  end;
+
+  DprDir := ExtractFilePath(ADpr);
+  SourceRes := '';
+  if (AOldPrgName <> '') and FileExists(DprDir + AOldPrgName + '.res') then
+    SourceRes := DprDir + AOldPrgName + '.res'
+  else
+  begin
+    OrphanCount := 0;
+    if FindFirst(DprDir + '*.res', faAnyFile and not faDirectory,
+                 FoundRec) = 0 then
+    try
+      repeat
+        Candidate := DprDir + FoundRec.Name;
+        if not FileExists(ChangeFileExt(Candidate, '.dpr')) and
+           not FileExists(ChangeFileExt(Candidate, '.dpk')) then
+        begin
+          Inc(OrphanCount);
+          SourceRes := Candidate;
+        end;
+      until FindNext(FoundRec) <> 0;
+    finally
+      FindClose(FoundRec);
+    end;
+    if OrphanCount <> 1 then
+      SourceRes := '';
+  end;
+
+  if SourceRes <> '' then
+    Question := 'Файла ресурсов ' + ExtractFileName(ResPath) + ' нет, а в ' +
+      ExtractFileName(ADpr) + ' есть {$R *.res}.'#13#10#13#10 +
+      'Создать его копией ' + ExtractFileName(SourceRes) +
+      ' (значок и версия из него)?'
+  else
+    Question := 'Файла ресурсов ' + ExtractFileName(ResPath) + ' нет, а в ' +
+      ExtractFileName(ADpr) + ' есть {$R *.res}.'#13#10#13#10 +
+      'Создать пустой ' + ExtractFileName(ResPath) + '? Значок потом ' +
+      'задаётся в Project Properties - Application - Load Icon.';
+  if MessageDlg('7442:' + Question, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  begin
+    LogComp('Компиляция не запущена: нет ' + ExtractFileName(ResPath) +
+            ', создать отказались');
+    Result := False;
+    Exit;
+  end;
+
+  if SourceRes <> '' then
+    Created := Windows.CopyFile(PChar(SourceRes), PChar(ResPath), True)
+  else
+    Created := WriteEmptyRes(ResPath);
+  if Created then
+  begin
+    if SourceRes <> '' then
+      LogComp('Создан ' + ExtractFileName(ResPath) + ' копией ' +
+              ExtractFileName(SourceRes))
+    else
+      LogComp('Создан пустой ' + ExtractFileName(ResPath));
+  end
+  else
+  begin
+    LogComp('Компиляция не запущена: не удалось создать ' + ResPath);
+    Result := False;
   end;
 end;
 
@@ -64337,6 +64433,10 @@ begin
   end
   else
     LogComp('Внимание: имя в строке program не исправлено: ' + FixErr);
+
+  // {$R *.res} без <имя>.res - предложить создать, как среда Delphi
+  if not EnsureDprRes(Dpr, OldPrgName) then
+    Exit;
 
   // Настройки проекта (.dof) - по настоящему .dpr, не по копии с зондом
   OrigDpr := Dpr;
