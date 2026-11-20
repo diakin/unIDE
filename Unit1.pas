@@ -83979,12 +83979,16 @@ end;
 // ветка сервера (origin/<текущая>) не берётся - её забирает Pull.
 //   - текущая ветка целиком входит в ветку сервера - перемотка;
 //   - не входит (ветка от более старого коммита) - слияние, но только если
-//     последний коммит ветки новее последнего коммита текущей: иначе в
-//     списке были бы все старые невлитые ветки.
+//     последний коммит ветки не старше последнего коммита текущей больше
+//     чем на IncomingMaxAgeDays: иначе в списке были бы все старые
+//     невлитые ветки. Не "новее HEAD": две PR от одного коммита - после
+//     принятия первой вторая старше HEAD, но её тоже нужно принять.
 // Строки AList: 'origin/ветка=+N, перемотка: заголовок коммита'.
 // Результат - число веток.
 function TForm1.GitFindIncoming(const AGit, ARepo, ACurrent: string;
   AList: TStringList): Integer;
+const
+  IncomingMaxAgeDays = 14;
 var
   Refs: TStringList;
   Output: WideString;
@@ -84016,7 +84020,8 @@ begin
       if not FastForward then
       begin
         RefTime := GitQuery(AGit, ARepo, 'log -1 --format=%ct ' + QuotedRef);
-        if StrToInt64Def(RefTime, 0) <= StrToInt64Def(HeadTime, 0) then
+        if StrToInt64Def(RefTime, 0) <
+           StrToInt64Def(HeadTime, 0) - IncomingMaxAgeDays * 86400 then
           Continue;
       end;
       if FastForward then
