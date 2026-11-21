@@ -194,6 +194,12 @@ unit UnFar;
 //      по привычке не заменяет путь в буфере одним именем файла.
 //    - b.80: эта пауза - 3 с по умолчанию, задаётся в F9 - Options -
 //      Panel settings (мс, 0 - выключена), editor.ini [Far] PathCopyPauseMs.
+//    - b.81: окна предупреждений в операциях с файлами - свои, как в FAR:
+//      распаковка из архива - то же окно Warning, что у F5 / F6 (файл уже
+//      есть: Overwrite, Skip, Rename, Append, Cancel) вместо окна Windows
+//      о слиянии папок; F8 / Shift+Del - Delete folder (папка не пуста:
+//      Delete, All, Skip, Cancel) и Warning о файле только для чтения
+//      (Delete, All, Skip, Skip all, Cancel). Esc в этих окнах - Cancel.
 //  Остальные клавиши FAR пока сообщают в строке состояния, что не сделаны
 //  (F2, F12 - заглушки по плану).
 //
@@ -230,7 +236,7 @@ uses
   SchemeData{$IFDEF FPC}, uRegExpr{$ENDIF};
 
 const
-  FarBuild = 'b.80';
+  FarBuild = 'b.81';
   // После копирования полного пути копипаста не работает столько мс (по
   // умолчанию; задаётся в F9 - Options - Panel settings), предел - 60 с
   FarPathCopyPauseDefault = 3000;
@@ -281,7 +287,8 @@ type
     fdViewFind, fdViewGoto, fdHiDelete, fdHistClear,
     fdFtpCopy, fdFtpMkDir, fdFtpDelFiles, fdFtpOverwrite, fdAttr,
     fdOverwrite, fdOverRename, fdEditReplace, fdEditReplAsk,
-    fdSelectMask, fdDeselectMask, fdFtpAbort, fdPanelSettings);
+    fdSelectMask, fdDeselectMask, fdFtpAbort, fdPanelSettings,
+    fdDelFolder, fdDelReadOnly);
 
   // Строка окна с несколькими полями (Shift+F1): поле ввода или выбор из
   // нескольких значений
@@ -775,6 +782,17 @@ type
     FCopyAsk: Integer;            // шаг, о котором спрашиваем
     FCopyRemember: Integer;       // запомненный ответ (кнопка); -1 - нет
     FCopyMismatch: Integer;       // файл на месте папки и наоборот
+    // Распаковка: план F5 / F6 переносит файлы из временной папки архива
+    FCopyArc: Boolean;
+    FCopyArcTemp: WideString;     // временная папка (удаляется после)
+    FCopyArcDest: WideString;     // куда распаковали
+    FCopyArcCount: Integer;       // сколько верхних элементов
+    FCopyArcClean: Boolean;       // 7-Zip закончил без предупреждений
+    // F8: вопросы о непустых папках и файлах только для чтения
+    FDelKeep: array of Boolean;   // по FDlgNames: удалять ли
+    FDelAsk: Integer;             // о каком спрашиваем
+    FDelFolderAll: Boolean;       // Delete folder - All
+    FDelReadOnlyMode: Integer;    // 0 - спрашивать, 1 - все, 2 - пропускать
     FDlgPermanent: Boolean;       // удаление мимо корзины
     FDlgRows: TFarDlgRows;        // поля окна Shift+F1 (под строками текста)
     FDlgRow: Integer;             // строка с фокусом; -1 - фокус на кнопках
@@ -1036,6 +1054,10 @@ type
     procedure CopyAnswer(AButton: Integer; ARemember: Boolean);
     procedure CopyRenameAnswer(AConfirmed: Boolean; const AText: WideString);
     procedure CopyRun;
+    procedure CopyArcDrop;
+    procedure DelAskNext;
+    procedure DelAnswer(AButton: Integer);
+    procedure DelRun;
     procedure FtpRunOp;
     procedure FtpAskMkDir;
     procedure FtpMkDirConfirm(const AText: WideString);
@@ -6592,7 +6614,14 @@ begin
   ButtonCount := Length(FDlgButtons);
   case AKey of
     VK_ESCAPE, VK_F10:
-      DlgClose;
+      // Вопросы посреди операции: Esc - кнопка Cancel (план отменяется,
+      // временная папка распаковки удаляется)
+      if (FDlgKind in [fdOverwrite, fdOverRename, fdDelFolder,
+         fdDelReadOnly]) and
+         (ButtonCount > 0) then
+        DlgActivate(ButtonCount - 1)
+      else
+        DlgClose;
     VK_RETURN, VK_SPACE:
       DlgActivate(FDlgFocus);
     VK_TAB, VK_UP, VK_DOWN, VK_LEFT, VK_RIGHT:
@@ -6724,6 +6753,12 @@ begin
       EditSave(FEditSaveName, feAnsi, True)
     else
       FEditQuitAfterSave := False;
+    Exit;
+  end;
+  // F8: непустая папка / файл только для чтения
+  if FDlgKind in [fdDelFolder, fdDelReadOnly] then
+  begin
+    DelAnswer(AButton);
     Exit;
   end;
   // F5 / F6: файл уже есть - Overwrite / Skip / Rename / Append / Cancel
@@ -7456,18 +7491,19 @@ end;
 
 procedure TFarView.DoDelete;
 var
-  Flags: Word;
-  Aborted: Boolean;
+  NameIndex: Integer;
 begin
   if Length(FDlgNames) = 0 then
     Exit;
-  // Подтверждение уже было - своё; Windows не спрашивает ещё раз
-  Flags := FarFofNoConfirmation;
-  if not FDlgPermanent then
-    Flags := Flags or FarFofAllowUndo;
-  RunShellOp(FarFoDelete, FarZeroList(ActivePanel.Path, FDlgNames), '',
-    Flags, Aborted);
-  AfterOperation('');
+  // Подтверждение уже было; дальше - вопросы о непустых папках и файлах
+  // только для чтения (DelAskNext), потом удаление (DelRun)
+  SetLength(FDelKeep, Length(FDlgNames));
+  for NameIndex := 0 to High(FDelKeep) do
+    FDelKeep[NameIndex] := True;
+  FDelAsk := 0;
+  FDelFolderAll := False;
+  FDelReadOnlyMode := 0;
+  DelAskNext;
 end;
 
 // После операции - обе панели перечитать, курсор на AFocusName (если задан)
@@ -13772,11 +13808,10 @@ end;
 // на место или открытие файла; нужен пароль - спросить и повторить
 procedure TFarView.ArcDone(AExitCode: DWORD);
 var
-  Output, SourceDir, FromList, OpenPath: WideString;
-  NeedPassword, Aborted: Boolean;
+  Output, SourceDir, OpenPath: WideString;
+  NeedPassword: Boolean;
   NameIndex: Integer;
   Action: TFarArcAction;
-  DestPanel: Integer;
 begin
   Output := UTF8Decode(FProcRaw);
   FProcRaw := '';
@@ -13835,27 +13870,30 @@ begin
           FArcJobTemp := '';
           Exit;
         end;
-        // Распаковка: верхние элементы - на место (замену спросит Windows)
-        FromList := '';
-        for NameIndex := 0 to High(FArcJobNames) do
-          FromList := FromList + SourceDir + FArcJobNames[NameIndex] +
-            WideChar(#0);
-        FromList := FromList + WideChar(#0);
-        RunShellOp(FarFoMove, FromList, FArcJobDest + WideChar(#0) +
-          WideChar(#0), FarFofNoConfirmMkDir, Aborted);
         if FPanels[FArcJobPanel].DisplayPath = FArcJobStart then
           FPanels[FArcJobPanel].FArcPassword := FArcJobPassword;
-        ArcCleanupTemp;
-        // Папка, куда распаковали, - перечитать
-        for DestPanel := 0 to 1 do
-          if not FPanels[DestPanel].IsArchive and
-             FarSameName(FPanels[DestPanel].Path, FArcJobDest) then
-          begin
-            FPanels[DestPanel].Reread;
-            EnsureVisible(FPanels[DestPanel]);
-          end;
-        if not Aborted and (AExitCode = 0) then
-          Status(FarProduct + ': распаковано: ' + IntToStr(Length(FArcJobNames)));
+        // Распаковка: верхние элементы - на место планом F5 / F6 (перенос):
+        // что уже есть - своё окно Warning, как в FAR, а не окно Windows
+        // о замене файлов и слиянии папок. Временная папка теперь - за
+        // планом (CopyRun / CopyArcDrop удалят её)
+        CopyArcDrop;
+        FCopySteps := nil;
+        FCopyDirs := nil;
+        FCopyMove := True;
+        FCopyFocus := '';
+        FCopyAsk := 0;
+        FCopyRemember := -1;
+        FCopyMismatch := 0;
+        FCopyArc := True;
+        FCopyArcTemp := FArcJobTemp;
+        FCopyArcDest := FarWithSlash(FArcJobDest);
+        FCopyArcCount := Length(FArcJobNames);
+        FCopyArcClean := AExitCode = 0;
+        FArcJobTemp := '';
+        for NameIndex := 0 to High(FArcJobNames) do
+          CopyPlan(SourceDir + FArcJobNames[NameIndex],
+            FCopyArcDest + FArcJobNames[NameIndex]);
+        CopyAskNext;
         Invalidate;
       end;
     aaAdd:
@@ -15052,7 +15090,12 @@ begin
     OldIndex := FDlgRows[FDlgRow].Index;
   case AKey of
     VK_ESCAPE, VK_F10:
-      DlgClose;
+      // Окно Warning F5 / F6 / распаковки: Esc - Cancel
+      if (FDlgKind in [fdOverwrite, fdOverRename]) and
+         (Length(FDlgButtons) > 0) then
+        DlgActivate(High(FDlgButtons))
+      else
+        DlgClose;
     VK_RETURN:
       if FDlgRow >= 0 then
         DlgActivate(0)
@@ -19202,6 +19245,7 @@ begin
       fdHiDelete:
         Result := FarHelpOptions;
       fdCopy, fdMove, fdMkDir, fdDelete, fdEditNew, fdOverwrite,
+      fdDelFolder, fdDelReadOnly,
       fdOverRename:
         Result := FarHelpFiles;
       fdHistClear, fdSelectMask, fdDeselectMask:
@@ -20279,6 +20323,7 @@ begin
   begin
     FCopySteps := nil;
     FCopyDirs := nil;
+    CopyArcDrop;
     Status(FarProduct + ': операция отменена');
     Exit;
   end;
@@ -20347,12 +20392,16 @@ end;
 procedure TFarView.CopyRun;
 var
   Source: TFarPanel;
-  FromList, ToList, ErrorText, FirstError: WideString;
+  FromList, ToList, ErrorText, FirstError, DestDir: WideString;
   StepIndex, NameIndex, ItemIndex, ShellCount, SkipCount, ErrorCount: Integer;
+  PanelIndex, ArcCount: Integer;
   Func: UINT;
-  Done, Aborted: Boolean;
+  Done, Aborted, WasArc, ArcClean: Boolean;
 begin
   Source := ActivePanel;
+  WasArc := FCopyArc;
+  ArcCount := FCopyArcCount;
+  ArcClean := FCopyArcClean;
   FromList := '';
   ToList := '';
   ShellCount := 0;
@@ -20406,17 +20455,36 @@ begin
   if FCopyMove and not Aborted then
     for NameIndex := High(FCopyDirs) downto 0 do
       RemoveDirectoryW(PWideChar(FCopyDirs[NameIndex]));
-  // Обработанные - без выделения (так в FAR)
-  if Done and not Aborted then
-    for NameIndex := 0 to High(FDlgNames) do
-    begin
-      ItemIndex := Source.IndexOfName(FDlgNames[NameIndex]);
-      if ItemIndex >= 0 then
-        Source.SetSelected(ItemIndex, False);
-    end;
-  FCopySteps := nil;
-  FCopyDirs := nil;
-  AfterOperation(FCopyFocus);
+  if FCopyArc then
+  begin
+    // Распаковка: временная папка - удалить, папку назначения - перечитать
+    FCopySteps := nil;
+    FCopyDirs := nil;
+    DestDir := FCopyArcDest;
+    CopyArcDrop;
+    for PanelIndex := 0 to 1 do
+      if not FPanels[PanelIndex].IsArchive and
+         FarSameName(FarWithSlash(FPanels[PanelIndex].Path), DestDir) then
+      begin
+        FPanels[PanelIndex].Reread;
+        EnsureVisible(FPanels[PanelIndex]);
+      end;
+    Invalidate;
+  end
+  else
+  begin
+    // Обработанные - без выделения (так в FAR)
+    if Done and not Aborted then
+      for NameIndex := 0 to High(FDlgNames) do
+      begin
+        ItemIndex := Source.IndexOfName(FDlgNames[NameIndex]);
+        if ItemIndex >= 0 then
+          Source.SetSelected(ItemIndex, False);
+      end;
+    FCopySteps := nil;
+    FCopyDirs := nil;
+    AfterOperation(FCopyFocus);
+  end;
   if ErrorCount > 0 then
     Status(FarProduct + ': не дописано файлов: ' + IntToStr(ErrorCount) +
       ' (' + FirstError + ')')
@@ -20427,7 +20495,167 @@ begin
   else if (SkipCount > 0) and (ShellCount = 0) then
     Status(FarProduct + ': все файлы пропущены, ничего не сделано')
   else if SkipCount > 0 then
-    Status(FarProduct + ': пропущено файлов: ' + IntToStr(SkipCount));
+    Status(FarProduct + ': пропущено файлов: ' + IntToStr(SkipCount))
+  else if WasArc and Done and not Aborted and ArcClean then
+    Status(FarProduct + ': распаковано: ' + IntToStr(ArcCount));
+end;
+
+// Распаковка закончена или отменена: временная папка архива - удалить
+procedure TFarView.CopyArcDrop;
+begin
+  if FCopyArcTemp <> '' then
+    FarDeleteTree(FCopyArcTemp);
+  FCopyArc := False;
+  FCopyArcTemp := '';
+  FCopyArcDest := '';
+end;
+
+// ---------------------------------------------------------------------------
+//  F8 / Shift+Del: после окна Delete - вопросы, как в FAR: непустая папка
+//  (Delete folder: Delete, All, Skip, Cancel) и файл только для чтения
+//  (Warning: Delete, All, Skip, Skip all, Cancel). Потом одна операция
+//  SHFileOperation без вопросов Windows (DelRun)
+// ---------------------------------------------------------------------------
+
+// Папка не пуста (есть что-то кроме '.' и '..')
+function FarDirHasItems(const ADir: WideString): Boolean;
+var
+  FindHandle: THandle;
+  FindData: TFarFindData;
+  FoundName: WideString;
+begin
+  Result := False;
+  FindHandle := FarFindFirst(PWideChar(ADir + FarSep + '*'), FindData);
+  if FindHandle = INVALID_HANDLE_VALUE then
+    Exit;
+  try
+    repeat
+      FoundName := PWideChar(@FindData.cFileName[0]);
+      if (FoundName <> '.') and (FoundName <> '..') then
+      begin
+        Result := True;
+        Exit;
+      end;
+    until not FarFindNext(FindHandle, FindData);
+  finally
+    Windows.FindClose(FindHandle);
+  end;
+end;
+
+procedure TFarView.DelAskNext;
+var
+  ItemPath: WideString;
+  ItemAttr: DWORD;
+  Lines: TFarNames;
+begin
+  while FDelAsk <= High(FDlgNames) do
+  begin
+    ItemPath := ActivePanel.Path + FDlgNames[FDelAsk];
+    ItemAttr := FarGetAttributes(PWideChar(ItemPath));
+    if ItemAttr = FarInvalidAttr then
+    begin
+      Inc(FDelAsk);
+      Continue;
+    end;
+    if ItemAttr and FILE_ATTRIBUTE_DIRECTORY <> 0 then
+    begin
+      // Ссылка на папку удаляется без содержимого - не спрашиваем
+      if not FDelFolderAll and (ItemAttr and FarAttrReparse = 0) and
+         FarDirHasItems(ItemPath) then
+      begin
+        SetLength(Lines, 2);
+        Lines[0] := 'The following folder will be deleted:';
+        Lines[1] := FarFitName(ItemPath, 60);
+        DlgOpen(fdDelFolder, 'Delete folder', Lines, True, True, False, '',
+          ['Delete', 'All', 'Skip', 'Cancel']);
+        Exit;
+      end;
+    end
+    else if ItemAttr and FILE_ATTRIBUTE_READONLY <> 0 then
+      case FDelReadOnlyMode of
+        1: ;
+        2: FDelKeep[FDelAsk] := False;
+      else
+        SetLength(Lines, 3);
+        Lines[0] := 'The following file is read only:';
+        Lines[1] := FarFitName(ItemPath, 60);
+        Lines[2] := 'Do you wish to delete it?';
+        DlgOpen(fdDelReadOnly, 'Warning', Lines, True, True, False, '',
+          ['Delete', 'All', 'Skip', 'Skip all', 'Cancel']);
+        Exit;
+      end;
+    Inc(FDelAsk);
+  end;
+  DelRun;
+end;
+
+// Ответ в окне Delete folder / Warning (только для чтения)
+procedure TFarView.DelAnswer(AButton: Integer);
+var
+  IsFolder: Boolean;
+begin
+  if (FDelAsk < 0) or (FDelAsk > High(FDlgNames)) then
+    Exit;
+  IsFolder := FDlgKind = fdDelFolder;
+  DlgClose;
+  // Delete folder: Delete, All, Skip, Cancel;
+  // только для чтения: Delete, All, Skip, Skip all, Cancel
+  if (AButton < 0) or (IsFolder and (AButton > 2)) or
+     (not IsFolder and (AButton > 3)) then
+  begin
+    FDelKeep := nil;
+    FDlgNames := nil;
+    Status(FarProduct + ': удаление отменено');
+    Invalidate;
+    Exit;
+  end;
+  case AButton of
+    1:
+      if IsFolder then
+        FDelFolderAll := True
+      else
+        FDelReadOnlyMode := 1;
+    2: FDelKeep[FDelAsk] := False;
+    3:
+      begin
+        FDelKeep[FDelAsk] := False;
+        FDelReadOnlyMode := 2;
+      end;
+  end;
+  Inc(FDelAsk);
+  DelAskNext;
+end;
+
+procedure TFarView.DelRun;
+var
+  Flags: Word;
+  Aborted: Boolean;
+  KeepNames: TFarNames;
+  NameIndex, SkipCount: Integer;
+begin
+  KeepNames := nil;
+  SkipCount := 0;
+  for NameIndex := 0 to High(FDlgNames) do
+    if (NameIndex <= High(FDelKeep)) and not FDelKeep[NameIndex] then
+      Inc(SkipCount)
+    else
+    begin
+      SetLength(KeepNames, Length(KeepNames) + 1);
+      KeepNames[High(KeepNames)] := FDlgNames[NameIndex];
+    end;
+  FDelKeep := nil;
+  if Length(KeepNames) > 0 then
+  begin
+    // Вопросы уже были - свои; Windows не спрашивает ещё раз
+    Flags := FarFofNoConfirmation;
+    if not FDlgPermanent then
+      Flags := Flags or FarFofAllowUndo;
+    RunShellOp(FarFoDelete, FarZeroList(ActivePanel.Path, KeepNames), '',
+      Flags, Aborted);
+  end;
+  AfterOperation('');
+  if SkipCount > 0 then
+    Status(FarProduct + ': пропущено при удалении: ' + IntToStr(SkipCount));
 end;
 
 end.
