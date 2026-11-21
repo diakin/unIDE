@@ -72,6 +72,8 @@ uses
   GitTool,        // Git: найти в системе или свой (tools\git), Git Bash
   RufusTool,      // свой Rufus unIDE (tools\rufus): образ на флешку
   MingwTool,      // свой MinGW-w64 GCC (tools\mingw): сборка скетча под ПК
+  DevTools,       // меню Instruments: MinGW 32-bit, GCC, Clang, Python
+  MakeProj,       // проект C / C++ со сборкой make (Makefile)
   ArdSimHost,     // вкладка Emulator: скетч, собранный ArdSim, в правой панели
   ArdWinMap,      // карта окон скетча: switch (WinState), меню, переходы
   ArdWinMapView,  // окно карты окон (Arduino - Window Map)
@@ -1017,12 +1019,14 @@ type
     mRosRufusWrite: TMenuItem;
     mRosSep1: TMenuItem;
     mRosInstallRosBE: TMenuItem;
-    mRosInstall7Zip: TMenuItem;
     mRosInstallQemu: TMenuItem;
     mRosInstallRufus: TMenuItem;
-    mRosSep2: TMenuItem;
-    mRosGitTerminal: TMenuItem;
-    mRosGitInstall: TMenuItem;
+    // Меню Instruments (InstrBuildMenu): инструменты общего плана
+    mInstruments: TMenuItem;
+    mToolInstall7Zip: TMenuItem;
+    mToolSep1: TMenuItem;
+    mToolGitTerminal: TMenuItem;
+    mToolGitInstall: TMenuItem;
     mRosSep3: TMenuItem;
     mRosUpdatePciIds: TMenuItem;
     mRosGenPciInf: TMenuItem;
@@ -3723,6 +3727,16 @@ type
     procedure ArdSketchItemClick(Sender: TObject);
     procedure ArdBuildMenu;
     procedure RosBuildMenu;
+    procedure InstrBuildMenu;
+    procedure InstrLogTool(const AExe, AArgs, ATitle: string);
+    function  MgwCheckBin(const ABin: string): Boolean;
+    function  MgwEnsure(AAsk: Boolean): string;
+    procedure MgwFindInstallClick(Sender: TObject);
+    procedure GccFindClick(Sender: TObject);
+    procedure ClangFindClick(Sender: TObject);
+    function  PyEnsure(AAsk: Boolean): string;
+    procedure PyFindInstallClick(Sender: TObject);
+    procedure PyWalkerPackagesClick(Sender: TObject);
     procedure RosToolLinkClick(Sender: TObject);
     function  RosSetup7Zip(AStage: Integer): string;
     function  RosInstallProgress(ADone, ATotal: Cardinal): Boolean;
@@ -3735,7 +3749,7 @@ type
     function  GitInstallOwn(const AIntro: string; AAsk: Boolean): string;
     function  GitRunPostInstall(const ARoot: string): Boolean;
     function  RufusEnsure: string;
-    // MinGW-w64 (MingwTool): свой g++ в tools\mingw, меню Arduino
+    // MinGW-w64 (MingwTool): свой g++ в tools\mingw, меню Instruments
     function  MingwEnsure(AAsk: Boolean): string;
     function  MingwCheckRun(const AGpp: string): Boolean;
     function  MingwInstallUcrt: Boolean;
@@ -4296,6 +4310,13 @@ type
     function  CompileProject: Boolean;
     function  AhkFindCompiler: string;
     function  CompileReactOS: Boolean;
+    // Проект C / C++ со сборкой make (MakeProj)
+    function  MakeSettingsOf(const APrj: string;
+                             var ASettings: TMakeSettings): Boolean;
+    function  MakeToolOf(const ASettings: TMakeSettings;
+                         var ABinDirs: string): string;
+    function  CompileMake: Boolean;
+    procedure MakeRunProgram;
     function  LazCompilerOptions(const ALpi: string): string;
     function  LazTargetLpi: string;
     function  LazFolder(const ADir: string): Boolean;
@@ -5227,6 +5248,8 @@ const
   bkArduino = 3;
   bkCMakeNinja = 4;  // ReactOS / LiberNT: configure.cmd + ninja (RosProj)
   bkLazarus = 5;     // lazbuild <проект>.lpi (CompileLazarus)
+  bkMake = 6;        // C / C++: make по Makefile (MakeProj, CompileMake)
+  bkLast = bkMake;   // последний сборщик (номер пункта cmbBuildKind)
   // FreeBASIC: вид результата (cmbFbKind, FbBuildOf)
   fbOutGui = 0;       // -s gui
   fbOutConsole = 1;   // -s console
@@ -13906,6 +13929,7 @@ var
   Idx3, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged, CanRenameDpr, RenameDpr, DprRenamed: Boolean;
   RosCfg: TRosSettings;
+  MakeCfg: TMakeSettings;
   RenamedDpr, OldDprPath: string;
   StoredTarget, ShownTarget, TargetNote: string;
   TargetChanged, TargetEdited: Boolean;
@@ -13996,6 +14020,9 @@ begin
         RosCfg.EnvScript := RosKnownEnvScript;
       Dlg.SetRosSettings(RosCfg);
     end;
+    // Проект C / C++: папка make, Makefile, цель, запуск
+    if MakeProjectType(OldType) and MakeSettingsOf(OldName, MakeCfg) then
+      Dlg.SetMakeSettings(MakeCfg);
 
     // Цель сборки явно; у проекта Delphi с .dpr на диске по ней же
     // открывается вкладка Project options и флажок переименования
@@ -14079,6 +14106,17 @@ begin
       Prj := TProjectIni.Create(SettingsFileName, OldName);
       try
         RosSaveSettings(Prj, RosCfg);
+      finally
+        Prj.Free;
+      end;
+    end;
+    // Настройки make - туда же
+    if MakeProjectType(NewType) then
+    begin
+      Dlg.GetMakeSettings(MakeCfg);
+      Prj := TProjectIni.Create(SettingsFileName, OldName);
+      try
+        MakeSaveSettings(Prj, MakeCfg);
       finally
         Prj.Free;
       end;
@@ -14516,6 +14554,8 @@ var
   SL: TStringList;
   DelphiKind: Integer; // FNewDelphiKind этого вызова
   RosCfg: TRosSettings; // настройки проекта ReactOS из окна
+  MakeCfg: TMakeSettings; // настройки проекта C / C++ (make) из окна
+  MakeFromDlg: Boolean;
   PresetDir: string;    // папка клона (Clone Repository), '' - нет
   FbIconPath: string;   // значок exe проекта FreeBASIC из окна, '' - нет
   // Новый проект RapidQ: вид заготовки (FNewRqKind этого вызова, потом -
@@ -14701,6 +14741,9 @@ begin
     NewRqBits := Dlg.RqBits;
     if Dlg.IsRosType then
       Dlg.GetRosSettings(RosCfg);
+    MakeFromDlg := Dlg.IsMakeType;
+    if MakeFromDlg then
+      Dlg.GetMakeSettings(MakeCfg);
     FbIconPath := Dlg.FbIcon;
 
     if (Nm = '') or (Dir = '') then
@@ -15258,6 +15301,10 @@ begin
         else
           LogDiag('New Project: папка сборки ' + RosCfg.BuildDir);
       end;
+      // C / C++: настройки make из окна (пустые поля - найдутся по
+      // Makefile при сборке)
+      if MakeFromDlg and MakeProjectType(Tp) then
+        MakeSaveSettings(Prj, MakeCfg);
     finally
       Prj.Free;
     end;
@@ -15767,6 +15814,7 @@ begin
     bkArduino: Result := 'Arduino';
     bkCMakeNinja: Result := 'CMake+Ninja';
     bkLazarus: Result := 'Lazarus';
+    bkMake: Result := 'Make';
   else
     Result := '(не определён)';
   end;
@@ -16120,7 +16168,10 @@ begin
   else if CompareText(PrjType, RosProjectType) = 0 then
     Result := bkCMakeNinja
   else if CompareText(PrjType, 'Lazarus') = 0 then
-    Result := bkLazarus;
+    Result := bkLazarus
+  // C / C++: сборка make по Makefile проекта (MakeProj)
+  else if MakeProjectType(PrjType) then
+    Result := bkMake;
 end;
 
 // Настройки проекта ReactOS APrj (RosProj). Папка исходников - папка
@@ -16232,6 +16283,12 @@ begin
   begin
     Result := PrjKind;
     FBuildReason := PrjNote;
+  end
+  // Makefile, *.mak, *.mk - make
+  else if MakeIsMakefileName(FileNm) then
+  begin
+    Result := bkMake;
+    FBuildReason := 'Makefile';
   end
   // Lazarus: свои расширения; .pas и .inc - в проекте Lazarus или в папке
   // с .lpi без .dpr
@@ -16506,7 +16563,7 @@ begin
   KindName := FBuildKindManual.Values[LowerCase(ExpandFileName(AFile))];
   if KindName = '' then
     Exit;
-  for KindIdx := bkDelphi to bkLazarus do
+  for KindIdx := bkDelphi to bkLast do
     if CompareText(BuildKindName(KindIdx), KindName) = 0 then
     begin
       Result := KindIdx;
@@ -16553,6 +16610,7 @@ function TForm1.BuildTargetOf(AKind: Integer): string;
 var
   Ext, Dir, Folder: string;
   RosCfg: TRosSettings;
+  MakeCfg: TMakeSettings;
 begin
   Result := '';
   if FCurrentFileName = '' then
@@ -16581,6 +16639,12 @@ begin
     bkCMakeNinja:
       if RosSettingsOf(BuildProject, RosCfg) then
         Result := RosCfg.BuildDir;
+    // make: Makefile проекта (папка и файл - в его настройках)
+    bkMake:
+      if MakeSettingsOf(BuildProject, MakeCfg) then
+        Result := MakeFilePath(MakeCfg)
+      else if MakeIsMakefileName(FCurrentFileName) then
+        Result := FCurrentFileName;
     // Lazarus: .lpi проекта (или .lpk); без .lpi - программа .lpr/.pp
     bkLazarus:
       begin
@@ -16601,6 +16665,7 @@ var
   LazLpi, LazExe: string;
   Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
   RosCfg: TRosSettings;
+  MakeCfg: TMakeSettings;
 begin
   if (cmbBuildKind = nil) or (lblBuildTarget = nil) then
     Exit;
@@ -16644,6 +16709,15 @@ Target := '';
     lblBuildTarget.Caption := lblBuildTarget.Caption + '  ' +
                               RosCfg.NinjaTarget;
     lblBuildTarget.Hint := Target + #13#10 + RosNinjaCommand(RosCfg);
+  end;
+  // make: за Makefile - цель
+  if (Kind = bkMake) and MakeSettingsOf(BuildProject, MakeCfg) then
+  begin
+    if MakeCfg.Target <> '' then
+      lblBuildTarget.Caption := lblBuildTarget.Caption + '  ' + MakeCfg.Target;
+    lblBuildTarget.Hint := Target + #13#10 + 'make ' + MakeArgs(MakeCfg) +
+      #13#10 + 'Папка: ' + MakeCfg.MakeDir + #13#10 +
+      'Цель, папка и запуск - Project - Properties';
   end;
 
   // Arduino: список плат на USB; у скетча ещё порт в подписи, плата и
@@ -17364,7 +17438,7 @@ begin
     Exit;
   end;
   NewKind := cmbBuildKind.ItemIndex;
-  if (NewKind < bkDelphi) or (NewKind > bkLazarus) then
+  if (NewKind < bkDelphi) or (NewKind > bkLast) then
     NewKind := bkNone;
   SetManualBuildKind(FCurrentFileName, NewKind);
   // Запись в editor.ini [BuildKind] - строкой в лог: по ней видно, когда
@@ -28924,7 +28998,7 @@ begin
   DsgClipMenuExtra;
   DsgLayoutMenuExtra;
 
-  // Переключатель сборщика: номер пункта - bkDelphi..bkLazarus, последний
+  // Переключатель сборщика: номер пункта - bkDelphi..bkLast, последний
   // пункт Auto - снова выбор по файлу (UpdateBuildBar, cmbBuildKindChange)
   cmbBuildKind.Items.Clear;
   cmbBuildKind.Items.Add('Delphi');
@@ -28933,6 +29007,7 @@ begin
   cmbBuildKind.Items.Add('Arduino');
   cmbBuildKind.Items.Add('CMake+Ninja');
   cmbBuildKind.Items.Add('Lazarus');
+  cmbBuildKind.Items.Add('Make');
   cmbBuildKind.Items.Add('Auto');
   // FreeBASIC: номер пункта - fbOutGui..fbOutDll; 32 и 64 бит
   if cmbFbKind <> nil then
@@ -29267,11 +29342,13 @@ begin
   mInstallPkg.Visible := False;
   mRosRufusWrite.Visible := False;
   mRosInstallRosBE.Visible := False;
-  mRosInstall7Zip.Visible := False;
   mRosInstallQemu.Visible := False;
   mRosInstallRufus.Visible := False;
-  mRosGitInstall.Visible := False;
-  mRosSep2.Visible := False;
+  // Без Rufus Write, RosBE, QEMU и Rufus Install разделитель лишний
+  mRosSep1.Visible := False;
+  mToolInstall7Zip.Visible := False;
+  mToolSep1.Visible := False;
+  mToolGitInstall.Visible := False;
   {$ENDIF}
 
   pnlPaletteIn.DoubleBuffered := True;
@@ -29500,6 +29577,8 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   ArdBuildMenu;
   // Меню ReactOS: где скачать инструменты сборки
   RosBuildMenu;
+  // Меню Instruments: 7-Zip, Git, MinGW, GCC, Clang, Python
+  InstrBuildMenu;
   // Меню Repository и Branch (Git, как в GitHub Desktop)
   GitBuildMenus;
 
@@ -65000,6 +65079,8 @@ begin
     end;
     bkLazarus:
       Result := CompileLazarus;
+    bkMake:
+      Result := CompileMake;
   else
     ShowCompLog;
     if CompLogEdit <> nil then
@@ -66634,6 +66715,311 @@ begin
       FCompDlg.FinishBuild(True, 'Готово')
     else
       FCompDlg.FinishBuild(False, 'Не собрано, подробности - Compilation log');
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сборка make (проект C / C++, MakeProj). make запускается в папке make
+//  проекта: -f <Makefile>, -j N и цель - из свойств проекта. make - из
+//  свойств проекта, иначе mingw32-make 32-битного MinGW (свой
+//  tools\mingw32 или найденный в системе, DevTools), иначе make из PATH.
+//  В PATH процесса make - папка bin этого MinGW (gcc, windres) и usr\bin
+//  Git for Windows (sh, cp, rm, mkdir), как при сборке в Git Bash; PATH
+//  самого unIDE после сборки прежний. Вывод - в лог, ошибки gcc - красным,
+//  переход к ошибке - от папки make. Стоп снимает всё дерево процессов
+//  (make -> sh -> gcc).
+// ---------------------------------------------------------------------------
+
+// Настройки проекта C / C++ APrj (MakeProj). Не тот тип или проекта нет -
+// False
+function TForm1.MakeSettingsOf(const APrj: string;
+                               var ASettings: TMakeSettings): Boolean;
+var
+  Prj: TProjectIni;
+begin
+  Result := False;
+  if (APrj = '') or not ProjectExists(APrj) or
+     (ProjectBuildKind(APrj) <> bkMake) then
+    Exit;
+  Prj := TProjectIni.Create(SettingsFileName, APrj);
+  try
+    MakeLoadSettings(Prj, ProjectDir(APrj), ASettings);
+  finally
+    Prj.Free;
+  end;
+  Result := True;
+end;
+
+// make для сборки и папки для начала PATH (через ';'); не найден - пусто
+function TForm1.MakeToolOf(const ASettings: TMakeSettings;
+                           var ABinDirs: string): string;
+var
+  Bins: TStringList;
+  {$IFNDEF UNIX}
+  GitRoot, GitHow, UsrBin: string;
+  {$ENDIF}
+begin
+  ABinDirs := '';
+  Result := '';
+  if ASettings.Tool <> '' then
+  begin
+    Result := ASettings.Tool;
+    ABinDirs := ExcludeTrailingPathDelimiter(ExtractFilePath(Result));
+  end
+  else
+  begin
+    Bins := TStringList.Create;
+    try
+      if MgwFindBins(Bins) > 0 then
+      begin
+        Result := Bins[0] + MgwMakeName;
+        ABinDirs := ExcludeTrailingPathDelimiter(Bins[0]);
+      end;
+    finally
+      Bins.Free;
+    end;
+    if Result = '' then
+      Result := DevFindInPath('make');
+  end;
+  {$IFNDEF UNIX}
+  if (Result <> '') and ASettings.GitSh then
+  begin
+    GitRoot := string(GitFindRoot(GitHow));
+    if GitRoot <> '' then
+    begin
+      UsrBin := IncludeTrailingPathDelimiter(GitRoot) + 'usr\bin';
+      if DirectoryExists(UsrBin) then
+      begin
+        if ABinDirs <> '' then
+          ABinDirs := ABinDirs + ';';
+        ABinDirs := ABinDirs + UsrBin;
+      end;
+    end;
+  end;
+  {$ENDIF}
+end;
+
+function TForm1.CompileMake: Boolean;
+var
+  BuildPrj, MakeExe, BinDirs, MakeFileFull, MakeArgsText, GccOut,
+  GccMachine, StageName: string;
+  {$IFNDEF UNIX}
+  OldPath: string;
+  {$ENDIF}
+  MakeCfg: TMakeSettings;
+  Lines: TStringList;
+  LineIdx, ExitCode, StageIdx: Integer;
+begin
+  Result := False;
+  ShowCompLog;
+  if CompLogEdit <> nil then
+    LogClear(CompLogEdit);
+  if ErrLogEdit <> nil then
+    LogClear(ErrLogEdit);
+  LogComp('Сборщик: ' + BuildKindName(bkMake) + ' (' + FBuildReason + ')');
+  BuildPrj := BuildProject;
+  if MakeSettingsOf(BuildPrj, MakeCfg) then
+    LogComp('Проект: ' + BuildPrj)
+  else if MakeIsMakefileName(FCurrentFileName) then
+  begin
+    // Makefile на вкладке вне проекта C / C++: он и собирается, цель по
+    // умолчанию
+    BuildPrj := ExtractFileName(FCurrentFileName);
+    MakeCfg.ProjectDir := ExtractFilePath(FCurrentFileName);
+    MakeCfg.MakeDir := ExcludeTrailingPathDelimiter(MakeCfg.ProjectDir);
+    MakeCfg.MakeFile := ExtractFileName(FCurrentFileName);
+    MakeCfg.Target := '';
+    MakeCfg.Jobs := 0;
+    MakeCfg.Tool := '';
+    MakeCfg.GitSh := True;
+    MakeCfg.RunExe := '';
+    MakeCfg.RunArgs := '';
+    MakeCfg.RunDir := '';
+    LogComp('Проекта C / C++ нет - собирается Makefile вкладки');
+  end
+  else
+  begin
+    LogComp('Сборка make: нет открытого проекта C / C++ (тип C project ' +
+    'или CPP project), и на вкладке не Makefile');
+    Exit;
+  end;
+  Lines := TStringList.Create;
+  try
+    MakeDescribeBuild(MakeCfg, Lines);
+    for LineIdx := 0 to Lines.Count - 1 do
+      LogComp(Lines[LineIdx]);
+  finally
+    Lines.Free;
+  end;
+
+  MakeFileFull := MakeFilePath(MakeCfg);
+  if (MakeFileFull = '') or not FileExists(MakeFileFull) then
+  begin
+    LogComp('Сборка остановлена: Makefile в ' + MakeCfg.MakeDir + ' не ' +
+    'найден. Папка make и Makefile - Project - Properties');
+    Exit;
+  end;
+
+  MakeExe := MakeToolOf(MakeCfg, BinDirs);
+  {$IFNDEF UNIX}
+  if MakeExe = '' then
+  begin
+    LogComp('mingw32-make не найден (свой tools\mingw32, PATH, C:\mingw32, ' +
+    'C:\MinGW, C:\msys64\mingw32)');
+    if MgwEnsure(True) = '' then
+      Exit;
+    MakeExe := MakeToolOf(MakeCfg, BinDirs);
+  end;
+  {$ENDIF}
+  if (MakeExe = '') or not FileExists(MakeExe) then
+  begin
+    LogComp('Сборка остановлена: make не найден' + {$IFDEF UNIX}
+    ' - sudo apt install make gcc'{$ELSE} ' - меню Instruments - Find or ' +
+    'Install MinGW 32-bit'{$ENDIF});
+    Exit;
+  end;
+  LogComp('make:        ' + MakeExe);
+  if BinDirs <> '' then
+    LogComp('PATH сборки: ' + BinDirs + ';%PATH%');
+  // Разрядность gcc рядом с make: Walker и lcc - только 32 бита
+  if FileExists(ExtractFilePath(MakeExe) + 'gcc' + ExeSuffix) then
+  begin
+    if DevRunCapture(ExtractFilePath(MakeExe) + 'gcc' + ExeSuffix,
+                     '-dumpmachine', 20000, GccOut) = 0 then
+    begin
+      GccMachine := DevFirstLine(GccOut);
+      LogComp('gcc:         ' + GccMachine);
+      if not MgwIs32Bit(GccMachine) then
+        LogComp('Внимание: gcc не 32-битный. Проекту под 32 бита (Walker, ' +
+        'lcc для QVM) нужен MinGW i686 - меню Instruments - Find or ' +
+        'Install MinGW 32-bit');
+    end
+    else
+      LogComp('gcc -dumpmachine не ответил: ' + DevFirstLine(GccOut));
+  end;
+  LogComp('');
+
+  MakeArgsText := MakeArgs(MakeCfg);
+  FLastBuildDir := MakeCfg.MakeDir;
+  FLastUnitPath := '';
+  StageName := 'make';
+  if MakeCfg.Target <> '' then
+    StageName := StageName + ' ' + MakeCfg.Target;
+  CompDlgOpen(BuildPrj + '   ' + StageName);
+  FCompDlg.Caption := 'Сборка make';
+  StageIdx := FCompDlg.AddStage(StageName, 100);
+  FCompDlgOwned := True;
+  // Как у сборки ReactOS: своя скрытая консоль, Стоп снимает дерево
+  // процессов
+  FRosBuilding := True;
+  {$IFNDEF UNIX}
+  OldPath := SysUtils.GetEnvironmentVariable('PATH');
+  if BinDirs <> '' then
+    Windows.SetEnvironmentVariable(PChar('PATH'), PChar(BinDirs + ';' +
+                                   OldPath));
+  {$ENDIF}
+  BusyBegin('Сборка ' + BuildPrj);
+  try
+    LogComp('--- ' + ExtractFileName(MakeExe) + ' ' + MakeArgsText);
+    FCompDlg.StartStage(StageIdx, 0, '');
+    ExitCode := RunCompiler(MakeExe, MakeArgsText, MakeCfg.MakeDir);
+    if FCompDlg.AbortRequested then
+      Exit;
+    FCompDlg.EndStage(StageIdx, ExitCode = 0,
+                      'код завершения ' + IntToStr(ExitCode));
+    if ExitCode <> 0 then
+    begin
+      LogComp('make: код завершения ' + IntToStr(ExitCode) + ' - ошибки ' +
+      'выше и в Error log. Двойной щелчок по строке с ошибкой открывает ' +
+      'файл на нужной строке');
+      if (ErrLogEdit <> nil) and (ErrLogEdit.LogCount > 0) then
+        ShowErrLog;
+      Exit;
+    end;
+    Result := True;
+    if (MakeCfg.RunExe <> '') and FileExists(MakeCfg.RunExe) then
+      LogComp('Готово: ' + MakeCfg.RunExe)
+    else
+      LogComp('Готово: make ' + MakeArgsText);
+  finally
+    {$IFNDEF UNIX}
+    Windows.SetEnvironmentVariable(PChar('PATH'), PChar(OldPath));
+    {$ENDIF}
+    FRosBuilding := False;
+    FCompDlgOwned := False;
+    if Result then
+      BusyEnd('Сборка: готово', True)
+    else
+      BusyEnd('Сборка: не собрано', False);
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result then
+      FCompDlg.FinishBuild(True, 'Готово')
+    else
+      FCompDlg.FinishBuild(False, 'Не собрано, подробности - Compilation log');
+  end;
+end;
+
+// Run проекта C / C++: программа, параметры и рабочая папка - из свойств
+// проекта. Программа не задана - выбрать файл, он записывается в проект
+procedure TForm1.MakeRunProgram;
+var
+  MakeCfg: TMakeSettings;
+  Prj: TProjectIni;
+  Dlg: TOpenDialog;
+  Proc: TProcRun;
+  RunDir: string;
+begin
+  ShowCompLog;
+  if not MakeSettingsOf(BuildProject, MakeCfg) then
+  begin
+    LogComp('Запуск: нет открытого проекта C / C++ - программа для ' +
+    'запуска задаётся в его свойствах (Project - Properties)');
+    Exit;
+  end;
+  if MakeCfg.RunExe = '' then
+  begin
+    Dlg := TOpenDialog.Create(Self);
+    try
+      Dlg.Title := 'Программа для запуска (Run)';
+      {$IFDEF UNIX}
+      Dlg.Filter := 'Все файлы|*';
+      {$ELSE}
+      Dlg.Filter := 'Программы (*.exe)|*.exe|Все файлы (*.*)|*.*';
+      {$ENDIF}
+      Dlg.InitialDir := MakeCfg.ProjectDir;
+      if not Dlg.Execute then
+        Exit;
+      MakeCfg.RunExe := Dlg.FileName;
+    finally
+      Dlg.Free;
+    end;
+    Prj := TProjectIni.Create(SettingsFileName, BuildProject);
+    try
+      MakeSaveSettings(Prj, MakeCfg);
+    finally
+      Prj.Free;
+    end;
+    LogComp('Программа для запуска записана в проект: ' + MakeCfg.RunExe +
+    '. Параметры и рабочая папка - Project - Properties');
+  end;
+  if not FileExists(MakeCfg.RunExe) then
+  begin
+    LogComp('Запуск: нет ' + MakeCfg.RunExe + ' - сначала Compile');
+    Exit;
+  end;
+  RunDir := MakeRunDir(MakeCfg);
+  LogComp('Запуск: ' + Trim(MakeCfg.RunExe + ' ' + MakeCfg.RunArgs) +
+          '   (папка ' + RunDir + ')');
+  Proc := TProcRun.Create;
+  try
+    Proc.CommandLine := Trim('"' + MakeCfg.RunExe + '" ' + MakeCfg.RunArgs);
+    Proc.Dir := RunDir;
+    Proc.Window := pwNormal;
+    if not Proc.Start then
+      LogComp('Не удалось запустить: ' + Proc.ErrorText);
+  finally
+    Proc.Free;
   end;
 end;
 
@@ -73081,6 +73467,10 @@ begin
       'build.ninja нет - сначала configure.cmd) и запустить образ ' +
       '(<цель>.iso) в своём QEMU unIDE или командой из свойств ' +
       'проекта. Без сборки - меню ReactOS - Run Image';
+    bkMake:
+      btnCompileRun.Hint := 'Собрать make по Makefile проекта (mingw32-make ' +
+      '32-битного MinGW) и запустить программу из свойств проекта ' +
+      '(Project - Properties: цель make, программа, параметры, папка)';
     bkNone:
     begin
       PrjName := BuildProject;
@@ -73266,7 +73656,7 @@ begin
   // Проект ReactOS: палитра не нужна - сразу вкладка Git. В остальных
   // случаях вкладку выбирает пользователь (Components | Git на рамке
   // палитры); по умолчанию - Git (AppIdle)
-  if Kind = bkCMakeNinja then
+  if (Kind = bkCMakeNinja) or (Kind = bkMake) then
     GitShowBar(True);
   Dbg('Режим среды: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')',
       clGray);
@@ -76230,6 +76620,12 @@ begin
   if Kind = bkCMakeNinja then
   begin
     RosRunImage;
+    Exit;
+  end;
+  // make: программа и параметры - из свойств проекта
+  if Kind = bkMake then
+  begin
+    MakeRunProgram;
     Exit;
   end;
   if (Kind <> bkDelphi) and (Kind <> bkRapidQ) and (Kind <> bkFreeBasic) and
@@ -79572,13 +79968,8 @@ begin
     'Шрифт UTFT (.c) из шрифта Windows или .ttf: клетка, размер, ' +
     'диапазон символов (с кириллицей CP1251)';
   NewItem('-', nil, False);
-  // В конце меню (после пунктов из .dfm): свой компилятор для ПК
-  InsertIdx := mArduino.Count;
-  NewItem('-', nil, False);
-  NewItem('Install MinGW-w64 GCC ' + MingwVersion + ' (tools\mingw)...',
-    MingwInstallClick, False).Hint := 'Скачать свой MinGW-w64 (xPack, ' +
-    'около 310 МБ) в tools\mingw - g++ для сборки скетча под ПК ' +
-    '(эмулятор); в реестр и PATH ничего не пишется';
+  // Свой MinGW-w64 GCC для сборки скетча под ПК - в меню Instruments
+  // (InstrBuildMenu)
 end;
 
 // Меню ReactOS - после Arduino. Download Build Tools: страницы загрузки
@@ -79621,13 +80012,7 @@ begin
                    'RosBE.cmd - в проект ReactOS';
   // .dfm: LinkItem.OnClick := RosInstallRosBEClick;
   // .dfm: RosMenu.Add(LinkItem);
-  // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := mRosInstall7Zip;
-  LinkItem.Caption := 'Install 7-Zip ' + SzVersion + ' (tools\7zip)...';
-  LinkItem.Hint := 'Скачать свой 7-Zip unIDE в tools\7zip - для Install ' +
-                   'RosBE и архивов unIDE FAR; системный 7-Zip не меняется';
-  // .dfm: LinkItem.OnClick := RosInstall7ZipClick;
-  // .dfm: RosMenu.Add(LinkItem);
+  // Install 7-Zip - в меню Instruments (InstrBuildMenu)
   // .dfm: LinkItem := TMenuItem.Create(Self);
   LinkItem := mRosInstallQemu;
   LinkItem.Caption := 'Install QEMU ' + QemuVersion + ' (tools\qemu)...';
@@ -79643,25 +80028,7 @@ begin
                    'ставится';
   // .dfm: LinkItem.OnClick := RufusInstallClick;
   // .dfm: RosMenu.Add(LinkItem);
-  // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := mRosSep2;
-  // .dfm: LinkItem.Caption := '-';
-  // .dfm: RosMenu.Add(LinkItem);
-  // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := mRosGitTerminal;
-  // .dfm: LinkItem.Caption := 'Git Terminal (Git Bash)';
-  LinkItem.Hint := 'Терминал Git Bash в папке проекта: Git, установленный ' +
-                   'в системе, иначе свой Git unIDE (tools\git)';
-  // .dfm: LinkItem.OnClick := GitTerminalClick;
-  // .dfm: RosMenu.Add(LinkItem);
-  // .dfm: LinkItem := TMenuItem.Create(Self);
-  LinkItem := mRosGitInstall;
-  LinkItem.Caption := 'Find or Install Git ' + GitVersion + ' (tools\git)...';
-  LinkItem.Hint := 'Найти Git for Windows в системе; нет - скачать свой ' +
-                   'PortableGit ' + GitVersion + ' в tools\git (последний ' +
-                   'для Windows 7), в реестр и PATH ничего не пишется';
-  // .dfm: LinkItem.OnClick := GitInstallClick;
-  // .dfm: RosMenu.Add(LinkItem);
+  // Git Terminal и Find or Install Git - в меню Instruments
   // .dfm: LinkItem := TMenuItem.Create(Self);
   LinkItem := mRosSep3;
   // .dfm: LinkItem.Caption := '-';
@@ -79961,7 +80328,7 @@ begin
   LogComp('7-Zip ' + Package.Version + ' (' + Package.Arch + '): ' + Result);
 end;
 
-// ReactOS - Install 7-Zip: свой 7-Zip unIDE в tools\7zip. Уже есть той же
+// Instruments - Install 7-Zip: свой 7-Zip unIDE в tools\7zip. Уже есть той же
 // версии или новее - только сообщение в журнале; старее - предложить
 // обновить
 procedure TForm1.RosInstall7ZipClick(Sender: TObject);
@@ -80809,7 +81176,7 @@ begin
   end;
 end;
 
-// Arduino - Install MinGW-w64: свой уже есть - путь, версия и проверка
+// Instruments - Install MinGW-w64 x64: свой уже есть - путь, версия и проверка
 // запуска в журнал; нет - установка
 procedure TForm1.MingwInstallClick(Sender: TObject);
 var
@@ -80927,6 +81294,496 @@ begin
   else
     LogComp('UCRT: ucrtbase.dll после установки нет, код wusa ' +
             IntToStr(ExitCode) + '. Обновление вручную: ' + MingwUcrtPage);
+end;
+
+// ---------------------------------------------------------------------------
+//  Меню Instruments (DevTools): инструменты общего плана - 7-Zip, Git,
+//  MinGW (32-битный для make-проектов, 64-битный для эмулятора скетча),
+//  GCC, Clang, Python. Найденное и проверки - в Compilation log.
+// ---------------------------------------------------------------------------
+
+// Пункты из .dfm (7-Zip, Git) - подписи и подсказки; остальные - кодом
+procedure TForm1.InstrBuildMenu;
+var
+  MenuItem: TMenuItem;
+
+  function NewItem(const ACaption, AHint: string;
+                   AClick: TNotifyEvent): TMenuItem;
+  begin
+    Result := TMenuItem.Create(Self);
+    Result.Caption := ACaption;
+    Result.Hint := AHint;
+    Result.OnClick := AClick;
+    mInstruments.Add(Result);
+  end;
+
+begin
+  mToolInstall7Zip.Caption := 'Install 7-Zip ' + SzVersion + ' (tools\7zip)...';
+  mToolInstall7Zip.Hint := 'Скачать свой 7-Zip unIDE в tools\7zip - им ' +
+    'распаковываются RosBE, MinGW, Python и архивы unIDE FAR; системный ' +
+    '7-Zip не меняется';
+  mToolGitTerminal.Hint := 'Терминал Git Bash в папке проекта: Git, ' +
+    'установленный в системе, иначе свой Git unIDE (tools\git)';
+  mToolGitInstall.Caption := 'Find or Install Git ' + GitVersion +
+    ' (tools\git)...';
+  mToolGitInstall.Hint := 'Найти Git for Windows в системе; нет - скачать ' +
+    'свой PortableGit ' + GitVersion + ' в tools\git (последний для ' +
+    'Windows 7), в реестр и PATH ничего не пишется';
+
+  NewItem('-', '', nil);
+  NewItem('Find or Install MinGW 32-bit (GCC ' + MgwVersion +
+    ' i686, tools\mingw32)...', 'Найти 32-битный MinGW (gcc, windres, ' +
+    'mingw32-make) и проверить: gcc -dumpmachine, mingw32-make --version, ' +
+    'windres --version. Нет - скачать MinGW-w64 ' + MgwVersion + ' i686 с ' +
+    'SourceForge (около 43 МБ) в tools\mingw32. Нужен для сборки ' +
+    'make-проектов (Walker); работает в Windows 7', MgwFindInstallClick);
+  MenuItem := NewItem('Install MinGW-w64 GCC ' + MingwVersion +
+    ' x64 (tools\mingw)...', 'Скачать свой MinGW-w64 (xPack, около 310 ' +
+    'МБ) в tools\mingw - g++ для сборки скетча Arduino под ПК (эмулятор); ' +
+    'в реестр и PATH ничего не пишется', MingwInstallClick);
+  {$IFDEF UNIX}
+  MenuItem.Visible := False;
+  {$ENDIF}
+  NewItem('Find GCC', 'Все найденные gcc (свои MinGW, PATH, обычные ' +
+    'папки): путь, версия и gcc -dumpmachine', GccFindClick);
+  NewItem('Find Clang', 'clang в PATH, Program Files\LLVM, MSYS2: путь и ' +
+    'версия. Нет - ссылка на выпуски LLVM', ClangFindClick);
+  NewItem('-', '', nil);
+  NewItem('Find or Install Python ' + PyVersion +
+    ' (tools\python)...', 'Найти Python в системе (PATH, реестр, обычные ' +
+    'папки); нет - скачать Python ' + PyVersion + ' (последний для ' +
+    'Windows 7, embeddable) с python.org в tools\python и поставить pip',
+    PyFindInstallClick);
+  NewItem('pip install ' + PyWalkerPackages, 'Пакеты для генераторов ' +
+    'данных Walker (walker\tools): numpy, scipy, Pillow - в первый ' +
+    'найденный Python (свой unIDE - первым)', PyWalkerPackagesClick);
+end;
+
+// Программа AExe с параметрами AArgs: первая строка ответа - в журнал
+procedure TForm1.InstrLogTool(const AExe, AArgs, ATitle: string);
+var
+  Output: string;
+  ExitCode: Integer;
+begin
+  ExitCode := DevRunCapture(AExe, AArgs, 20000, Output);
+  if ExitCode = -2 then
+    LogComp('  ' + ATitle + ': не ответил за 20 с')
+  else if ExitCode = -1 then
+    LogComp('  ' + ATitle + ': не запустился - ' + Output)
+  else if ExitCode <> 0 then
+    LogComp('  ' + ATitle + ': код ' + IntToStr(ExitCode) + ' - ' +
+            DevFirstLine(Output))
+  else
+    LogComp('  ' + ATitle + ': ' + DevFirstLine(Output));
+end;
+
+// Проверка MinGW в папке ABin (как в WalkerBUILDING.md): gcc -dumpmachine,
+// mingw32-make --version, windres --version. True - всё запускается и gcc
+// 32-битный
+function TForm1.MgwCheckBin(const ABin: string): Boolean;
+var
+  Output, Machine: string;
+  AllRun: Boolean;
+
+  function RunOk(const AExe, AArgs, ATitle: string): Boolean;
+  var
+    RunCode: Integer;
+  begin
+    RunCode := DevRunCapture(ABin + AExe, AArgs, 20000, Output);
+    Result := RunCode = 0;
+    if RunCode = -2 then
+      LogComp('  ' + ATitle + ': не ответил за 20 с')
+    else if RunCode = -1 then
+      LogComp('  ' + ATitle + ': не запустился - ' + Output)
+    else if RunCode <> 0 then
+      LogComp('  ' + ATitle + ': код ' + IntToStr(RunCode) + ' - ' +
+              DevFirstLine(Output))
+    else
+      LogComp('  ' + ATitle + ': ' + DevFirstLine(Output));
+  end;
+
+begin
+  LogComp('MinGW: ' + ABin);
+  AllRun := RunOk('gcc' + ExeSuffix, '-dumpmachine', 'gcc -dumpmachine');
+  Machine := DevFirstLine(Output);
+  if not RunOk(MgwMakeName, '--version', 'mingw32-make --version') then
+    AllRun := False;
+  if not FileExists(ABin + 'windres' + ExeSuffix) then
+  begin
+    LogComp('  windres: нет в ' + ABin);
+    AllRun := False;
+  end
+  else if not RunOk('windres' + ExeSuffix, '--version', 'windres --version') then
+    AllRun := False;
+  Result := AllRun and MgwIs32Bit(Machine);
+  if Result then
+    LogComp('  подходит: 32-битный MinGW (' + Machine + ')')
+  else if AllRun then
+    LogComp('  не подходит для 32-битной сборки: gcc собирает под ' + Machine)
+  else
+    LogComp('  не подходит: не все программы запускаются');
+end;
+
+// Папка bin своего 32-битного MinGW; нет - (AAsk) вопрос и установка (и
+// своего 7-Zip). Отказ или не вышло - пусто
+function TForm1.MgwEnsure(AAsk: Boolean): string;
+var
+  OsInfo: TSzOsInfo;
+  Target, SevenZip, Note, ErrText: string;
+  Need7Zip: Boolean;
+  Stage7Zip, StageMgw: Integer;
+begin
+  Result := MgwLocalBin;
+  if (Result <> '') or not AAsk then
+    Exit;
+  ShowCompLog;
+  {$IFDEF UNIX}
+  LogComp('MinGW: на Linux - пакеты системы: sudo apt install make gcc ' +
+          'gcc-mingw-w64-i686 binutils-mingw-w64-i686');
+  Exit;
+  {$ENDIF}
+  SzGetOsInfo(OsInfo);
+  Target := string(MgwChooseTargetDir);
+  if Target = '' then
+  begin
+    LogComp('MinGW 32-bit: нет папки для установки - в ' + string(MgwAppDir) +
+            ' и ' + string(MgwUserDir) + ' не записать');
+    Exit;
+  end;
+  SevenZip := string(SzLocalExe);
+  Need7Zip := SevenZip = '';
+  Note := '';
+  if Need7Zip then
+    Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): им ' +
+            'распаковывается архив MinGW.';
+  if MessageDlg('9837:32-битного MinGW (gcc, windres, mingw32-make) нет.' +
+                #13#10#13#10'Скачать MinGW-w64 GCC ' + MgwVersion + ' (' +
+                MgwBuild + ', около ' + IntToStr(MgwSize div 1048576) +
+                ' МБ) с SourceForge и распаковать в ' + Target + '?' + Note +
+                #13#10#13#10'Эта сборка работает в Windows 7. Нужна для ' +
+                'make-проектов под 32 бита (Walker). В системе ничего не ' +
+                'ставится: ни реестра, ни PATH. После установки unIDE ' +
+                'проверит gcc -dumpmachine, mingw32-make и windres.',
+                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  CompDlgOpen('MinGW-w64 GCC ' + MgwVersion + ' (i686)');
+  FCompDlg.Caption := 'Установка MinGW 32-bit';
+  Stage7Zip := -1;
+  if Need7Zip then
+    Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 5);
+  StageMgw := FCompDlg.AddStage('MinGW-w64 GCC ' + MgwVersion + ' (i686)', 95);
+  BusyBegin('Установка MinGW 32-bit');
+  try
+    if Need7Zip then
+    begin
+      SevenZip := RosSetup7Zip(Stage7Zip);
+      if SevenZip = '' then
+        Exit;
+    end;
+    FCompDlg.StartStage(StageMgw, 0, 'скачивание');
+    FRosInstallStage := StageMgw;
+    LogComp('MinGW 32-bit: скачивание ' + MgwUrl1 + ', затем распаковка в ' +
+            Target);
+    if not SzInstallPlanSync(Target, MgwPlan(SevenZip, OsInfo.Name),
+                             RosInstallProgress, ErrText) then
+    begin
+      FCompDlg.EndStage(StageMgw, False, ErrText);
+      LogComp('MinGW 32-bit: не установлен - ' + ErrText + '. Страница ' +
+              'загрузки: ' + MgwPage);
+      Exit;
+    end;
+    Result := MgwLocalBin;
+    FCompDlg.EndStage(StageMgw, Result <> '', 'GCC ' + MgwVersion + ' i686');
+    if Result = '' then
+      LogComp('MinGW 32-bit: gcc.exe и ' + MgwMakeName + ' после установки ' +
+              'не найдены')
+    else
+      LogComp('MinGW-w64 GCC ' + MgwVersion + ' i686: ' + Result);
+  finally
+    BusyEnd('Установка MinGW 32-bit', Result <> '');
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result <> '' then
+      FCompDlg.FinishBuild(True, 'Установлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// Instruments - Find or Install MinGW 32-bit: все найденные MinGW с
+// проверкой; подходящего нет - установка своего
+procedure TForm1.MgwFindInstallClick(Sender: TObject);
+var
+  Bins: TStringList;
+  BinIdx: Integer;
+  Found32: Boolean;
+  OwnBin: string;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  Found32 := False;
+  Bins := TStringList.Create;
+  try
+    MgwFindBins(Bins);
+    for BinIdx := 0 to Bins.Count - 1 do
+      if MgwCheckBin(Bins[BinIdx]) then
+        Found32 := True;
+    if Bins.Count = 0 then
+      LogComp('MinGW: gcc и ' + MgwMakeName + ' не найдены (свой ' +
+              'tools\mingw32, PATH, C:\mingw32, C:\MinGW, C:\msys64\mingw32, ' +
+              'Program Files (x86)\mingw-w64)')
+    else if Bins.Count > 1 then
+      LogComp('Сборка make берёт первый из них: ' + Bins[0]);
+  finally
+    Bins.Free;
+  end;
+  if Found32 then
+    Exit;
+  OwnBin := MgwEnsure(True);
+  if OwnBin <> '' then
+    MgwCheckBin(OwnBin);
+end;
+
+// Instruments - Find GCC
+procedure TForm1.GccFindClick(Sender: TObject);
+var
+  Found: TStringList;
+  ItemIdx: Integer;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  Found := TStringList.Create;
+  try
+    if GccFindAll(Found) = 0 then
+    begin
+      LogComp('GCC не найден. 32-битный MinGW - меню Instruments - Find or ' +
+              'Install MinGW 32-bit, 64-битный - Install MinGW-w64 GCC ' +
+              MingwVersion);
+      Exit;
+    end;
+    for ItemIdx := 0 to Found.Count - 1 do
+    begin
+      LogComp('GCC: ' + Found[ItemIdx]);
+      InstrLogTool(Found[ItemIdx], '--version', 'версия');
+      InstrLogTool(Found[ItemIdx], '-dumpmachine', 'собирает под');
+    end;
+  finally
+    Found.Free;
+  end;
+end;
+
+// Instruments - Find Clang
+procedure TForm1.ClangFindClick(Sender: TObject);
+var
+  Found: TStringList;
+  ItemIdx: Integer;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  Found := TStringList.Create;
+  try
+    if ClangFindAll(Found) = 0 then
+    begin
+      LogComp('Clang не найден (PATH, Program Files\LLVM, MSYS2). Выпуски ' +
+              'LLVM: ' + LlvmPage);
+      if MessageDlg('9838:Clang не найден.'#13#10#13#10'Открыть страницу ' +
+                    'выпусков LLVM в браузере?', mtConfirmation,
+                    [mbOK, mbCancel], 0) = mrOk then
+        ShellOpen(Handle, LlvmPage);
+      Exit;
+    end;
+    for ItemIdx := 0 to Found.Count - 1 do
+    begin
+      LogComp('Clang: ' + Found[ItemIdx]);
+      InstrLogTool(Found[ItemIdx], '--version', 'версия');
+    end;
+  finally
+    Found.Free;
+  end;
+end;
+
+// python.exe своего Python; нет - (AAsk) вопрос, установка embeddable
+// Python, get-pip.py и pip. Отказ или не вышло - пусто
+function TForm1.PyEnsure(AAsk: Boolean): string;
+var
+  OsInfo: TSzOsInfo;
+  Target, SevenZip, Note, ErrText, GetPip: string;
+  Need7Zip: Boolean;
+  Stage7Zip, StagePy, StagePip, PipCode: Integer;
+begin
+  Result := PyLocalExe;
+  if (Result <> '') or not AAsk then
+    Exit;
+  ShowCompLog;
+  {$IFDEF UNIX}
+  LogComp('Python: на Linux - пакеты системы: sudo apt install python3 ' +
+          'python3-pip');
+  Exit;
+  {$ENDIF}
+  SzGetOsInfo(OsInfo);
+  Target := string(PyChooseTargetDir);
+  if Target = '' then
+  begin
+    LogComp('Python: нет папки для установки - в ' + string(PyAppDir) +
+            ' и ' + string(PyUserDir) + ' не записать');
+    Exit;
+  end;
+  SevenZip := string(SzLocalExe);
+  Need7Zip := SevenZip = '';
+  Note := '';
+  if Need7Zip then
+    Note := #13#10'Сначала будет скачан свой 7-Zip unIDE (около 2 МБ): им ' +
+            'распаковывается архив Python.';
+  if MessageDlg('9839:Python в системе не найден.'#13#10#13#10'Скачать ' +
+                'Python ' + PyVersion + ' (embeddable, около 8 МБ) с ' +
+                'python.org и распаковать в ' + Target + '? Затем будет ' +
+                'скачан get-pip.py и поставлен pip.' + Note + #13#10#13#10 +
+                'Python ' + PyVersion + ' - последний для Windows 7. В ' +
+                'системе ничего не ставится: ни реестра, ни PATH.',
+                mtConfirmation, [mbOK, mbCancel], 0) <> mrOk then
+    Exit;
+  CompDlgOpen('Python ' + PyVersion);
+  FCompDlg.Caption := 'Установка Python';
+  Stage7Zip := -1;
+  if Need7Zip then
+    Stage7Zip := FCompDlg.AddStage('7-Zip ' + SzVersion, 10);
+  StagePy := FCompDlg.AddStage('Python ' + PyVersion, 40);
+  StagePip := FCompDlg.AddStage('pip (get-pip.py)', 50);
+  BusyBegin('Установка Python');
+  try
+    if Need7Zip then
+    begin
+      SevenZip := RosSetup7Zip(Stage7Zip);
+      if SevenZip = '' then
+        Exit;
+    end;
+    FCompDlg.StartStage(StagePy, 0, 'скачивание');
+    FRosInstallStage := StagePy;
+    LogComp('Python: скачивание с python.org, распаковка в ' + Target);
+    if not SzInstallPlanSync(Target, PyPlan(OsInfo.Is64, SevenZip,
+                             OsInfo.Name), RosInstallProgress, ErrText) then
+    begin
+      FCompDlg.EndStage(StagePy, False, ErrText);
+      LogComp('Python: не установлен - ' + ErrText + '. Страница: ' + PyPage);
+      Exit;
+    end;
+    Result := PyLocalExe;
+    FCompDlg.EndStage(StagePy, Result <> '', 'Python ' + PyVersion);
+    if Result = '' then
+    begin
+      LogComp('Python: python.exe после установки не найден');
+      Exit;
+    end;
+    LogComp('Python ' + PyVersion + ': ' + Result);
+    InstrLogTool(Result, '--version', 'python --version');
+
+    // pip: get-pip.py в корень Python, site в python38._pth, запуск
+    FCompDlg.StartStage(StagePip, 0, 'get-pip.py');
+    FRosInstallStage := StagePip;
+    if not SzInstallPlanSync(ExtractFilePath(Result), PyGetPipPlan,
+                             RosInstallProgress, ErrText) then
+    begin
+      FCompDlg.EndStage(StagePip, False, ErrText);
+      LogComp('pip: get-pip.py не скачан - ' + ErrText + ' (' + PyGetPipUrl +
+              '). Python работает и без pip');
+      Exit;
+    end;
+    if not PyEnableSite(ExtractFilePath(Result)) then
+      LogComp('pip: в python*._pth не включить import site - пакеты из ' +
+              'site-packages могут не находиться');
+    GetPip := ExtractFilePath(Result) + PyGetPipName;
+    LogComp('--- python ' + PyGetPipName);
+    PipCode := RunCompiler(Result, '"' + GetPip +
+                           '" --no-warn-script-location',
+                           ExtractFilePath(Result));
+    FCompDlg.EndStage(StagePip, PipCode = 0, 'код ' + IntToStr(PipCode));
+    if PipCode = 0 then
+      LogComp('pip поставлен: ' + Result + ' -m pip install <пакет>')
+    else
+      LogComp('pip: get-pip.py завершился с кодом ' + IntToStr(PipCode) +
+              '. Python работает и без pip');
+  finally
+    BusyEnd('Установка Python', Result <> '');
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result <> '' then
+      FCompDlg.FinishBuild(True, 'Установлено')
+    else
+      FCompDlg.FinishBuild(False, 'Не установлено, подробности - ' +
+                           'Compilation log');
+  end;
+end;
+
+// Instruments - Find or Install Python: все найденные с версией; нет -
+// установка своего
+procedure TForm1.PyFindInstallClick(Sender: TObject);
+var
+  Found: TStringList;
+  ItemIdx: Integer;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  Found := TStringList.Create;
+  try
+    if PyFindAll(Found) > 0 then
+    begin
+      for ItemIdx := 0 to Found.Count - 1 do
+      begin
+        LogComp('Python: ' + Found[ItemIdx]);
+        InstrLogTool(Found[ItemIdx], '--version', 'версия');
+      end;
+      Exit;
+    end;
+  finally
+    Found.Free;
+  end;
+  LogComp('Python не найден (PATH, реестр PythonCore, %LOCALAPPDATA%\' +
+          'Programs\Python, C:\Python3*, Program Files)');
+  PyEnsure(True);
+end;
+
+// Instruments - pip install numpy scipy Pillow: в первый найденный Python
+procedure TForm1.PyWalkerPackagesClick(Sender: TObject);
+var
+  Found: TStringList;
+  PyExe: string;
+  PipCode: Integer;
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  ShowCompLog;
+  PyExe := '';
+  Found := TStringList.Create;
+  try
+    if PyFindAll(Found) > 0 then
+      PyExe := Found[0];
+  finally
+    Found.Free;
+  end;
+  if PyExe = '' then
+    PyExe := PyEnsure(True);
+  if PyExe = '' then
+    Exit;
+  LogComp('--- ' + PyExe + ' -m pip install ' + PyWalkerPackages);
+  PipCode := -1;
+  BusyBegin('pip install');
+  try
+    PipCode := RunCompiler(PyExe, '-m pip install ' + PyWalkerPackages,
+                           ExtractFilePath(PyExe));
+  finally
+    BusyEnd('pip install', PipCode = 0);
+  end;
+  if PipCode = 0 then
+    LogComp('pip: ' + PyWalkerPackages + ' поставлены')
+  else
+    LogComp('pip: код завершения ' + IntToStr(PipCode) + '. Нет pip - ' +
+            'меню Instruments - Find or Install Python (свой Python ставится ' +
+            'с pip)');
 end;
 
 // Write Image to USB: выбрать образ (предлагается собранный образ проекта
@@ -82517,7 +83374,7 @@ begin
         {$IFDEF UNIX}
         FGitLblRepo.Caption := 'Git не найден - установите пакет git';
         {$ELSE}
-        FGitLblRepo.Caption := 'Git не найден - ReactOS - Find or Install Git';
+        FGitLblRepo.Caption := 'Git не найден - Instruments - Find or Install Git';
         {$ENDIF}
       FGitLblRepo.Hint := '';
       FGitLblSync.Caption := '';
@@ -99190,7 +100047,7 @@ begin
   ManualItem := mHelpGit;
   // .dfm: ManualItem.Caption := '&Git';
   ManualItem.Hint := 'Справка по Git и его командам (git_ref\help\git.chm); ' +
-                     'терминал - ReactOS - Git Terminal';
+                     'терминал - Instruments - Git Terminal';
   // .dfm: ManualItem.OnClick := mHelpGitClick;
   // .dfm: mHelp.Insert(1, ManualItem);
   // Справка по QEMU - после Git

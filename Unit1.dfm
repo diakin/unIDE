@@ -888,6 +888,23 @@ object Form1: TForm1
         Hint = 'Команды arduino-cli и их справка'
       end
     end
+    object mInstruments: TMenuItem
+      Caption = 'Instruments'
+      AutoHotkeys = maManual
+      object mToolInstall7Zip: TMenuItem
+        OnClick = RosInstall7ZipClick
+      end
+      object mToolSep1: TMenuItem
+        Caption = '-'
+      end
+      object mToolGitTerminal: TMenuItem
+        Caption = 'Git Terminal (Git Bash)'
+        OnClick = GitTerminalClick
+      end
+      object mToolGitInstall: TMenuItem
+        OnClick = GitInstallClick
+      end
+    end
     object RosMenu: TMenuItem
       Caption = 'ReactOS'
       AutoHotkeys = maManual
@@ -906,25 +923,12 @@ object Form1: TForm1
         Caption = 'Install RosBE 2.2.1 (reactosVG14)...'
         OnClick = RosInstallRosBEClick
       end
-      object mRosInstall7Zip: TMenuItem
-        OnClick = RosInstall7ZipClick
-      end
       object mRosInstallQemu: TMenuItem
         OnClick = RosInstallQemuClick
       end
       object mRosInstallRufus: TMenuItem
         Caption = 'Install Rufus (tools\rufus)...'
         OnClick = RufusInstallClick
-      end
-      object mRosSep2: TMenuItem
-        Caption = '-'
-      end
-      object mRosGitTerminal: TMenuItem
-        Caption = 'Git Terminal (Git Bash)'
-        OnClick = GitTerminalClick
-      end
-      object mRosGitInstall: TMenuItem
-        OnClick = GitInstallClick
       end
       object mRosSep3: TMenuItem
         Caption = '-'

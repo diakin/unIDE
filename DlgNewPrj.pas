@@ -54,6 +54,7 @@ uses
   ResFile,      // .res: VERSIONINFO, MAINICON
   FolderDlg,    // BrowseFolderDialog
   RosProj,      // настройки проекта ReactOS / LiberNT
+  MakeProj,     // настройки проекта C / C++ со сборкой make
   PciIds,       // список производителей PCI по умолчанию
   Dialogs,      // TOpenDialog
   // Окна сообщений по теме - последним, поверх Dialogs
@@ -283,6 +284,20 @@ type
     btnRosEnv: TUiButton;
     edRosPciVendors: TUiEdit;
     edRosRun: TUiEdit;
+    // Рамка проекта C / C++: сборка make (BuildMakeControls)
+    grpMake: TUiGroupBox;
+    edMakeDir: TUiEdit;
+    btnMakeDir: TUiButton;
+    cbMakeFile: TUiComboBox;
+    cbMakeTarget: TUiComboBox;
+    edMakeJobs: TUiEdit;
+    edMakeTool: TUiEdit;
+    btnMakeTool: TUiButton;
+    chkMakeGitSh: TUiCheckBox;
+    edMakeRunExe: TUiEdit;
+    btnMakeRunExe: TUiButton;
+    edMakeRunArgs: TUiEdit;
+    edMakeRunDir: TUiEdit;
     // Новый проект RapidQ: вид заготовки и компилятор (BuildRqKindControls)
     lblRqKind: TLabel;
     cbRqKind: TUiComboBox;
@@ -321,6 +336,14 @@ type
     procedure btnIncDelAllClick(Sender: TObject);
     procedure BuildRosControls;
     procedure BuildLazControls;
+    procedure BuildMakeControls;
+    function  MakeProjectDir: string;
+    function  MakeDirFull: string;
+    procedure btnMakeDirClick(Sender: TObject);
+    procedure cbMakeFileDropDown(Sender: TObject);
+    procedure cbMakeTargetDropDown(Sender: TObject);
+    procedure btnMakeToolClick(Sender: TObject);
+    procedure btnMakeRunExeClick(Sender: TObject);
     procedure BuildRqKindControls;
     procedure BuildTargetControls;
     procedure edTargetChange(Sender: TObject);
@@ -394,6 +417,12 @@ type
     // поле папки сборки - от папки проекта (edDir), если они внутри неё.
     procedure SetRosSettings(const ASettings: TRosSettings);
     procedure GetRosSettings(var ASettings: TRosSettings);
+    // Выбран тип C project или CPP project (сборка make)
+    function IsMakeType: Boolean;
+    // Рамка make: заполнить по настройкам проекта и прочитать. Пути - от
+    // папки проекта (edDir), если они внутри неё
+    procedure SetMakeSettings(const ASettings: TMakeSettings);
+    procedure GetMakeSettings(var ASettings: TMakeSettings);
     // Записать .dof, .dpr и .res. AChanged - было ли что записано. Что
     // сделано и ошибки - строками в ALog.
     function SaveDelphiOptions(ALog: TStrings; out AChanged: Boolean): Boolean;
@@ -419,6 +448,7 @@ const
   CompactRosClientHeight = 456;
   CompactFbClientHeight = 306;
   CompactLazClientHeight = 376;
+  CompactMakeClientHeight = 484;
   FullClientHeight = 560;
   // Строка цели сборки (Project Properties): поле под типом и пояснение
   // под ним; рамки RapidQ, FreeBASIC, ReactOS, Lazarus ниже на столько же
@@ -447,6 +477,7 @@ begin
   FPkgPaths := TStringList.Create;
   BuildRosControls;
   BuildLazControls;
+  BuildMakeControls;
   BuildRqKindControls;
   BuildTargetControls;
   SetOptionsVisible(False);
@@ -477,6 +508,8 @@ begin
     grpRos.Visible := IsRosType;
   if grpLaz <> nil then
     grpLaz.Visible := CompareText(cbType.Text, 'Lazarus') = 0;
+  if grpMake <> nil then
+    grpMake.Visible := IsMakeType;
   if cbRqKind <> nil then
   begin
     cbRqKind.Visible := FRqKindShown and grpRqInc.Visible;
@@ -493,6 +526,8 @@ begin
     ClientHeight := CompactFbClientHeight
   else if (grpLaz <> nil) and grpLaz.Visible then
     ClientHeight := CompactLazClientHeight
+  else if (grpMake <> nil) and grpMake.Visible then
+    ClientHeight := CompactMakeClientHeight
   else
     ClientHeight := CompactClientHeight;
   if FTargetShown and not tsOptions.TabVisible then
@@ -875,6 +910,282 @@ begin
   ASettings.RunCommand := Trim(edRosRun.Text);
 end;
 
+// Рамка проекта C / C++ (make) - на месте рамки папки inc:
+//   Папка make    [code              ] [...]
+//   Makefile      [Makefile.mingw  v]   Цель [engine v]   -j [  ]
+//   make          [пусто - mingw32-make 32-битного MinGW] [...]
+//   [x] usr\bin Git for Windows в PATH сборки (sh, cp, rm)
+//   Программа     [walker\dist\Walker.exe] [...]
+//   Параметры     [+map wk_islands     ]
+//   Папка запуска [пусто - папка программы]
+//   пояснение
+procedure TDlgNewPrj.BuildMakeControls;
+const
+  LabelLeft = 12;
+  FieldLeft = 130;
+
+  procedure AddLabel(ALeft, ATop, AWidth: Integer; const ACaption: string);
+  var
+    RowLabel: TLabel;
+  begin
+    RowLabel := TLabel.Create(Self);
+    RowLabel.Parent := grpMake;
+    RowLabel.SetBounds(ALeft, ATop + 4, AWidth, 13);
+    RowLabel.Caption := ACaption;
+  end;
+
+  function AddEdit(ATop, AWidth: Integer; const AHint: string): TUiEdit;
+  begin
+    Result := TUiEdit.Create(Self);
+    Result.Parent := grpMake;
+    Result.SetBounds(FieldLeft, ATop, AWidth, 21);
+    Result.Hint := AHint;
+    Result.ShowHint := True;
+  end;
+
+  function AddButton(ATop: Integer; const AHint: string;
+                     AClick: TNotifyEvent): TUiButton;
+  begin
+    Result := TUiButton.Create(Self);
+    Result.Parent := grpMake;
+    Result.SetBounds(FieldLeft + 536, ATop - 1, 30, 23);
+    Result.Caption := '...';
+    Result.Hint := AHint;
+    Result.ShowHint := True;
+    Result.OnClick := AClick;
+  end;
+
+var
+  NoteLabel: TLabel;
+begin
+  if grpMake <> nil then
+    Exit;
+  grpMake := TUiGroupBox.Create(Self);
+  grpMake.Parent := tsProject;
+  grpMake.SetBounds(grpRqInc.Left, grpRqInc.Top, grpRqInc.Width, 250);
+  grpMake.Caption := 'C / C++: сборка make (Makefile)';
+  grpMake.Visible := False;
+
+  AddLabel(LabelLeft, 22, FieldLeft - LabelLeft - 4, 'Папка make');
+  edMakeDir := AddEdit(22, 530, 'Папка, из которой запускается make ' +
+    '(для Walker - code). Внутри папки проекта - от неё. Пусто - папка, ' +
+    'где лежит Makefile (сама папка проекта, code, src, build или ' +
+    'подпапка первого уровня)');
+  btnMakeDir := AddButton(22, 'Выбрать папку make', btnMakeDirClick);
+
+  AddLabel(LabelLeft, 50, FieldLeft - LabelLeft - 4, 'Makefile');
+  cbMakeFile := TUiComboBox.Create(Self);
+  cbMakeFile.Parent := grpMake;
+  cbMakeFile.Style := csDropDown;
+  cbMakeFile.SetBounds(FieldLeft, 50, 200, 21);
+  cbMakeFile.OnDropDown := cbMakeFileDropDown;
+  cbMakeFile.Hint := 'Ключ -f make (для Walker - Makefile.mingw). Пусто - ' +
+                     'make ищет Makefile в папке сам';
+  cbMakeFile.ShowHint := True;
+
+  AddLabel(FieldLeft + 210, 50, 34, 'Цель');
+  cbMakeTarget := TUiComboBox.Create(Self);
+  cbMakeTarget.Parent := grpMake;
+  cbMakeTarget.Style := csDropDown;
+  cbMakeTarget.SetBounds(FieldLeft + 246, 50, 180, 21);
+  cbMakeTarget.OnDropDown := cbMakeTargetDropDown;
+  cbMakeTarget.Hint := 'Цель make: в списке - цели Makefile (all, engine, ' +
+                       'qvm, clean ...). Пусто - первая цель Makefile';
+  cbMakeTarget.ShowHint := True;
+
+  AddLabel(FieldLeft + 436, 50, 20, '-j');
+  edMakeJobs := TUiEdit.Create(Self);
+  edMakeJobs.Parent := grpMake;
+  edMakeJobs.SetBounds(FieldLeft + 458, 50, 42, 21);
+  edMakeJobs.Hint := 'Сколько команд make запускает параллельно (-j N). ' +
+                     'Пусто или 0 - не задавать';
+  edMakeJobs.ShowHint := True;
+
+  AddLabel(LabelLeft, 78, FieldLeft - LabelLeft - 4, 'make');
+  edMakeTool := AddEdit(78, 530, 'make полным путём. Пусто - mingw32-make ' +
+    '32-битного MinGW: свой unIDE (tools\mingw32, меню Instruments) или ' +
+    'найденный в системе; иначе make из PATH');
+  btnMakeTool := AddButton(78, 'Выбрать make', btnMakeToolClick);
+
+  chkMakeGitSh := TUiCheckBox.Create(Self);
+  chkMakeGitSh.Parent := grpMake;
+  chkMakeGitSh.SetBounds(FieldLeft, 106, 566, 17);
+  chkMakeGitSh.Caption := 'usr\bin Git for Windows - в PATH сборки (sh, ' +
+                          'cp, rm, mkdir - как в Git Bash)';
+  chkMakeGitSh.Hint := 'Для Makefile, который собирают из Git Bash: ' +
+    'mingw32-make тогда выполняет команды через sh';
+  chkMakeGitSh.ShowHint := True;
+  chkMakeGitSh.Checked := True;
+
+  AddLabel(LabelLeft, 130, FieldLeft - LabelLeft - 4, 'Программа (Run)');
+  edMakeRunExe := AddEdit(130, 530, 'Что запускает Run после сборки (для ' +
+    'Walker - walker\dist\Walker.exe). Пусто - спросить при первом Run');
+  btnMakeRunExe := AddButton(130, 'Выбрать программу', btnMakeRunExeClick);
+
+  AddLabel(LabelLeft, 158, FieldLeft - LabelLeft - 4, 'Параметры');
+  edMakeRunArgs := AddEdit(158, 566, 'Параметры программы (для Walker - ' +
+    '+map wk_islands; без параметров открывается меню)');
+
+  AddLabel(LabelLeft, 186, FieldLeft - LabelLeft - 4, 'Папка запуска');
+  edMakeRunDir := AddEdit(186, 566, 'Рабочая папка программы. Пусто - ' +
+    'папка программы (Walker ищет basewalker в текущей папке)');
+
+  NoteLabel := TLabel.Create(Self);
+  NoteLabel.Parent := grpMake;
+  NoteLabel.AutoSize := False;
+  NoteLabel.WordWrap := True;
+  NoteLabel.SetBounds(LabelLeft, 214, 690, 28);
+  NoteLabel.Caption := 'Compile: make -f <Makefile> <цель> в папке make, ' +
+    'с bin MinGW в PATH. Run: программа с параметрами в папке запуска. ' +
+    'Пути без диска - от папки проекта.';
+end;
+
+function TDlgNewPrj.IsMakeType: Boolean;
+begin
+  Result := MakeProjectType(cbType.Text);
+end;
+
+function TDlgNewPrj.MakeProjectDir: string;
+begin
+  Result := Trim(edDir.Text);
+  if Result <> '' then
+    Result := IncludeTrailingPathDelimiter(Result);
+end;
+
+// Папка make полным путём; поле пустое - папка с Makefile в проекте
+function TDlgNewPrj.MakeDirFull: string;
+var
+  FoundFile: string;
+begin
+  Result := MakePathFromStore(MakeProjectDir, edMakeDir.Text);
+  if (Result = '') and
+     not MakeFindDefault(MakeProjectDir, Result, FoundFile) then
+    Result := ExcludeTrailingPathDelimiter(MakeProjectDir);
+end;
+
+procedure TDlgNewPrj.btnMakeDirClick(Sender: TObject);
+var
+  FolderPath: string;
+begin
+  FolderPath := MakeDirFull;
+  if not BrowseFolderDialog('Папка make', FolderPath) then
+    Exit;
+  edMakeDir.Text := MakePathToStore(MakeProjectDir, FolderPath);
+end;
+
+// Makefile папки make - по папке на момент открытия списка
+procedure TDlgNewPrj.cbMakeFileDropDown(Sender: TObject);
+var
+  OldText, Dir: string;
+  SR: TSearchRec;
+begin
+  OldText := cbMakeFile.Text;
+  cbMakeFile.Items.Clear;
+  Dir := IncludeTrailingPathDelimiter(MakeDirFull);
+  if FindFirst(Dir + '*', faAnyFile, SR) = 0 then
+  try
+    repeat
+      if ((SR.Attr and faDirectory) = 0) and MakeIsMakefileName(SR.Name) then
+        cbMakeFile.Items.Add(SR.Name);
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+  end;
+  cbMakeFile.Text := OldText;
+end;
+
+// Цели выбранного Makefile
+procedure TDlgNewPrj.cbMakeTargetDropDown(Sender: TObject);
+var
+  OldText, FileName, FilePath: string;
+begin
+  OldText := cbMakeTarget.Text;
+  FileName := Trim(cbMakeFile.Text);
+  if FileName = '' then
+    FileName := MakeFileIn(MakeDirFull);
+  FilePath := '';
+  if FileName <> '' then
+    FilePath := MakePathFromStore(IncludeTrailingPathDelimiter(MakeDirFull),
+                                  FileName);
+  MakeTargets(FilePath, cbMakeTarget.Items);
+  if cbMakeTarget.Items.IndexOf('clean') < 0 then
+    cbMakeTarget.Items.Add('clean');
+  cbMakeTarget.Text := OldText;
+end;
+
+procedure TDlgNewPrj.btnMakeToolClick(Sender: TObject);
+var
+  OpenDlg: TOpenDialog;
+begin
+  OpenDlg := TOpenDialog.Create(Self);
+  try
+    OpenDlg.Filter := 'make (*.exe)|*.exe|*.*|*.*';
+    if Trim(edMakeTool.Text) <> '' then
+      OpenDlg.InitialDir := ExtractFilePath(MakePathFromStore(MakeProjectDir,
+                                                              edMakeTool.Text));
+    if OpenDlg.Execute then
+      edMakeTool.Text := MakePathToStore(MakeProjectDir, OpenDlg.FileName);
+  finally
+    OpenDlg.Free;
+  end;
+end;
+
+procedure TDlgNewPrj.btnMakeRunExeClick(Sender: TObject);
+var
+  OpenDlg: TOpenDialog;
+begin
+  OpenDlg := TOpenDialog.Create(Self);
+  try
+    OpenDlg.Filter := 'Программы (*.exe)|*.exe|*.*|*.*';
+    if Trim(edMakeRunExe.Text) <> '' then
+      OpenDlg.InitialDir := ExtractFilePath(MakePathFromStore(MakeProjectDir,
+                                                              edMakeRunExe.Text))
+    else
+      OpenDlg.InitialDir := MakeProjectDir;
+    if OpenDlg.Execute then
+      edMakeRunExe.Text := MakePathToStore(MakeProjectDir, OpenDlg.FileName);
+  finally
+    OpenDlg.Free;
+  end;
+end;
+
+procedure TDlgNewPrj.SetMakeSettings(const ASettings: TMakeSettings);
+begin
+  BuildMakeControls;
+  edMakeDir.Text := MakePathToStore(ASettings.ProjectDir, ASettings.MakeDir);
+  cbMakeFile.Text := ASettings.MakeFile;
+  cbMakeTarget.Text := ASettings.Target;
+  if ASettings.Jobs > 0 then
+    edMakeJobs.Text := IntToStr(ASettings.Jobs)
+  else
+    edMakeJobs.Text := '';
+  edMakeTool.Text := MakePathToStore(ASettings.ProjectDir, ASettings.Tool);
+  chkMakeGitSh.Checked := ASettings.GitSh;
+  edMakeRunExe.Text := MakePathToStore(ASettings.ProjectDir, ASettings.RunExe);
+  edMakeRunArgs.Text := ASettings.RunArgs;
+  edMakeRunDir.Text := MakePathToStore(ASettings.ProjectDir, ASettings.RunDir);
+  UpdateRqIncVisible;
+end;
+
+procedure TDlgNewPrj.GetMakeSettings(var ASettings: TMakeSettings);
+begin
+  ASettings.ProjectDir := MakeProjectDir;
+  ASettings.MakeDir := ExcludeTrailingPathDelimiter(MakePathFromStore(
+    ASettings.ProjectDir, edMakeDir.Text));
+  ASettings.MakeFile := Trim(cbMakeFile.Text);
+  ASettings.Target := Trim(cbMakeTarget.Text);
+  ASettings.Jobs := StrToIntDef(Trim(edMakeJobs.Text), 0);
+  if ASettings.Jobs < 0 then
+    ASettings.Jobs := 0;
+  ASettings.Tool := MakePathFromStore(ASettings.ProjectDir, edMakeTool.Text);
+  ASettings.GitSh := chkMakeGitSh.Checked;
+  ASettings.RunExe := MakePathFromStore(ASettings.ProjectDir,
+                                        edMakeRunExe.Text);
+  ASettings.RunArgs := Trim(edMakeRunArgs.Text);
+  ASettings.RunDir := ExcludeTrailingPathDelimiter(MakePathFromStore(
+    ASettings.ProjectDir, edMakeRunDir.Text));
+end;
+
 procedure TDlgNewPrj.cbTypeChange(Sender: TObject);
 begin
   UpdateRqIncVisible;
@@ -944,6 +1255,8 @@ begin
       grpRos.Top := grpRos.Top + TargetRowShift;
     if grpLaz <> nil then
       grpLaz.Top := grpLaz.Top + TargetRowShift;
+    if grpMake <> nil then
+      grpMake.Top := grpMake.Top + TargetRowShift;
   end;
   if AProjectDir <> '' then
     FTargetDir := IncludeTrailingPathDelimiter(AProjectDir)
