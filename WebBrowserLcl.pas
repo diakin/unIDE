@@ -18,6 +18,14 @@ unit WebBrowserLcl;
 //  здесь же. Document и ControlInterface - nil (нет OLE): прокрутка,
 //  запомненная TWebPreview, не восстанавливается. ExecWB 12 / 17 -
 //  копирование / выделить всё.
+//
+//  Обход ошибок IPro (Lazarus 3.0): страница перед разбором правится в
+//  памяти (IproSafeHtml) - атрибут disabled у полей формы и
+//  <input type="image"> дают Access violation внутри IPro, а <style> без
+//  type="text/css" IPro пропускает, <iframe> с недоступным адресом
+//  прерывает всю страницу (вместо него - ссылка). Исключение при открытии страницы
+//  оставляет панель IPro с недостроенным документом, и после него не
+//  открывалась уже ни одна страница - панель создаётся заново.
 // ---------------------------------------------------------------------------
 
 {$IFDEF FPC}
@@ -27,7 +35,7 @@ unit WebBrowserLcl;
 interface
 
 uses
-  SysUtils, Classes, Controls, Graphics, IpHtml, IpFileBroker;
+  SysUtils, Classes, Controls, Graphics, IpHtml, IpFileBroker, IpMsg;
 
 type
   TWebBrowserBeforeNavigate2 = procedure(Sender: TObject;
@@ -43,6 +51,9 @@ type
   public
     AllowNav: Boolean;
     function CanHandle(const AUrl: string): Boolean; override;
+    // Страница - через IproSafeHtml
+    function GetHtmlStream(const AUrl: string;
+      APostData: TIpFormDataEntity): TStream; override;
     // Картинка: адрес file:// с %XX (пробелы, кириллица) - в путь
     procedure GetImage(Sender: TIpHtmlNode; const AUrl: string;
       var APicture: TPicture); override;
@@ -53,6 +64,7 @@ type
     FPanel: TIpHtmlPanel;
     FProvider: TWebFileProvider;
     FPageUrl: string;
+    procedure CreatePanel;
     procedure PanelHotClick(Sender: TObject);
     procedure OpenUrl(const AUrl: string);
   private
@@ -77,11 +89,221 @@ type
       read FOnDocumentComplete write FOnDocumentComplete;
   end;
 
+// Текст страницы, который IPro разберёт без Access violation (см. начало
+// модуля). Байты - как в файле: имена тегов и атрибутов - ASCII
+function IproSafeHtml(const AHtml: RawByteString): RawByteString;
+
 implementation
 
 function TWebFileProvider.CanHandle(const AUrl: string): Boolean;
 begin
   Result := AllowNav and inherited CanHandle(AUrl);
+end;
+
+function IsNameChar(ACh: AnsiChar): Boolean;
+begin
+  Result := ACh in ['a'..'z', 'A'..'Z', '0'..'9', '-', '_', ':'];
+end;
+
+// Атрибут AName в тексте тега ATag (без '<' и '>'): позиция начала имени
+// и длина всего атрибута с ="значение"; 0 - нет такого
+function FindTagAttr(const ATag, AName: RawByteString;
+  out AAttrLen: Integer): Integer;
+var
+  Lower: RawByteString;
+  Pos1, Pos2: Integer;
+  Quote: AnsiChar;
+begin
+  Result := 0;
+  AAttrLen := 0;
+  Lower := LowerCase(ATag);
+  Pos1 := 1;
+  // имя тега пропускаем
+  while (Pos1 <= Length(Lower)) and IsNameChar(Lower[Pos1]) do
+    Inc(Pos1);
+  while Pos1 <= Length(Lower) do
+  begin
+    while (Pos1 <= Length(Lower)) and not IsNameChar(Lower[Pos1]) do
+      Inc(Pos1);
+    Pos2 := Pos1;
+    while (Pos2 <= Length(Lower)) and IsNameChar(Lower[Pos2]) do
+      Inc(Pos2);
+    if Pos2 = Pos1 then
+      Exit;
+    if Copy(Lower, Pos1, Pos2 - Pos1) = AName then
+      Result := Pos1;
+    // значение: ="...", ='...' или =слово
+    while (Pos2 <= Length(Lower)) and (Lower[Pos2] in [' ', #9, #13, #10]) do
+      Inc(Pos2);
+    if (Pos2 <= Length(Lower)) and (Lower[Pos2] = '=') then
+    begin
+      Inc(Pos2);
+      while (Pos2 <= Length(Lower)) and (Lower[Pos2] in [' ', #9, #13, #10]) do
+        Inc(Pos2);
+      if (Pos2 <= Length(Lower)) and (Lower[Pos2] in ['"', '''']) then
+      begin
+        Quote := Lower[Pos2];
+        Inc(Pos2);
+        while (Pos2 <= Length(Lower)) and (Lower[Pos2] <> Quote) do
+          Inc(Pos2);
+        Inc(Pos2);
+      end
+      else
+        while (Pos2 <= Length(Lower)) and
+              not (Lower[Pos2] in [' ', #9, #13, #10, '/']) do
+          Inc(Pos2);
+    end;
+    if Result > 0 then
+    begin
+      AAttrLen := Pos2 - Result;
+      Exit;
+    end;
+    Pos1 := Pos2;
+  end;
+end;
+
+// Значение атрибута как в теге, без кавычек; '' - нет атрибута или пустое
+function TagAttrValueRaw(const ATag, AName: RawByteString): RawByteString;
+var
+  AttrAt, AttrLen, EqAt: Integer;
+begin
+  Result := '';
+  AttrAt := FindTagAttr(ATag, AName, AttrLen);
+  if AttrAt = 0 then
+    Exit;
+  Result := Copy(ATag, AttrAt, AttrLen);
+  EqAt := Pos('=', Result);
+  if EqAt = 0 then
+  begin
+    Result := '';
+    Exit;
+  end;
+  Result := Trim(Copy(Result, EqAt + 1, MaxInt));
+  if (Result <> '') and (Result[1] in ['"', '''']) then
+    Result := Copy(Result, 2, Length(Result) - 2);
+  Result := StringReplace(Result, '"', '&quot;', [rfReplaceAll]);
+end;
+
+// То же строчными
+function TagAttrValue(const ATag, AName: RawByteString): RawByteString;
+begin
+  Result := LowerCase(TagAttrValueRaw(ATag, AName));
+end;
+
+// Один тег (текст между '<' и '>'), исправленный для IPro
+function IproSafeTag(const ATag: RawByteString): RawByteString;
+var
+  TagName, Src: RawByteString;
+  NameEnd, AttrAt, AttrLen: Integer;
+begin
+  Result := ATag;
+  NameEnd := 1;
+  if (Result <> '') and (Result[1] = '/') then
+    NameEnd := 2;
+  while (NameEnd <= Length(Result)) and IsNameChar(Result[NameEnd]) do
+    Inc(NameEnd);
+  TagName := LowerCase(Copy(Result, 1, NameEnd - 1));
+  if (TagName = 'input') or (TagName = 'select') or
+     (TagName = 'textarea') or (TagName = 'button') or
+     (TagName = 'option') or (TagName = 'optgroup') then
+  begin
+    // disabled: IPro ставит Enabled элементу, который ещё не создан
+    repeat
+      AttrAt := FindTagAttr(Result, 'disabled', AttrLen);
+      if AttrAt > 0 then
+        Delete(Result, AttrAt, AttrLen);
+    until AttrAt = 0;
+    // type="image": без картинки IPro обращается к пустой TPicture
+    if (TagName = 'input') and (TagAttrValue(Result, 'type') = 'image') then
+    begin
+      AttrAt := FindTagAttr(Result, 'type', AttrLen);
+      Delete(Result, AttrAt, AttrLen);
+      Insert('type="submit"', Result, AttrAt);
+    end;
+  end
+  else if (TagName = 'style') and (FindTagAttr(Result, 'type', AttrLen) = 0) then
+    Insert(' type="text/css"', Result, NameEnd)
+  // <iframe>: IPro грузит его сам и на адресе http(s):// или на
+  // несуществующем файле прерывает всю страницу (Resource unavailable) -
+  // вместо кадра ссылка на его адрес
+  else if TagName = 'iframe' then
+  begin
+    Src := TagAttrValueRaw(Result, 'src');
+    Result := 'a href="' + Src + '">[iframe: ' + Src + ']</a><span';
+  end
+  else if TagName = '/iframe' then
+    Result := '/span';
+end;
+
+function IproSafeHtml(const AHtml: RawByteString): RawByteString;
+var
+  Pos1, TagEnd, Done: Integer;
+  Lower: RawByteString;
+begin
+  Result := '';
+  Lower := LowerCase(AHtml);
+  Done := 1;
+  Pos1 := 1;
+  while Pos1 <= Length(AHtml) do
+  begin
+    if AHtml[Pos1] <> '<' then
+    begin
+      Inc(Pos1);
+      Continue;
+    end;
+    // комментарии и <script> - как есть
+    if Copy(AHtml, Pos1, 4) = '<!--' then
+    begin
+      TagEnd := Pos('-->', Copy(AHtml, Pos1 + 4, MaxInt));
+      if TagEnd = 0 then
+        Break;
+      Pos1 := Pos1 + 4 + TagEnd + 2;
+      Continue;
+    end;
+    if (Copy(Lower, Pos1, 7) = '<script') then
+    begin
+      TagEnd := Pos('</script', Copy(Lower, Pos1 + 7, MaxInt));
+      if TagEnd = 0 then
+        Break;
+      Pos1 := Pos1 + 7 + TagEnd;
+      Continue;
+    end;
+    if (Pos1 + 1 > Length(AHtml)) or
+       not (AHtml[Pos1 + 1] in ['a'..'z', 'A'..'Z', '/']) then
+    begin
+      Inc(Pos1);
+      Continue;
+    end;
+    TagEnd := Pos1 + 1;
+    while (TagEnd <= Length(AHtml)) and (AHtml[TagEnd] <> '>') do
+      Inc(TagEnd);
+    if TagEnd > Length(AHtml) then
+      Break;
+    Result := Result + Copy(AHtml, Done, Pos1 + 1 - Done) +
+              IproSafeTag(Copy(AHtml, Pos1 + 1, TagEnd - Pos1 - 1));
+    Done := TagEnd;
+    Pos1 := TagEnd + 1;
+  end;
+  Result := Result + Copy(AHtml, Done, MaxInt);
+end;
+
+function TWebFileProvider.GetHtmlStream(const AUrl: string;
+  APostData: TIpFormDataEntity): TStream;
+var
+  Bytes: RawByteString;
+begin
+  Result := inherited GetHtmlStream(AUrl, APostData);
+  SetLength(Bytes, Result.Size);
+  if Bytes <> '' then
+  begin
+    Result.Position := 0;
+    Result.ReadBuffer(Bytes[1], Length(Bytes));
+  end;
+  Bytes := IproSafeHtml(Bytes);
+  Result.Size := 0;
+  if Bytes <> '' then
+    Result.WriteBuffer(Bytes[1], Length(Bytes));
+  Result.Position := 0;
 end;
 
 // file:///папка/a%20b.png -> /папка/a b.png;
@@ -148,6 +370,11 @@ constructor TWebBrowser.Create(AOwner: TComponent);
 begin
   inherited Create(AOwner);
   FProvider := TWebFileProvider.Create(Self);
+  CreatePanel;
+end;
+
+procedure TWebBrowser.CreatePanel;
+begin
   FPanel := TIpHtmlPanel.Create(Self);
   FPanel.Parent := Self;
   FPanel.Align := alClient;
@@ -188,7 +415,18 @@ begin
   FPageUrl := AUrl;
   FProvider.AllowNav := True;
   try
-    FPanel.OpenURL(AUrl);
+    try
+      FPanel.OpenURL(AUrl);
+    except
+      // Недостроенный документ IPro роняет и следующие страницы, и своё
+      // освобождение: панель - заново, прежняя только убирается с экрана
+      FPanel.Visible := False;
+      FPanel.Parent := nil;
+      FPanel.OnHotClick := nil;
+      FPanel.DataProvider := nil;
+      CreatePanel;
+      raise;
+    end;
   finally
     FProvider.AllowNav := False;
   end;

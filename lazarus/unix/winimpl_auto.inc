@@ -816,3 +816,8 @@ function Impl_WriteProcessMemory(AProcess: THandle; AAddress: Pointer; ABuffer: 
 begin
   Result := Default(BOOL);
 end;
+
+function Impl_CopyImage(_para1:HANDLE; _para2:UINT; _para3:longint; _para4:longint; _para5:UINT):HICON; stdcall; public name 'unidewin_CopyImage';
+begin
+  Result := Default(HICON);
+end;

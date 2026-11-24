@@ -967,6 +967,28 @@ begin
   end;
 end;
 
+{$IFDEF FPC}
+// Место исключения: класс, адрес и до 8 кадров стека (BackTraceStrFunc -
+// с модулем и строкой, если в exe есть отладочная информация -gl)
+function FmtExceptTrace: string;
+var
+  Frames: PCodePointer;
+  FrameIdx: Integer;
+begin
+  Result := '';
+  if ExceptObject <> nil then
+    Result := ExceptObject.ClassName + ' ';
+  Result := Result + 'в ' + Trim(BackTraceStrFunc(ExceptAddr));
+  Frames := ExceptFrames;
+  for FrameIdx := 0 to ExceptFrameCount - 1 do
+  begin
+    if FrameIdx >= 8 then
+      Break;
+    Result := Result + #13#10 + '  ' + Trim(BackTraceStrFunc(Frames[FrameIdx]));
+  end;
+end;
+{$ENDIF}
+
 // Открыть APage (файл на диске) как просмотр файла вкладки ASourceFile.
 // Navigate - путём, а не адресом file:///: IE сам переводит его в адрес,
 // и кириллица в пути не портится
@@ -988,7 +1010,14 @@ begin
     Result := True;
   except
     on Err: Exception do
+    begin
       FLastError := 'Просмотр не открылся: ' + Err.Message;
+{$IFDEF FPC}
+      // Где упало: адреса (со строками, если exe собран с -gl) - в журнал
+      // и в текст ошибки, чтобы причину можно было найти без отладчика
+      FLastError := FLastError + #13#10 + FmtExceptTrace;
+{$ENDIF}
+    end;
   end;
 end;
 

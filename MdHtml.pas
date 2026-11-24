@@ -1957,7 +1957,7 @@ begin
       ';border-left:4px solid ' + AColors.Border + ';}'#10 +
     'table{border-collapse:collapse;}'#10 +
     'th,td{border:1px solid ' + AColors.Border + ';padding:5px 12px;' +
-      'vertical-align:top;}'#10 +
+      'vertical-align:top;color:' + AColors.Text + ';}'#10 +
     'th{font-weight:600;background:' + AColors.CodeBack + ';}'#10 +
     'hr{height:2px;border:0;background:' + AColors.Border +
       ';margin:20px 0;}'#10
@@ -1980,7 +1980,7 @@ begin
     '<meta http-equiv="X-UA-Compatible" content="IE=edge">'#10 +
     '<meta http-equiv="Content-Type" content="text/html; charset=utf-8">'#10 +
     '<title>' + MdEscape(ATitle) + '</title>'#10 +
-    '<style>'#10 + Css + '</style>'#10 +
+    '<style type="text/css">'#10 + Css + '</style>'#10 +
     '</head>'#10'<body>'#10 +
     MdToHtmlBody(ASrc, ABaseUrl) +
     '</body>'#10'</html>'#10;
