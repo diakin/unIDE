@@ -9,10 +9,20 @@ unit WebBrowserLcl;
 //
 //  Только для FPC: в Delphi 7 используется настоящий SHDocVw.
 //
-//  Windows и Linux: страница показывается TIpHtmlPanel (пакет TurboPower
+//  Windows: страница показывается встроенным Microsoft Edge WebView2
+//  (Chromium, обёртка WebView4Delphi; загрузчик и проверка Runtime - в
+//  Wv2View). WebView2 запускается асинхронно: первая страница ждёт
+//  готовности браузера (таймер). Runtime не найден, браузер не создался
+//  или процесс браузера завершился - дальше страницы показывает IPro.
+//  Клавиши F1..F24 WebView2 (другой процесс) отдаёт главному окну
+//  unIDE сообщением WM_KEYDOWN (F12 - вид "текст", F3 и т.д.).
+//  Переход по ссылке и новое окно (target=_blank) - через
+//  OnBeforeNavigate2, как у IE.
+//
+//  Linux и запасной путь Windows: TIpHtmlPanel (пакет TurboPower
 //  IPro из поставки Lazarus, он уже в зависимостях проекта): HTML 4 и
-//  простой CSS, картинки с диска. Скрипты, .mht и CSS3 не поддерживаются;
-//  полный вид - отдельное окно WebView2 (Wv2View). Navigate - путь файла (или file://). Щелчок по ссылке: метка на
+//  простой CSS, картинки с диска. Скрипты, .mht и CSS3 не поддерживаются.
+//  Navigate - путь файла (или file://). Щелчок по ссылке: метка на
 //  той же странице ('#имя') - прокрутка к ней; остальное - в
 //  OnBeforeNavigate2 (полный адрес), не отменили - страница открывается
 //  здесь же. Document и ControlInterface - nil (нет OLE): прокрутка,
@@ -35,7 +45,13 @@ unit WebBrowserLcl;
 interface
 
 uses
-  SysUtils, Classes, Controls, Graphics, IpHtml, IpFileBroker, IpMsg;
+  SysUtils, Classes, Controls, Graphics, IpHtml, IpFileBroker, IpMsg
+{$IFDEF MSWINDOWS}
+  , Windows, Messages, ExtCtrls, Forms, uWVTypes, uWVTypeLibrary, uWVLoader,
+  uWVBrowserBase, uWVBrowser, uWVWinControl, uWVWindowParent,
+  uWVCoreWebView2Args, Wv2View
+{$ENDIF}
+  ;
 
 type
   TWebBrowserBeforeNavigate2 = procedure(Sender: TObject;
@@ -44,6 +60,12 @@ type
     var AHeaders: OleVariant; var ACancel: WordBool) of object;
   TWebBrowserDocumentComplete = procedure(Sender: TObject;
     const ADisp: IDispatch; var AUrl: OleVariant) of object;
+  TWebBrowserLog = procedure(const AText: string) of object;
+{$IFDEF MSWINDOWS}
+  // WebView2: нет (Linux, Runtime не найден), ждёт загрузчик, создаётся,
+  // готов, отказал (дальше IPro)
+  TWebWv2State = (wwNone, wwWaiting, wwCreating, wwReady, wwFailed);
+{$ENDIF}
 
   // Поставщик файлов: страницу открывает только Navigate (FAllowNav), щелчок
   // по ссылке идёт в OnHotClick (решает TWebPreview)
@@ -72,6 +94,37 @@ type
     FRegisterAsDropTarget: Boolean;
     FOnBeforeNavigate2: TWebBrowserBeforeNavigate2;
     FOnDocumentComplete: TWebBrowserDocumentComplete;
+    FOnLog: TWebBrowserLog;
+{$IFDEF MSWINDOWS}
+    FWvParent: TWVWindowParent;
+    FWv: TWVBrowser;
+    FWvTimer: TTimer;
+    FWvState: TWebWv2State;
+    FWvTried: Boolean;
+    FWvPendingUrl: string;   // адрес для WebView2, ждёт готовности браузера
+    FWvPendingIpro: string;  // тот же адрес для IPro (file://, без %XX)
+    FWvOwnNav: Boolean;      // переход начат Navigate - не спрашивать
+    procedure Log(const AText: string);
+    procedure WvSetup;
+    procedure WvTryStart;
+    procedure WvTimerTick(Sender: TObject);
+    procedure WvFallback(const AReason: string);
+    procedure WvNavigate;
+    procedure WvAfterCreated(Sender: TObject);
+    procedure WvInitError(Sender: TObject; aErrorCode: HRESULT;
+      const aErrorMessage: wvstring);
+    procedure WvNavStarting(Sender: TObject; const aWebView: ICoreWebView2;
+      const aArgs: ICoreWebView2NavigationStartingEventArgs);
+    procedure WvNavCompleted(Sender: TObject; const aWebView: ICoreWebView2;
+      const aArgs: ICoreWebView2NavigationCompletedEventArgs);
+    procedure WvNewWindow(Sender: TObject; const aWebView: ICoreWebView2;
+      const aArgs: ICoreWebView2NewWindowRequestedEventArgs);
+    procedure WvKey(Sender: TObject; const aController: ICoreWebView2Controller;
+      const aArgs: ICoreWebView2AcceleratorKeyPressedEventArgs);
+    procedure WvProcessFailed(Sender: TObject; const aWebView: ICoreWebView2;
+      const aArgs: ICoreWebView2ProcessFailedEventArgs);
+    function AskNavigate(const AUrl: string): Boolean;
+{$ENDIF}
     function GetDocument: IDispatch;
     function GetControlInterface: IDispatch;
   public
@@ -87,6 +140,10 @@ type
       read FOnBeforeNavigate2 write FOnBeforeNavigate2;
     property OnDocumentComplete: TWebBrowserDocumentComplete
       read FOnDocumentComplete write FOnDocumentComplete;
+    // Журнал: каким движком показана страница, почему не WebView2
+    property OnLog: TWebBrowserLog read FOnLog write FOnLog;
+    // 'WebView2' или 'IPro'
+    function EngineName: string;
   end;
 
 // Текст страницы, который IPro разберёт без Access violation (см. начало
@@ -373,6 +430,18 @@ begin
   CreatePanel;
 end;
 
+function TWebBrowser.EngineName: string;
+begin
+{$IFDEF MSWINDOWS}
+  if FWvState in [wwWaiting, wwCreating, wwReady] then
+  begin
+    Result := 'WebView2';
+    Exit;
+  end;
+{$ENDIF}
+  Result := 'IPro';
+end;
+
 procedure TWebBrowser.CreatePanel;
 begin
   FPanel := TIpHtmlPanel.Create(Self);
@@ -516,16 +585,337 @@ begin
     FOnBeforeNavigate2(Self, NoDisp, UrlVar, AFlags, FrameVar, PostVar,
       HeadersVar, Cancel);
   end;
-  if not Cancel then
-    OpenUrl(FullUrl);
+  if Cancel then
+    Exit;
+{$IFDEF MSWINDOWS}
+  // Первая страница: WebView2 пробуем сейчас (окно уже в форме, OnLog
+  // назначен)
+  if not FWvTried then
+  begin
+    FWvTried := True;
+    WvSetup;
+  end;
+  if FWvState in [wwWaiting, wwCreating, wwReady] then
+  begin
+    if Pos('://', UTF8Encode(AUrl)) > 0 then
+      FWvPendingUrl := UTF8Encode(AUrl)
+    else
+      FWvPendingUrl := UTF8Encode(Wv2FileUrl(UTF8Encode(AUrl)));
+    FWvPendingIpro := FullUrl;
+    WvTryStart;
+    Exit;
+  end;
+{$ENDIF}
+  OpenUrl(FullUrl);
 end;
 
 procedure TWebBrowser.ExecWB(ACmdId, ACmdExecOpt: Integer);
 begin
+{$IFDEF MSWINDOWS}
+  if FWvState = wwReady then
+  begin
+    case ACmdId of
+      12: FWv.ExecuteScript('document.execCommand("copy")');
+      17: FWv.ExecuteScript('document.execCommand("selectAll")');
+    end;
+    Exit;
+  end;
+{$ENDIF}
   case ACmdId of
     12: FPanel.CopyToClipboard;
     17: FPanel.SelectAll;
   end;
 end;
+
+{$IFDEF MSWINDOWS}
+procedure TWebBrowser.Log(const AText: string);
+begin
+  if Assigned(FOnLog) then
+    FOnLog(AText);
+end;
+
+// WebView2 - если Runtime установлен и загрузчик запустился; зовётся при
+// первой странице (у окна уже есть родитель, журнал назначен)
+procedure TWebBrowser.WvSetup;
+var
+  ErrText: string;
+  RuntimeMissing: Boolean;
+begin
+  FWvState := wwNone;
+  try
+    if not Wv2Start(ErrText, RuntimeMissing) then
+    begin
+      FWvState := wwFailed;
+      Log('WebView2 недоступен (' + ErrText + ') - просмотр через IPro');
+      Exit;
+    end;
+    FWvParent := TWVWindowParent.Create(Self);
+    FWvParent.Parent := Self;
+    FWvParent.Align := alClient;
+    FWv := TWVBrowser.Create(Self);
+    FWv.TargetCompatibleBrowserVersion := '86.0.616.0';
+    FWv.OnAfterCreated := WvAfterCreated;
+    FWv.OnInitializationError := WvInitError;
+    FWv.OnNavigationStarting := WvNavStarting;
+    FWv.OnNavigationCompleted := WvNavCompleted;
+    FWv.OnNewWindowRequested := WvNewWindow;
+    FWv.OnAcceleratorKeyPressed := WvKey;
+    FWv.OnProcessFailed := WvProcessFailed;
+    FWvParent.Browser := FWv;
+    FWvTimer := TTimer.Create(Self);
+    FWvTimer.Enabled := False;
+    FWvTimer.Interval := 100;
+    FWvTimer.OnTimer := WvTimerTick;
+    FPanel.Visible := False;
+    FWvState := wwWaiting;
+  except
+    on Err: Exception do
+    begin
+      FWvState := wwFailed;
+      FPanel.Visible := True;
+      Log('WebView2 не создан (' + Err.Message + ') - просмотр через IPro');
+    end;
+  end;
+end;
+
+// Загрузчик готов - создать браузер; нет - ждать по таймеру; готов
+// браузер - открыть страницу
+procedure TWebBrowser.WvTryStart;
+begin
+  case FWvState of
+    wwReady:
+      WvNavigate;
+    wwWaiting:
+      begin
+        if (GlobalWebView2Loader = nil) or
+           GlobalWebView2Loader.InitializationError then
+        begin
+          if GlobalWebView2Loader <> nil then
+            WvFallback('WebView2 не запустился: ' +
+                       GlobalWebView2Loader.ErrorMessage)
+          else
+            WvFallback('WebView2 не запустился');
+          Exit;
+        end;
+        if not GlobalWebView2Loader.Initialized then
+        begin
+          FWvTimer.Enabled := True;
+          Exit;
+        end;
+        FWvState := wwCreating;
+        if not FWv.CreateBrowser(FWvParent.Handle) then
+          WvFallback('WebView2: браузер не создался');
+      end;
+  end;
+end;
+
+procedure TWebBrowser.WvTimerTick(Sender: TObject);
+begin
+  FWvTimer.Enabled := False;
+  WvTryStart;
+end;
+
+// WebView2 не работает - дальше IPro; ждущая страница открывается в нём
+procedure TWebBrowser.WvFallback(const AReason: string);
+var
+  PendingUrl: string;
+begin
+  if FWvState = wwFailed then
+    Exit;
+  FWvState := wwFailed;
+  if FWvTimer <> nil then
+    FWvTimer.Enabled := False;
+  if FWvParent <> nil then
+    FWvParent.Visible := False;
+  FPanel.Visible := True;
+  Log(AReason + ' - просмотр через IPro');
+  PendingUrl := FWvPendingIpro;
+  FWvPendingUrl := '';
+  if PendingUrl <> '' then
+    try
+      OpenUrl(PendingUrl);
+    except
+      on Err: Exception do
+        Log('IPro: страница не открылась: ' + Err.Message);
+    end;
+end;
+
+procedure TWebBrowser.WvNavigate;
+begin
+  if FWvPendingUrl = '' then
+    Exit;
+  FPageUrl := FWvPendingIpro;
+  FWvOwnNav := True;
+  if not FWv.Navigate(UTF8Decode(FWvPendingUrl)) then
+  begin
+    FWvOwnNav := False;
+    WvFallback('WebView2: Navigate не прошёл');
+    Exit;
+  end;
+  // FWvPendingIpro остаётся: если процесс браузера упадёт, страница
+  // откроется в IPro
+  FWvPendingUrl := '';
+end;
+
+procedure TWebBrowser.WvAfterCreated(Sender: TObject);
+begin
+  FWvState := wwReady;
+  FWvParent.UpdateSize;
+  Log('WebView2 ' + Wv2RuntimeVersion + ': браузер создан');
+  WvNavigate;
+end;
+
+procedure TWebBrowser.WvInitError(Sender: TObject; aErrorCode: HRESULT;
+  const aErrorMessage: wvstring);
+begin
+  WvFallback('WebView2: ошибка ' + IntToHex(aErrorCode, 8) + ' - ' +
+             string(aErrorMessage));
+end;
+
+// Переход не от Navigate (щелчок по ссылке, скрипт): решает
+// OnBeforeNavigate2 (TWebPreview: вкладкой, программой Windows); True -
+// открыть здесь же
+function TWebBrowser.AskNavigate(const AUrl: string): Boolean;
+var
+  NoDisp: IDispatch;
+  UrlVar, FlagsVar, FrameVar, PostVar, HeadersVar: OleVariant;
+  Cancel: WordBool;
+begin
+  Cancel := False;
+  if Assigned(FOnBeforeNavigate2) then
+  begin
+    NoDisp := nil;
+    UrlVar := WideString(UTF8Decode(AUrl));
+    FlagsVar := 0;
+    FrameVar := '';
+    PostVar := '';
+    HeadersVar := '';
+    FOnBeforeNavigate2(Self, NoDisp, UrlVar, FlagsVar, FrameVar, PostVar,
+      HeadersVar, Cancel);
+  end;
+  Result := not Cancel;
+end;
+
+procedure TWebBrowser.WvNavStarting(Sender: TObject;
+  const aWebView: ICoreWebView2;
+  const aArgs: ICoreWebView2NavigationStartingEventArgs);
+var
+  Args: TCoreWebView2NavigationStartingEventArgs;
+  Url: string;
+begin
+  if FWvOwnNav then
+  begin
+    FWvOwnNav := False;
+    Exit;
+  end;
+  Args := TCoreWebView2NavigationStartingEventArgs.Create(aArgs);
+  try
+    Url := UTF8Encode(UnicodeString(Args.URI));
+    if not AskNavigate(Url) then
+      Args.Cancel := True
+    else
+      FPageUrl := Url;
+  finally
+    Args.Free;
+  end;
+end;
+
+procedure TWebBrowser.WvNavCompleted(Sender: TObject;
+  const aWebView: ICoreWebView2;
+  const aArgs: ICoreWebView2NavigationCompletedEventArgs);
+var
+  Args: TCoreWebView2NavigationCompletedEventArgs;
+  NoDisp: IDispatch;
+  UrlVar: OleVariant;
+begin
+  Args := TCoreWebView2NavigationCompletedEventArgs.Create(aArgs);
+  try
+    if not Args.IsSuccess then
+      Log('WebView2: страница не загрузилась, код ' +
+          IntToStr(Integer(Args.WebErrorStatus)) + ' - ' + FPageUrl);
+  finally
+    Args.Free;
+  end;
+  if Assigned(FOnDocumentComplete) then
+  begin
+    NoDisp := nil;
+    UrlVar := WideString(UTF8Decode(FPageUrl));
+    FOnDocumentComplete(Self, NoDisp, UrlVar);
+  end;
+end;
+
+// target=_blank, window.open: не отдельное окно WebView2, а как щелчок
+// по ссылке
+procedure TWebBrowser.WvNewWindow(Sender: TObject;
+  const aWebView: ICoreWebView2;
+  const aArgs: ICoreWebView2NewWindowRequestedEventArgs);
+var
+  Args: TCoreWebView2NewWindowRequestedEventArgs;
+  Url: string;
+begin
+  Args := TCoreWebView2NewWindowRequestedEventArgs.Create(aArgs);
+  try
+    Args.Handled := True;
+    Url := UTF8Encode(UnicodeString(Args.URI));
+  finally
+    Args.Free;
+  end;
+  if (Url <> '') and AskNavigate(Url) then
+  begin
+    FWvOwnNav := True;
+    FPageUrl := Url;
+    if not FWv.Navigate(UTF8Decode(Url)) then
+      FWvOwnNav := False;
+  end;
+end;
+
+// Функциональные клавиши - главному окну unIDE (его Application.OnMessage:
+// F12 текст / формат, F3 поиск и т.д.); остальные - странице
+procedure TWebBrowser.WvKey(Sender: TObject;
+  const aController: ICoreWebView2Controller;
+  const aArgs: ICoreWebView2AcceleratorKeyPressedEventArgs);
+var
+  Args: TCoreWebView2AcceleratorKeyPressedEventArgs;
+  KeyCode: LongWord;
+  OwnerForm: TCustomForm;
+begin
+  Args := TCoreWebView2AcceleratorKeyPressedEventArgs.Create(aArgs);
+  try
+    KeyCode := Args.VirtualKey;
+    if (Args.KeyEventKind = COREWEBVIEW2_KEY_EVENT_KIND_KEY_DOWN) and
+       (KeyCode >= VK_F1) and (KeyCode <= VK_F24) then
+    begin
+      OwnerForm := GetParentForm(Self);
+      if (OwnerForm <> nil) and OwnerForm.HandleAllocated then
+      begin
+        Args.Handled := True;
+        PostMessage(OwnerForm.Handle, WM_KEYDOWN, KeyCode, 0);
+      end;
+    end;
+  finally
+    Args.Free;
+  end;
+end;
+
+// Процесс браузера завершился (вид 0): дальше IPro, страница - в нём
+procedure TWebBrowser.WvProcessFailed(Sender: TObject;
+  const aWebView: ICoreWebView2;
+  const aArgs: ICoreWebView2ProcessFailedEventArgs);
+var
+  Args: TCoreWebView2ProcessFailedEventArgs;
+  FailKind: Integer;
+begin
+  Args := TCoreWebView2ProcessFailedEventArgs.Create(aArgs);
+  try
+    FailKind := Integer(Args.ProcessFailedKind);
+  finally
+    Args.Free;
+  end;
+  if FailKind = 0 then
+    WvFallback('WebView2: процесс браузера завершился')
+  else
+    Log('WebView2: сбой процесса, вид ' + IntToStr(FailKind));
+end;
+{$ENDIF}
 
 end.

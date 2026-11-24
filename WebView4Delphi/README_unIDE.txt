@@ -21,3 +21,10 @@ SyntaxHLClaude.dof (WebView4Delphi\source).
 Ќужен установленный Microsoft Edge WebView2 Runtime. Ќа Windows 7 последн€€
 верси€ - 109: страница https://developer.microsoft.com/microsoft-edge/webview2/consumer/,
 "Evergreen Bootstrapper" (установка через интернет ставит 109).
+
+—борка Lazarus (Windows, 32 и 64 бита): тот же WebView2 встроен в вид
+"по формату" (WebBrowserLcl.pas). 64-битному exe нужна 64-битна€
+WebView2Loader.dll (из NuGet Microsoft.Web.WebView2, build\native\x64):
+р€дом с exe или в WebView4Delphi\bin64; dll другой разр€дности не берЄтс€,
+без неЄ - встроенный загрузчик. Runtime не найден или WebView2 не
+запустилс€ - страницы показывает IPro (причина - в журнале HiLite log).

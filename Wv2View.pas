@@ -161,9 +161,45 @@ begin
   Result := Result + 'unIDE\WebView2';
 end;
 
-// WebView2Loader.dll Microsoft (32-битная): рядом с exe, в
-// WebView4Delphi\bin32 у exe или уровнем выше; '' - нет
+// Разрядность dll (PE-заголовок): True - x64 (машина $8664)
+function Wv2DllIs64(const AFileName: string): Boolean;
+var
+  Stream: TFileStream;
+  PeOffset: Longint;
+  Machine: Word;
+  Sign: array[0..3] of AnsiChar;
+begin
+  Result := False;
+  try
+    Stream := TFileStream.Create(AFileName, fmOpenRead or fmShareDenyNone);
+    try
+      Stream.Position := $3C;
+      Stream.ReadBuffer(PeOffset, SizeOf(PeOffset));
+      Stream.Position := PeOffset;
+      Stream.ReadBuffer(Sign, SizeOf(Sign));
+      Stream.ReadBuffer(Machine, SizeOf(Machine));
+      Result := (Sign[0] = 'P') and (Sign[1] = 'E') and (Sign[2] = #0) and
+                (Sign[3] = #0) and (Machine = $8664);
+    finally
+      Stream.Free;
+    end;
+  except
+    Result := False;
+  end;
+end;
+
+// WebView2Loader.dll Microsoft той же разрядности, что exe: рядом с exe,
+// в WebView4Delphiin32 (exe 64-битный - bin64) у exe или уровнем выше;
+// '' - нет (тогда встроенный загрузчик)
 function Wv2LoaderDll: string;
+const
+{$IFDEF CPU64}
+  BinDir = 'bin64';
+  Want64 = True;
+{$ELSE}
+  BinDir = 'bin32';
+  Want64 = False;
+{$ENDIF}
 var
   ExeDir, Cand: string;
   CandIdx: Integer;
@@ -174,11 +210,12 @@ begin
   begin
     case CandIdx of
       0: Cand := ExeDir + 'WebView2Loader.dll';
-      1: Cand := ExeDir + 'WebView4Delphi\bin32\WebView2Loader.dll';
+      1: Cand := ExeDir + 'WebView4Delphi\' + BinDir + '\WebView2Loader.dll';
     else
-      Cand := ExpandFileName(ExeDir + '..\WebView4Delphi\bin32\WebView2Loader.dll');
+      Cand := ExpandFileName(ExeDir + '..\WebView4Delphi\' + BinDir +
+                             '\WebView2Loader.dll');
     end;
-    if FileExists(Cand) then
+    if FileExists(Cand) and (Wv2DllIs64(Cand) = Want64) then
     begin
       Result := Cand;
       Exit;

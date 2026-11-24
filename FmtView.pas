@@ -899,6 +899,10 @@ begin
     FBrowser.RegisterAsDropTarget := False;  // файл, брошенный мышью, не открывать
     FBrowser.OnBeforeNavigate2 := BrowserBeforeNavigate2;
     FBrowser.OnDocumentComplete := BrowserDocumentComplete;
+{$IFDEF FPC}
+    // Lazarus: WebView2 или IPro, почему не WebView2 - в журнал
+    FBrowser.OnLog := Log;
+{$ENDIF}
     Result := True;
   except
     on Err: Exception do
