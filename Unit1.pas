@@ -3806,6 +3806,8 @@ type
                          AExitCode: Integer; var AIsError: Boolean): string;
     procedure GitSetHint(const AText: string; AIsError: Boolean);
     procedure GitPlaceHint;
+    procedure GitPlaceSideButtons;
+    procedure GitBarResize(Sender: TObject);
     function  GitCurrentOp(const AGit, ARepo: string): string;
     procedure GitCollectProblems(const AGit, ARepo, ABranch: string;
                                  const AChanges: TGitChanges;
@@ -82898,6 +82900,7 @@ begin
     else
       FGitBtnView.Left := FGitLblHint.Left;
   end;
+  GitPlaceSideButtons;
 end;
 
 // Вывод команды git словами: что произошло и что делать. AIsError - это
@@ -83154,6 +83157,11 @@ begin
     'которая продолжает текущую (pull request): влить в текущую ветку и ' +
     'отправить её на сервер (git merge + git push). Красная - Fetch нашёл ' +
     'такие ветки (список - в Git log)', 912, 88, GitAcceptIncomingClick);
+  // В первой строке кнопок для неё нет места (на экране 1600 точек она
+  // за правым краем панели): место - в строке Branch за ahead/behind,
+  // Help - в конце первой строки или строки origin (GitPlaceSideButtons)
+  FGitBtnAccept.Top := 68;
+  FGitBar.OnResize := GitBarResize;
   // .dfm: NewButton('.gitignore...', 'Repository Settings, вкладка Ignored ' +
     // .dfm: 'files: какие файлы git не отслеживает', 778, 76, GitIgnoreClick);
   // .dfm: FGitBtnRepo := NewButton('Repository...', 'Выбрать репозиторий: ' +
@@ -86085,6 +86093,47 @@ begin
     FGitEdRemote.SetBounds(RemoteLeft, FGitLblOrigin.Top,
       FieldWidth(FGitEdRemote), FGitEdRemote.Height);
   end;
+  GitPlaceSideButtons;
+end;
+
+// Accept PR... - в строке Branch за ahead/behind (длина строки меняется);
+// Help - в конце строки кнопок, если там помещается, иначе в строке origin
+// за адресом
+procedure TForm1.GitPlaceSideButtons;
+const
+  HelpLeft = 858;
+var
+  NextLeft: Integer;
+begin
+  if (FGitBtnAccept = nil) or (FGitLblSync = nil) then
+    Exit;
+  NextLeft := FGitLblSync.Left;
+  if FGitLblSync.Caption <> '' then
+  begin
+    Canvas.Font.Assign(FGitLblSync.Font);
+    Inc(NextLeft, Canvas.TextWidth(FGitLblSync.Caption) + 16);
+  end;
+  FGitBtnAccept.SetBounds(NextLeft, 68, FGitBtnAccept.Width,
+    FGitBtnAccept.Height);
+  if FGitBarButton8 = nil then
+    Exit;
+  if HelpLeft + FGitBarButton8.Width <= FGitBar.ClientWidth then
+    FGitBarButton8.SetBounds(HelpLeft, 1, FGitBarButton8.Width,
+      FGitBarButton8.Height)
+  else
+  begin
+    if FGitEdRemote.Visible then
+      NextLeft := FGitEdRemote.Left + FGitEdRemote.Width + 16
+    else
+      NextLeft := FGitLblOrigin.Left;
+    FGitBarButton8.SetBounds(NextLeft, 47, FGitBarButton8.Width,
+      FGitBarButton8.Height);
+  end;
+end;
+
+procedure TForm1.GitBarResize(Sender: TObject);
+begin
+  GitPlaceSideButtons;
 end;
 
 procedure TForm1.GitCopyMenuPopup(Sender: TObject);
