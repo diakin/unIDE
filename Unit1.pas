@@ -19414,8 +19414,9 @@ end;
 
 // После загрузки проекта (первый простой): файлов окон из списка Windows
 // (открывавшихся в проекте) нет на месте -
-// список и вопрос, искать ли. Да - тот же поиск, что Windows - Find lost
-// files... (рядом с программой, в горячих папках; не нашлось - окно папок)
+// список и вопрос, что с ними делать. Искать - тот же поиск, что Windows -
+// Find lost files... (рядом с программой, в горячих папках; не нашлось -
+// окно папок); Убрать из списка - Windows - Remove missing files from list
 procedure TForm1.LostFilesAsk;
 var
   WinIdx, Count, Shown: Integer;
@@ -19439,13 +19440,21 @@ begin
     Exit;
   if Count > Shown then
     ListText := ListText + '... и ещё ' + IntToStr(Count - Shown) + #13#10;
-  if MessageDlg('Не найдены файлы из списка Windows (' + IntToStr(Count) + '):' +
-                #13#10#13#10 + ListText + #13#10 + 'Искать их?' + #13#10 +
-                '(Нет - они останутся в меню Windows с красным крестиком; ' +
-                'искать потом - Windows - Find lost files...)',
-                mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
-    Exit;
-  TryFindDisabledClick(nil);
+  // Кнопки - три действия меню Windows: Find lost files..., Remove missing
+  // files from list и ничего не делать (окна остаются с красным крестиком)
+  case MessageDlgButtons('Не найдены файлы из списка Windows (' +
+                IntToStr(Count) + '):' + #13#10#13#10 + ListText + #13#10 +
+                'Искать - поиск рядом с программой и в горячих папках ' +
+                '(то же, что Windows - Find lost files...).' + #13#10 +
+                'Убрать из списка - закрыть эти окна (то же, что Windows - ' +
+                'Remove missing files from list).' + #13#10 +
+                'Оставить - окна останутся в меню Windows с красным ' +
+                'крестиком.',
+                mtConfirmation, '', ['&Искать...', '&Убрать из списка',
+                '&Оставить'], 0, 2) of
+    0: TryFindDisabledClick(nil);
+    1: RemoveMissingClick(nil);
+  end;
 end;
 
 // Слепок того, что реально попадает в .prj и при этом меняется по воле

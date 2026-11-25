@@ -88,6 +88,7 @@ const
   ButtonHeight = 25;
   MinButtonWidth = 75;
   IconSize = 32;
+  FrameReserve = 40;    // рамка окна и запас до края рабочей области
 
 type
   TButtonDef = record
@@ -176,6 +177,135 @@ begin
   PaintDialogForm(Result);
 end;
 
+// Ширина строки текста в пикселях (шрифт - выбранный в ADC)
+function TextWidthOf(ADC: HDC; const AStr: string): Integer;
+var
+  Size: TSize;
+begin
+  Result := 0;
+  if AStr = '' then
+    Exit;
+  if UiTextExtent(ADC, PChar(AStr), Length(AStr), Size) then
+    Result := Size.cx;
+end;
+
+// Последний байт символа, который начинается с байта APos (в Lazarus
+// строки в UTF-8 - символ из нескольких байтов не режем)
+function CharLastByte(const AStr: string; APos: Integer): Integer;
+begin
+  Result := APos;
+  {$IFDEF FPC}
+  while (Result < Length(AStr)) and (Ord(AStr[Result + 1]) and $C0 = $80) do
+    Inc(Result);
+  {$ENDIF}
+end;
+
+// Слово шире AWrapWidth (обычно путь к файлу) - на куски по ширине.
+// Режем после последнего \ или / в куске, нет их - по символу.
+// DT_WORDBREAK такое слово не переносит, и строка обрезалась справа
+function BreakLongWord(ADC: HDC; const AWord: string;
+  AWrapWidth: Integer): string;
+var
+  Rest: string;
+  CharPos, LastByte, FitLen, SepLen: Integer;
+begin
+  Result := '';
+  Rest := AWord;
+  while (Rest <> '') and (TextWidthOf(ADC, Rest) > AWrapWidth) do
+  begin
+    FitLen := 0;
+    SepLen := 0;
+    CharPos := 1;
+    while CharPos <= Length(Rest) do
+    begin
+      LastByte := CharLastByte(Rest, CharPos);
+      if TextWidthOf(ADC, Copy(Rest, 1, LastByte)) > AWrapWidth then
+        Break;
+      FitLen := LastByte;
+      if (Rest[LastByte] = '\') or (Rest[LastByte] = '/') then
+        SepLen := LastByte;
+      CharPos := LastByte + 1;
+    end;
+    if FitLen = 0 then
+      FitLen := CharLastByte(Rest, 1);
+    if SepLen > 0 then
+      FitLen := SepLen;
+    Result := Result + Copy(Rest, 1, FitLen) + #13#10;
+    Delete(Rest, 1, FitLen);
+  end;
+  Result := Result + Rest;
+end;
+
+// Текст окна сообщения и его размер. Ширина переноса - половина экрана;
+// слово длиннее (путь к файлу) расширяет её до своей длины, но не шире
+// рабочей области экрана за вычетом полей окна (AReserved - значок, поля,
+// рамка). Что и тогда не влезает - режется на строки (BreakLongWord).
+// Результат - текст для надписи; ATextRect - его размер при DT_WORDBREAK
+function PrepareMessageText(ADC: HDC; const AMsg: string; AReserved: Integer;
+  var ATextRect: TRect): string;
+var
+  MaxWidth, WrapWidth, WordWidth, CharIdx, WordStart: Integer;
+  WordText: string;
+
+  function IsBreakChar(AChar: Char): Boolean;
+  begin
+    Result := (AChar = ' ') or (AChar = #9) or (AChar = #13) or (AChar = #10);
+  end;
+
+begin
+  MaxWidth := Screen.WorkAreaWidth - AReserved;
+  WrapWidth := Screen.Width div 2;
+  if WrapWidth > MaxWidth then
+    WrapWidth := MaxWidth;
+  if WrapWidth < 200 then
+    WrapWidth := 200;
+
+  // Самое длинное слово - ширина переноса по нему, если влезает на экран
+  CharIdx := 1;
+  while CharIdx <= Length(AMsg) do
+  begin
+    if IsBreakChar(AMsg[CharIdx]) then
+    begin
+      Inc(CharIdx);
+      Continue;
+    end;
+    WordStart := CharIdx;
+    while (CharIdx <= Length(AMsg)) and not IsBreakChar(AMsg[CharIdx]) do
+      Inc(CharIdx);
+    WordWidth := TextWidthOf(ADC, Copy(AMsg, WordStart, CharIdx - WordStart));
+    if WordWidth > WrapWidth then
+    begin
+      WrapWidth := WordWidth;
+      if WrapWidth > MaxWidth then
+        WrapWidth := MaxWidth;
+    end;
+  end;
+
+  // Слова шире переноса - на куски
+  Result := '';
+  CharIdx := 1;
+  while CharIdx <= Length(AMsg) do
+  begin
+    if IsBreakChar(AMsg[CharIdx]) then
+    begin
+      Result := Result + AMsg[CharIdx];
+      Inc(CharIdx);
+      Continue;
+    end;
+    WordStart := CharIdx;
+    while (CharIdx <= Length(AMsg)) and not IsBreakChar(AMsg[CharIdx]) do
+      Inc(CharIdx);
+    WordText := Copy(AMsg, WordStart, CharIdx - WordStart);
+    if TextWidthOf(ADC, WordText) > WrapWidth then
+      WordText := BreakLongWord(ADC, WordText, WrapWidth);
+    Result := Result + WordText;
+  end;
+
+  ATextRect := Rect(0, 0, WrapWidth, 0);
+  UiDrawText(ADC, PChar(Result), Length(Result), ATextRect,
+             DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS);
+end;
+
 // Окно сообщения. ADefault / ACancel - какие кнопки нажимаются Enter и
 // Esc; ALeft/ATop >= 0 - место окна, иначе по центру экрана.
 function RunMessage(const AMsg, ACaption: string; AIcon: HICON;
@@ -190,7 +320,7 @@ var
   TextRect: TRect;
   Measure: TBitmap;
   TextLeft, ButtonsWidth, ButtonWidth, ButtonCount, PosX, PosY, WidthPx, HeightPx: Integer;
-  Flags: Cardinal;
+  MsgText: string;
 begin
   Form := NewDialogForm(ACaption);
   Measure := TBitmap.Create;
@@ -209,17 +339,17 @@ begin
       TextLeft := Margin + IconSize + Gap + 4;
     end;
 
-    // Текст: ширина - до половины экрана, строки переносятся
-    TextRect := Rect(0, 0, Screen.Width div 2, 0);
-    Flags := DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS;
-    UiDrawText(Measure.Canvas.Handle, PChar(AMsg), Length(AMsg), TextRect,
-             Flags);
+    // Текст: ширина - до половины экрана (длинный путь - шире), строки
+    // переносятся
+    MsgText := PrepareMessageText(Measure.Canvas.Handle, AMsg,
+                                  TextLeft + 4 + Margin + FrameReserve,
+                                  TextRect);
     TextLabel := TUiLabel.Create(Form);
     TextLabel.Parent := Form;
     TextLabel.ShowAccelChar := False;
     TextLabel.WordWrap := True;
     TextLabel.AutoSize := False;
-    TextLabel.Caption := AMsg;
+    TextLabel.Caption := MsgText;
     TextLabel.SetBounds(TextLeft, Margin, TextRect.Right + 4, TextRect.Bottom);
 
     // Кнопки: ширина одна на всех - по самой длинной подписи
@@ -300,7 +430,7 @@ var
   Icon: HICON;
   BtnIdx, TextLeft, ButtonsWidth, PosX, PosY, WidthPx, HeightPx, Answer: Integer;
   Widths: array of Integer;
-  Title: string;
+  Title, MsgText: string;
 begin
   Title := ACaption;
   if Title = '' then
@@ -320,15 +450,15 @@ begin
       IconImage.Picture.Icon.Handle := Icon;
       TextLeft := Margin + IconSize + Gap + 4;
     end;
-    TextRect := Rect(0, 0, Screen.Width div 2, 0);
-    UiDrawText(Measure.Canvas.Handle, PChar(Msg), Length(Msg), TextRect,
-             DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX or DT_EXPANDTABS);
+    MsgText := PrepareMessageText(Measure.Canvas.Handle, Msg,
+                                  TextLeft + 4 + Margin + FrameReserve,
+                                  TextRect);
     TextLabel := TUiLabel.Create(Form);
     TextLabel.Parent := Form;
     TextLabel.ShowAccelChar := False;
     TextLabel.WordWrap := True;
     TextLabel.AutoSize := False;
-    TextLabel.Caption := Msg;
+    TextLabel.Caption := MsgText;
     TextLabel.SetBounds(TextLeft, Margin, TextRect.Right + 4, TextRect.Bottom);
 
     // Ширина каждой кнопки - по своей подписи
